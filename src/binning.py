@@ -36,8 +36,6 @@ class Bins:
                 self.Binning = self.create()
                 self.TimeBinning = self.load_time_binning()
                 self.NBins = len(self.Binning)
-        self.NPulser = None
-        self.Pulser = None
 
         # Pixel
         self.MaxADC = 2**8 - 1
@@ -153,16 +151,6 @@ class Bins:
         res = self.PY * (2 / sqrt(12) if res_fac is None else res_fac)
         bins = arange(self.GlobalCoods[2], self.GlobalCoods[3] + res / 1000., res)
         return [bins.size - 1, bins * (10 if mm else 1)]
-
-    def get_pulser(self, n_pulser):
-        if self.NPulser != n_pulser or self.Pulser is None:
-            n = self.Run.Tree.Draw('Entry$', 'pulser', 'goff')
-            pulser_events = get_root_vec(self.Run.Tree, n, dtype='u4')
-            bins = concatenate([[0], pulser_events[arange(n_pulser, n, n_pulser)], [pulser_events[-1]]])
-            bins = bins[:-1] if bins[-1] == bins[-2] else bins
-            self.Pulser = bins
-            self.NPulser = n_pulser
-        return [self.Pulser.size - 1, array(self.Pulser, 'd')]
 
     @staticmethod
     def get_angle(bin_size=.1, max_angle=4):
