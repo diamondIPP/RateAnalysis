@@ -17,6 +17,7 @@ class SubAnalysis(Analysis):
         self.Bins = analysis.Bins
         self.Cut = analysis.Cut
         self.NRocs = analysis.NRocs
+        self.StartEvent = analysis.StartEvent
         if dut and hasattr(analysis, 'DUT'):
             self.DUT = analysis.DUT
         super().__init__(analysis.TCString, sub_dir=choose(sub_dir, analysis.Draw.SubDir), pickle_dir=pickle_dir)
