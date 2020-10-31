@@ -393,7 +393,7 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, draw_opt='ap')
         return g
 
-    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', *args, **kwargs):
+    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, *args, **kwargs):
         s = THStack('s{}'.format(self.get_count()), title)
         leg = Draw.make_legend(nentries=len(histos), w=.2)
         for h, tit in zip(histos, leg_titles):
@@ -404,10 +404,10 @@ class Draw(object):
                 h.Scale(1 / h.GetMaximum())
         h0 = histos[0]
         format_histo(s, draw_first=True, x_tit=h0.GetXaxis().GetTitle(), y_tit=h0.GetYaxis().GetTitle(), y_off=h0.GetYaxis().GetTitleOffset())
-        self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin())
+        self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, show=True, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph('mg{}'.format(self.get_count()), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = Draw.make_legend(nentries=len(graphs), w=.2)
@@ -417,7 +417,7 @@ class Draw(object):
             format_histo(g, color=self.get_color(len(graphs)), stats=0, *args, **kwargs)
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels))
         set_bin_labels(m, bin_labels)
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy)
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy, show=show)
         return m
     # endregion DRAW
     # ----------------------------------------
