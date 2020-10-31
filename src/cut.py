@@ -2,25 +2,22 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, split, quantile, histogram, diff
+from numpy import histogram2d, quantile, diff
 from ROOT import TCut, TPie
 from helpers.draw import *
+from src.sub_analysis import SubAnalysis
 
 
-class Cut:
+class Cut(SubAnalysis):
     """ Contains methods to generate the cut strings for the TelescopeAnalysis and holds the dictionaries for the settings and all cut strings. """
     # TODO: make sub-analysis and move methods here
 
-    def __init__(self, parent):
+    def __init__(self, analysis):
 
-        self.Analysis = parent
-        self.Run = self.Analysis.Run
-        self.TCString = self.Analysis.TCString
-        self.Bins = Bins(self.Run)
+        super().__init__(analysis, pickle_dir='Cuts')
 
         # Configuration
-        self.Config = self.Analysis.Config
-        self.CutConfig = self.load_config()
+        self.CutConfig = self.load_cconfig()
         self.LowRateRun = None
         self.HighRateRun = None
 
@@ -41,7 +38,7 @@ class Cut:
 
     # ----------------------------------------
     # region CONFIG
-    def load_config(self):
+    def load_cconfig(self):
         return {'jump_range': loads(self.Config.get('CUT', 'exclude around jump')),
                 'event_range': self.load_event_range(loads(self.Config.get('CUT', 'event range'))),
                 'chi2_x': self.Config.getint('CUT', 'chi2X'),
@@ -53,7 +50,7 @@ class Cut:
 
     def load_event_range(self, event_range=None):
         """ Generates the event range. Negative values are interpreted as minutes. Example: [-10, 700k] => 10 min < events < 700k. """
-        event_range = [0, 0] if event_range is None else [self.Analysis.Run.get_event_at_time(seconds=abs(value * 60)) if value < 0 else value for value in event_range]
+        event_range = [0, 0] if event_range is None else [self.Ana.Run.get_event_at_time(seconds=abs(value * 60)) if value < 0 else value for value in event_range]
         return [event_range[0], self.Run.NEvents if not event_range[1] else event_range[1]]
 
     def set_config(self, key, value):
@@ -77,7 +74,7 @@ class Cut:
     def load_dut_config(self, option, warn=True):
         if option not in self.Config.options('CUT'):
             return warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)), prnt=warn)
-        return self.Config.get_list('CUT', option)[self.Analysis.DUT.Name]
+        return self.Config.get_list('CUT', option)[self.Ana.DUT.Name]
     # endregion CONFIG
     # ----------------------------------------
 
@@ -100,12 +97,12 @@ class Cut:
         return {key: cut for key, cut in cuts.items() if key in self.get_short()} if short else cuts
 
     def get_size(self, name):
-        return self.Run.NEvents - self.Analysis.get_n_entries(name)
+        return self.Run.NEvents - self.Ana.get_n_entries(name)
 
     def get_sizes(self, consecutive=True, redo=False):
         def f():
             return array([self.get_size(cut) for cut in (self.get_consecutive().values() if consecutive else self.get_all())])
-        return do_pickle(self.Analysis.make_simple_pickle_path('Sizes', int(consecutive), 'Cuts'), f, redo=redo)
+        return do_pickle(self.Ana.make_simple_pickle_path('Sizes', int(consecutive), 'Cuts'), f, redo=redo)
 
     def get_short(self, n=6, redo=False):
         """get a list of names of the n biggest cuts"""
@@ -136,12 +133,12 @@ class Cut:
 
     def get_beam_interruptions(self):
         """ :returns: list of raw interruptions, type [list[tup]]"""
-        pickle_path = self.Analysis.make_pickle_path('BeamInterruptions', run=self.Run.Number, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
+        pickle_path = self.Ana.make_pickle_path('BeamInterruptions', run=self.Run.Number, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
         return do_pickle(pickle_path, self.find_beam_interruptions)
 
     def get_interruptions_ranges(self):
         """ :returns: list of interruptions including safety margin from the AnalysisConfig. """
-        range_pickle = self.Analysis.make_pickle_path('BeamInterruptions', 'Ranges', run=self.Run.Number, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
+        range_pickle = self.Ana.make_pickle_path('BeamInterruptions', 'Ranges', run=self.Run.Number, suf='_'.join(str(i) for i in self.CutConfig['jump_range']))
         return do_pickle(range_pickle, self.create_interruption_ranges, interruptions=self.get_beam_interruptions())
 
     def get_fiducial_area(self):
@@ -255,8 +252,8 @@ class Cut:
         x = choose(x, self.load_fiducial(fid_name)[0]) + (self.Bins.PX / 2 if center else 0)
         y = choose(y, self.load_fiducial(fid_name)[1]) + (self.Bins.PY / 2 if center else 0)
         cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
-        cut.SetVarX(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'x'))
-        cut.SetVarY(self.get_track_var(self.Analysis.DUT.Number - 1 - n_planes, 'y'))
+        cut.SetVarX(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'x'))
+        cut.SetVarY(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'y'))
         description = 'x: {}, y: {}, area: {:.1f} mm2'.format(x * 10, y * 10, poly_area(x, y) * 100)
         return CutString(choose(name, 'fiducial'), TCut(cut.GetName()) if cut is not None else '', description)
 
@@ -278,7 +275,7 @@ class Cut:
         return self.generate_custom(include=['beam stops', 'event_range'], name='flux', prnt=False)
 
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', prnt=True):
-        self.Analysis.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
+        self.Ana.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
         return self.CutStrings.generate_custom(exclude, include, invert, name)
     # endregion GENERATE
     # ----------------------------------------
@@ -287,31 +284,31 @@ class Cut:
     # region COMPUTE
     def calc_chi2(self, mode='x', q=None):
         def f():
-            t = self.Analysis.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
-            values = get_root_vec(self.Analysis.Tree, var='chi2_{}'.format(mode))
+            t = self.Ana.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
+            values = get_root_vec(self.Ana.Tree, var='chi2_{}'.format(mode))
             chi2s = quantile(values[values > -500], linspace(0, 1, 101))
-            self.Analysis.add_to_info(t)
+            self.Ana.add_to_info(t)
             return chi2s
 
-        chi2 = do_hdf5(self.Analysis.make_simple_hdf5_path('Chi2', sub_dir='Cuts'), f)
+        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2', sub_dir='Cuts'), f)
         q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if q is None else int(q)
         return chi2[q] if q != 100 else None
 
     def get_raw_pulse_height(self):
-        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Analysis.get_signal_var(), cut=self()), err=False))
+        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Ana.get_signal_var(), cut=self()), err=False))
 
     def find_zero_ph_event(self, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Analysis.DUT.Number)
+        pickle_path = self.Ana.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Ana.DUT.Number)
 
         def f():
-            t0 = self.Analysis.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
-            ph, t = self.Analysis.get_root_vec(var=[self.Analysis.SignalName, self.Analysis.get_t_var()], cut=self())
-            time_bins, values = get_hist_vecs(self.Analysis.Draw.profile(t, ph, self.Analysis.Bins.get_raw_time(30), show=False), err=False)
+            t0 = self.Ana.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
+            ph, t = self.Ana.get_root_vec(var=[self.Ana.SignalName, self.Ana.get_t_var()], cut=self())
+            time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, self.Ana.Bins.get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
             i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if abs(v) < .2 * ph and v), None)
-            self.Analysis.add_to_info(t0)
-            return None if ph < 10 or i_break is None else self.Analysis.get_event_at_time(time_bins[i_break - 1])
+            self.Ana.add_to_info(t0)
+            return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(time_bins[i_break - 1])
 
         return do_pickle(pickle_path, f, redo=redo)
 
@@ -320,9 +317,9 @@ class Cut:
 
     def find_pad_beam_interruptions(self, bin_width=100, max_thresh=.6):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        t = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
-        n = self.Analysis.Tree.Draw('Entry$:pulser', '', 'goff')
-        x, y = get_root_vecs(self.Analysis.Tree, n, 2, dtype='i4')
+        t = self.Ana.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
+        n = self.Ana.Tree.Draw('Entry$:pulser', '', 'goff')
+        x, y = get_root_vecs(self.Ana.Tree, n, 2, dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, n, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
         thresh = min(max_thresh, mean(rates) + .2)
@@ -330,20 +327,20 @@ class Cut:
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
         interruptions = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
-        self.Analysis.add_to_info(t)
+        self.Ana.add_to_info(t)
         return array(interruptions, 'i4')
 
     def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
         """ Finding beam interruptions by incestigation the event rate. """
-        t_start = self.Analysis.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
+        t_start = self.Ana.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         bin_values, time_bins = histogram(self.Run.Time / 1000, bins=self.Bins.get_raw_time(bin_width)[1])
         m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
         deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
         times = time_bins[deviating_bins] + bin_width / 2 - self.Run.Time[0] / 1000  # shift to the center of the bin
         not_connected = where(concatenate([[False], deviating_bins[:-1] != deviating_bins[1:] - 1]))[0]  # find the bins that are not consecutive
         times = split(times, not_connected)
-        interruptions = [[self.Analysis.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times] if len(times[0]) else []
-        self.Analysis.add_to_info(t_start)
+        interruptions = [[self.Ana.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times] if len(times[0]) else []
+        self.Ana.add_to_info(t_start)
         return interruptions
 
     def create_interruption_ranges(self, interruptions):
@@ -359,10 +356,10 @@ class Cut:
         return [[self.Run.get_event_at_time(t) for t in tup] for tup in ranges]
 
     def find_n_misaligned(self):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'align', self.Run.Number)
+        pickle_path = self.Ana.make_pickle_path('Cuts', 'align', self.Run.Number)
 
         def f():
-            return where(get_root_vec(self.Analysis.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
+            return where(get_root_vec(self.Ana.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
         return do_pickle(pickle_path, f)
 
     # endregion COMPUTE
@@ -382,21 +379,21 @@ class Cut:
         for i, (key, cut) in enumerate(self.get_consecutive().items()):
             if key == 'raw':
                 continue
-            events = n_events - int(self.Analysis.Tree.Draw('1', cut, 'goff'))
+            events = n_events - int(self.Ana.Tree.Draw('1', cut, 'goff'))
             print(key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.))
-            contr[key.title().replace('_', ' ')] = (events - cut_events, self.Analysis.get_color())
+            contr[key.title().replace('_', ' ')] = (events - cut_events, self.Ana.get_color())
             cut_events = events
-        contr['Good Events'] = (n_events - cut_events, self.Analysis.get_color())
+        contr['Good Events'] = (n_events - cut_events, self.Ana.get_color())
         sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * n_events if short else 0)).items(), key=lambda x: x[1]))  # sort by size
-        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Analysis.get_color())} if short else {})
+        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Ana.get_color())} if short else {})
         sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in range(len(sorted_contr)))  # sort by largest->smallest->next largest...
         pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
         for i, label in enumerate(sorted_contr.keys()):
             pie.SetEntryRadiusOffset(i, .05)
             pie.SetEntryLabel(i, label)
         format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
-        self.Analysis.save_histo(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
-        self.Analysis.reset_colors()
+        self.Ana.save_histo(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
+        self.Ana.reset_colors()
         return sorted_contr
 
     def draw_fid(self, scale=10):
