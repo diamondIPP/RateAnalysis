@@ -152,6 +152,9 @@ class Cut(SubAnalysis):
             for i in range(cut.GetN()):
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             return Draw.add(cut)
+
+    def get_raw_pulse_height(self):
+        return mean_sigma(self.Run.get_root_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
     # endregion GET
     # ----------------------------------------
 
@@ -293,9 +296,6 @@ class Cut(SubAnalysis):
         chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2', sub_dir='Cuts'), f)
         q = self.CutConfig['chi2_{mod}'.format(mod=mode.lower())] if q is None else int(q)
         return chi2[q] if q != 100 else None
-
-    def get_raw_pulse_height(self):
-        return ufloat(*mean_sigma(self.Run.get_root_vec(var=self.Ana.get_signal_var(), cut=self()), err=False))
 
     def find_zero_ph_event(self, redo=False):
         pickle_path = self.Ana.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Ana.DUT.Number)
