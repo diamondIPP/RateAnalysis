@@ -35,8 +35,8 @@ class DUTAnalysis(Analysis):
         self.Currents = Currents(self)
 
         if self.Tree.Hash():
-            self.Cut = Cut(self)
             self.NRocs = self.Run.NPlanes
+            self.Cut = Cut(self)
             self.StartEvent = self.Cut.get_min_event()
             self.EndEvent = self.Cut.get_max_event()
             self.Bins = Bins(self.Run, cut=self.Cut)

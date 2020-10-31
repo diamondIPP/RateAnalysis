@@ -14,13 +14,17 @@ class SubAnalysis(Analysis):
         self.Ana = analysis
         self.Run = analysis.Run
         self.Tree = analysis.Tree
-        self.Bins = analysis.Bins
-        self.Cut = analysis.Cut
         self.NRocs = analysis.NRocs
-        self.StartEvent = analysis.StartEvent
         if dut and hasattr(analysis, 'DUT'):
             self.DUT = analysis.DUT
+        try:
+            self.Bins = analysis.Bins
+            self.Cut = analysis.Cut
+            self.StartEvent = analysis.StartEvent
+        except AttributeError:
+            pass
         super().__init__(analysis.TCString, sub_dir=choose(sub_dir, analysis.Draw.SubDir), pickle_dir=pickle_dir)
+        self.Config = analysis.Config
 
     def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
         return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
