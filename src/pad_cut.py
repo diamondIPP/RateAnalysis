@@ -323,3 +323,19 @@ class PadCut(Cut):
         return do_pickle(self.Analysis.make_simple_pickle_path('TimingRange', sub_dir='Cuts'), f, redo=redo)
     # endregion COMPUTE
     # ----------------------------------------
+
+    @staticmethod
+    def fit_bucket(h, show=True):
+        x1, y1, x2, y2 = concatenate(find_maxima(h, n=3, sigma=2.5, sort_x=True))  # n one larger than the expected otherwise buffer full
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), x2 + 5)
+        if y1 < 20 or y1 > 1e10:
+            return  # didn't find pedestal peak!
+        d = x2 - x1
+        fit.SetParameters(y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + d / 4, 5)
+        fit.SetParLimits(1, x2 - 5, x2 + 5)         # signal mean
+        fit.SetParLimits(3, 1, y1 * 2)              # pedestal height
+        fit.SetParLimits(4, x1 - 10, x1 + 10)       # pedestal mean
+        fit.SetParLimits(6, 1, min(y1, y2) / 2)     # guard ring height
+        fit.SetParLimits(7, x1, x1 + d / 2)         # guard ring mean
+        h.Fit(fit, 'qs{0}'.format('' if show else '0'), '', -50, x2 + 5)
+        return fit
