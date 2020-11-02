@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from ROOT import TF1, Math, TMath
-from numpy import pi
 from scipy.special import erf
 from helpers.draw import *
 
