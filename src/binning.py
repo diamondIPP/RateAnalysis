@@ -15,6 +15,23 @@ class Bins:
     Size = 10000
     FluxRange = [5, 20000]
 
+    # Pixel
+    MaxADC = 2 ** 8 - 1
+    MinPH = -5000
+    MaxPH = 100000
+    PHBinWidth = 200
+    MinVcal = -100
+    MaxVcal = 1250
+    VcalToEl = 47.
+
+    # Pad Pulse Height
+    MinPadPH = -50
+    MaxPadPH = 500
+    PadPHBinWidth = 1
+
+    # Miscellaneous
+    GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
+
     def __init__(self, run=None, cut=None):
 
         self.Run = run
@@ -37,22 +54,6 @@ class Bins:
                 self.TimeBinning = self.load_time_binning()
                 self.NBins = len(self.Binning)
 
-        # Pixel
-        self.MaxADC = 2**8 - 1
-        self.MinPH = -5000
-        self.MaxPH = 100000
-        self.PHBinWidth = 200
-        self.MinVcal = -100
-        self.MaxVcal = 1250
-        self.VcalToEl = 47.
-
-        # Pad Pulse Height
-        self.MinPadPH = -50
-        self.MaxPadPH = 500
-        self.PadPHBinWidth = 1
-
-        # Miscellaneous
-        self.GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
         Bins.FluxRange = loads(Bins.Config.get('PLOTS', 'flux range'))
 
     def __call__(self, bin_width=None):
