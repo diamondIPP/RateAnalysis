@@ -430,6 +430,20 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
+    def make_f(name, function, xmin=0, xmax=1, pars=None):
+        f = TF1(name, function, xmin, xmax)
+        f.SetParameters(*pars) if pars is not None else do_nothing()
+        return f
+
+    @staticmethod
+    def make_tf1(name, f, xmin=0, xmax=1, *args, **kwargs):
+        def tmp(x, pars):
+            _ = pars
+            return f(x[0], *args, **kwargs)
+        Draw.add(tmp)
+        return TF1(name, tmp, xmin, xmax)
+
+    @staticmethod
     def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, **kwargs):
         g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
         kwargs['marker'] = 20 if 'marker' not in kwargs else kwargs['marker']
