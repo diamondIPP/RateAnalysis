@@ -19,7 +19,6 @@ class Cut(SubAnalysis):
         # Configuration
         self.CutConfig = self.load_cconfig()
         self.LowRateRun = None
-        self.HighRateRun = None
 
         # Cut Strings
         self.CutStrings = CutStrings()
@@ -168,9 +167,8 @@ class Cut(SubAnalysis):
         self.set('fiducial', cut.Value)
         self.CutStrings.set_description('fiducial', cut.Description)
 
-    def set_high_low_rate_run(self, high_run, low_run):
+    def set_low_rate_run(self, low_run):
         self.LowRateRun = str(low_run)
-        self.HighRateRun = str(high_run)
 
     def reset(self, name):
         self.CutStrings.reset(name)
