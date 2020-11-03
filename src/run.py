@@ -18,7 +18,7 @@ class Run(Analysis):
         :param verbose: turn on more output
         """
         # Basics
-        super(Run, self).__init__(testcampaign, verbose=verbose)
+        super(Run, self).__init__(testcampaign, verbose=verbose, pickle_dir='Run')
         self.Number = number
 
         # Directories / Test Campaign
@@ -352,8 +352,10 @@ class Run(Analysis):
         return [str(b) for b in self.load_biases()]
 
     def get_high_rate_run(self):
-        from src.run_selection import RunSelection
-        return RunSelection(testcampaign=self.TCString).get_high_rate_run(self.Number)
+        def f():
+            from src.run_selection import RunSelection
+            return int(RunSelection(testcampaign=self.TCString).get_high_rate_run(self.Number))
+        return do_pickle(self.make_simple_pickle_path('HR', run=self.Number), f)
     # endregion GET
     # ----------------------------------------
 
