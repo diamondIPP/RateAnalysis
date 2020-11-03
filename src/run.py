@@ -350,6 +350,10 @@ class Run(Analysis):
 
     def get_bias_strings(self):
         return [str(b) for b in self.load_biases()]
+
+    def get_high_rate_run(self):
+        from src.run_selection import RunSelection
+        return RunSelection(testcampaign=self.TCString).get_high_rate_run(self.Number)
     # endregion GET
     # ----------------------------------------
 
