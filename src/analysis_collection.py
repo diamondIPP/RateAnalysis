@@ -112,7 +112,7 @@ class AnalysisCollection(Analysis):
         for run in self.Runs:
             analysis = self.load_analysis(run)
             if self.LoadTree:
-                analysis.Cut.set_high_low_rate_run(low_run=self.MinFluxRun, high_run=self.MaxFluxRun)
+                analysis.Cut.set_low_rate_run(low_run=self.MinFluxRun)
                 analysis.Cut.reload()
             analyses[run] = analysis
         self.Threads = None
