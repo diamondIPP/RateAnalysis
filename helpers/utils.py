@@ -38,6 +38,7 @@ from json import load, loads
 OFF = False
 ON = True
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
+COUNT = 0
 
 M_PI = 139.57018  # MeV/c^2
 M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
@@ -76,6 +77,12 @@ def info(msg, endl=True, blank_lines=0, prnt=True):
 def add_to_info(t, msg='Done', prnt=True):
     if prnt:
         print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
+
+
+def print_check():
+    global COUNT
+    print('======={}========'.format(COUNT))
+    COUNT += 1
 
 
 def set_root_warnings(status):
