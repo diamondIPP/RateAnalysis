@@ -191,6 +191,8 @@ class Draw(object):
 
     @staticmethod
     def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, show=True):
+        if get_object(name) is not None:  # check if name already exists
+            get_object(name).Clear()
         line = TCutG(choose(name, 'poly{}'.format(Draw.get_count())), len(x) + 1, append(x, x[0]).astype('d'), append(y, y[0]).astype('d'))
         line.SetLineColor(line_color)
         do(line.SetFillColor, fill_color)
