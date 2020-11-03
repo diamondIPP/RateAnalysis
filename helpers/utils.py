@@ -604,7 +604,8 @@ def close_last_canvas():
 
 
 def get_object(name):
-    return gROOT.FindObject(name)
+    o = gROOT.FindObject(name)
+    return None if o.__class__.Class_Name() == 'TObject' else o
 
 
 def do(fs, pars, exe=-1):
