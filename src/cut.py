@@ -183,7 +183,7 @@ class Cut(SubAnalysis):
         self.update('chi2_y', self.generate_chi2('y').Value)
 
     def reload(self):
-        self.CutConfig = self.load_config()
+        self.CutConfig = self.load_cconfig()
         self.update_config()
         self.CutStrings.reset_all()
         self.generate()
