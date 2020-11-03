@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from os.path import join
-from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TSpectrum, TEllipse, TColor, TProfile
+from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
 from numpy import sign, linspace, ones, ceil, append, pi, tile
 from src.binning import Bins
@@ -326,7 +326,7 @@ class Draw(object):
         if leg is not None:
             update_canvas()
             for i_leg in make_list(leg):
-                i_leg.Draw()
+                i_leg.Draw('same')
         set_root_output(True)
         return Draw.add(c, th, leg)[0]
 
@@ -341,11 +341,11 @@ class Draw(object):
         self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h)
         return th
 
-    def graph(self, x, y, ex=None, ey=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
-        g = Draw.make_tgrapherrors(x, y, ex, ey, asym_errors)
+    def graph(self, x, y, c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
+        g = Draw.make_tgrapherrors(x, y, asym_err=asym_errors)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         format_histo(g, **kwargs)
-        self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy)
+        self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c)
         return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, **kwargs):
@@ -430,18 +430,23 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_f(name, function, xmin=0, xmax=1, pars=None):
+    def make_f(name, function, xmin=0, xmax=1, pars=None, *args, **kwargs):
         f = TF1(name, function, xmin, xmax)
         f.SetParameters(*pars) if pars is not None else do_nothing()
+        format_histo(f, *args, **kwargs)
         return f
 
     @staticmethod
-    def make_tf1(name, f, xmin=0, xmax=1, *args, **kwargs):
+    def make_tf1(name, f, xmin=0, xmax=1, color=None, w=None, *args, **kwargs):
         def tmp(x, pars):
             _ = pars
             return f(x[0], *args, **kwargs)
         Draw.add(tmp)
-        return TF1(name, tmp, xmin, xmax)
+        f0 = TF1(name, tmp, xmin, xmax)
+        do(f0.SetLineColor, color)
+        do(f0.SetLineWidth, w)
+        Draw.add(f0)
+        return f0
 
     @staticmethod
     def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, **kwargs):
@@ -488,10 +493,10 @@ class Draw(object):
 
 # ----------------------------------------
 # region FORMATTING
-def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, markersize=None, x_off=None, y_off=None, z_off=None, lw=1,
-                 fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None, sumw2=None,
-                 do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None, rebin=None,
-                 y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
+def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, line_style=None, markersize=None, x_off=None, y_off=None, z_off=None,
+                 lw=None, fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
+                 sumw2=None, do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None,
+                 rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -520,7 +525,8 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     # lines/fill
     try:
         h.SetLineColor(line_color) if line_color is not None else h.SetLineColor(color) if color is not None else do_nothing()
-        h.SetLineWidth(lw)
+        do(h.SetLineWidth, lw)
+        do(h.SetLineStyle, line_style)
         h.SetFillColor(fill_color) if fill_color is not None and opacity is None else do_nothing()
         h.SetFillColorAlpha(fill_color, opacity) if fill_color is not None and opacity is not None else do_nothing()
         h.SetFillStyle(fill_style) if fill_style is not None else do_nothing()
