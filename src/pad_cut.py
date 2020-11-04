@@ -5,7 +5,7 @@
 from ROOT import TCut, TF1
 from src.cut import Cut, CutString
 from helpers.draw import *
-from numpy import quantile
+from numpy import quantile, histogram2d
 
 
 class PadCut(Cut):
@@ -13,7 +13,7 @@ class PadCut(Cut):
 
     def __init__(self, analysis):
         Cut.__init__(self, analysis)
-        self.Channel = self.Ana.Channel
+        self.Channel = self.Ana.get_channel()
         self.generate_dut()
         self.ConsecutiveCuts = self.get_consecutive()
 
@@ -31,17 +31,17 @@ class PadCut(Cut):
         return self.get_raw_pulse_height() / self.get_raw_noise()
 
     def get_pre_bucket(self):
-        return CutString('!pre bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + self.generate_pre_bucket().invert())()
+        return CutString('!pre bucket', self.generate_custom(include=['pulser', 'fiducial', 'event range'], prnt=False) + self.generate_pre_bucket().invert())()
 
     def get_bucket(self):
-        return CutString('!bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + self.get('bucket', invert=True))()
+        return CutString('!bucket', self.generate_custom(include=['pulser', 'fiducial', 'event range'], prnt=False) + self.get('bucket', invert=True))()
 
     def get_bad_bucket(self):
         return self.generate_custom(exclude='bucket') + self.generate_pre_bucket().invert() + TCut('{} > {}'.format(self.Ana.get_raw_signal_var(), self.get_bucket_threshold()))
 
     def get_pulser(self, beam_on=True):
-        cut = self.generate_custom(include=['ped sigma', 'event_range'], prnt=False) + Cut.invert(self.get('pulser'))
-        cut += self.get('beam stops') if beam_on else Cut.invert(self.generate_jump_cut())
+        cut = self.generate_custom(include=['ped sigma', 'event range'], prnt=False) + Cut.invert(self.get('pulser'))
+        cut += self.get('beam stops', warn=False) if beam_on else Cut.invert(self.generate_jump_cut())
         return CutString('PulserBeam{}'.format('On' if beam_on else 'Off'), cut)
     # endregion GET
     # ----------------------------------------
@@ -67,7 +67,7 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_bucket(), 36)
 
         # --SIGNAL DROPS--
-        self.update('event_range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
+        self.update('event range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
 
     def generate_saturated(self):
         cut_string = '!is_saturated[{ch}]'.format(ch=self.Channel)
@@ -81,7 +81,7 @@ class PadCut(Cut):
         sigma = choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
         ped_range = self.calc_pedestal(sigma)
         description = 'sigma <= {} -> [{:1.1f}mV, {:1.1f}mV]'.format(sigma, *ped_range)
-        return CutString('ped sigma', '{ped} > {} && {ped} < {}'.format(ped=self.Ana.PedestalName, *ped_range), description)
+        return CutString('ped sigma', '{ped} > {} && {ped} < {}'.format(ped=self.Ana.get_pedestal_name(), *ped_range), description)
 
     def generate_threshold(self):
         thresh = self.calc_threshold(show=False)
@@ -118,10 +118,10 @@ class PadCut(Cut):
     # ----------------------------------------
     # region COMPUTE
     def find_n_pulser(self, cut, redo=False):
-        return do_pickle(self.make_simple_pickle_path('NPulser', dut=''), self.Ana.get_n_entries, None, redo, cut)
+        return do_pickle(self.make_simple_pickle_path('NPulser', dut=''), self.Tree.GetEntries, None, redo, self(cut).GetTitle())
 
     def find_n_saturated(self, cut, redo=False):
-        return do_pickle(self.make_simple_pickle_path('NSaturated'), self.Ana.get_n_entries, None, redo, cut)
+        return do_pickle(self.make_simple_pickle_path('NSaturated'), self.Tree.GetEntries, None, redo, self(cut).GetTitle())
 
     def find_fid_cut(self, thresh=.93, show=True):
         h = self.Ana.draw_signal_map(show=show)
@@ -137,6 +137,20 @@ class PadCut(Cut):
         self.draw_fid()
         Draw.box(*array([x[0], y[0], x[1], y[1]]) * 10, show=show, width=2)
         return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
+
+    def find_beam_interruptions(self, bin_width=100, max_thresh=.6):
+        """ Looking for the beam interruptions by investigating the pulser rate. """
+        t = self.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
+        x, y = self.get_root_vec(var=['Entry$', 'pulser'], dtype='i4')
+        rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
+        rates = rates[:, 1] / bin_width
+        thresh = min(max_thresh, mean(rates) + .2)
+        events = x_bins[:-1][rates > thresh] + bin_width / 2
+        not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
+        events = split(events, not_connected)  # events grouped into connecting events
+        interruptions = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
+        self.add_to_info(t)
+        return array(interruptions, 'i4')
 
     def get_bucket_threshold(self):
         """get the bucket threshold from the run with the highest rate"""
@@ -222,7 +236,7 @@ class PadCut(Cut):
     def calc_pedestal(self, n_sigma):
         def f():
             t = self.Ana.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.DUT.Name), endl=False)
-            h0 = self.Draw.distribution(self.get_root_vec(var=self.Ana.PedestalName, cut=self()), Bins.make(-100, 100, .5), show=False)
+            h0 = self.Draw.distribution(self.get_root_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
             fit = fit_fwhm(h0, show=False)
             self.Ana.add_to_info(t)
             return fit.Parameter(1), fit.Parameter(2)

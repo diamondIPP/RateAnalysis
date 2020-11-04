@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import log2, quantile, insert, sum
+from numpy import quantile, insert, sum
 
 from src.pedestal import PedestalAnalysis
 from src.Timing import TimingAnalysis
@@ -17,18 +17,16 @@ class PadAnalysis(DUTAnalysis):
         DUTAnalysis.__init__(self, run_number, diamond_nr, test_campaign, tree, t_vec, verbose, prnt)
 
         # MAIN
-        self.Channel = self.Run.Channels[diamond_nr - 1]
+        self.Channel = self.get_channel()
         self.DigitiserBinWidth = .5 if self.Run.Digitiser == 'drs4' else .4
 
         if self.Tree.Hash():
             # Polarities
-            self.Polarity = self.load_polarity()
-            self.PulserPolarity = self.load_polarity(pulser=True)
+            self.Polarity = self.get_polarity()
+            self.PulserPolarity = self.get_polarity(pulser=True)
 
             # Regions & Ranges
-            self.IntegralNames = self.Run.TreeConfig.get_value('Integral Names', 'Names', dtype=list)
-            self.IntegralRegions = self.load_regions()
-            self.SignalRegionName = self.IntegralRegions['signal']
+            self.SignalRegionName = self.load_region()
             self.SignalRegion = array(self.Run.IntegralRegions[self.DUT.Number - 1][self.SignalRegionName])
             self.PeakIntegralName = self.load_peak_integral()
             self.PeakIntegral = self.Run.PeakIntegrals[self.DUT.Number - 1][self.PeakIntegralName]
@@ -40,7 +38,7 @@ class PadAnalysis(DUTAnalysis):
 
             # cuts
             self.Timing = TimingAnalysis(self)
-            self.Cut = PadCut(self)
+            # self.Cut = PadCut(self)
 
             # subclasses
             self.Pedestal = PedestalAnalysis(self)
@@ -69,7 +67,7 @@ class PadAnalysis(DUTAnalysis):
     # region INFO
     def show_integral_names(self):
         rows = []
-        for i, name in enumerate(self.IntegralNames):
+        for i, name in enumerate(self.get_integral_names()):
             if name.startswith('ch{}'.format(self.Channel)):
                 v = array(name.split('_'))
                 v = v if v.size == 4 else insert(v, 2, '')
@@ -91,30 +89,25 @@ class PadAnalysis(DUTAnalysis):
     def init_run(run_number, testcampaign, tree, t_vec, verbose):
         return PadRun(run_number, testcampaign, tree, t_vec, verbose)
 
+    def init_cut(self):
+        return PadCut(self)
+
     def update_config(self):
         self.Config.read(join(self.Dir, 'config', self.TCString, 'PadConfig.ini'))
 
-    def load_polarity(self, pulser=False):
-        return int(self.Run.TreeConfig.get('General', '{}polarities'.format('pulser ' if pulser else '')).split()[self.Channel])
-
-    def load_regions(self):
-        all_regions = {}
-        for name in ['signal', 'pedestal', 'pulser']:
-            option = '{} region'.format(name)
-            region = '{name}_{region}'.format(name=name, region=self.Config.get('SIGNAL', option)) if option in self.Config.options('SIGNAL') else ''
-            regions = [reg for reg in self.Run.IntegralRegions[self.DUT.Number - 1] if reg.startswith(name)]
-            all_regions[name] = region if region in regions else regions[0]
-        return all_regions
+    def load_region(self, sig_type='signal'):
+        short = self.Config.get_value('SIGNAL', '{} region'.format(sig_type), default='')
+        return '{}_{}'.format(sig_type, short) if short else [r for r in self.Run.IntegralRegions[0] if r.startswith(sig_type)][0]
 
     def load_peak_integral(self):
         peak_int = 'PeakIntegral{}'.format(self.Config.get('SIGNAL', 'peak integral'))
         return peak_int if peak_int in self.Run.PeakIntegrals[self.DUT.Number - 1] else self.Run.PeakIntegrals[self.DUT.Number - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
-        region = self.IntegralRegions[sig_type] if region is None else region if sig_type in region else '_'.join([sig_type] + ([region] if region else []))
-        peak_integral = self.PeakIntegralName if peak_integral is None else peak_integral if 'Peak' in str(peak_integral) else 'PeakIntegral{}'.format(peak_integral)
-        int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.Channel, reg=region, int=peak_integral)
-        return self.IntegralNames.index(int_name)
+        region = self.load_region(sig_type) if region is None else region if sig_type in region else '_'.join([sig_type] + ([region] if region else []))
+        peak_integral = self.load_peak_integral() if peak_integral is None else peak_integral if 'Peak' in str(peak_integral) else 'PeakIntegral{}'.format(peak_integral)
+        int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.get_channel(), reg=region, int=peak_integral)
+        return self.get_integral_names().index(int_name)
 
     def get_signal_name(self, region=None, peak_int=None, sig_type='signal'):
         return 'TimeIntegralValues[{}]'.format(self.get_signal_number(region, peak_int, sig_type))
@@ -143,9 +136,15 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
+    def get_polarity(self, pulser=False):
+        return int(self.Run.TreeConfig.get('General', '{}polarities'.format('pulser ' if pulser else '')).split()[self.get_channel()])
+
+    def get_channel(self):
+        return self.Run.Channels[self.DUT.Number - 1]
+
     def get_signal_var(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None, peak_int=None, sig_type='signal'):
         sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type))
-        pol = str(self.PulserPolarity if 'pulser' in sig_type else self.Polarity)
+        pol = self.get_polarity('pulser' in sig_type)
         if not any([off_corr, evnt_corr]):
             return '{} * {}'.format(pol, sig_name)
         return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.PedestalName)
@@ -155,6 +154,9 @@ class PadAnalysis(DUTAnalysis):
 
     def get_ph_str(self):
         return self.get_signal_var()
+
+    def get_integral_names(self):
+        return self.Run.TreeConfig.get_value('Integral Names', 'Names', dtype=list)
 
     def get_signal_range(self, lfac=0, rfac=.3):
         return ax_range(self.SignalRegion * self.DigitiserBinWidth, None, lfac, rfac)

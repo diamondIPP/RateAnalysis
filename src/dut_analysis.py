@@ -36,7 +36,7 @@ class DUTAnalysis(Analysis):
 
         if self.Tree.Hash():
             self.NRocs = self.Run.NPlanes
-            self.Cut = Cut(self)
+            self.Cut = self.init_cut()
             self.StartEvent = self.Cut.get_min_event()
             self.EndEvent = self.Cut.get_max_event()
             self.Bins = Bins(self.Run, cut=self.Cut)
@@ -46,6 +46,9 @@ class DUTAnalysis(Analysis):
     @staticmethod
     def init_run(run_number, testcampaign, tree, t_vec, verbose):
         return Run(run_number, testcampaign, tree, t_vec, verbose)
+
+    def init_cut(self):
+        return Cut(self)
 
     def update_config(self):
         pass
@@ -278,7 +281,7 @@ class DUTAnalysis(Analysis):
     def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True, scale=False):
 
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.CutConfig['chi2_x'], res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
+        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.get_chi2(), res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
 
         def f():
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
