@@ -78,7 +78,7 @@ class PedestalAnalysis(PadSubAnalysis):
         return h
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
-        cut = self.Cut.generate_custom(exclude='ped_sigma') if draw_cut else self.Cut(cut)
+        cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
         h = self.draw_distribution(name, cut, logy, show=show, save=save, redo=redo, prnt=prnt, normalise=normalise)
         format_statbox(fit=True, w=.35)
         fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
