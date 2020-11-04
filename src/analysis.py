@@ -3,6 +3,7 @@ from glob import glob
 from numpy import deg2rad, rad2deg, round_
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
+from os.path import getsize
 
 
 def load_main_config(config='main', ext='ini'):
@@ -120,8 +121,12 @@ class Analysis(object):
 
     def remove_metadata(self):
         if hasattr(self, 'Run'):
-            for f in glob(join(self.PickleDir, self.PickleSubDir, '*{}*_{}*'.format(self.Run.Number, self.TCString))):
+            for f in glob(join(self.PickleDir, self.PickleSubDir, '*_{}_{}*'.format(self.TCString, self.Run.Number))):
                 remove_file(f)
+
+    def get_metadata_size(self):
+        if hasattr(self, 'Run'):
+            info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in glob(join(self.PickleDir, '*', '*_{}_{}*'.format(self.TCString, self.Run.Number)))))))
 
     # TODO: move to higher analysis
     def calc_time_difference(self, m1, m2, p=None):
