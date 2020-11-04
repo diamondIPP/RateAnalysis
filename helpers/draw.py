@@ -73,9 +73,9 @@ class Draw(object):
 
     @staticmethod
     def clean():
-        n_none = sum(str(obj) == 'None' for obj in Draw.Objects)
-        for _ in range(n_none):
-            Draw.Objects.remove(None)
+        for obj in Draw.Objects:
+            if '0x(nil)' in str(obj) or obj is None:
+                Draw.Objects.remove(obj)
 
     # ----------------------------------------
     # region SET
