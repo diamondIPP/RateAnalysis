@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram
+from numpy import histogram, log2
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath
@@ -345,6 +345,11 @@ def print_elapsed_time(start, what='This', show=True, color=None):
     string = 'Elapsed time for {w}: {t}'.format(t=get_elapsed_time(start), w=what)
     print_banner(string, color=color) if show else do_nothing()
     return string
+
+
+def make_byte_string(v):
+    n = int(log2(v) // 10)
+    return '{:1.1f} {}'.format(v / 2 ** (10 * n), ['B', 'kB', 'MB', 'GB'][n])
 
 
 def get_elapsed_time(start):
