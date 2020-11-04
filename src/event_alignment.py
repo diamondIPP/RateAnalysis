@@ -4,7 +4,6 @@
 # created on October 18th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TFile, vector, AddressOf
-from numpy import split, cumsum
 from helpers.utils import *
 
 

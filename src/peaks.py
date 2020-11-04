@@ -6,7 +6,7 @@
 from warnings import simplefilter
 from ROOT import TH1F, TCut, TProfile, THStack, TH2F, TMath
 from ROOT.gRandom import Landau
-from numpy import polyfit, RankWarning, vectorize, size, split, repeat, argmax, insert, cumsum, histogram, array_split
+from numpy import polyfit, RankWarning, vectorize, size, repeat, argmax, insert, array_split
 from numpy.random import normal, rand
 from scipy.signal import find_peaks, savgol_filter
 
@@ -401,8 +401,8 @@ class PeakAnalysis(PadSubAnalysis):
             if show:
                 # self.WF.draw_single(ind=ind, x_range=self.Ana.get_signal_range(), draw_opt='alp') if not k else do_nothing()
                 self.WF.draw_single(ind=ind, draw_opt='alp') if not k else do_nothing()
-                Draw.horizontal_line(ip * thresh, 0, 2000, name='thresh{}'.format(k), color=4)
-                Draw.vertical_line(cft, -1000, 1000, name='cft{}'.format(k), color=2)
+                Draw.horizontal_line(ip * thresh, 0, 2000, color=4)
+                Draw.vertical_line(cft, -1000, 1000, color=2)
         return cfts
 
     def find_cft0(self, values=None, times=None, fac=.5, delay=None, show=False, i=None):
@@ -417,8 +417,8 @@ class PeakAnalysis(PadSubAnalysis):
         if show:
             g = Draw.make_tgrapherrors('g', 'g', x=t, y=v)
             self.Draw(g, draw_opt='apl')
-            Draw.horizontal_line(0, 0, 1000, name='h')
-            Draw.vertical_line(x0, -500, 500, name='v')
+            Draw.horizontal_line(0, 0, 1000)
+            Draw.vertical_line(x0, -500, 500)
             update_canvas()
         return x0
 
@@ -501,9 +501,9 @@ class PeakAnalysis(PadSubAnalysis):
             tot.append(v if v < 1000 else -1)
             if show:
                 self.WF.draw_single(ind=ind) if not j else do_nothing()
-                Draw.horizontal_line(thresh, 0, 2000, name='thresh', color=4)
-                Draw.vertical_line(tl, -1000, 1000, name='l{}'.format(j), color=2)
-                Draw.vertical_line(tr, -1000, 1000, name='r{}'.format(j), color=2)
+                Draw.horizontal_line(thresh, 0, 2000, color=4)
+                Draw.vertical_line(tl, -1000, 1000, color=2)
+                Draw.vertical_line(tr, -1000, 1000, color=2)
         return tot
 
     def draw_tot(self, thresh=None, fixed=True, show=True):

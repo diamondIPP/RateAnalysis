@@ -77,9 +77,9 @@ class Tracks(SubAnalysis):
     def draw_chi2_cut(self, mode, show=True):
         if show:
             chi2 = self.Cut.calc_chi2(mode)
-            line = Draw.vertical_line(chi2, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
+            line = Draw.vertical_line(chi2, -100, 1e6, style=7, w=2, color=2)
             legend = Draw.make_legend(.75, y2=.83, nentries=1, margin=.35)
-            legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.CutConfig['chi2_{}'.format(mode)]), 'l')
+            legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.get_chi2(mode)), 'l')
             legend.Draw()
 
     def draw_chi2s(self, show=True, prnt=True):
@@ -96,15 +96,15 @@ class Tracks(SubAnalysis):
         format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=Draw.FillColor)
         format_statbox(all_stat=True, w=.3)
         self.Draw(h, show=show, lm=.14, prnt=prnt)
-        self.draw_angle_cut(mode, show=show_cut)
+        self.draw_angle_cut(show=show_cut)
         self.Draw.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), prnt=prnt)
         return h
 
-    def draw_angle_cut(self, mode, show=True):
+    def draw_angle_cut(self, show=True):
         if show:
-            xmax = -self.Cut.CutConfig['track angle']
-            line = Draw.vertical_line(-xmax, -100, 1e6, style=7, w=2, color=2, name='l1{}'.format(mode))
-            Draw.vertical_line(xmax, -100, 1e6, style=7, w=2, color=2, name='l2{}'.format(mode))
+            xmax = -self.Cut.get_track_angle()
+            line = Draw.vertical_line(-xmax, -100, 1e6, style=7, w=2, color=2)
+            Draw.vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
             legend = Draw.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
             legend.AddEntry(line, 'cut ({} deg)'.format(xmax), 'l')
             legend.Draw()

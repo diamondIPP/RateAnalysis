@@ -200,8 +200,8 @@ class Waveform(PadSubAnalysis):
         coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
         f1, f2 = [interpolate_two_points(*icood) for icood in coods]
         Draw.add(f1, f2)
-        Draw.vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4, name='1')
-        Draw.vertical_line(f2.GetX(p * maxval), -100, 1e4, name='2')
+        Draw.vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4)
+        Draw.vertical_line(f2.GetX(p * maxval), -100, 1e4)
         f1.Draw('same')
         f2.Draw('same')
         return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)

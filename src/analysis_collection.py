@@ -517,7 +517,7 @@ class AnalysisCollection(Analysis):
         format_statbox(only_fit=True, x=.5, y=.45)
         self.Draw(g, logx=logx, lm=.12)
         l1 = Draw.horizontal_line(f.GetParameter(0), .1, 1e6, color=2, style=7, w=2)
-        l2 = Draw.horizontal_line(f.GetParameter(0) - f.GetParameter(1) + f.GetParameter(3), .1, 1e6, color=4, style=7, w=2, name='as')
+        l2 = Draw.horizontal_line(f.GetParameter(0) - f.GetParameter(1) + f.GetParameter(3), .1, 1e6, color=4, style=7, w=2)
         leg = Draw.make_legend(w=.2)
         leg.AddEntry(l1, 'c', 'l')
         leg.AddEntry(l2, 'c - c_{1} + c_{2}', 'l')
@@ -673,7 +673,7 @@ class AnalysisCollection(Analysis):
     def draw_chi2(self, mode=None, show=True):
         mod_str = '' if mode is None else mode
         histos = self.generate_plots('chi squares {}'.format(mod_str), self.Analysis.draw_chi2, show=False, prnt=False, mode=mode)
-        cut_value = self.FirstAnalysis.Cut.CutConfig['chi2_{}'.format(mod_str if mod_str else 'x')]
+        cut_value = self.FirstAnalysis.Cut.get_chi2(choose(mod_str, 'x'))
         cuts = array([get_quantile(h, [.99, cut_value / 100]) for h in histos])  # .99 for drawing range
         stack = THStack('hx2', '#chi^{{2}}{}'.format(' in {}'.format(mod_str) if mod_str else ''))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
@@ -683,7 +683,7 @@ class AnalysisCollection(Analysis):
         legend = self.make_flux_legend(histos)
         self.Draw(stack, '', show, lm=.15, draw_opt='nostack', leg=legend)
         if mod_str:
-            line = Draw.vertical_line(cuts.min(), -1e9, 1e9, color=2, style=2, name=mod_str)
+            line = Draw.vertical_line(cuts.min(), -1e9, 1e9, color=2, style=2)
             legend.AddEntry(line, 'cut: {}% q'.format(cut_value), 'l')
             histos[0].GetListOfFunctions().Add(line)
             histos[0].GetListOfFunctions().Add(legend)
