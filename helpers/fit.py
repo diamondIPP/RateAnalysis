@@ -60,7 +60,7 @@ class Fit(object):
         maxval = self.Fit.GetMaximum() - self.Fit.GetParameter(off_par)
         t1, t0 = self.Fit.GetX((1 - p) * maxval, 0, self.Fit.GetX(maxval)), self.Fit.GetX(p * maxval)
         if show:
-            Draw.vertical_line(t1, -100, 1e5, name='0')
+            Draw.vertical_line(t1, -100, 1e5)
             Draw.vertical_line(t0, -100, 1e5)
         return t1 - t0
 
@@ -171,6 +171,35 @@ class Langau(Fit):
 
     def get_mpv(self):
         return self.get_parameter(1)
+
+
+class NLandau(Fit):
+
+    def __init__(self, h=None, fit_range=None, npx=100, n=3):
+        self.MPV = find_mpv_fwhm(h)[0].n
+        self.Max = h.GetMaximum()
+        self.W = get_fwhm(h).n / 2
+        self.N = n
+        super().__init__('TripleLandau', h, fit_range, npx)
+
+    def init_fit(self):
+        return TF1('TripelLandau', ' + '.join('landau({})'.format(3 * i) for i in range(0, self.N)), self.XMin, self.XMax)
+
+    def set_par_names(self):
+        return [n for i in range(self.N) for n in 'C{0} MPV{0} Sigma{0}'.format(i).split()]
+
+    def set_par_limits(self):
+        means = linspace(-self.W, self.W, self.N + 1) + self.MPV
+        for j, i in enumerate(range(0, self.N * 3, 3)):
+            self.Fit.SetParLimits(i, .2 * self.Max, self.Max * 5)
+            self.Fit.SetParLimits(i + 1, *means[j:j + 2])
+            self.Fit.SetParLimits(i + 2, .3 * self.W, 1.5 * self.W)
+
+    def set_start_values(self):
+        for i in range(0, self.N * 3, 3):
+            self.Fit.SetParameter(i, self.Max)
+            self.Fit.SetParameter(i + 1, self.MPV + (i - 1) * self.W / 2)
+            self.Fit.SetParameter(i + 2, self.W)
 
 
 def erfland(x, pars):
