@@ -2,10 +2,10 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from utils import *
-from ROOT import TCut, TH1F, TF1, TSpectrum
-from cut import Cut, CutString, loads, invert
-from draw import format_histo, fit_bucket
+from ROOT import TCut, TF1
+from src.cut import Cut, CutString
+from helpers.draw import *
+from numpy import quantile
 
 
 class PadCut(Cut):
@@ -13,39 +13,35 @@ class PadCut(Cut):
 
     def __init__(self, analysis):
         Cut.__init__(self, analysis)
-        self.Channel = self.Analysis.Channel
-        self.DUT = analysis.DUT
-
-        self.update_config()
+        self.Channel = self.Ana.Channel
         self.generate_dut()
-        self.ConsecutiveCuts = self.generate_consecutive()
-
-    @classmethod
-    def from_parent(cls, parent):
-        return cls(parent.Analysis)
-
-    def update_config(self):
-        self.CutConfig['pedestal_sigma'] = self.Config.getint('CUT', 'pedestal sigma')
-        self.CutConfig['fiducial'] = self.load_fiducial()
-        self.CutConfig['threshold'] = self.load_dut_config('threshold', store_true=True)
-        self.CutConfig['trigger_cell'] = loads(self.Config.get('CUT', 'trigger cell')) if self.Config.has_option('CUT', 'trigger cell') else None
+        self.ConsecutiveCuts = self.get_consecutive()
 
     # ----------------------------------------
     # region GET
-    def get_raw_pedestal(self):
-        n = self.Analysis.Tree.Draw(self.Analysis.get_signal_name(sig_type='pedestal'), self(), 'goff')
-        return make_ufloat(mean_sigma(self.Run.get_root_vec(n)))
+    def get_raw_pedestal(self, sigma=False, redo=False):
+        def f():
+            return mean_sigma(self.get_root_vec(var=self.Ana.PedestalName, cut=self()))
+        return do_pickle(self.make_simple_pickle_path('RawPed'), f, redo=redo)[1 if sigma else 0]
+
+    def get_raw_noise(self, redo=False):
+        return self.get_raw_pedestal(sigma=True, redo=redo)
 
     def get_raw_snr(self):
-        ped = self.get_raw_pedestal()
-        return self.get_raw_pulse_height() / ped.s, ped
+        return self.get_raw_pulse_height() / self.get_raw_noise()
+
+    def get_pre_bucket(self):
+        return CutString('!pre bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + self.generate_pre_bucket().invert())()
 
     def get_bucket(self):
-        return CutString('bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + invert(self.generate_pre_bucket()))()
+        return CutString('!bucket', self.generate_custom(include=['pulser', 'fiducial', 'event_range'], prnt=False) + self.get('bucket', invert=True))()
+
+    def get_bad_bucket(self):
+        return self.generate_custom(exclude='bucket') + self.generate_pre_bucket().invert() + TCut('{} > {}'.format(self.Ana.get_raw_signal_var(), self.get_bucket_threshold()))
 
     def get_pulser(self, beam_on=True):
-        cut = self.generate_custom(include=['ped_sigma', 'event_range'], prnt=False) + invert(self.get('pulser'))
-        cut += self.get('beam_interruptions') if beam_on else invert(self.generate_jump_cut())
+        cut = self.generate_custom(include=['ped sigma', 'event_range'], prnt=False) + Cut.invert(self.get('pulser'))
+        cut += self.get('beam stops') if beam_on else Cut.invert(self.generate_jump_cut())
         return CutString('PulserBeam{}'.format('On' if beam_on else 'Off'), cut)
     # endregion GET
     # ----------------------------------------
@@ -55,12 +51,12 @@ class PadCut(Cut):
     def generate_dut(self):
 
         # -- WAVEFORM --
-        self.CutStrings.register(self.generate_saturated(), level=2)
-        self.CutStrings.register(self.generate_pulser(), 3)
+        self.CutStrings.register(self.generate_pulser(), 2)
+        self.CutStrings.register(self.generate_saturated(), level=3)
 
         # -- SIGNAL --
         self.CutStrings.register(self.generate_pedestal_sigma(), 30)
-        self.CutStrings.register(self.generate_threshold(), 31)
+        # self.CutStrings.register(self.generate_threshold(), 31)
         # self.CutStrings.register(self.generate_timing(), 35)
         # self.CutStrings.register(self.generate_cft(), 36)
 
@@ -75,253 +71,264 @@ class PadCut(Cut):
 
     def generate_saturated(self):
         cut_string = '!is_saturated[{ch}]'.format(ch=self.Channel)
-        description = 'exclude {:.1f}% saturated events'.format(100. * self.find_n_saturated(invert(cut_string)) / self.Run.NEntries)
+        description = 'exclude {:.2f}% saturated events'.format(100. * self.find_n_saturated(Cut.invert(cut_string)) / self.Run.NEvents)
         return CutString('saturated', cut_string, description)
 
     def generate_pulser(self):
-        return CutString('pulser', '!pulser', 'exclude {:.1f}% pulser events'.format(100. * self.find_n_pulser('pulser') / self.Run.NEntries))
+        return CutString('pulser', '!pulser', 'exclude {:.1f}% pulser events'.format(100. * self.find_n_pulser('pulser') / self.Run.NEvents))
 
     def generate_pedestal_sigma(self, sigma=None):
-        sigma = self.CutConfig['pedestal_sigma'] if sigma is None else sigma
-        ped_range = self.__calc_pedestal_range(sigma)
+        sigma = choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
+        ped_range = self.calc_pedestal(sigma)
         description = 'sigma <= {} -> [{:1.1f}mV, {:1.1f}mV]'.format(sigma, *ped_range)
-        return CutString('ped_sigma', '{ped}>{}&&{ped}<{}'.format(ped=self.Analysis.PedestalName, *ped_range), description)
+        return CutString('ped sigma', '{ped} > {} && {ped} < {}'.format(ped=self.Ana.PedestalName, *ped_range), description)
 
     def generate_threshold(self):
-        description = self.calc_threshold(show=False)
-        return CutString('threshold', '{sig}>{thresh}'.format(sig=self.Analysis.SignalName, thresh=self.calc_threshold(show=False)) if self.CutConfig['threshold'] else '', description)
+        thresh = self.calc_threshold(show=False)
+        return CutString('threshold', '{} > {}'.format(self.Ana.get_raw_signal_var(), thresh), thresh)
 
     def generate_pre_bucket(self):
-        try:
-            sig2 = self.Analysis.get_signal_name('e', 2)
-            string = '{sig2}=={sig1}'.format(sig2=sig2, sig1=self.Analysis.SignalName)
-            return string
-        except ValueError as err:
-            print err
-            return ''
+        """select only events when the signal in the signal and consecutive bucket are the same."""
+        return CutString('pre-bucket', '{} == {}'.format(self.Ana.get_signal_name(region='e'), self.Ana.get_signal_name()))
 
-    def generate_bucket(self, threshold=None):
-        sig = self.Analysis.SignalName
-        threshold = self.calc_signal_threshold(show=False) if threshold is None else threshold
-        string = '!(!({old_buck}) && ({sig} < {thres}))'.format(sig=sig, thres=threshold, old_buck=self.generate_pre_bucket())
-        description = 'bucket events with threshold < {:.1f}mV'.format(threshold)
-        return CutString('bucket', string if self.generate_pre_bucket() else '', description)
+    def generate_bucket(self, thresh=None):
+        """select bucket events below threshold and then negate it"""
+        thresh = choose(thresh, self.get_bucket_threshold())
+        string = self.generate_pre_bucket()() if thresh is None else (CutString('', self.generate_pre_bucket().invert()) + '{} < {}'.format(self.Ana.get_raw_signal_var(), thresh)).invert()
+        return CutString('bucket', string, 'bucket events with{}'.format('out threshold' if thresh is None else ' threshold < {:.1f}mV'.format(thresh)))
 
     def generate_cft(self, n_sigma=3):
-        fit = self.fit_cft()
+        fit = self.calc_cft()
         m, s = fit.Parameter(1), fit.Parameter(2)
         description = '{:1.1f}ns < constant fraction time < {:.1f}ns'.format(m - n_sigma * s, m + n_sigma * s)
-        var = self.Analysis.Timing.get_cft_name()
+        var = self.Ana.Timing.get_cft_name()
         return CutString('cft', '{} < {v} && {v} < {}'.format(m - n_sigma * s, m + n_sigma * s, v=var), description)
 
     def generate_timing(self, n_sigma=3):
         t_correction, fit = self.calc_timing_range()
         if fit is None:
             return TCut('')
-        corrected_time = '{peak} - {t_corr}'.format(peak=self.Analysis.Timing.get_peak_name(corr=True), t_corr=t_correction)
+        corrected_time = '{peak} - {t_corr}'.format(peak=self.Ana.Timing.get_peak_name(corr=True), t_corr=t_correction)
         string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
         description = '{:1.1f}ns < peak timing < {:.1f}ns'.format(fit.GetParameter(1) - fit.GetParameter(2), fit.GetParameter(1) + fit.GetParameter(2))
         return CutString('timing', string, description)
-
-    def generate_trigger_cell(self, low=None, high=None):
-        tc_range = [low, high] if low is not None else self.CutConfig['trigger_cell']
-        return CutString('trigger_cell', 'trigger_cell < {} && trigger_cell >= {}'.format(*tc_range) if tc_range else '', '{} < trigger celll < {}'.format(*tc_range) if tc_range else '')
     # endregion GENERATE
     # ----------------------------------------
 
     # ----------------------------------------
     # region COMPUTE
     def find_n_pulser(self, cut, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'NPulser', self.Run.Number)
-        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, str(cut)))
+        return do_pickle(self.make_simple_pickle_path('NPulser', dut=''), self.Ana.get_n_entries, None, redo, cut)
 
     def find_n_saturated(self, cut, redo=False):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'NSaturated', self.Run.Number)
-        return int(do_pickle(pickle_path, self.Analysis.Tree.GetEntries, None, redo, str(cut)))
+        return do_pickle(self.make_simple_pickle_path('NSaturated'), self.Ana.get_n_entries, None, redo, cut)
 
     def find_fid_cut(self, thresh=.93, show=True):
-        h = self.Analysis.draw_signal_map(show=False)
-        px = h.ProjectionX()
-        format_histo(px, title='Projection X of the Signal Map', y_tit='Number of Entries', y_off=1.5)
-        self.Analysis.draw_histo(px, lm=.12, show=show)
-        py = h.ProjectionY()
-        return '"{}": [{}]'.format(self.Analysis.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in self.find_fid_margins(px, thresh) + self.find_fid_margins(py, thresh)))
+        h = self.Ana.draw_signal_map(show=show)
+        px, py = h.ProjectionX(), h.ProjectionY()
 
-    @staticmethod
-    def find_fid_margins(proj, thresh):
-        thresh = proj.GetMaximum() * thresh
-        xbin1, xbin2 = proj.FindFirstBinAbove(thresh), proj.FindLastBinAbove(thresh)
-        f1 = interpolate_two_points(proj.GetBinCenter(xbin1), proj.GetBinContent(xbin1), proj.GetBinCenter(xbin1 - 1), proj.GetBinContent(xbin1 - 1))
-        f2 = interpolate_two_points(proj.GetBinCenter(xbin2), proj.GetBinContent(xbin2), proj.GetBinCenter(xbin2 + 1), proj.GetBinContent(xbin2 + 1))
-        return [f1.GetX(thresh) / 10, f2.GetX(thresh) / 10]
+        def find_fid_margins(p, t):
+            t0 = p.GetMaximum() * t
+            xbin1, xbin2 = p.FindFirstBinAbove(t0), p.FindLastBinAbove(t0)
+            f1 = interpolate_two_points(p.GetBinCenter(xbin1), p.GetBinContent(xbin1), p.GetBinCenter(xbin1 - 1), p.GetBinContent(xbin1 - 1))
+            f2 = interpolate_two_points(p.GetBinCenter(xbin2), p.GetBinContent(xbin2), p.GetBinCenter(xbin2 + 1), p.GetBinContent(xbin2 + 1))
+            return [f1.GetX(t0) / 10, f2.GetX(t0) / 10]
+        x, y = find_fid_margins(px, thresh), find_fid_margins(py, thresh)
+        self.draw_fid()
+        Draw.box(*array([x[0], y[0], x[1], y[1]]) * 10, show=show, width=2)
+        return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
 
-    def calc_signal_threshold(self, use_bg=False, show=True, show_all=False):
-        run = self.HighRateRun if self.HighRateRun is not None else self.Run.Number
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'SignalThreshold', run, self.DUT.Number)
-        show = False if show_all else show
+    def get_bucket_threshold(self):
+        """get the bucket threshold from the run with the highest rate"""
+        high_rate_run = self.Run.get_high_rate_run()
+        picklepath = self.make_simple_pickle_path('BucketThreshold', run=high_rate_run)
+        if not file_exists(picklepath) and not self.Run.Number == high_rate_run:
+            from src.pad_analysis import PadAnalysis
+            return PadAnalysis(high_rate_run, self.DUT.Number, self.TCString).Cut.calc_bucket_threshold()
+        return self.calc_bucket_threshold(run=high_rate_run)
 
+    def calc_bucket_threshold(self, run=None, show=False):
+        """calculated the threshold of the bucket pedestal so that the mean keeps unchanged."""
         def f():
-            t = self.Analysis.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Run.Number, d=self.DUT.Name), next_line=False)
-            h = TH1F('h', 'Bucket Cut', 200, -50, 150)
-            self.Analysis.Tree.Draw('{name}>>h'.format(name=self.Analysis.SignalName), self.get_bucket(), 'goff')
-            format_histo(h, x_tit='Pulse Height [mV]', y_tit='Entries', y_off=1.8, stats=0, fill_color=self.Analysis.FillColor)
-            if h.GetEntries() / self.Run.NEntries < .01:
-                log_info('Not enough bucket events ({:.1f}%)'.format(h.GetEntries() / self.Run.NEntries))
-                self.Analysis.add_to_info(t)
-                return -30
-            snr, ped = self.get_raw_snr()
-            if snr < 4:  # impossible to separate for the small signal to noise ratios...
-                warning('Signal to noise ration is too low... -> taking noise based value for bucket cut!')
-                return ped.n + 2 * ped.s
-            # extract fit functions
-            fit = fit_bucket(h)
+            t = self.Ana.info('Calculating signal threshold for bucket cut of run {run} and {d} ...'.format(run=self.Run.Number, d=self.DUT.Name), endl=False)
+            h = self.draw_bucket_histo(self.Ana.get_raw_signal_var(), show=show)
+            if h.GetEntries() < 1000:  # cannot fit with too little events
+                self.Ana.add_to_info(t)
+                info('Not enough bucket events ({:.0f})'.format(h.GetEntries()))
+                return
+            if self.get_raw_snr() < 4:  # impossible to separate for the small signal to noise ratios...
+                warning('Signal to noise ration is too low... -> taking raw pedestal + 2 * raw noise for bucket cut!')
+                return (self.get_raw_pedestal() + self.get_raw_noise() * 2).n
+            fit = self.fit_bucket(h)  # extract fit functions
             if fit is None or any([abs(fit.GetParameter(i)) < 20 for i in [0, 3]]) or fit.GetParameter(1) < fit.GetParameter(4) or fit.GetParameter(1) > 500:
-                warning('bucket cut fit failed')
-                self.Analysis.draw_histo(h, show=show)
-                self.Analysis.add_to_info(t)
-                return -30
-            sig_fit = TF1('f1', 'gaus', -50, 300)
-            sig_fit.SetParameters(fit.GetParameters())
-            ped_fit = TF1('f2', 'gaus(0) + gaus(3)', -50, 300)
-            ped_fit.SetParameters(*[fit.GetParameter(i) for i in xrange(3, 9)])
-            set_root_output(True)
+                self.Ana.add_to_info(t)
+                return warning('bucket cut fit failed')
+            ped = Draw.make_f('ped', 'gaus(0) + gaus(3)', -50, 300, [fit.GetParameter(i) for i in range(3, 9)])
+            h_sig = deepcopy(h)
+            h_sig.Add(ped, -1)
+            format_histo(h_sig, x_range=[Bins.MinPadPH, Bins.MaxPadPH])
+            values = self.get_root_vec(var=self.Ana.get_raw_signal_var(), cut=self.get_pre_bucket())
+            f0 = Draw.make_tf1('Mean', lambda x: mean(values[values > x]), -30, fit.GetParameter(1))
+            self.add_to_info(t)
+            threshold = f0.GetX(h_sig.GetMean())
+            Draw.vertical_line(threshold, -50, 1e6)
+            self.Draw(h_sig)
+            format_histo(f0, x_tit='Threshold', y_tit='Mean')
+            self.Draw(f0)
+            Draw.horizontal_line(h_sig.GetMean(), -100, 100)
+            Draw.vertical_line(threshold, -50, 1e6)
+            return threshold
+        return do_pickle(self.make_simple_pickle_path('BucketThreshold', run=run), f, redo=show or show)
 
-            # real data distribution without pedestal fit
-            signal = deepcopy(h)
-            signal.Add(ped_fit, -1)
+    def draw_error_bucket_thresh(self, show=True, t_range=None):
+        h = self.draw_bucket_histo(self.Ana.get_raw_signal_var(), show=False)
+        fit = self.fit_bucket(h)  # extract fit functions
+        sig = Draw.make_f('sig', 'gaus', -50, 300, [fit.GetParameter(i) for i in range(3)], line_style=3, color=4)
+        ped = Draw.make_f('ped', 'gaus(0) + gaus(3)', -50, 300, [fit.GetParameter(i) for i in range(3, 9)], line_style=2)
+        h_sig = deepcopy(h)
+        h_sig.Add(ped, -1)  # subtract pedestal fit from real signal distribution
 
-            gr1 = self.Analysis.make_tgrapherrors('gr1', '#varepsilon_{bg}', marker_size=0.2)
-            gr2 = self.Analysis.make_tgrapherrors('gr2', '#varepsilon_{sig}', marker_size=0.2, color=2)
-            gr3 = self.Analysis.make_tgrapherrors('gr3', 'ROC Curve', marker_size=0.2)
-            gr4 = self.Analysis.make_tgrapherrors('gr4', 'Signal Error', marker_size=0.2)
-            xs = arange(-30, sig_fit.GetParameter(1), .1)
-            errors = {}
-            for i, x in enumerate(xs):
-                ped = ped_fit.Integral(-50, x) / ped_fit.Integral(-50, 500)
-                sig = 1 - sig_fit.Integral(-50, x) / signal.Integral()
-                err = ped_fit.Integral(-50, x) / (sqrt(sig_fit.Integral(-50, x) + ped_fit.Integral(-50, x)))
-                s, bg = signal.Integral(h.FindBin(x), signal.GetNbinsX() - 1), ped_fit.Integral(x, 200)
-                err1 = s / sqrt(s + bg)
-                errors[err1 if not use_bg else err] = x
-                gr1.SetPoint(i, x, ped)
-                gr2.SetPoint(i, x, sig)
-                gr3.SetPoint(i, sig, ped)
-                gr4.SetPoint(i, x, err1 if not use_bg else err)
-            if len(errors) == 0:
-                print ValueError('errors has a length of 0')
-                self.Analysis.add_to_info(t)
-                return -30
-            max_err = max(errors.items())[1]
-            c = None
-            if show_all:
-                set_root_output(True)
-                c = self.Analysis.make_canvas('c_all', 'Signal Threshold Overview', divide=(2, 2))
-            # Bucket cut plot
-            self.Analysis.draw_histo(h, '', show or show_all, lm=.135, canvas=c.cd(1) if show_all else None)
-            self.Analysis.draw_y_axis(max_err, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold  ', off=.3, line=True)
-            ped_fit.SetLineStyle(2)
-            ped_fit.Draw('same')
-            sig_fit.SetLineColor(4)
-            sig_fit.SetLineStyle(3)
-            sig_fit.Draw('same')
-            self.Analysis.save_plots('BucketCut', canvas=c.cd(1) if show_all else get_last_canvas(), prnt=show)
+        t_range = choose(t_range, [-30, fit.GetParameter(1)])
+        e_s = Draw.make_tf1('#varepsilon_{sig}', lambda x: 1 - sig.Integral(-50, x) / h_sig.Integral() / h_sig.GetBinWidth(1), *t_range, w=2)
+        e_b = Draw.make_tf1('#varepsilon_{bg}', lambda x: ped.Integral(-50, x) / ped.Integral(-50, 500), *t_range, color=1, w=2)
+        roc = Draw.make_tf1('ROC Curve', lambda x: e_s(e_b.GetX(x)), 0, 1, color=1, w=2)
+        s = Draw.make_tf1('Signal Events', lambda x: sig.Integral(x, fit.GetParameter(1)) + h_sig.Integral(h_sig.FindBin(fit.GetParameter(1)), h_sig.GetNbinsX()) * h_sig.GetBinWidth(1), *t_range)
+        err = Draw.make_tf1('Signal Error', lambda x: s(x) / sqrt(s(x) + ped.Integral(x, 200)), *t_range, w=2)
+        t = err.GetMaximumX()
 
-            # Efficiency plot
-            format_histo(gr1, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency', markersize=.2)
-            l2 = self.Analysis.make_legend(.78, .3)
-            tits = ['#varepsilon_{bg}', gr2.GetTitle()]
-            [l2.AddEntry(p, tits[i], 'l') for i, p in enumerate([gr1, gr2])]
-            self.Analysis.draw_histo(gr1, '', show_all, draw_opt='apl', leg=l2, canvas=c.cd(2) if show_all else None)
-            self.Analysis.draw_histo(gr2, show=show_all, draw_opt='same', canvas=c.cd(2) if show_all else get_last_canvas())
-            self.Analysis.save_plots('Efficiencies', canvas=c.cd(2) if show_all else get_last_canvas(), prnt=show)
+        c = Draw.canvas('Signal Threshold Overview', divide=(2, 2), w=1.5, h=1.5)
+        # Bucket cut plot
+        self.Draw(h, show=show, lm=.135, canvas=c.cd(1), leg=[sig, ped])
+        Draw.y_axis(t, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold  ', off=.3, line=True)
 
-            # ROC Curve
-            format_histo(gr3, y_tit='background fraction', x_tit='excluded signal fraction', markersize=0.2, y_off=1.2)
-            self.Analysis.draw_histo(gr3, '', show_all, gridx=True, gridy=True, draw_opt='apl', canvas=c.cd(3) if show_all else None)
-            p = self.Analysis.make_tgrapherrors('gr', 'working point', color=2)
-            p.SetPoint(0, 1 - sig_fit.Integral(-50, max_err) / signal.Integral(), ped_fit.Integral(-50, max_err) / ped_fit.Integral(-50, 200))
-            sleep(.1)
-            latex = self.Analysis.draw_tlatex(p.GetX()[0], p.GetY()[0] + .01, 'Working Point', color=2, size=.04)
-            p.GetListOfFunctions().Add(latex)
-            self.Analysis.draw_histo(p, show=show_all, canvas=c.cd(3) if show_all else get_last_canvas(), draw_opt='p')
-            self.Analysis.save_plots('ROC_Curve', canvas=c.cd(3) if show_all else get_last_canvas(), prnt=show)
+        # Efficiency plot
+        format_histo(e_s, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency',)
+        l2 = Draw.make_legend(.13, .35, x2=.3, scale=1.5)
+        [l2.AddEntry(p, p.GetName(), 'l') for i, p in enumerate([e_s, e_b])]
+        self.Draw(e_s, show=show, leg=[l2, e_b], canvas=c.cd(2), lm=.12)
 
-            # Error Function plot
-            format_histo(gr4, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
-            self.Analysis.save_histo(gr4, 'ErrorFunction', show_all, gridx=True, draw_opt='al', canvas=c.cd(4) if show_all else None, prnt=show)
+        # ROC Curve
+        format_histo(roc, x_tit=e_b.GetName(), y_tit=e_s.GetName(), y_off=1.2)
+        self.Draw(roc, show=show, gridx=True, gridy=True, canvas=c.cd(3))
+        g = self.Draw.graph([e_b(t)], [e_s(t)], color=2, markersize=2, c=c.cd(3), draw_opt='p')
+        Draw.tlatex(g.GetX()[0] - .04, g.GetY()[0], 'Working Point', color=2, size=.04, align=32)
 
-            self.Analysis.Objects.append([sig_fit, ped_fit, gr2, c])
+        # Error Function plot
+        format_histo(err, x_tit='Threshold', y_tit='1 / error', y_off=1.4)
+        self.Draw(err, show=show, gridx=True, canvas=c.cd(4), prnt=show)
+        self.Draw.save_plots('ErrorBucket', canvas=c.cd())
+        return t
 
-            self.Analysis.add_to_info(t)
-            return max_err
-
-        return do_pickle(pickle_path, f, redo=show or show_all)
-
-    def __calc_pedestal_range(self, sigma_range):
-        picklepath = self.Analysis.make_pickle_path('Pedestal', 'Cut', self.Run.Number, self.Channel)
-
-        def func():
-            t = self.Analysis.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Analysis.DUT.Name), next_line=False)
-            h1 = TH1F('h_pdc', 'Pedestal Distribution', 600, -150, 150)
-            self.Analysis.Tree.Draw('{name}>>h_pdc'.format(name=self.Analysis.PedestalName), '', 'goff')
-            fit_pars = fit_fwhm(h1, do_fwhm=True, draw=False)
-            self.Analysis.add_to_info(t)
-            return fit_pars
-
-        fit = do_pickle(picklepath, func)
-        sigma = fit.Parameter(2)
-        mean_ = fit.Parameter(1)
-        self.PedestalFit = fit
-        return [mean_ - sigma_range * sigma, mean_ + sigma_range * sigma]
-
-    def calc_threshold(self, show=True):
-        pickle_path = self.Analysis.make_pickle_path('Cuts', 'Threshold', self.Run.Number, self.Channel)
-
-        def func():
-            self.Analysis.Tree.Draw(self.Analysis.SignalName, '', 'goff', 5000)
-            xvals = sorted([self.Analysis.Tree.GetV1()[i] for i in xrange(5000)])
-            x_range = [xvals[0] - 5, xvals[-5]]
-            h = self.Analysis.draw_signal_distribution(show=show, cut=self.generate_fiducial()(), x_range=x_range, bin_width=1)
-            s = TSpectrum(3)
-            s.Search(h)
-            peaks = [s.GetPositionX()[i] for i in xrange(s.GetNPeaks())]
-            h.GetXaxis().SetRangeUser(peaks[0], peaks[-1])
-            x_start = h.GetBinCenter(h.GetMinimumBin())
-            h.GetXaxis().UnZoom()
-            fit = TF1('fit', 'landau', x_start, h.GetXaxis().GetXmax())
-            h.Fit(fit, 'q{0}'.format(0 if not show else ''), '', x_start, h.GetXaxis().GetXmax())
-            return fit.GetX(.1, 0, peaks[-1])
-
-        threshold = func() if show else None
-        return do_pickle(pickle_path, func, threshold)
-
-    def fit_cft(self, show=False, redo=False):
+    def calc_pedestal(self, n_sigma):
         def f():
-            t = self.Analysis.info('generating cft cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Analysis.DUT.Name), next_line=False)
+            t = self.Ana.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.DUT.Name), endl=False)
+            h0 = self.Draw.distribution(self.get_root_vec(var=self.Ana.PedestalName, cut=self()), Bins.make(-100, 100, .5), show=False)
+            fit = fit_fwhm(h0, show=False)
+            self.Ana.add_to_info(t)
+            return fit.Parameter(1), fit.Parameter(2)
+        m, s = do_pickle(self.make_simple_pickle_path('Pedestal'), f)
+        return [m - n_sigma * s, m + n_sigma * s]
+
+    def calc_threshold(self, redo=False, show=True):
+        def f():
+            h = self.Ana.draw_signal_distribution(show=show, cut='', off_corr=False, evnt_corr=False)
+            peaks = find_maxima(h, 3, sigma=2.5, sort_x=True)[:, 0]
+            h.GetXaxis().SetRangeUser(peaks[0], peaks[-1])
+            threshold = h.GetBinCenter(h.GetMinimumBin())
+            Draw.vertical_line(threshold, 0, 1e7)
+            return threshold
+        return do_pickle(self.make_simple_pickle_path('Threshold'), f, redo=redo or show)
+
+    def calc_cft(self, show=False, redo=False):
+        def f():
+            t = self.Ana.info('generating cft cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Ana.DUT.Name), endl=False)
             cut = self.generate_custom(exclude=['cft'], prnt=False, name='cft_cut')
-            h = self.Analysis.Timing.draw_cft(cut=cut, show=show)
+            h = self.Ana.Timing.draw_cft(cut=cut, show=show)
             fit = h.Fit('gaus', 'qs')
-            self.Analysis.add_to_info(t)
+            self.Ana.add_to_info(t)
             return FitRes(fit)
-        return do_pickle(self.Analysis.make_simple_pickle_path('CFTFit', sub_dir='Cuts'), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('CFTFit'), f, redo=redo)
 
     def calc_timing_range(self, redo=False):
         def f():
-            t = self.Analysis.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Analysis.DUT.Name), next_line=False)
+            t = self.Ana.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Ana.DUT.Name), endl=False)
             cut = self.generate_custom(exclude=['timing'], prnt=False, name='timing_cut')
-            t_correction = self.Analysis.Timing.calc_fine_correction(redo=redo)
-            h = self.Analysis.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
+            t_correction = self.Ana.Timing.calc_fine_correction(redo=redo)
+            h = self.Ana.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
             fit = h.GetListOfFunctions()[1]
-            x_min, x_max = self.Analysis.SignalRegion * self.Analysis.DigitiserBinWidth
+            x_min, x_max = self.Ana.SignalRegion * self.Ana.DigitiserBinWidth
             if fit.GetParameter(2) > 15 or x_min + 3 > fit.GetParameter(1) or x_max - 3 < fit.GetParameter(1):  # fit failed
                 fit.SetParameter(1, h.GetBinCenter(h.GetMinimumBin()))
                 fit.SetParameter(2, 15)
-            self.Analysis.add_to_info(t)
-            self.Analysis.info('Peak Timing: Mean: {0}, sigma: {1}'.format(fit.GetParameter(1), fit.GetParameter(2)))
+            self.Ana.add_to_info(t)
+            self.Ana.info('Peak Timing: Mean: {0}, sigma: {1}'.format(fit.GetParameter(1), fit.GetParameter(2)))
             return t_correction, fit
-
-        return do_pickle(self.Analysis.make_simple_pickle_path('TimingRange', sub_dir='Cuts'), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('TimingRange'), f, redo=redo)
     # endregion COMPUTE
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region ANA
+    def draw_bucket_histo(self, sig_var=None, show=True):
+        x = self.get_root_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
+        xmax = quantile(x, .95)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
+
+    def print_bucket_events(self, prnt=True, redo=False):
+        def f():
+            info('getting number of bucket events for run {run} and {dia} ... '.format(run=self.Run.Number, dia=self.DUT.Name))
+            return self.Ana.get_n_entries(self.get_pre_bucket()), self.Ana.get_n_entries(self.get_bucket())
+        n_pre, n_new = do_pickle(self.make_simple_pickle_path('BucketEvents'), f, redo=redo)
+        info('Pre Bucket: {: 5d} / {} = {:4.2f}%'.format(n_pre, self.Run.NEvents, n_pre / self.Run.NEvents * 100), prnt=prnt)
+        info('New Bucket: {: 5d} / {} = {:4.2f}%'.format(n_new, self.Run.NEvents, n_new / self.Run.NEvents * 100), prnt=prnt)
+        return n_pre, n_new, self.Run.NEvents
+
+    def draw_bucket_map(self, pre=False, res=None, show=True):
+        h = self.Ana.draw_hitmap(cut=self.get_pre_bucket() if pre else self.get_bucket(), show=show, res=res)
+        format_histo(h, title='Bucket Hit Map', **{n: v for n, v in zip(['x_range', 'y_range'], ax_range(1, 1, .1, .1, h))})
+
+    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
+        xbins = Bins.make(*array(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_e']) * self.Ana.DigitiserBinWidth, bin_width=.5)
+        cut_string = self.generate_custom(exclude='bucket') + TCut(additional_cut)
+        self.Ana.draw_ph_peaktime(region='e', cut=cut_string, fine_corr=corr, prof=False, show=show, xbins=xbins, logz=True)
+
+    def draw_bucket_distributions(self):
+        cuts = [self.generate_custom(exclude='bucket', name='nobucket'), self.generate_custom(exclude='bucket', name='prebucket') + self.generate_pre_bucket()(), None]
+        histos = [self.Ana.draw_signal_distribution(cut=cut, show=False) for cut in cuts]
+        return self.Draw.stack(histos, 'Bucket Distributions', ['no bucket', 'pre bucket', 'new bucket'])
+
+    def compare_single_cuts(self, scale=True, redo=False):
+        histos = [self.Ana.draw_signal_distribution(cut(), show=False, redo=redo, save=False) for cut in self.get_strings()]
+        self.Draw.stack(histos, 'Single Cuts', self.get_names(), scale=scale)
+
+    def compare_consecutive_cuts(self, scale=False, short=False, x_range=None, redo=False):
+        cuts = self.get_consecutive(short)
+        histos = [self.Ana.draw_signal_distribution(cut=cut, show=False, redo=redo, x_range=x_range, save=False) for cut in cuts.values()]
+        self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
+
+    def draw_cut_means(self, short=False, redo=False, show=True):
+        y = [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in self.get_consecutive(short).values()]
+        g = self.Draw.graph(arange(len(y)), y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', draw_opt='ap', show=show, bm=.26, gridy=True, x_range=[-1, len(y)])
+        set_bin_labels(g, self.get_consecutive(short).keys())
+        update_canvas()
+
+    def draw_signal_vs_signale(self, show=True):
+        x, y = self.get_root_vec(var=[self.Ana.get_signal_var(), self.Ana.get_signal_var(region='e')], cut=self.generate_custom(exclude='bucket'))
+        names = self.Ana.SignalRegionName.title().replace('_', ' '), 'Signal E'
+        self.Draw.histo_2d(x, y, self.Bins.get_pad_ph(mean_ph=mean(x)) * 2, '{} vs. {}'.format(*names), x_tit='{} [mV]'.format(names[0]), y_tit='{} [mV]'.format(names[1]), pal=53, stats=0,
+                           show=show,
+                           z_off=1.4, logz=True)
+
+    def draw_cut_vars(self, normalise=False, consecutive=False):
+        values = [self.Ana.get_ph_values(cut=(self.generate_threshold() + cut).Value) for cut in (self.get_consecutive().values() if consecutive else self.get_strings(with_raw=True))]
+        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, self.Bins.get_pad_ph(mean_ph=mean(lst)), show=False))] for lst in values])
+        if normalise:
+            v = v / mean(v, axis=0) + arange(3) / 100
+        names = self.get_names(with_raw=True)
+        graphs = [self.Draw.make_tgrapherrors(arange(v.shape[0]), v[:, i]) for i in arange(v.shape[1])]
+        return self.Draw.multigraph(graphs, '{}Cut Variables'.format('Consecutive ' if consecutive else ''), ['mean', 'median', 'fwc'], names, x_tit='Cut Name',
+                                    y_tit='{}Pulse Height [mV]'.format('Norm ' if normalise else ''), gridy=True, lm=.12)
+    # endregion ANA
     # ----------------------------------------
 
     @staticmethod
