@@ -34,7 +34,7 @@ class Draw(object):
 
     Verbose = False
     Config = None
-    Count = 0
+    Count = {}
     Res = load_resolution()
     Colors = get_color_gradient()
     Objects = []
@@ -111,9 +111,15 @@ class Draw(object):
         return Draw.Colors[linspace(0, Draw.Colors.size - 1, n).round().astype(int)].tolist()
 
     @staticmethod
-    def get_count():
-        Draw.Count += 1
-        return Draw.Count
+    def get_count(name='a'):
+        if name not in Draw.Count:
+            Draw.Count[name] = -1
+        Draw.Count[name] += 1
+        return Draw.Count[name]
+    
+    @staticmethod
+    def get_name(string='a'):
+        return '{}{}'.format(string, Draw.get_count(string))
     # endregion GET
     # ----------------------------------------
 
@@ -125,7 +131,7 @@ class Draw(object):
         c0 = get_last_canvas(warn=False)
         x = x if x is not None else 0 if c0 is None else c0.GetWindowTopX() + 50
         y = y if y is not None else 0 if c0 is None else c0.GetWindowTopY() + 20
-        c = TCanvas('c{}'.format(Draw.get_count()), title, int(x), int(y), int(w * Draw.Res), int(h * Draw.Res))
+        c = TCanvas(Draw.get_name('c'), title, int(x), int(y), int(w * Draw.Res), int(h * Draw.Res))
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx, gridy])
         do(make_transparent, c, transp)
@@ -164,8 +170,8 @@ class Draw(object):
         return Draw.axis(xmin, xmax, y, y, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log)
 
     @staticmethod
-    def line(x1, x2, y1, y2, color=1, width=1, style=1, name='li'):
-        line = TCutG(name, 2, array([x1, x2], 'd'), array([y1, y2], 'd'))
+    def line(x1, x2, y1, y2, color=1, width=1, style=1):
+        line = TCutG(Draw.get_name('l'), 2, array([x1, x2], 'd'), array([y1, y2], 'd'))
         line.SetLineColor(color)
         line.SetLineWidth(width)
         line.SetLineStyle(style)
@@ -182,18 +188,18 @@ class Draw(object):
         return Draw.add(line)
 
     @staticmethod
-    def vertical_line(x, ymin, ymax, color=1, w=1, style=1, name='li', tline=False):
-        return Draw.line(x, x, ymin, ymax, color, w, style, name) if not tline else Draw.tline(x, x, ymin, ymax, color, w, style)
+    def vertical_line(x, ymin, ymax, color=1, w=1, style=1, tline=False):
+        return Draw.line(x, x, ymin, ymax, color, w, style) if not tline else Draw.tline(x, x, ymin, ymax, color, w, style)
 
     @staticmethod
-    def horizontal_line(y, xmin, xmax, color=1, w=1, style=1, name='li', tline=False):
-        return Draw.line(xmin, xmax, y, y, color, w, style, name) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
+    def horizontal_line(y, xmin, xmax, color=1, w=1, style=1, tline=False):
+        return Draw.line(xmin, xmax, y, y, color, w, style) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
 
     @staticmethod
     def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, show=True):
         if get_object(name) is not None:  # check if name already exists
             get_object(name).Clear()
-        line = TCutG(choose(name, 'poly{}'.format(Draw.get_count())), len(x) + 1, append(x, x[0]).astype('d'), append(y, y[0]).astype('d'))
+        line = TCutG(choose(name, Draw.get_name('poly')), len(x) + 1, append(x, x[0]).astype('d'), append(y, y[0]).astype('d'))
         line.SetLineColor(line_color)
         do(line.SetFillColor, fill_color)
         line.SetLineWidth(width)
@@ -283,9 +289,9 @@ class Draw(object):
     @staticmethod
     def grid(x_vals, y_vals, width=1, color=1):
         for x in x_vals:
-            Draw.line(x, x, min(y_vals), max(y_vals), name='x{}'.format(x), width=width, color=color)
+            Draw.line(x, x, min(y_vals), max(y_vals), width=width, color=color)
         for y in y_vals:
-            Draw.line(min(x_vals), max(x_vals), y, y, name='y{}'.format(y), width=width, color=color)
+            Draw.line(min(x_vals), max(x_vals), y, y, width=width, color=color)
 
     @staticmethod
     def ellipse(a=1, b=1, x_off=0, y_off=0, color=2, w=2):
@@ -337,7 +343,7 @@ class Draw(object):
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        th = TH1F('h{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=values, thresh=thresh))
+        th = TH1F(Draw.get_name('h'), title, *choose(binning, make_bins, values=values, thresh=thresh))
         fill_hist(th, values)
         format_histo(th, **kwargs)
         self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h)
@@ -354,7 +360,7 @@ class Draw(object):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        p = TProfile('p{}'.format(Draw.get_count()), title, *choose(binning, make_bins, values=x, thresh=thresh))
+        p = TProfile(Draw.get_name('p'), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz)
@@ -365,7 +371,7 @@ class Draw(object):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
-        p = TProfile2D('p{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
+        p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, pal=55, **kwargs)
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt)
@@ -377,7 +383,7 @@ class Draw(object):
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
         dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
-        h = TH2F('h{}'.format(self.get_count()), title, *choose(binning, dflt_bins))
+        h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
         self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz)
@@ -396,7 +402,7 @@ class Draw(object):
         return g
 
     def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, *args, **kwargs):
-        s = THStack('s{}'.format(self.get_count()), title)
+        s = THStack(Draw.get_name('s'), title)
         leg = Draw.make_legend(nentries=len(histos), w=.2)
         for h, tit in zip(histos, leg_titles):
             s.Add(h, 'hist')
@@ -411,7 +417,7 @@ class Draw(object):
 
     def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, show=True, *args, **kwargs):
         g0 = graphs[0]
-        m = TMultiGraph('mg{}'.format(self.get_count()), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
+        m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = Draw.make_legend(nentries=len(graphs), w=.2)
         for g, tit in zip(graphs, leg_titles):
             m.Add(g, 'p')
@@ -428,7 +434,7 @@ class Draw(object):
     # region CREATE
     @staticmethod
     def make_histo(title, bins):
-        h = TH1F('h{}'.format(Draw.get_count()), title, *bins)
+        h = TH1F(Draw.get_name('h'), title, *bins)
         return Draw.add(h)
 
     @staticmethod
@@ -455,7 +461,7 @@ class Draw(object):
         g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
         kwargs['marker'] = 20 if 'marker' not in kwargs else kwargs['marker']
         kwargs['markersize'] = 1 if 'markersize' not in kwargs else kwargs['markersize']
-        format_histo(g, 'g{}'.format(Draw.get_count()), **kwargs)
+        format_histo(g, Draw.get_name('g'), **kwargs)
         return Draw.add(g)
 
     @staticmethod
