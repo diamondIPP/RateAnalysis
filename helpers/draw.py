@@ -320,6 +320,13 @@ class Draw(object):
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     @staticmethod
+    def legend(histos, titles, styles=None, x1=.65, y2=.88, *args, **kwargs):
+        leg = Draw.make_legend(x1, y2, nentries=len(histos), *args, **kwargs)
+        for i in range(len(histos)):
+            leg.AddEntry(histos[i], titles[i],  'lpf' if styles is None else styles[i] if type(styles) is list else styles)
+        leg.Draw('same')
+
+    @staticmethod
     def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logx=None, logy=None, logz=None, grid=None, gridy=None, gridx=None, phi=None, theta=None,
               leg=None, canvas=None, sumw2=None):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
