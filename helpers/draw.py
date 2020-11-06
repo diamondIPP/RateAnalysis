@@ -7,7 +7,7 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
-from numpy import sign, linspace, ones, ceil, append, pi, tile
+from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute
 from src.binning import Bins
 from helpers.utils import *
 
@@ -484,8 +484,8 @@ class Draw(object):
         x1 = x2 - w if w is not None else x1
         h = nentries * .05 * scale
         y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
-        y += .07 if not Draw.Title and y[1] > .7 and not fix else 0
-        y -= .07 if not Draw.Legend and y[1] < .7 and not fix else 0
+        y += .07 if not Draw.Title and y[1] > .5 and not fix else 0
+        y -= .07 if not Draw.Legend and y[1] < .5 and not fix else 0
         leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
         leg.SetName(name)
         leg.SetTextFont(42)
@@ -849,21 +849,20 @@ def show_wheel():
     Draw.add(t)
 
 
-def ax_range(low, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
+def ax_range(low=None, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
         if len(low) == 2:
             return ax_range(low[0], low[1], fl, fh)
         m, s = mean_sigma(low)
-        v = low[abs(low - m) < thresh * s] if thresh is not None else low
+        v = low[absolute(low - m) < thresh * s] if thresh is not None else low
         return ax_range(min(v).n if type(v[0]) in utypes else min(v), max(v).n if type(v[0]) in utypes else max(v), fl, fh, rnd=rnd)
     if h is not None:
-        if type(h) in [list, ndarray]:
-            return ax_range(min(h), max(h), fl, fh)
+        lo, hi = choose(thresh, low), choose(thresh, high)
         if 'TH2' in h.ClassName() or '2D' in h.ClassName():
             axes = enumerate([h.GetXaxis(), h.GetYaxis()], 1)
-            return [ax_range(ax.GetBinCenter(h.FindFirstBinAbove(low, i)), ax.GetBinCenter(h.FindLastBinAbove(high, i)), fl, fh, rnd=rnd) for i, ax in axes]
-        return ax_range(h.GetBinCenter(h.FindFirstBinAbove(low)), h.GetBinCenter(h.FindLastBinAbove(high)), fl, fh, rnd=rnd)
+            return [ax_range(ax.GetBinCenter(h.FindFirstBinAbove(lo, i)), ax.GetBinCenter(h.FindLastBinAbove(hi, i)), fl, fh, rnd=rnd) for i, ax in axes]
+        return ax_range(h.GetBinCenter(h.FindFirstBinAbove(lo)), h.GetBinCenter(h.FindLastBinAbove(hi)), fl, fh, rnd=rnd)
     d = abs(high - low)
     l, h = low - d * fl, high + d * fh
     return [int(l), int(ceil(h))] if rnd else [l, h]
