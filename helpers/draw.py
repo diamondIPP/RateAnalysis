@@ -408,9 +408,9 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, draw_opt='ap')
         return g
 
-    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, *args, **kwargs):
+    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)
-        leg = Draw.make_legend(nentries=len(histos), w=.2)
+        leg = Draw.make_legend(nentries=len(histos), w=w)
         for h, tit in zip(histos, leg_titles):
             s.Add(h, 'hist')
             leg.AddEntry(h, tit, 'l')
