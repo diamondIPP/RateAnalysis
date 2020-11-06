@@ -854,7 +854,7 @@ def ax_range(low=None, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
         utypes = [Variable, AffineScalarFunc]
         if len(low) == 2:
             return ax_range(low[0], low[1], fl, fh)
-        m, s = mean_sigma(low)
+        m, s = mean_sigma(low, err=0)
         v = low[absolute(low - m) < thresh * s] if thresh is not None else low
         return ax_range(min(v).n if type(v[0]) in utypes else min(v), max(v).n if type(v[0]) in utypes else max(v), fl, fh, rnd=rnd)
     if h is not None:
