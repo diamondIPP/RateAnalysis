@@ -21,7 +21,7 @@ class PadCut(Cut):
     # region GET
     def get_raw_pedestal(self, sigma=False, redo=False):
         def f():
-            return mean_sigma(self.get_root_vec(var=self.Ana.PedestalName, cut=self()))
+            return mean_sigma(self.get_root_vec(var=self.Ana.get_pedestal_name(), cut=self()))
         return do_pickle(self.make_simple_pickle_path('RawPed'), f, redo=redo)[1 if sigma else 0]
 
     def get_raw_noise(self, redo=False):
@@ -104,14 +104,14 @@ class PadCut(Cut):
         fit = self.calc_cft()
         m, s = fit.Parameter(1), fit.Parameter(2)
         description = '{:1.1f}ns < constant fraction time < {:.1f}ns'.format(m - n_sigma * s, m + n_sigma * s)
-        var = self.Ana.Timing.get_cft_name()
+        var = self.Ana.Timing.get_cft_var()
         return CutString('cft', '{} < {v} && {v} < {}'.format(m - n_sigma * s, m + n_sigma * s, v=var), description)
 
     def generate_timing(self, n_sigma=3):
         t_correction, fit = self.calc_timing_range()
         if fit is None:
             return TCut('')
-        corrected_time = '{peak} - {t_corr}'.format(peak=self.Ana.Timing.get_peak_name(corr=True), t_corr=t_correction)
+        corrected_time = '{peak} - {t_corr}'.format(peak=self.Ana.Timing.get_peak_var(corr=True), t_corr=t_correction)
         string = 'TMath::Abs({cor_t} - {mp}) / {sigma} < {n_sigma}'.format(cor_t=corrected_time, mp=fit.GetParameter(1), sigma=fit.GetParameter(2), n_sigma=n_sigma)
         description = '{:1.1f}ns < peak timing < {:.1f}ns'.format(fit.GetParameter(1) - fit.GetParameter(2), fit.GetParameter(1) + fit.GetParameter(2))
         return CutString('timing', string, description)
@@ -189,9 +189,9 @@ class PadCut(Cut):
             self.add_to_info(t)
             threshold = f0.GetX(h_sig.GetMean())
             Draw.vertical_line(threshold, -50, 1e6)
-            self.Draw(h_sig)
+            self.Draw(h_sig, show=show)
             format_histo(f0, x_tit='Threshold', y_tit='Mean')
-            self.Draw(f0)
+            self.Draw(f0, show=show)
             Draw.horizontal_line(h_sig.GetMean(), -100, 100)
             Draw.vertical_line(threshold, -50, 1e6)
             return threshold
@@ -270,7 +270,7 @@ class PadCut(Cut):
         def f():
             t = self.Ana.info('generating timing cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.Ana.DUT.Name), endl=False)
             cut = self.generate_custom(exclude=['timing'], prnt=False, name='timing_cut')
-            t_correction = self.Ana.Timing.calc_fine_correction(redo=redo)
+            t_correction = self.Ana.Timing.get_fine_correction(redo=redo)
             h = self.Ana.Timing.draw_peaks(show=False, cut=cut, fine_corr=t_correction != '0', prnt=False, redo=redo)
             fit = h.GetListOfFunctions()[1]
             x_min, x_max = self.Ana.SignalRegion * self.Ana.DigitiserBinWidth
@@ -289,7 +289,7 @@ class PadCut(Cut):
     def draw_bucket_histo(self, sig_var=None, show=True):
         x = self.get_root_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
         xmax = quantile(x, .95)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
+        return self.Draw.distribution(x, Bins(self.Run, self).get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
 
     def print_bucket_events(self, prnt=True, redo=False):
         def f():

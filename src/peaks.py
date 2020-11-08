@@ -92,7 +92,7 @@ class PeakAnalysis(PadSubAnalysis):
         return array(heights) if flat else array(split(heights, cumsum(n_peaks)[:-1]), dtype=object)
 
     def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
-        cut_name = self.Ana.Timing.get_peak_name(corr, fine_corr)
+        cut_name = self.Ana.Timing.get_peak_var(corr, fine_corr)
         vmin, vmax = self.Ana.get_t_bins(bin_size)[1][ibin:ibin + 2]
         return TCut('tbin{}'.format(ibin), '{0} < {n} && {n} < {1}'.format(vmin, vmax, n=cut_name))
 
