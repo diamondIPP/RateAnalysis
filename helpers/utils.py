@@ -779,8 +779,7 @@ def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, 
         dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
         vals = [get_root_vec(tree, n, i, dtypes[i]) for i in range(strings.size)]
         return vals[0] if len(vals) == 1 else vals
-    buffer = tree.GetVal(ind)
-    return frombuffer(buffer, dtype=buffer.typecode, count=n).astype(dtype)
+    return get_buf(tree.GetVal(ind), n, dtype)
 
 
 def get_root_vecs(tree, n, n_ind, dtype=None):
@@ -789,6 +788,10 @@ def get_root_vecs(tree, n, n_ind, dtype=None):
 
 def get_arg(arg, default):
     return default if arg is None else arg
+
+
+def get_buf(buf, n, dtype=None):
+    return frombuffer(buf, dtype=buf.typecode, count=n).astype(dtype)
 
 
 def calc_eff(k=0, n=0, values=None):
