@@ -54,4 +54,5 @@ class PadSubAnalysis(SubAnalysis):
 
         self.Channel = analysis.Channel
         self.Polarity = analysis.Polarity
+        self.DigitiserBinWidth = analysis.DigitiserBinWidth
         super().__init__(analysis, sub_dir, pickle_dir, dut)
