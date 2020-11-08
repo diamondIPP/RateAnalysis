@@ -564,7 +564,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     return h
 
 
-def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False):
+def format_statbox(x=.95, y=None, w=.4, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False, center_x=False):
     gStyle.SetOptFit(int(only_fit or fit))
     opt_stat = '100000{}{}{}0'.format(*ones(3, 'i') if all_stat else array([rms, m, entries]).astype('i'))
     if only_fit:
@@ -572,9 +572,9 @@ def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entrie
     y = (.88 if Draw.Title else .95) if y is None else y
     gStyle.SetOptStat(int(opt_stat))
     gStyle.SetFitFormat(form) if form is not None else do_nothing()
-    gStyle.SetStatX(x)
+    gStyle.SetStatX(.5 + w / 2 if center_x else x)
     gStyle.SetStatY(y)
-    gStyle.SetStatW(w)
+    gStyle.SetStatW(w - .2)
     gStyle.SetStatH(h)
 
 
