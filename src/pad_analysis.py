@@ -38,9 +38,6 @@ class PadAnalysis(DUTAnalysis):
 
             # cuts
             self.Timing = TimingAnalysis(self)
-            # self.Cut = PadCut(self)
-
-            # subclasses
             self.Pedestal = PedestalAnalysis(self)
             self.Pulser = PulserAnalysis(self)
             self.Waveform = Waveform(self)
@@ -48,8 +45,6 @@ class PadAnalysis(DUTAnalysis):
 
             # alignment
             self.IsAligned = self.check_alignment()
-
-            self.Timing.reload_cut()
 
         self.print_finished(prnt=prnt)
 
@@ -147,7 +142,7 @@ class PadAnalysis(DUTAnalysis):
         pol = self.get_polarity('pulser' in sig_type)
         if not any([off_corr, evnt_corr]):
             return '{} * {}'.format(pol, sig_name)
-        return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.PedestalName)
+        return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name())
 
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
@@ -158,8 +153,8 @@ class PadAnalysis(DUTAnalysis):
     def get_integral_names(self):
         return self.Run.TreeConfig.get_value('Integral Names', 'Names', dtype=list)
 
-    def get_signal_range(self, lfac=0, rfac=.3):
-        return ax_range(self.SignalRegion * self.DigitiserBinWidth, None, lfac, rfac)
+    def get_signal_range(self, lfac=0, rfac=.3, t_corr=True):
+        return ax_range(self.SignalRegion * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
 
     def get_peak_integral(self, name):
         return self.Run.PeakIntegrals[self.DUT.Number - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
@@ -347,7 +342,7 @@ class PadAnalysis(DUTAnalysis):
         return h
 
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
-        xvar, yvar = self.Timing.get_peak_name(corr=True, fine_corr=fine_corr, region=region), self.get_signal_var()
+        xvar, yvar = self.Timing.get_peak_var(corr=True, fine_corr=fine_corr, region=region), self.get_signal_var()
         x, y = self.get_root_vec(var=[xvar, yvar], cut=self.Cut(cut)) if x is None and y is None else [choose(i, self.get_root_vec(var=var, cut=self.Cut(cut))) for i, var in [(x, xvar), (y, yvar)]]
         bins = choose(xbins, self.get_t_bins(bin_size)) + ([] if prof else self.Bins.get_pad_ph(1))
         h = (self.Draw.profile if prof else self.Draw.histo_2d)(x, y, bins, 'Signal vs Peak Position', show=show, logz=logz)
@@ -369,7 +364,7 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, show=show)
 
     def draw_tot_vs_peaktime(self, corr=True, fine_corr=False, bin_size=None, show=True):
-        x, y = self.Run.get_root_vec(var=self.Timing.get_peak_name(corr, fine_corr), cut=self.Cut()), self.Peaks.get_all_tot()
+        x, y = self.Run.get_root_vec(var=self.Timing.get_peak_var(corr, fine_corr), cut=self.Cut()), self.Peaks.get_all_tot()
         cut = (y > 0) & (y < 3 * mean(y))
         self.Draw.profile(x[cut], y[cut], self.get_t_bins(bin_size), 'ToT vs. Peaktime', x_tit='Signal Peak Position [ns]', y_tit='ToT [ns]', stats=0, show=show)
 
