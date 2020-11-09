@@ -104,8 +104,8 @@ class PadAnalysis(DUTAnalysis):
         int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.get_channel(), reg=region, int=peak_integral)
         return self.get_integral_names().index(int_name)
 
-    def get_signal_name(self, region=None, peak_int=None, sig_type='signal'):
-        return 'TimeIntegralValues[{}]'.format(self.get_signal_number(region, peak_int, sig_type))
+    def get_signal_name(self, region=None, peak_int=None, sig_type='signal', t_corr=True):
+        return '{}IntegralValues[{}]'.format('Time' if t_corr else '', self.get_signal_number(region, peak_int, sig_type))
 
     def get_pedestal_name(self, region=None, peak_int=None):
         return self.get_signal_name(region=region, peak_int=peak_int, sig_type='pedestal')
@@ -137,8 +137,8 @@ class PadAnalysis(DUTAnalysis):
     def get_channel(self):
         return self.Run.Channels[self.DUT.Number - 1]
 
-    def get_signal_var(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None, peak_int=None, sig_type='signal'):
-        sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type))
+    def get_signal_var(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None, peak_int=None, sig_type='signal', t_corr=True):
+        sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type, t_corr))
         pol = self.get_polarity('pulser' in sig_type)
         if not any([off_corr, evnt_corr]):
             return '{} * {}'.format(pol, sig_name)
@@ -379,7 +379,7 @@ class PadAnalysis(DUTAnalysis):
         format_statbox(entries=True, x=.84)
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
-    def draw_ph_triggercell(self, bin_width=10, cut=None, show=True):
+    def draw_ph_triggercell(self, bin_width=10, corr=True, cut=None, show=True):
         x, y = self.get_root_vec(var=['trigger_cell', self.get_signal_var()], cut=self.Cut(cut))
         return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_width), 'Signal vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Pulse Height [mV]', show=show)
 
