@@ -127,9 +127,6 @@ class Bins:
     def get_pixel_y(self):
         return [self.Run.NPixels[1], arange(-.5, self.Run.NPixels[1])]
 
-    def get_tcal(self):
-        return Bins.make(0, self.Run.NSamples, 1)
-
     def get_native_global(self, mm=False):
         return self.get_global(res_fac=1, mm=mm)
 
