@@ -379,8 +379,8 @@ class PadAnalysis(DUTAnalysis):
         format_statbox(entries=True, x=.84)
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
-    def draw_ph_triggercell(self, bin_width=10, corr=True, cut=None, show=True):
-        x, y = self.get_root_vec(var=['trigger_cell', self.get_signal_var()], cut=self.Cut(cut))
+    def draw_ph_triggercell(self, bin_width=10, t_corr=True, cut=None, show=True):
+        x, y = self.get_root_vec(var=['trigger_cell', self.get_signal_var(t_corr=t_corr)], cut=self.Cut(cut))
         return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_width), 'Signal vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_pathlength(self, bin_size=.1, show=True):
