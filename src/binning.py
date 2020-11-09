@@ -179,6 +179,9 @@ class Bins:
     # region PAD
     def get_pad_ph(self, bin_width=None, mean_ph=None):
         return Bins.make(self.MinPadPH, self.MaxPadPH, choose(bin_width, self.PadPHBinWidth if mean_ph is None else mean_ph / 40))
+
+    def get_wf(self, bin_width=1):
+        return Bins.make(0, self.Run.NSamples, bin_width)
     # endregion PAD
     # ----------------------------------------
 
