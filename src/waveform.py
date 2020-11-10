@@ -164,7 +164,14 @@ class Waveform(PadSubAnalysis):
             mg.Add(gr, 'lp')
             leg.AddEntry(gr, names[i], 'lp')
         self.Draw(mg, show=show, draw_opt='A', w=1.5, h=0.75, lm=.07, rm=.045, bm=.2, leg=leg)
-        format_histo(mg, x_range=ax_range(array(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_e']) * self.BinWidth, None, 0, .3), y_off=.7, x_tit='Time [ns]', y_tit='Signal [mV]')
+        format_histo(mg, x_range=ax_range(self.Ana.get_region(region='e') * self.BinWidth, None, 0, .3), y_off=.7, x_tit='Time [ns]', y_tit='Signal [mV]')
+
+    def draw_region(self, region=None):
+        regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
+        for region in regions:
+            x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
+            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2)
+        Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
     # endregion WAVEFORMS
     # ----------------------------------------
 
