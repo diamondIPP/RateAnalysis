@@ -17,12 +17,13 @@ class Fit(object):
             self.X = get_hist_args(h)
 
         # Fit
-        self.ParNames = self.set_par_names()
+        self.ParNames = self.get_par_names()
         self.NPars = len(self.ParNames)
         self.Invert = invert
         self.clear_old()
         self.Fit = self.init_fit()
         self.Fit.SetNpx(npx)
+        self.set_par_names()
         self.set_par_limits()
         self.set_start_values()
 
@@ -37,8 +38,11 @@ class Fit(object):
     def init_fit(self):
         return TF1()
 
+    def get_par_names(self):
+        return []
+
     def set_par_names(self):
-        pass
+        self.Fit.SetParNames(*self.ParNames) if self.ParNames else do_nothing()
 
     def set_par_limits(self):
         pass
@@ -81,7 +85,7 @@ class Crystalball(Fit):
         """ :parameter:  0 - scale, 1 - alpha, 2 - n, 3 - mean, 4 - sigma, 5 - offset """
         Fit.__init__(self, 'cystalball', h, fit_range, npx, inv)
 
-    def set_par_names(self):
+    def get_par_names(self):
         return ['c', 'alpha', 'n', 'mean', 'sigma', 'offset']
 
     def init_fit(self):
@@ -146,12 +150,11 @@ class Langau(Fit):
         self.NSigma = 5.
         Fit.__init__(self, 'langau', h, fit_range, npx)
         self.XMin, self.XMax = [k * self.Histo.GetMean() for k in [.1, 3]] if fit_range is None else fit_range
-        print(self.XMin, self.XMax)
 
     def init_fit(self):
         return Draw.make_tf1(self.Name, langau, 0, self.get_x_max() * 3, self.NPars, nconv=self.NConvolutions, nsigma=self.NSigma)
 
-    def set_par_names(self):
+    def get_par_names(self):
         return ['Width', 'MPV', 'Area', 'GSigma']
 
     def set_par_limits(self):
@@ -185,7 +188,7 @@ class NLandau(Fit):
     def init_fit(self):
         return TF1('TripelLandau', ' + '.join('landau({})'.format(3 * i) for i in range(0, self.N)), self.XMin, self.XMax)
 
-    def set_par_names(self):
+    def get_par_names(self):
         return [n for i in range(self.N) for n in 'C{0} MPV{0} Sigma{0}'.format(i).split()]
 
     def set_par_limits(self):
