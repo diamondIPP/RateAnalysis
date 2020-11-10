@@ -149,7 +149,7 @@ class Langau(Fit):
         print(self.XMin, self.XMax)
 
     def init_fit(self):
-        return TF1(self.Name, partial(langau, nconv=self.NConvolutions, nsigma=self.NSigma), 0, self.get_x_max() * 3, self.NPars)
+        return Draw.make_tf1(self.Name, langau, 0, self.get_x_max() * 3, self.NPars, nconv=self.NConvolutions, nsigma=self.NSigma)
 
     def set_par_names(self):
         return ['Width', 'MPV', 'Area', 'GSigma']
@@ -227,8 +227,6 @@ def langau(x, pars, nconv, nsigma=5):
     # par[1]=Most Probable (MP, location) parameter of Landau density
     # par[2]=Total area (integral -inf to inf, normalization constant)
     # par[3]=Width (sigma) of convoluted Gaussian function
-
-    x = x[0]
 
     # MP shift correction
     mpshift = -0.22278298  # Landau maximum location
