@@ -314,6 +314,13 @@ class PadCut(Cut):
         histos = [self.Ana.draw_signal_distribution(cut=cut, show=False) for cut in cuts]
         return self.Draw.stack(histos, 'Bucket Distributions', ['no bucket', 'pre bucket', 'new bucket'])
 
+    def draw_bucket_means(self):
+        thresh = self.calc_bucket_threshold()
+        args = [('no bucket', 'bucket', None), ('pre bucket', 'bucket', self.generate_pre_bucket()), ('with threshold', None, None), ('thresh + 5', 'bucket', self.generate_bucket(thresh + 5)),
+                ('thresh - 5', 'bucket', self.generate_bucket(thresh - 5))]
+        cuts = [self.generate_custom(name=n, exclude=e, add=a) for n, e, a in args]
+        self.draw_means(cuts=cuts, names=[cut.GetName() for cut in cuts])
+
     def compare_single_cuts(self, scale=True, redo=False):
         histos = [self.Ana.draw_signal_distribution(cut(), show=False, redo=redo, save=False) for cut in self.get_strings()]
         self.Draw.stack(histos, 'Single Cuts', self.get_names(), scale=scale)
@@ -323,10 +330,10 @@ class PadCut(Cut):
         histos = [self.Ana.draw_signal_distribution(cut=cut, show=False, redo=redo, x_range=x_range, save=False) for cut in cuts.values()]
         self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
 
-    def draw_cut_means(self, short=False, redo=False, show=True):
-        y = [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in self.get_consecutive(short).values()]
+    def draw_means(self, short=False, redo=False, show=True, cuts=None, names=None):
+        y = [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in choose(cuts, self.get_consecutive(short).values())]
         g = self.Draw.graph(arange(len(y)), y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', draw_opt='ap', show=show, bm=.26, gridy=True, x_range=[-1, len(y)])
-        set_bin_labels(g, self.get_consecutive(short).keys())
+        set_bin_labels(g, choose(names, self.get_consecutive(short).keys()))
         update_canvas()
 
     def draw_signal_vs_signale(self, show=True):
