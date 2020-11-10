@@ -67,15 +67,15 @@ class Draw(object):
     @staticmethod
     def add(*args):
         for obj in args:
-            if obj not in Draw.Objects:
-                Draw.Objects.append(obj)
+            Draw.Objects.append(obj)
         Draw.clean()
         return args[0] if len(args) == 1 else args
 
     @staticmethod
     def clean():
         for obj in Draw.Objects:
-            if '0x(nil)' in str(obj) or obj is None:
+            # if '0x(nil)' in str(obj) or obj is None:
+            if obj is None:
                 Draw.Objects.remove(obj)
 
     # ----------------------------------------
@@ -117,6 +117,10 @@ class Draw(object):
             Draw.Count[name] = -1
         Draw.Count[name] += 1
         return Draw.Count[name]
+
+    @staticmethod
+    def reset_count(name='a'):
+        Draw.Count[name] = 0
     
     @staticmethod
     def get_name(string='a'):
