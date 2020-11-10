@@ -10,6 +10,7 @@ from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
 from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute
 from src.binning import Bins
 from helpers.utils import *
+from inspect import signature
 
 
 def get_color_gradient():
@@ -452,12 +453,12 @@ class Draw(object):
         return f
 
     @staticmethod
-    def make_tf1(name, f, xmin=0, xmax=1, color=None, w=None, *args, **kwargs):
+    def make_tf1(name, f, xmin=0, xmax=1, n=1, color=None, w=None, *args, **kwargs):
         def tmp(x, pars):
             _ = pars
-            return f(x[0], *args, **kwargs)
+            return f(x[0], pars, *args, **kwargs) if 'pars' in signature(f).parameters else f(x[0], *args, **kwargs)
         Draw.add(tmp)
-        f0 = TF1(name, tmp, xmin, xmax)
+        f0 = TF1(name, tmp, xmin, xmax, n)
         do(f0.SetLineColor, color)
         do(f0.SetLineWidth, w)
         Draw.add(f0)
