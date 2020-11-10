@@ -26,8 +26,8 @@ class PadAnalysis(DUTAnalysis):
             self.PulserPolarity = self.get_polarity(pulser=True)
 
             # Regions & Ranges
-            self.SignalRegionName = self.load_region()
-            self.SignalRegion = array(self.Run.IntegralRegions[self.DUT.Number - 1][self.SignalRegionName])
+            self.SignalRegionName = self.load_region_name()
+            self.SignalRegion = self.get_region()
             self.PeakIntegralName = self.load_peak_integral()
             self.PeakIntegral = self.Run.PeakIntegrals[self.DUT.Number - 1][self.PeakIntegralName]
 
@@ -90,8 +90,8 @@ class PadAnalysis(DUTAnalysis):
     def update_config(self):
         self.Config.read(join(self.Dir, 'config', self.TCString, 'PadConfig.ini'))
 
-    def load_region(self, sig_type='signal'):
-        short = self.Config.get_value('SIGNAL', '{} region'.format(sig_type), default='')
+    def load_region_name(self, sig_type='signal', region=None):
+        short = choose(region, self.Config.get_value('SIGNAL', '{} region'.format(sig_type), default=''))
         return '{}_{}'.format(sig_type, short) if short else [r for r in self.Run.IntegralRegions[0] if r.startswith(sig_type)][0]
 
     def load_peak_integral(self):
@@ -99,7 +99,7 @@ class PadAnalysis(DUTAnalysis):
         return peak_int if peak_int in self.Run.PeakIntegrals[self.DUT.Number - 1] else self.Run.PeakIntegrals[self.DUT.Number - 1].keys()[0]
 
     def get_signal_number(self, region=None, peak_integral=None, sig_type='signal'):
-        region = self.load_region(sig_type) if region is None else region if sig_type in region else '_'.join([sig_type] + ([region] if region else []))
+        region = self.load_region_name(sig_type) if region is None else region if sig_type in region else '_'.join([sig_type] + ([region] if region else []))
         peak_integral = self.load_peak_integral() if peak_integral is None else peak_integral if 'Peak' in str(peak_integral) else 'PeakIntegral{}'.format(peak_integral)
         int_name = 'ch{ch}_{reg}_{int}'.format(ch=self.get_channel(), reg=region, int=peak_integral)
         return self.get_integral_names().index(int_name)
@@ -153,8 +153,11 @@ class PadAnalysis(DUTAnalysis):
     def get_integral_names(self):
         return self.Run.TreeConfig.get_value('Integral Names', 'Names', dtype=list)
 
-    def get_signal_range(self, lfac=0, rfac=.3, t_corr=True):
-        return ax_range(self.SignalRegion * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
+    def get_region(self, sig_type='signal', region=None):
+        return array(self.Run.IntegralRegions[self.DUT.Number - 1][region if region is not None and '_' in region else self.load_region_name(sig_type, region)])
+
+    def get_signal_range(self, lfac=0, rfac=.3, t_corr=True, region=None):
+        return ax_range(self.load_region_name(region=region) * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
 
     def get_peak_integral(self, name):
         return self.Run.PeakIntegrals[self.DUT.Number - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
