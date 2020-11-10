@@ -569,18 +569,21 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     return h
 
 
-def format_statbox(x=.95, y=None, w=.2, h=.15, only_fit=False, fit=False, entries=False, form=None, m=False, rms=False, all_stat=False, center_x=False):
-    gStyle.SetOptFit(int(only_fit or fit))
-    opt_stat = '100000{}{}{}0'.format(*ones(3, 'i') if all_stat else array([rms, m, entries]).astype('i'))
-    if only_fit:
-        opt_stat = '0011'
-    y = (.88 if Draw.Title else .95) if y is None else y
-    gStyle.SetOptStat(int(opt_stat))
-    gStyle.SetFitFormat(form) if form is not None else do_nothing()
-    gStyle.SetStatX(.5 + w / 2 if center_x else x)
-    gStyle.SetStatY(y)
-    gStyle.SetStatW(w - (.2 if only_fit or fit else 0))
-    gStyle.SetStatH(h)
+def format_statbox(th, x2=None, y2=None, h=None, w=.25, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None):
+    p = next(o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName())
+    c = get_last_canvas(warn=False)
+    r = c.GetWindowHeight() / c.GetWindowWidth()
+    x2, y2 = choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
+    cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
+    stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
+    h = choose(h, .05 / r * stats.nonzero()[0].size)
+    p.SetX1NDC(cx - w / 2 if center_x else x2 - w)
+    p.SetX2NDC(cx + w / 2 if center_x else x2)
+    p.SetY1NDC(cy - h / 2 if center_y else y2 - h)
+    p.SetY2NDC(cy + h / 2 if center_y else y2)
+    p.SetOptStat(int('100000{}{}{}0'.format(*stats)))
+    p.SetOptFit(int(fit))
+    p.SetFitFormat(form) if form is not None else do_nothing()
 
 
 def format_axis(axis, h, title, tit_offset, tit_size, centre_title, lab_size, label_offset, limits, ndiv, tick_size, color=None):
