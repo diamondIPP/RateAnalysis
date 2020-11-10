@@ -258,9 +258,9 @@ class Cut(SubAnalysis):
     def generate_flux_cut(self):
         return self.generate_custom(include=['beam stops', 'event range'], name='flux', prnt=False)
 
-    def generate_custom(self, exclude=None, include=None, invert=None, name='custom', prnt=True):
+    def generate_custom(self, exclude=None, include=None, invert=None, name='custom', add=None, prnt=True):
         self.Ana.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
-        return self.CutStrings.generate_custom(exclude, include, invert, name)
+        return self.CutStrings.generate_custom(exclude, include, invert, name) + Cut.to_string(add)
     # endregion GENERATE
     # ----------------------------------------
 
@@ -374,7 +374,7 @@ class Cut(SubAnalysis):
 
     @staticmethod
     def to_string(cut):
-        return cut.GetTitle() if type(cut) is TCut else str(cut)
+        return cut.GetTitle() if type(cut) is TCut else choose(cut, '')
 
 
 class CutString:
