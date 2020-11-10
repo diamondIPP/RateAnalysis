@@ -321,10 +321,10 @@ class DUTAnalysis(Analysis):
         cut = self.Cut.generate_sub_fid('f{}{}{}{}'.format(m, n, mi, ni), *array([x[mi], x[mi + 1], y[ni], y[ni + 1]]) / 10)
         return self.get_sub_events(cut)
 
-    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True):
+    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True, z_range=None):
         m, x_bins, n, y_bins = self.get_fid_bins(m, n)
         h = self.draw_signal_map(bins=[m, x_bins, n, y_bins], show=False, fid=True, redo=redo)
-        format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0)
+        format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0, z_range=z_range)
         self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
         Draw.grid(x_bins, y_bins, width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
@@ -495,18 +495,19 @@ class DUTAnalysis(Analysis):
         self.info('successfully saved tree with only cut events.')
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
-        h = self.draw_signal_distribution(show=show) if h is None and hasattr(self, 'draw_signal_distribution') else h
+        h = self.draw_signal_distribution(show=False) if h is None and hasattr(self, 'draw_signal_distribution') else h
+        format_statbox(fit=True, h=.7, w=.5, all_stat=1)
+        self.Draw.histo(h, show=show)
+        test(h, w=.4, h=.5)
         fit = Langau(h, nconv, fit_range)
         fit.get_parameters()
         fit(show=show)
-        get_last_canvas().Modified()
-        get_last_canvas().Update()
+        update_canvas()
         if fit.get_chi2() > chi_thresh and nconv < 80:
-            Draw.Count += 5
             self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
-            fit = self.fit_langau(h, nconv + Draw.Count, chi_thresh=chi_thresh, show=show)
+            fit = self.fit_langau(h, nconv + Draw.get_count('langau') * 5, chi_thresh=chi_thresh, show=show)
         print('MPV: {:1.1f}'.format(fit.get_mpv()))
-        self.Draw.Count = 0
+        Draw.reset_count('langau')
         self.Draw.add(fit)
         return fit
 
