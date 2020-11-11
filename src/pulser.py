@@ -94,8 +94,8 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
-        format_statbox(only_fit=True, x=.9, w=.2)
         h = self.draw_rate(show=show, cut=self.Ana.Cut.get('beam stops'), prnt=prnt)
+        format_statbox(h, fit=True)
         format_histo(h, markersize=None)
         fit = h.Fit('pol0', 'qs')
         return make_ufloat(FitRes(fit), par=0)
@@ -133,11 +133,10 @@ class PulserAnalysis(PadSubAnalysis):
             m, s = self.get_mean_sigma(cut)
             ph_cut = (m - 4 * s < y) & (y < m + 4 * s)
             return self.Draw.profile(x[ph_cut], y[ph_cut], self.Ana.Bins.get_time(bin_size), 'Pulser Pulse Height', show=False)
-        format_statbox(fit=True, entries=True)
         p = do_pickle(self.make_simple_pickle_path('PHT', self.Cut(cut).GetName()), f, redo=redo)
         fit = p.Fit('pol0', 'qs')
         format_histo(p, y_off=1.7, **self.get_t_args(), y_range=choose(y_range, ax_range(get_hist_vec(p), 0, .6, 1)))
-        self.Draw(p, 'PulserPulserHeight{}'.format(bin_size), show, gridy=True, lm=.14)
+        self.Draw(p, 'PulserPulserHeight{}'.format(bin_size), show, gridy=True, lm=.14, stats=set_statbox(fit=True, entries=True))
         return p, FitRes(fit)
 
     def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, show=True, save=True):
@@ -155,7 +154,6 @@ class PulserAnalysis(PadSubAnalysis):
 
     def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, bin_width=.2, prnt=True):
         pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
-        format_statbox(only_fit=True, w=.3, h=.2)
         h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo)
 
         def f():
@@ -170,6 +168,7 @@ class PulserAnalysis(PadSubAnalysis):
         f2.SetLineStyle(7)
         f2.SetRange(0, 500)
         h.GetListOfFunctions().Add(f2)
+        format_statbox(h, fit=True)
         self.Draw.save_plots('PulserDistributionFit', show=show, prnt=prnt)
         SaveDraw.server_pickle(pickle_path, fit)
         return fit
@@ -186,9 +185,8 @@ class PulserAnalysis(PadSubAnalysis):
 
     def draw_hit_efficiency(self, bin_size=200, show=True):
         x, y = self.get_root_vec(var=['Entry$', '@col.size() > 1'], cut=self.Ana.Cut.get('pulser', invert=True), dtype=['i4', bool])
-        format_statbox(entries=True, x=.93)
         return self.Draw.profile(x, y, Bins.make(x[::bin_size]), 'Hit Efficiency at Pulser Events', x_tit='Event Number', y_tit='Hit Efficiency [%]', y_range=[0, 5], draw_opt='hist',
-                                 fill_color=Draw.FillColor, show=show, rm=.06)
+                                 fill_color=Draw.FillColor, show=show, rm=.06, stats=set_entries())
 
     def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):
         return self.Ana.draw_ph_peaktime(x=choose(x, self.Peaks.get_from_tree()), y=choose(y, self.get_values()), xbins=self.get_t_bins(bin_size), show=show)
@@ -199,8 +197,7 @@ class PulserAnalysis(PadSubAnalysis):
 
     def draw_cft(self, bin_size=None, show=True):
         h = self.Draw.distribution(self.get_cft(self.get_signal_indices()), self.get_t_bins(bin_size), 'Pulser Constant Fraction Times', x_tit='Constant Fraction Time [ns]', show=show)
-        format_statbox(fit=True, entries=True, h=.2)
         h.Fit('gaus')
-        update_canvas()
+        format_statbox(h, fit=True, entries=True)
     # endregion DRAW
     # ----------------------------------------

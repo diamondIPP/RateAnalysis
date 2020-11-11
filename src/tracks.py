@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TProfile, TCut, TF1, TMultiGraph, THStack
+from ROOT import TCut, TF1, TMultiGraph, THStack
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
@@ -55,11 +55,9 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw_n(self, show=True):
-        p = TProfile('ptt', 'Number of Tracks vs. Time', *self.Bins.get_raw_time(10))
-        self.Tree.Draw('n_tracks:{}>>ptt'.format(self.Ana.get_t_var()), '', 'goff')
-        format_statbox(all_stat=True)
-        format_histo(p, x_tit='Time [hh:mm}', y_tit='Number of Tracks', y_off=1.3, t_ax_off=0, fill_color=Draw.FillColor)
-        self.Draw(p, 'NTracksTime', draw_opt='hist', show=show)
+        p = self.Draw.profile(*self.get_root_vec(var=[self.get_t_var(), 'n_tracks']), self.Bins.get_raw_time(10), 'Number of Tracks vs. Time', x_tit='Time [hh:mm}', y_tit='Number of Tracks',
+                              t_ax_off=0, fill_color=Draw.FillColor, show=False)
+        self.Draw(p, 'NTracksTime', draw_opt='hist', show=show, stats=set_statbox(all_stat=True, center_y=True))
 
     def draw_chi2(self, mode=None, fit=False, x_range=None, cut='', normalise=None, show=True, save=True, prnt=True, show_cut=False):
         mode = 'tracks' if mode is None else mode
@@ -67,9 +65,8 @@ class Tracks(SubAnalysis):
         self.Tree.Draw('chi2_{}>>{}'.format(mode, h.GetName()), TCut('n_tracks > 0') + TCut(cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=choose(x_range, [0, get_quantile(h, .99)]), normalise=normalise, fill_color=Draw.FillColor)
-        format_statbox(fit=fit, entries=True, w=.3)
-        self.Draw(h, show=show, prnt=prnt, lm=.13)
         fit_chi2(h, mode, show=fit)
+        self.Draw(h, show=show, prnt=prnt, lm=.13, stats=set_statbox(entries=True, fit=fit))
         self.draw_chi2_cut(mode, show=show_cut)
         self.Draw.save_plots('Chi2{0}'.format(mode.title()), show=show, save=save, prnt=prnt)
         return h
@@ -94,8 +91,7 @@ class Tracks(SubAnalysis):
         self.Tree.Draw('angle_{}>>{}'.format(mode, h.GetName()), self.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
         y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
         format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=Draw.FillColor)
-        format_statbox(all_stat=True, w=.3)
-        self.Draw(h, show=show, lm=.14, prnt=prnt)
+        self.Draw(h, show=show, lm=.14, prnt=prnt, stats=None)
         self.draw_angle_cut(show=show_cut)
         self.Draw.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), prnt=prnt)
         return h
@@ -143,15 +139,11 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region RESIDUALS
-    def draw_residual(self, roc, mode=None, cut=None, x_range=None, fit=False, show=True):
-        mode = '' if mode is None else mode.lower()
-        format_statbox(all_stat=True, fit=fit, w=.2, entries=6 if fit else 3)
-        h = Draw.make_histo('{m} Residuals for Plane {n}'.format(n=roc, m=mode.title()), [1000, -1000, 1000])
-        self.Tree.Draw('residuals{}[{}]*1e4>>{}'.format('_{}'.format(mode) if mode else '', roc, h.GetName()), self.Cut(cut), 'goff')
-        format_histo(h, name='Fit Result', y_off=2.0, y_tit='Number of Entries', x_tit='Distance [#mum]', fill_color=Draw.FillColor, x_range=x_range)
-        self.Draw(h, show, .16)
+    def draw_residual(self, roc, mode='', cut=None, x_range=None, fit=False, show=True):
+        x = self.get_root_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4
+        h = self.Draw.distribution(x, Bins.make(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
         self.fit_residual(h, show=fit)
-        self.Draw.save_plots('{m}ResidualsRoc{n}'.format(m=mode.title(), n=roc))
+        self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))
         return h
 
     def draw_raw_residuals(self, roc=None, steps=0, show=True):
@@ -159,16 +151,15 @@ class Tracks(SubAnalysis):
         dx, dy, da = self.calculate_residuals(x, y, z_positions, steps)
         x_bins, y_bins = arange(-1, 1.03, .03),  arange(-1, 1.02, .02)
         histos = [TH2F('h{}'.format(i), 'Raw Residuals ROC {}'.format(i), x_bins.size - 1, x_bins, y_bins.size - 1, y_bins) for i in range(dx.shape[0])]
-        format_statbox(entries=True, x=.82)
         for h, ix, iy in zip(histos, dx, dy):
             fill_hist(h, ix, iy)
             format_histo(h, x_tit='dX [mm]', y_tit='dY [mm]', y_off=1.3, pal=53)
         if roc is not None:
-            self.Draw(histos[roc], draw_opt='colz', lm=.12, rm=.16, show=show, logz=True)
+            self.Draw(histos[roc], draw_opt='colz', lm=.12, rm=.16, show=show, logz=True, stats=set_entries())
         else:
             c = self.Draw.canvas('Raw Residuals', w=1.5, h=1.5, show=show, divide=(2, 2))
             for i, h in enumerate(histos, 1):
-                self.Draw(h, draw_opt='colz', lm=.12, rm=.16, show=show, canvas=c.cd(i), logz=True)
+                self.Draw(h, draw_opt='colz', lm=.12, rm=.16, show=show, canvas=c.cd(i), logz=True, stats=set_entries())
         return dx, dy, da
 
     def draw_mean_residuals(self, roc=0, mode='x', steps=10):
@@ -220,7 +211,7 @@ class Tracks(SubAnalysis):
     @staticmethod
     def fit_residual(h, show=True):
         fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
-        sigma = get_fwhm(h) / (2 * sqrt(2 * log(2)))
+        sigma = (get_fwhm(h) / (2 * sqrt(2 * log(2)))).n
         fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
         fit.SetParNames('c1', 'mean1', '#sigma1', 'c2', 'mean2', '#sigma2')
         fit.SetNpx(500)

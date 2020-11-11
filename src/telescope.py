@@ -6,7 +6,7 @@
 from ROOT import TH1F, TCut
 from numpy import arange, concatenate, mean, sqrt, full
 from src.binning import Bins
-from helpers.draw import Draw, format_histo, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
+from helpers.draw import Draw, format_histo, set_statbox, set_entries, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
 from src.sub_analysis import SubAnalysis
 
 
@@ -49,17 +49,15 @@ class Telescope(SubAnalysis):
     # ----------------------------------------
     # region HITS
     def draw_cluster_size(self, roc, name=None, cut='', show=True):
-        format_statbox(entries=True)
         values = self.get_root_vec(var='cluster_size[{}]'.format(roc), cut=self.Cut(cut))
-        h = self.Draw.distribution(values, Bins.make(0, 50), 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True)
+        h = self.Draw.distribution(values, Bins.make(0, 50), 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
         format_histo(h, x_tit='Cluster Size', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(5)])
         self.Draw.save_plots('ClusterSize{}'.format(roc), show=show)
         return h
 
     def draw_n_clusters(self, roc=0, name=None, cut='', show=True):
-        format_statbox(entries=True)
         values = self.get_root_vec(var='n_clusters[{}]'.format(roc), cut=self.Cut(cut))
-        h = self.Draw.distribution(values, Bins.make(0, 50), 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True)
+        h = self.Draw.distribution(values, Bins.make(0, 50), 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
         format_histo(h, x_tit='Number of Clusters', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(2) + 1])
         self.Draw.save_plots('NClusters{}'.format(roc), show=show)
         return h
@@ -79,7 +77,6 @@ class Telescope(SubAnalysis):
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
         x, y = self.get_root_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
-        format_statbox(entries=True, x=.84)
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)
         format_histo(h, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2)
         self.Draw.save_plots('{}Map{}'.format('Cluster' if cluster else 'Hit', plane), prnt=prnt)
@@ -100,14 +97,12 @@ class Telescope(SubAnalysis):
     # ----------------------------------------
     # region TIME
     def draw_trigger_phase(self, dut=False, cut=None, show=True):
-        format_statbox(entries=True)
         values = self.get_root_vec(var='trigger_phase[{}]'.format(1 if dut else 0), cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
-        self.Draw.distribution(values, Bins.make(0, 10), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.95, fill_color=Draw.FillColor, show=show, lm=.145)
+        self.Draw.distribution(values, Bins.make(0, 10), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.95, fill_color=Draw.FillColor, show=show, lm=.145, stats=set_entries())
 
     def draw_trigger_phase_trend(self, dut=False, bin_width=None, cut=None, show=True):
-        format_statbox(entries=True, y=0.88)
         values, t = self.get_root_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
-        p = self.Draw.profile(t, values, self.Bins.get_time(bin_width), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16)
+        p = self.Draw.profile(t, values, self.Bins.get_time(bin_width), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.StartTime)
 
     def draw_time(self, show=True, corr=False):
@@ -126,12 +121,12 @@ class Telescope(SubAnalysis):
         if not self.has_branch('beam_current'):
             return warning('Branch "beam_current" does not exist!')
         values, t = self.get_root_vec(var=['beam_current', self.get_t_var()], cut=TCut('beam_current < 2500') + TCut(cut))
-        format_statbox(all_stat=True)
         if prof:
             h = self.Draw.profile(t, values, self.Bins.get_raw_time(bin_width), 'Beam Current [mA]', w=1.5, h=.75, lm=.08, draw_opt='hist', fill_color=Draw.FillColor)
         else:
             h = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([values, [0]]), w=1.5, h=.75, title='Beam Current [mA]', lm=.08, draw_opt='afp', fill_color=Draw.FillColor)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', markersize=.4, t_ax_off=self.StartTime if rel_t else 0, x_range=None if prof else [h.GetX()[0], h.GetX()[t.size]])
+        format_statbox(h, all_stat=True)
         self.Draw.save_plots('BeamCurrent{}'.format(h.ClassName()[1]), show=show, save=save)
         return h
 
@@ -162,7 +157,6 @@ class Telescope(SubAnalysis):
 
     def calculate_flux(self, show=False, prnt=True):
         def f():
-            format_statbox(fit=True, entries=6)
             h = self.draw_flux(cut=self.Cut.generate_custom(include=['beam stops', 'event range'], prnt=prnt), show=False, prnt=prnt)
             values = get_hist_vec(h, err=False)
             m, s = mean_sigma(values[values > 0], err=False)
@@ -171,7 +165,7 @@ class Telescope(SubAnalysis):
             max_val = h.GetBinCenter(h.GetMaximumBin())
             fit = h.Fit('gaus', 'qs{}'.format('' if show else 0), '', max_val * .9, max_val * 1.1)
             format_histo(h, 'Fit Result', y_tit='Number of Entries', x_tit='Flux [kHz/cm^{2}]', fill_color=Draw.FillColor, y_off=1.3)
-            self.Draw(h, lm=.13, show=show, prnt=prnt)
+            self.Draw(h, lm=.13, show=show, prnt=prnt, stats=set_statbox(fit=True, all_stat=True))
             fm, fs = fit.Parameter(1), fit.Parameter(2)
             m, s = (fm, fs) if fs < fm / 2. and fit.Ndf() and fit.Chi2() / fit.Ndf() < 10 else (m, s)
             return ufloat(m, s + .05 * m)

@@ -256,10 +256,10 @@ class DUTAnalysis(Analysis):
 
     def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
         p = self.draw_pulse_height(event_bin_width, show=False, save=False)[0]
-        format_statbox(all_stat=True, fit=fit)
         h = get_pull(p, 'Signal Bin{0} Distribution'.format(Bins.Size), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
         format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
-        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.Size), save=save, lm=.12, show=show)
+        set_statbox(all_stat=True, fit=fit)
+        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.Size), save=save, lm=.12, show=show, stats=True)
         return h
 
     def draw_track_length(self, show=True):
@@ -272,9 +272,8 @@ class DUTAnalysis(Analysis):
     def draw_signal_vs_angle(self, mode='x', bin_size=.1, show=True):
         p = TProfile('psa{}'.format(mode), 'Pulse Height vs. Angle in {}'.format(mode.title()), *self.Bins.get_angle(bin_size))
         self.Tree.Draw('{}:angle_{m}>>psa{m}'.format(self.get_signal_var(), m=mode), self.Cut(), 'goff')
-        format_statbox(entries=True)
         format_histo(p, x_tit='Track Angle [deg]', y_tit='Pulse Height [mV]', y_off=1.5)
-        self.Draw(p, show=show, lm=.12)
+        self.Draw(p, show=show, lm=.12, stats=set_entries())
 
     # ----------------------------------------
     # region SIGNAL MAP
@@ -291,12 +290,11 @@ class DUTAnalysis(Analysis):
             adapt_z_range(h1) if not hitmap else do_nothing()
             return h1
 
-        format_statbox(entries=True, x=0.82)
         h = do_pickle(self.make_simple_pickle_path('Hit' if hitmap else 'Signal', suf, 'SignalMaps'), f, redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
         format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range, pal=1 if hitmap else 53)
-        self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
+        self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame', stats=set_statbox(entries=True, w=.2))
         self.draw_fid_cut(scale=10)
         self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save, show=show)
         return h
@@ -348,7 +346,6 @@ class DUTAnalysis(Analysis):
         ph, y, x = self.get_root_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
-        format_statbox(all_stat=True)
         return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(mean_ph=mean(ph)), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
@@ -362,9 +359,8 @@ class DUTAnalysis(Analysis):
     def draw_beam_profile(self, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
         h = self.draw_hitmap(res, show=False, prnt=prnt)
         p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        format_statbox(all_stat=True)
         format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.Run.Number), y_off=1.3, y_tit='Number of Hits', fill_color=Draw.FillColor)
-        self.Draw(p, lm=.13, show=show)
+        self.Draw(p, lm=.13, show=show, stats=set_statbox(all_stat=True))
         if fit:
             fit = self.fit_beam_profile(p, fit_range)
         self.Draw.save_plots('BeamProfile{}'.format(mode.title()), prnt=prnt)
@@ -379,7 +375,6 @@ class DUTAnalysis(Analysis):
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         x = get_2d_hist_vec(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)
         x_range = choose(x_range, ax_range(x, fl=.1, fh=.1))
-        format_statbox(all_stat=True)
         h = self.Draw.distribution(x, Bins.make(*x_range, n=sqrt(x.size)), 'Signal Map Distribution', x_tit='Pulse Height [mV]', y_off=2, lm=.15, show=show, save=save)
         return mean_sigma(x) if ret_value else h
 
@@ -496,9 +491,7 @@ class DUTAnalysis(Analysis):
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=False) if h is None and hasattr(self, 'draw_signal_distribution') else h
-        format_statbox(fit=True, h=.7, w=.5, all_stat=1)
         self.Draw.histo(h, show=show)
-        test(h, w=.4, h=.5)
         fit = Langau(h, nconv, fit_range)
         fit.get_parameters()
         fit(show=show)
@@ -507,6 +500,7 @@ class DUTAnalysis(Analysis):
             self.info('Chi2 too large ({c:2.2f}) -> increasing number of convolutions by 5'.format(c=fit.get_chi2()))
             fit = self.fit_langau(h, nconv + Draw.get_count('langau') * 5, chi_thresh=chi_thresh, show=show)
         print('MPV: {:1.1f}'.format(fit.get_mpv()))
+        format_statbox(h, fit=True, all_stat=True)
         Draw.reset_count('langau')
         self.Draw.add(fit)
         return fit

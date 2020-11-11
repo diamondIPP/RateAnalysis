@@ -71,22 +71,21 @@ class PedestalAnalysis(PadSubAnalysis):
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
             x = self.get_root_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
             return self.Draw.distribution(x, self.get_bins(max(.1, 30 / sqrt(x.size))), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
-        format_statbox(all_stat=True, w=.3)
         h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))), f, redo=redo)
         format_histo(h, normalise=normalise, sumw2=False)
-        self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13)
+        self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
         return h
 
     def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
         h = self.draw_distribution(name, cut, logy, show=show, save=save, redo=redo, prnt=prnt, normalise=normalise)
-        format_statbox(fit=True, w=.35)
         fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
         f = deepcopy(h.GetFunction('gaus'))
         f.SetNpx(1000)
         f.SetRange(h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
         f.SetLineStyle(2)
         h.GetListOfFunctions().Add(f)
+        format_statbox(h, fit=True)
         if draw_cut:
             b = self.__draw_cut(h)
             h.Draw('same')
@@ -108,12 +107,10 @@ class PedestalAnalysis(PadSubAnalysis):
 
     def draw_pulse_height(self, name=None, rel_t=False, show=True):
         x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
-        format_statbox(entries=True)
-        self.Draw.profile(x, y, self.Bins.get_time(), 'Pedestal Trend', y_tit='Pedestal [mV]', show=show, **self.get_t_args(rel_t))
+        self.Draw.profile(x, y, self.Bins.get_time(), 'Pedestal Trend', y_tit='Pedestal [mV]', show=show, **self.get_t_args(rel_t), stats=set_statbox(entries=True, w=.2))
 
     def draw_signal_time(self, name=None, rel_t=False, show=True):
         x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
-        format_statbox(entries=True, x=.84)
         y_range = ax_range(y, 0, .2, .2)
         return self.Draw.histo_2d(x, y, self.Bins.get_time() + self.get_bins(.5), 'Pedestal vs. Time', y_tit='Pedestal [mV]', pal=53, show=show, y_range=y_range, **self.get_t_args(rel_t))
 
@@ -133,9 +130,9 @@ class PedestalAnalysis(PadSubAnalysis):
         return g
 
     def fit_trend(self, signal_name=None, show=True, sigma=False):
-        format_statbox(entries=4, only_fit=True)
         g = self.draw_trend(signal_name, show=False, sigma=sigma)
         fit = g.Fit('pol0', 'qs')
+        format_statbox(g, fit=True)
         self.Draw(g, '{n}Fit'.format(n=g.GetTitle()), show, lm=.12)
         return FitRes(fit)
 

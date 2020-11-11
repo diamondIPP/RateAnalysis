@@ -215,17 +215,17 @@ class PeakAnalysis(PadSubAnalysis):
             h.Sumw2()
             h.Scale(1e5 / self.Ana.Waveform.get_from_tree().shape[0])
         if show and split_ == 1:
-            format_statbox(entries=True)
+            set_statbox(entries=True)
             format_histo(h, x_tit='Time [ns]', y_tit='Number of Peaks', y_off=1.3, fill_color=Draw.FillColor, y_range=y_range)
-            self.Draw(h, lm=.12, show=show, w=1.5, h=0.75, logy=True)
+            self.Draw(h, lm=.12, show=show, w=1.5, h=0.75, logy=True, stats=True)
         return h
 
     def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, x_range=None, y_range=None, show=True, draw_ph=False, smear=None):
-        format_statbox(all_stat=True, x=.86 if draw_ph else .95)
         times = choose(x, self.get_signal_times, fit=fit, ind=ind)
         self.smear_times(times, smear)
         h = self.Draw.distribution(times, self.Ana.get_t_bins(bin_size), 'Signal Peak Times', lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Signal Peak Time [ns]', y_off=1.8, x_range=x_range)
-        self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, draw_ph)
+        c = self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, draw_ph)
+        format_statbox(h, all_stat=True, c=c)
         return h
 
     def draw_ph(self, c, bin_size, x, y, x_range, y_range, show):
@@ -237,6 +237,7 @@ class PeakAnalysis(PadSubAnalysis):
             Draw.tpad('psph', transparent=True, lm=.13, rm=.12)
             p.Draw('y+')
             update_canvas(c)
+            return c
 
     def draw_heights_vs_time(self, bin_size=.5, corr=True, cft=False, show=True):
         times, heights, n_peaks = self.find_all()
@@ -247,11 +248,10 @@ class PeakAnalysis(PadSubAnalysis):
         self.Draw(p, lm=.12, show=show, w=1.5, h=0.75)
 
     def draw_signal_height_vs_time(self, bin_size=None, show=True):
-        format_statbox(entries=True)
         p = TProfile('pspt', 'Peak Height vs. Constant Fraction Time', *self.Ana.get_t_bins(bin_size))
         fill_hist(p, x=self.get(flat=True), y=self.get_heights(flat=True))
         format_histo(p, x_tit='Constrant Fraction Time [ns]', y_tit='Peak Height [mV]', y_off=1.4)
-        self.Draw(p, show, lm=.12)
+        self.Draw(p, show=show, lm=.12, stats=set_statbox(entries=True))
         return p
 
     def draw_combined_heights(self, hist=False, show=True):
@@ -267,21 +267,19 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_n(self, do_fit=False, show=True):
         n_peaks = self.find_n_additional()
-        h = TH1F('h_pn', 'Number of Peaks', 10, 0, 10)
-        h.FillN(n_peaks.size, n_peaks.astype('d'), ones(n_peaks.size))
-        format_statbox(only_fit=True, w=.3) if do_fit else format_statbox(entries=True)
+        h = self.Draw.distribution(n_peaks, Bins.make(11), 'Number of Peaks', show=False)
         if do_fit:
             fit_poissoni(h, show=show)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=Draw.FillColor, lw=2)
-        self.Draw(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11)
+        self.Draw(h, 'PeakNumbers{}'.format('Fit' if do_fit else ''), show, logy=True, lm=.11, stats=set_statbox(fit=do_fit, entries=True, w=None if do_fit else .2))
         self.get_flux(n_peaks)
         return h
 
     def draw_n_bunch(self, b=0, y_range=None, show=True):
         bunches, times = self.find_bunches(), self.get_n_times(n=2)
         times = concatenate(times[[any((bunches[b] < lst) & (lst < bunches[b + 1])) for lst in times]])  # select events with a peak in bunch b
-        format_statbox(entries=True)
-        self.Draw.distribution(times, self.get_binning(), '2 Additional Peaks for Bunch {}', x_tit='Time [ns]', y_range=y_range, show=show, w=1.5, h=0.75, logy=True)
+        set_statbox(entries=True, w=.2)
+        self.Draw.distribution(times, self.get_binning(), '2 Additional Peaks for Bunch {}', x_tit='Time [ns]', y_range=y_range, show=show, w=1.5, h=0.75, logy=True, stats=True)
         return times
 
     def draw_bunch_systematics(self, n=None, show=True):
@@ -302,7 +300,6 @@ class PeakAnalysis(PadSubAnalysis):
         self.Draw.graph(arange(1, n_peaks.size + 1), n_peaks, title='Bunch Systematics', x_tit='Bunch after a Signal', y_tit='Average Number of Peaks', show=show)
 
     def draw_height_disto(self, show=True):
-        format_statbox(all_stat=True)
         return self.Draw.distribution(self.get_signal_heights(), self.Bins.get_pad_ph(), 'Signal Heights', lm=.12, show=show, x_tit='Peak Height [mV]', y_off=1.5)
 
     def draw_flux_vs_threshold(self, tmin=None, tmax=None, steps=20):
@@ -310,15 +307,14 @@ class PeakAnalysis(PadSubAnalysis):
         y = array([self.get_flux(lam=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
         return self.Draw.graph(x, y, title='Flux vs. Peak Threshold', x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]')
 
-    def draw_peak_spacing(self, overlay=False, bin_size=.5, show=True):
+    def draw_spacing(self, overlay=False, bin_size=.5, show=True):
         values = concatenate(self.get() - self.get_signal_times())
         values = values[values != 0]
         values = ((values + self.BunchSpacing / 2) % self.BunchSpacing + self.BunchSpacing / 2) if overlay else values
         m, w = mean(values), self.Ana.get_t_bins()[1][-1] - self.Ana.get_t_bins()[1][0]
         bins = Bins.make(m - w / 2, m + w / 2, bin_size) if overlay else self.get_binning(bin_size)
-        format_statbox(entries=True)
         x, y = [1, 1] if overlay else [1.5, .75]
-        self.Draw.distribution(values, bins, 'Peak Spacing', x_tit='Peak Distance [ns]', w=x, h=y, show=show)
+        self.Draw.distribution(values, bins, 'Peak Spacing', x_tit='Peak Distance [ns]', w=x, h=y, show=show, stats=set_statbox(entries=True, w=.2))
 
     def draw_additional_disto(self, n_splits=4, show=True):
         x = [v.n for h in self.draw(split_=n_splits) for v in self.draw_additional(h, show=False)]
@@ -327,9 +323,9 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_additional(self, h=None, scale=False, show=True):
         values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
-        format_statbox(fit=True)
         g = self.Draw.graph((peaks[0] + self.StartAdditional) / 2, values[peaks[0]], title='Additional Peak Heights', show=show, w=1.5, h=.75, gridy=True)
         g.Fit('pol0', 'qs')
+        format_statbox(g, fit=True)
         return values[peaks[0]]
     # endregion DRAW
     # ----------------------------------------
@@ -446,12 +442,12 @@ class PeakAnalysis(PadSubAnalysis):
         return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}{}'.format(thresh * 100, self.get_cut_name())), f, redo=redo)
 
     def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, x_range=None, y_range=None, smear=None):
-        format_statbox(all_stat=True, x=.86 if draw_ph else .95)
         times = choose(x, self.get_all_cft, thresh=thresh)
         self.smear_times(times, smear)
         title = '{:.0f}% Constrant Fraction Times'.format(thresh * 100)
         h = self.Draw.distribution(times, self.Ana.get_t_bins(bin_size), title, lm=.13, rm=.12 if draw_ph else None, show=show, x_tit='Constant Fraction Time [ns]', y_off=1.8)
-        self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, show=draw_ph)
+        c = self.draw_ph(get_last_canvas(), bin_size, times, y, x_range, y_range, show=draw_ph)
+        format_statbox(h, all_stat=True, c=c)
         return h
 
     def draw_height_vs_cft(self, bin_size=None, show=True):
@@ -467,8 +463,7 @@ class PeakAnalysis(PadSubAnalysis):
         y = self.get_all_cft() if signal else array(self.find_all_cft()).astype('d')
         h.FillN(x.size, x.astype('d'), y.astype('d'), ones(x.size))
         format_histo(h, y_tit='Constrant Fraction Time [ns]', x_tit='Peak Time [ns]', y_off=1.3)
-        format_statbox(entries=True, x=.86)
-        self.Draw(h, show=show, lm=.11, draw_opt='colz', rm=.12)
+        self.Draw(h, show=show, lm=.11, draw_opt='colz', rm=.12, stats=set_statbox(entries=True, w=.2))
     # endregion cft
     # ----------------------------------------
 
@@ -579,8 +574,7 @@ class PeakAnalysis(PadSubAnalysis):
         h = TH1F('hrm', 'Raw Model Peak Times', *self.Ana.get_t_bins())
         h.FillN(times.size, times, ones(times.size))
         format_histo(h, x_tit='Signal Peak Time [ns]', y_tit='Number of Entries', y_off=1.8, fill_color=Draw.FillColor)
-        format_statbox(entries=1)
-        self.Draw(h, lm=.13, show=show)
+        self.Draw(h, lm=.13, show=show, stats=set_statbox(entries=True, w=.2))
 
     def model1(self, n=1e6, redo=False, scale=None, landau_width=3, cft=False):
         scale = self.find_scale() if scale is None else scale

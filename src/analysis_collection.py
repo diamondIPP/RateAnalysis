@@ -180,9 +180,8 @@ class AnalysisCollection(Analysis):
             values = sort([flux.n for flux in self.get_fluxes()])
             h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
             h.FillN(values.size, values, full(values.size, 1, 'd'))
-            format_statbox(entries=True, h=.2)
             format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
-            self.Draw(h, lm=.07, logx=True, show=show, h=.75, w=1.5, bm=.14)
+            self.Draw(h, lm=.07, logx=True, show=show, h=.75, w=1.5, bm=.14, stats=set_entries())
             s = TSpectrum(20)
             s.Search(h, 1)
             bins = sorted(s.GetPositionX()[i] for i in range(s.GetNPeaks()))
@@ -292,10 +291,9 @@ class AnalysisCollection(Analysis):
                 return 0
             values = self.get_pulse_heights(runs=runs, redo=redo, err=False)
             gr = Draw.make_tgrapherrors(self.get_fluxes(runs=runs), values, title='Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
-            format_statbox(entries=2, only_fit=True)
             gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
             format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
-            self.Draw(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show)
+            self.Draw(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show, stats=set_statbox(fit=True))
             if len(values) == 1:
                 return .01  # take 1% if there is only one measurement below the given flux
             return mean_sigma(values, err=False)[1]
@@ -375,9 +373,8 @@ class AnalysisCollection(Analysis):
         y_range = choose(y_range, ax_range(get_graph_y(mg.GetListOfGraphs()[0], err=False), fl=.5, fh=.2, rnd=True))
         format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, draw_first=True, y_range=y_range, **self.get_x_args(vs_time))
         if fit:
-            format_statbox(only_fit=1, form='2.1f')
             mg.GetListOfGraphs()[0].Fit('pol0', 'qs')
-        self.Draw(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=show, lm=.14, draw_opt='ap', logx=not vs_time, grid=vs_time)
+        self.Draw(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=show, lm=.14, draw_opt='ap', logx=not vs_time, grid=vs_time, stats=set_statbox(fit=fit, form='2.1f', stats=fit))
         return mg
 
     def draw_full_pulse_height(self, bin_width=10000, show=True, rel_t=True, redo=False, with_flux=True):
@@ -442,7 +439,6 @@ class AnalysisCollection(Analysis):
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
             return
-        format_statbox(all_stat=True)
         h = self.Draw.distribution(rel_values, [40, -2, 2], 'Relative Signal Spread', x_tit='Relative Signal', y_tit='Number of Entries', show=False)
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return rel_values
@@ -514,8 +510,7 @@ class AnalysisCollection(Analysis):
         set_root_output(False)
         g.Fit(f, 'q')
         format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Pulse Height [mV]', y_off=1.4, x_range=self.Bins.FluxRange if logx else [0, 10100])
-        format_statbox(only_fit=True, x=.5, y=.45)
-        self.Draw(g, logx=logx, lm=.12)
+        self.Draw(g, logx=logx, lm=.12, stats=set_statbox(fit=True))
         l1 = Draw.horizontal_line(f.GetParameter(0), .1, 1e6, color=2, style=7, w=2)
         l2 = Draw.horizontal_line(f.GetParameter(0) - f.GetParameter(1) + f.GetParameter(3), .1, 1e6, color=4, style=7, w=2)
         leg = Draw.make_legend(w=.2)
@@ -543,12 +538,12 @@ class AnalysisCollection(Analysis):
         g = self.Draw.graph(self.get_fluxes(rel_error=.01), currents, title='Leakage Current vs. Flux', show=show, lm=.13, draw_opt='ap', logx=True, logy=True)
         format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Current [nA]', y_off=1.3, y_range=choose(c_range, [.1, max(currents).n * 2]), x_range=Bins.FluxRange)
         if fit:
-            format_statbox(only_fit=True, y=.33, entries=6, w=.22)
             f = TF1('fcf', 'pol1', .1, 1e5)
             f.SetParLimits(0, .1, 5)
             f.SetParLimits(1, 1e-5, 5e-3)
             g.Fit('fcf', 'q')
         Draw.irradiation(make_irr_string(self.get_irradiation()))
+        format_statbox(g, fit=fit, all_stat=True, w=.22)
         self.Draw.save_plots('FluxCurrent', show=show)
         return g
     # endregion CURRENT
