@@ -239,7 +239,6 @@ class PadAnalysis(DUTAnalysis):
         cut_string = choose(self.Cut(cut) + self.Cut.get('tracks'), self.Cut.generate_custom(exclude=['fiducial']), decider=cut)
         thresh = self.Pedestal.get_mean().n * n_sigma
         e, y, x = self.get_root_vec(var=['({}>{})*100'.format(self.get_signal_var(), thresh)] + self.get_track_vars(), cut=cut_string)
-        format_statbox(entries=True, x=.81)
         p = self.Draw.prof2d(x, y, e, self.Bins.get_global(res, mm=True), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
         set_2d_ranges(p, dx=3, dy=3)
         self.draw_fid_cut(scale=10)
@@ -270,7 +269,6 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region PULSE HEIGHT
     def draw_disto_vs_time(self, bin_width=.2, signal=None, evnt_corr=False, off_corr=False, rel_t=False, show=True):
-        format_statbox(entries=True, x=.84)
         t, ph = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(signal, evnt_corr, off_corr)], cut=self.Cut())
         bins = self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)
         h = self.Draw.histo_2d(t, ph, bins, 'Signal vs. Time', pal=53, x_tit='Time [min]', y_tit='Pulse Height [au]', t_ax_off=self.get_t_off(rel_t), show=False)
@@ -300,13 +298,13 @@ class PadAnalysis(DUTAnalysis):
             return self.Draw.profile(t, ph, self.Bins.get_time(), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
 
         pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(Bins.Size, '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
-        format_statbox(only_fit=True, w=.3)
         p = do_pickle(pickle_path, f, redo=redo)
         y = get_hist_vec(p, err=False)
         y_range = ax_range(min(y), max(y), .5, .5) if y_range is None else y_range
         format_histo(p, name='Fit Result', x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]], t_ax_off=self.get_t_off(rel_t), y_range=y_range, ndivx=505)
         self.Draw(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, pickle_path)
+        format_statbox(p, fit=True)
         self.Draw.save_plots('PulseHeight{}'.format(Bins.Size), show=show, save=save, prnt=prnt)
         return p, fit
 
@@ -338,10 +336,9 @@ class PadAnalysis(DUTAnalysis):
             return self.Draw.distribution(values, self.Bins.get_pad_ph(bin_width, mean(values)), show=False, x_tit='Pulse Height [mV]', y_off=2)
 
         suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=self.Cut(cut).GetName(), n=self.get_short_regint(sig))
-        format_statbox(all_stat=True, w=.3)
         h = do_pickle(self.make_simple_pickle_path('Histo', suffix, 'PulseHeight'), func, redo=redo)
         format_histo(h, x_range=choose(x_range, ax_range(0, 3, .1, h=h)), normalise=normalise)
-        self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save)
+        self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save, stats=None)
         return h
 
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
@@ -358,7 +355,6 @@ class PadAnalysis(DUTAnalysis):
         x, y = self.Peaks.get_all_tot(), self.Run.get_root_vec(var=self.get_signal_var(), cut=self.Cut())
         cut = (x > 0) & (x < 3 * mean(x))
         m, s = mean_sigma(x[cut], err=False)
-        format_statbox(entries=True, x=.84)
         return self.Draw.histo_2d(x[cut], y[cut], Bins.make(m - 4 * s, m + 4 * s, bin_size) + self.Bins.get_pad_ph(1), 'Pulse Height vs. ToT', y_tit='Pulse Height [mV]', x_tit='ToT [ns]', show=show)
 
     def draw_ph_tot(self, bin_size=.5, show=True):
@@ -374,12 +370,10 @@ class PadAnalysis(DUTAnalysis):
     def draw_signal_vs_cft(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
         x, y = choose(x, self.Peaks.get_all_cft(thresh)), choose(y, self.get_ph_values())
         title = 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100)
-        format_statbox(all_stat=True)
         return self.Draw.profile(x, y, self.get_t_bins(bin_size), title, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', show=show)
 
     def draw_signal_vs_times(self, bin_size=.2, show=True):
         x, y, zz = array(self.Peaks.get_from_tree()), self.Peaks.get_all_cft(), self.get_ph_values()
-        format_statbox(entries=True, x=.84)
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_triggercell(self, bin_width=10, t_corr=True, cut=None, show=True):
@@ -388,7 +382,6 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_ph_pathlength(self, bin_size=.1, show=True):
         x, y = self.get_root_vec(var=[self.get_track_length_var(), self.get_signal_var()], cut=self.Cut.generate_custom(exclude=['slope_x', 'slope_y']))
-        format_statbox(all_stat=True)
         self.Draw.profile(x, y, Bins.make(*array([0, 1]) + self.DUT.Thickness, bin_size), 'Pulse Height vs. Path Length', x_tit='Distance [#mum]', y_tit='Pulse Height [mV]', ndivx=405, show=show)
 
     def draw_ph_peakint(self, show=True):
