@@ -58,17 +58,16 @@ class InfoLegend(object):
 
         self.Objects.append([legend, git_text])
 
-        if show:
-            pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad'] if all_pads else [canvas]
-            pads = [canvas] if not pads else pads
-            for pad in pads:
-                pad.cd()
-                if self.ShowGit:
-                    git_text.Draw()
-                if self.ShowInfo:
-                    legend.Draw()
-                pad.Modified()
-            canvas.Update()
+        pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad'] if all_pads else [canvas]
+        pads = [canvas] if not pads else pads
+        for pad in pads:
+            pad.cd()
+            if self.ShowGit:
+                git_text.Draw()
+            if self.ShowInfo:
+                legend.Draw()
+            pad.Modified()
+        canvas.Update()
         return legend, git_text
 
     def get(self, canvas=None):
