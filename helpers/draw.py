@@ -46,6 +46,9 @@ class Draw(object):
     FillColor = 871
     Font = 42
 
+    DefaultStats = {'x2': None, 'y2': None, 'h': None, 'w': .3, 'entries': False, 'm': False, 'rms': False, 'all_stat': True, 'fit': False, 'center_x': False, 'center_y': False, 'form': None}
+    Stats = {}
+
     def __init__(self, config='', verbose=True):
 
         # Basics
@@ -333,7 +336,7 @@ class Draw(object):
 
     @staticmethod
     def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logx=None, logy=None, logz=None, grid=None, gridy=None, gridx=None, phi=None, theta=None,
-              leg=None, canvas=None, sumw2=None):
+              leg=None, canvas=None, sumw2=None, stats=False):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
@@ -348,9 +351,11 @@ class Draw(object):
             for i_leg in make_list(leg):
                 i_leg.Draw('same')
         set_root_output(True)
+        if stats or stats is None:
+            format_statbox(th, **Draw.Stats if stats else Draw.DefaultStats)
         return Draw.add(c, th, leg)[0]
 
-    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, w=1, h=1, **kwargs):
+    def distribution(self, values, binning=None, title='', thresh=.02, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, **kwargs):
         values = make_darray(values)
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
@@ -358,7 +363,7 @@ class Draw(object):
         th = TH1F(Draw.get_name('h'), title, *choose(binning, make_bins, values=values, thresh=thresh))
         fill_hist(th, values)
         format_histo(th, **kwargs)
-        self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h)
+        self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats)
         return th
 
     def graph(self, x, y, c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
@@ -368,17 +373,17 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c)
         return g
 
-    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, **kwargs):
+    def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         p = TProfile(Draw.get_name('p'), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
-        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz)
+        self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
 
-    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', **kwargs):
+    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
@@ -386,10 +391,11 @@ class Draw(object):
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, pal=55, **kwargs)
-        self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt)
+        set_statbox(entries=True, w=.2) if stats is None else do_nothing()
+        self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', **kwargs):
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
@@ -398,7 +404,8 @@ class Draw(object):
         h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz)
+        set_statbox(entries=True, w=.2) if stats is None else do_nothing()
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, stats=True if stats is None else stats)
         return h
 
     def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
@@ -569,21 +576,38 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     return h
 
 
-def format_statbox(th, x2=None, y2=None, h=None, w=.25, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None):
-    p = next(o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName())
-    c = get_last_canvas(warn=False)
-    r = c.GetWindowHeight() / c.GetWindowWidth()
-    x2, y2 = choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
-    cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
-    stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
-    h = choose(h, .05 / r * stats.nonzero()[0].size)
-    p.SetX1NDC(cx - w / 2 if center_x else x2 - w)
-    p.SetX2NDC(cx + w / 2 if center_x else x2)
-    p.SetY1NDC(cy - h / 2 if center_y else y2 - h)
-    p.SetY2NDC(cy + h / 2 if center_y else y2)
-    p.SetOptStat(int('100000{}{}{}0'.format(*stats)))
-    p.SetOptFit(int(fit))
-    p.SetFitFormat(form) if form is not None else do_nothing()
+def set_statbox(x2=None, y2=None, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None, stats=True):
+    Draw.Stats = {'x2': x2, 'y2': y2, 'h': h, 'w': w, 'entries': entries, 'm': m, 'rms': rms, 'all_stat': all_stat, 'fit': fit, 'center_x': center_x, 'center_y': center_y, 'form': form}
+    return stats
+
+
+def set_entries():
+    Draw.Stats = {'entries': True, 'w': .2}
+    return True
+
+
+def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None, c=None):
+    c = choose(c, get_last_canvas(warn=False))
+    update_canvas(c)
+    f = next((o for o in th.GetListOfFunctions() if 'TF1' in o.ClassName()), None)
+    if 'TGraph' in th.ClassName() and fit and f:
+        gStyle.SetOptFit(True)
+    p = next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
+    if p is not None:
+        r = c.GetWindowHeight() / c.GetWindowWidth()
+        x2, y2 = choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
+        cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
+        stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
+        fit_pars = f.GetNpar() + 1 if fit and f is not None else 0
+        h = choose(h, .05 / r * (stats.nonzero()[0].size + fit_pars))
+        p.SetX1NDC(cx - w / 2 if center_x else x2 - w)
+        p.SetX2NDC(cx + w / 2 if center_x else x2)
+        p.SetY1NDC(cy - h / 2 if center_y else y2 - h)
+        p.SetY2NDC(cy + h / 2 if center_y else y2)
+        p.SetOptStat(int('100000{}{}{}0'.format(*stats)))
+        p.SetOptFit(int(fit))
+        p.SetFitFormat(form) if form is not None else do_nothing()
+        update_canvas(c)
 
 
 def format_axis(axis, h, title, tit_offset, tit_size, centre_title, lab_size, label_offset, limits, ndiv, tick_size, color=None):
