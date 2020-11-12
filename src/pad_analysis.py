@@ -159,8 +159,9 @@ class PadAnalysis(DUTAnalysis):
     def get_signal_range(self, lfac=0, rfac=.3, t_corr=True, region=None):
         return ax_range(self.load_region_name(region=region) * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
 
-    def get_peak_integral(self, name):
-        return self.Run.PeakIntegrals[self.DUT.Number - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name]
+    def get_peak_integral(self, name=None):
+        name = choose(name, self.PeakIntegralName)
+        return array(self.Run.PeakIntegrals[self.DUT.Number - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name])
 
     def get_short_regint(self, signal=None, signal_type='signal'):
         return self.get_all_signal_names(signal_type)[signal if signal is not None else self.SignalName]
@@ -230,6 +231,9 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pulser_rate(self, show=True, prnt=True):
         self.Pulser.draw_rate(show=show, prnt=prnt)
+
+    def draw_region(self, region=None):
+        self.Waveform.draw_region(region)
     # endregion ALIASES
     # ----------------------------------------
 
