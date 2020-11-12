@@ -309,6 +309,7 @@ class DUTAnalysis(Analysis):
         return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, prnt=prnt)
 
     def get_fid_bins(self, m, n):
+        n = choose(n, m)
         x, y = self.Cut.load_fiducial() * 10
         x_bins = linspace(x[0], x[2], m + 1)
         y_bins = linspace(y[0], y[2], n + 1)
@@ -319,7 +320,7 @@ class DUTAnalysis(Analysis):
         cut = self.Cut.generate_sub_fid('f{}{}{}{}'.format(m, n, mi, ni), *array([x[mi], x[mi + 1], y[ni], y[ni + 1]]) / 10)
         return self.get_sub_events(cut)
 
-    def split_signal_map(self, m=2, n=2, grid=True, redo=False, show=True, z_range=None):
+    def split_signal_map(self, m=2, n=None, grid=True, redo=False, show=True, z_range=None):
         m, x_bins, n, y_bins = self.get_fid_bins(m, n)
         h = self.draw_signal_map(bins=[m, x_bins, n, y_bins], show=False, fid=True, redo=redo)
         format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0, z_range=z_range)
@@ -377,6 +378,14 @@ class DUTAnalysis(Analysis):
         x_range = choose(x_range, ax_range(x, fl=.1, fh=.1))
         h = self.Draw.distribution(x, Bins.make(*x_range, n=sqrt(x.size)), 'Signal Map Distribution', x_tit='Pulse Height [mV]', y_off=2, lm=.15, show=show, save=save)
         return mean_sigma(x) if ret_value else h
+
+    def draw_split_map_disto(self, m, n=None, x_range=None, fit=True, normalise=False, show=True):
+        x = get_2d_hist_vec(self.split_signal_map(m, n, show=False)[0]) / (self.get_pulse_height() if normalise else 1)
+        h = self.Draw.distribution(x, Bins.make(*choose(x_range, ax_range(x, 0, .1, .4, thresh=3)), n=sqrt(x.size)), 'Signal Map Distribution',
+                                   x_tit='{}Pulse Height{}'.format(*['Normalised ', ''] if normalise else ['', ' [mV]']), show=show)
+        h.Fit('gaus', 'qs{}'.format('' if fit else '0'))
+        format_statbox(h, all_stat=True, fit=fit)
+        return mean_sigma(x)
 
     def get_sm_std(self, res=None, redo=False):
         return self.draw_sig_map_disto(show=False, res=res, redo=redo, normalise=True, ret_value=True, save=False)[1]
