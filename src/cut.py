@@ -260,7 +260,7 @@ class Cut(SubAnalysis):
 
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', add=None, prnt=True):
         self.Ana.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
-        return self.CutStrings.generate_custom(exclude, include, invert, name) + Cut.to_string(add)
+        return self.CutStrings.generate_custom(exclude, include, invert, name) + TCut(Cut.to_string(add))
     # endregion GENERATE
     # ----------------------------------------
 
