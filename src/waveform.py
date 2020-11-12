@@ -106,6 +106,13 @@ class Waveform(PadSubAnalysis):
 
     def get_average_rise_time(self, p=.1, redo=False):
         return do_pickle(self.make_simple_pickle_path('RT', int(p * 100)), self.draw_average_rise_time, redo=redo, p=p, show=False)
+
+    def get_max(self, h, region=None):
+        x, y = get_graph_vecs(h, err=False)
+        xmin, xmax = self.Ana.get_region(region=region) * self.BinWidth
+        cut = (x >= xmin) & (x <= xmax)
+        i_max = abs(y[cut]).argmax()
+        return x[cut][i_max], y[cut][i_max]
     # endregion GET
     # ----------------------------------------
 
@@ -137,7 +144,7 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.18, w=1.5, h=.5, grid=1, logz=True)
         return h, n
 
-    def draw_single(self, cut='', event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):
+    def draw_single(self, cut=None, event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):
         h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, draw_opt=draw_opt, show=show)
         if show_noise:
             self.__draw_noise()
@@ -165,13 +172,6 @@ class Waveform(PadSubAnalysis):
             leg.AddEntry(gr, names[i], 'lp')
         self.Draw(mg, show=show, draw_opt='A', w=1.5, h=0.75, lm=.07, rm=.045, bm=.2, leg=leg)
         format_histo(mg, x_range=ax_range(self.Ana.get_region(region='e') * self.BinWidth, None, 0, .3), y_off=.7, x_tit='Time [ns]', y_tit='Signal [mV]')
-
-    def draw_region(self, region=None):
-        regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
-        for region in regions:
-            x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
-            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2)
-        Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
     # endregion WAVEFORMS
     # ----------------------------------------
 
@@ -236,6 +236,57 @@ class Waveform(PadSubAnalysis):
     # endregion AVERAGE
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region SHOW INTEGRATION
+    def draw_peak_pos(self, h):
+        x, y = self.get_max(h)
+        Draw.vertical_line(x, -1000, 1000, color=4, w=3)
+        Draw.tlatex(x + 2, y, 'Peak Position', color=4, align=12)
+
+    def draw_region(self, region=None):
+        regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
+        for region in regions:
+            x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
+            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2)
+        Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
+
+    @staticmethod
+    def draw_integral(h, xmin, xmax, color=2):
+        x, y = get_graph_vecs(h, err=False)
+        cut = (x > xmin) & (x < xmax)
+        i0, i1 = where(cut)[0][[0, -1]]  # find first and last index fulfilling the condition
+        ymin, ymax = interpolate_y(x[i0 - 1], x[i0], y[i0 - 1], y[i0], xmin), interpolate_y(x[i1], x[i1 + 1], y[i1], y[i1 + 1], xmax)
+        x = concatenate([[xmin] * 2, x[cut], [xmax] * 2])
+        y = concatenate([[0, ymin], y[cut], [ymax, 0]])
+        Draw.polygon(x=x, y=y, line_color=color, fillstyle=3344, fill_color=color)
+
+    def draw_peakint(self, x, peakint=None, y=None):
+        y = choose(y, -20 * self.Polarity)
+        imin, imax = self.Ana.get_peak_integral(peakint) * self.BinWidth
+        Draw.arrow(x - imin, x, y, y, col=618, width=3, opt='<', size=.02)
+        Draw.arrow(x + imax, x, y, y, col=434, width=3, opt='<', size=.02)
+
+    def draw_sig_peakint(self, h, peakint=None):
+        self.draw_peakint(self.get_max(h)[0], peakint)
+
+    def draw_sig_int(self, h, peakint=None):
+        xmin, xmax = self.Ana.get_peak_integral(peakint) * [-1, 1] * self.BinWidth + self.get_max(h)[0]
+        format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
+        self.draw_integral(h, xmin, xmax)
+
+    def draw_pedestal(self, peakint=None):
+        x, y = self.Ana.get_region('pedestal')[0] * self.BinWidth, 20 * self.Polarity
+        Draw.vertical_line(x, -1000, 1000, color=4, w=3)
+        Draw.tlatex(x + 1, -y, 'Pedestal', color=4, align=12)
+        self.draw_peakint(x, peakint)
+
+    def draw_ped_int(self, h, peakint=None):
+        xmin, xmax = (self.Ana.get_peak_integral(peakint) * [-1, 1] + self.Ana.get_region('pedestal')[0]) * self.BinWidth
+        format_histo(h, y_range=[-30, 30], x_range=ax_range(xmin, xmax, .3, 1.3))
+        self.draw_integral(h, xmin, xmax, color=4)
+    # endregion SHOW INTEGRATION
+    # ----------------------------------------
+
     def __draw_noise(self, pol=True):
         c = get_last_canvas()
         mean_noise = self.Ana.Pedestal.get_mean()
@@ -247,18 +298,15 @@ class Waveform(PadSubAnalysis):
 
     def draw_rise_time(self, cut=None, show=True):
         values = self.get_root_vec(var='rise_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        format_statbox(all_stat=True)
         return self.Draw.distribution(values, Bins.make(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         values = self.get_root_vec(var='fall_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        format_statbox(all_stat=True)
         return self.Draw.distribution(values, Bins.make(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
 
     def draw_rise_time_map(self, res=None, cut=None, show=True):
         cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
         rt, y, x = self.get_root_vec(var=['rise_time[{}]'.format(self.Channel)] + list(self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)), cut=cut)
-        format_statbox(entries=True, x=.84)
         p = self.Draw.prof2d(x, y, rt, self.Ana.Bins.get_global(res, mm=True), 'Rise Time Map', show=show, draw_opt='colz')
         format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
         self.Ana.draw_fid_cut()
