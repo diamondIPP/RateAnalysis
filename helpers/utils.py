@@ -161,6 +161,12 @@ def interpolate_x(x1, x2, y1, y2, y):
     return (y - p0) / p1 if p1 else 0
 
 
+def interpolate_y(x1, x2, y1, y2, x):
+    p1 = get_p1(x1, x2, y1, y2)
+    p0 = get_p0(x1, y1, p1)
+    return p1 * x + p0
+
+
 def get_p1(x1, x2, y1, y2):
     return (y1 - y2) / (x1 - x2) if x1 != x2 else 0
 
