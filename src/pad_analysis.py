@@ -2,7 +2,7 @@ from ROOT import gRandom, TCut
 from numpy import quantile, insert, sum
 
 from src.pedestal import PedestalAnalysis
-from src.Timing import TimingAnalysis
+from src.timing import TimingAnalysis
 from src.dut_analysis import *
 from src.pad_cut import PadCut
 from src.pad_run import PadRun
@@ -156,8 +156,8 @@ class PadAnalysis(DUTAnalysis):
     def get_region(self, sig_type='signal', region=None):
         return array(self.Run.IntegralRegions[self.DUT.Number - 1][region if region is not None and '_' in region else self.load_region_name(sig_type, region)])
 
-    def get_signal_range(self, lfac=0, rfac=.3, t_corr=True, region=None):
-        return ax_range(self.load_region_name(region=region) * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
+    def get_signal_range(self, lfac=0, rfac=0, t_corr=True, region=None):
+        return ax_range(self.get_region(region=region) * (self.DigitiserBinWidth if t_corr else 1), None, lfac, rfac)
 
     def get_peak_integral(self, name=None):
         name = choose(name, self.PeakIntegralName)
