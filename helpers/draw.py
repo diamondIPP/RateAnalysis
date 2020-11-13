@@ -400,7 +400,7 @@ class Draw(object):
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
-        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
+        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size)) if binning is None else None
         h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
