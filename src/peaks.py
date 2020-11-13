@@ -47,7 +47,7 @@ class PeakAnalysis(PadSubAnalysis):
         return self.Ana.Waveform.get_binning(bin_size)
 
     def get_from_tree(self):
-        return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_root_vec, var=self.Ana.PeakName, cut=self.Cut(), dtype='f2')
+        return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_tree_vec, var=self.Ana.PeakName, cut=self.Cut(), dtype='f2')
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
         signal_ind, noind = self.get_signal_indices()

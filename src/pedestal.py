@@ -63,13 +63,13 @@ class PedestalAnalysis(PadSubAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw_under_signal(self, name=None, show=True):
-        x = self.get_root_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=self.Cut.get_pulser().Value)
+        x = self.get_tree_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=self.Cut.get_pulser().Value)
         self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', x_tit='Pedestal [mV]', y_off=1.8, show=show, lm=.13, x_range=ax_range(x, 0, .1, .1, thresh=5))
 
     def draw_distribution(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         def f():
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
-            x = self.get_root_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
+            x = self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
             return self.Draw.distribution(x, self.get_bins(max(.1, 30 / sqrt(x.size))), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
         h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))), f, redo=redo)
         format_histo(h, normalise=normalise, sumw2=False)
@@ -106,21 +106,21 @@ class PedestalAnalysis(PadSubAnalysis):
         return b
 
     def draw_pulse_height(self, name=None, rel_t=False, show=True):
-        x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
+        x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
         self.Draw.profile(x, y, self.Bins.get_time(), 'Pedestal Trend', y_tit='Pedestal [mV]', show=show, **self.get_t_args(rel_t), stats=set_statbox(entries=True, w=.2))
 
     def draw_signal_time(self, name=None, rel_t=False, show=True):
-        x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
+        x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
         y_range = ax_range(y, 0, .2, .2)
         return self.Draw.histo_2d(x, y, self.Bins.get_time() + self.get_bins(.5), 'Pedestal vs. Time', y_tit='Pedestal [mV]', pal=53, show=show, y_range=y_range, **self.get_t_args(rel_t))
 
     def test(self):
-        x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut())
+        x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut())
         return binned_stats(x, y, mean_sigma, self.Bins.get_time()[-1])
 
     def draw_trend(self, signal_name=None, bin_size=None, sigma=False, rel_t=False, redo=False, show=True):
         def f():
-            (x, y), bins = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut()), self.Bins.get_time(bin_size)[-1]
+            (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut()), self.Bins.get_time(bin_size)[-1]
             x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
             name = 'Sigma' if sigma else 'Pedestal'
             return self.Draw.graph(x, y, title='{} Trend'.format(name), y_tit='{} [mV]'.format(name), show=False)

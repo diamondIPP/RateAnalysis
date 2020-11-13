@@ -720,10 +720,9 @@ def get_time_vec(sel, run=None):
     if tree is None:
         return
     tree.SetEstimate(-1)
-    entries = tree.Draw('time', '', 'goff')
-    time_vec = get_root_vec(tree, entries)
-    fill_empty_time_entries(time_vec)
-    time_vec = correct_time(time_vec, run)
+    tvec = get_tree_vec(tree, 'time')
+    fill_empty_time_entries(tvec)
+    time_vec = correct_time(tvec, run)
     return time_vec
 
 
@@ -778,18 +777,12 @@ def del_rootobj(obj):
         pass
 
 
-def get_root_vec(tree, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
-    if var is not None:
-        strings = make_list(var)
-        n = tree.Draw(':'.join(strings), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
-        dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
-        vals = [get_root_vec(tree, n, i, dtypes[i]) for i in range(strings.size)]
-        return vals[0] if len(vals) == 1 else vals
-    return get_buf(tree.GetVal(ind), n, dtype)
-
-
-def get_root_vecs(tree, n, n_ind, dtype=None):
-    return [get_root_vec(tree, n, i, dtype) for i in range(n_ind)]
+def get_tree_vec(tree, var, cut='', dtype=None, nentries=None, firstentry=0):
+    strings = make_list(var)
+    n = tree.Draw(':'.join(strings), cut, 'goff', choose(nentries, tree.kMaxEntries), firstentry)
+    dtypes = dtype if type(dtype) in [list, ndarray] else full(strings.size, dtype)
+    vals = [get_buf(tree.GetVal(i), n, dtypes[i]) for i in range(strings.size)]
+    return vals[0] if len(vals) == 1 else vals
 
 
 def get_arg(arg, default):

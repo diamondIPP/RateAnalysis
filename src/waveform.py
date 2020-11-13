@@ -32,7 +32,7 @@ class Waveform(PadSubAnalysis):
         return Bins.make(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
     def get_trigger_cells(self, redo=False):
-        return do_hdf5(self.make_simple_hdf5_path('TC', self.get_cut_name()), self.Run.get_root_vec, redo=redo, var='trigger_cell', cut=self.Cut(), dtype='i2')
+        return do_hdf5(self.make_simple_hdf5_path('TC', self.get_cut_name()), self.Run.get_tree_vec, redo=redo, var='trigger_cell', cut=self.Cut(), dtype='i2')
 
     def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
@@ -43,7 +43,7 @@ class Waveform(PadSubAnalysis):
             self.Ana.PBar.start(events.size)
             for ev in events:  # fastest found method...
                 n = self.Tree.Draw('wf{}'.format(self.Channel if channel is None else channel), '', 'goff', 1, ev)
-                waveforms.append(self.Ana.Polarity * self.Run.get_root_vec(n, dtype='f2'))
+                waveforms.append(self.Ana.Polarity * self.Run.get_tree_vec(n, dtype='f2'))
                 self.Ana.PBar.update()
             return array(waveforms)
         return do_hdf5(self.make_simple_hdf5_path(suf=self.get_cut_name(), dut=self.Channel if channel is None else channel), f, redo=redo)
@@ -96,7 +96,7 @@ class Waveform(PadSubAnalysis):
         n_events = self.Run.find_n_events(n, self.Cut(cut), start_event)
         self.Tree.SetEstimate(n * 1024)
         n_entries = self.Tree.Draw('wf{ch}:trigger_cell'.format(ch=channel), self.Cut(cut), 'goff', n_events, start_event)
-        values = self.Run.get_root_vec(n_entries)
+        values = self.Run.get_tree_vec(n_entries)
         times = arange(self.Run.NSamples, dtype='u2') * (1 if raw else self.BinWidth)
         if t_corr:
             times = array([v for lst in [self.get_calibrated_times(int(self.Tree.GetV2()[1024 * i])) for i in range(n)] for v in lst])
@@ -228,7 +228,7 @@ class Waveform(PadSubAnalysis):
         update_canvas()
 
     def draw_average(self, n=100, cut=None, align_peaks=True, show=True, show_noise=False):
-        (values, times), peaks = self.get_tree_values(n, self.Cut(cut)), self.get_root_vec(var=self.Ana.PeakName, cut=self.Cut(cut))[:n]
+        (values, times), peaks = self.get_tree_values(n, self.Cut(cut)), self.get_tree_vec(var=self.Ana.PeakName, cut=self.Cut(cut))[:n]
         times -= (peaks[0] - peaks).repeat(self.NSamples) if align_peaks else 0
         self.Draw.profile(times, values, self.get_binning(), 'Averaged Waveform', x_tit='Time [ns]', y_tit='Pulse Height [mv]', stats=0, markersize=.5, show=show)
         if show_noise:
@@ -297,16 +297,16 @@ class Waveform(PadSubAnalysis):
         update_canvas()
 
     def draw_rise_time(self, cut=None, show=True):
-        values = self.get_root_vec(var='rise_time[{}]'.format(self.Channel), cut=self.Cut(cut))
+        values = self.get_tree_vec(var='rise_time[{}]'.format(self.Channel), cut=self.Cut(cut))
         return self.Draw.distribution(values, Bins.make(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
 
     def draw_fall_time(self, cut=None, show=True):
-        values = self.get_root_vec(var='fall_time[{}]'.format(self.Channel), cut=self.Cut(cut))
+        values = self.get_tree_vec(var='fall_time[{}]'.format(self.Channel), cut=self.Cut(cut))
         return self.Draw.distribution(values, Bins.make(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
 
     def draw_rise_time_map(self, res=None, cut=None, show=True):
         cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
-        rt, y, x = self.get_root_vec(var=['rise_time[{}]'.format(self.Channel)] + list(self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)), cut=cut)
+        rt, x, y = self.get_tree_vec(var=['rise_time[{}]'.format(self.Channel)] + self.Ana.get_track_vars(), cut=cut)
         p = self.Draw.prof2d(x, y, rt, self.Ana.Bins.get_global(res, mm=True), 'Rise Time Map', show=show, draw_opt='colz')
         format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
         self.Ana.draw_fid_cut()

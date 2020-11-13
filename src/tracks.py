@@ -18,10 +18,10 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region GET
     def get_efficiency(self):
-        return calc_eff(values=self.get_root_vec(var='n_tracks'))
+        return calc_eff(values=self.get_tree_vec(var='n_tracks'))
 
     def get_angles(self, mode='x'):
-        a = self.get_root_vec(var='angle_{}'.format(mode))
+        a = self.get_tree_vec(var='angle_{}'.format(mode))
         return a[a != -999]
 
     def get_mean_angle(self, mode='x', redo=False):
@@ -32,7 +32,7 @@ class Tracks(SubAnalysis):
     def get_residual(self, roc, chi2, mode='x', redo=False):
         def f():
             self.Cut.set_chi2(chi2)
-            values = self.get_root_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
+            values = self.get_tree_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
             return mean_sigma(values)[1]
         return do_pickle(self.make_simple_pickle_path('Res{}'.format(mode.title()), chi2, dut=roc), f, redo=redo)
 
@@ -42,9 +42,9 @@ class Tracks(SubAnalysis):
 
     def get_plane_hits(self):
         t = self.info('getting plane hits...', endl=False)
-        self.Tree.SetEstimate(self.Cut.get_size('tracks') * self.NRocs)
-        n = self.Tree.Draw('cluster_xpos_local:cluster_ypos_local', self.Cut['tracks'], 'goff')
-        x, y = [array(split(vec, arange(self.NRocs, n, self.NRocs))).T * 10 for vec in self.Run.get_root_vecs(n, 2)]
+        self.Tree.SetEstimate(self.Cut.get_size('tracks', excluded=False) * self.NRocs)
+        x, y = self.get_tree_vec(['cluster_xpos_local', 'cluster_ypos_local'], self.Cut['tracks'])
+        x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
         z_positions = genfromtxt(join(self.Run.Converter.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.Run.Converter.TelescopeID)), skip_header=1, usecols=[1, 5])
         z_positions = z_positions[z_positions[:, 0] > -1][:, 1] * 10
         self.add_to_info(t)
@@ -55,7 +55,7 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw_n(self, show=True):
-        p = self.Draw.profile(*self.get_root_vec(var=[self.get_t_var(), 'n_tracks']), self.Bins.get_raw_time(10), 'Number of Tracks vs. Time', x_tit='Time [hh:mm}', y_tit='Number of Tracks',
+        p = self.Draw.profile(*self.get_tree_vec(var=[self.get_t_var(), 'n_tracks']), self.Bins.get_raw_time(10), 'Number of Tracks vs. Time', x_tit='Time [hh:mm}', y_tit='Number of Tracks',
                               t_ax_off=0, fill_color=Draw.FillColor, show=False)
         self.Draw(p, 'NTracksTime', draw_opt='hist', show=show, stats=set_statbox(all_stat=True, center_y=True))
 
@@ -140,7 +140,7 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region RESIDUALS
     def draw_residual(self, roc, mode='', cut=None, x_range=None, fit=False, show=True):
-        x = self.get_root_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4
+        x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4
         h = self.Draw.distribution(x, Bins.make(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
         self.fit_residual(h, show=fit)
         self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))

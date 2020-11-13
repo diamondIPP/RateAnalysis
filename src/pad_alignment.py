@@ -31,12 +31,12 @@ class PadAlignment(EventAligment):
     def update_variables(self):
         """ get additional vectors"""
         t = self.Run.info('Loading pad information from tree ... ', endl=False)
-        self.PulserEvents = get_root_vec(self.InTree, dtype=int, var='Entry$', cut='pulser')
+        self.PulserEvents = get_tree_vec(self.InTree, dtype=int, var='Entry$', cut='pulser')
         self.Run.add_to_info(t)
 
     def check_alignment_fast(self, bin_size=1000):
         """ just check the zero correlation """
-        x, y = get_root_vec(self.InTree, dtype='u4', var=['Entry$', '@col.size()'], cut='pulser')
+        x, y = get_tree_vec(self.InTree, dtype='u4', var=['Entry$', '@col.size()'], cut='pulser')
         bins = histogram2d(x, y, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)

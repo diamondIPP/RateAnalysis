@@ -81,12 +81,12 @@ class DUTAnalysis(Analysis):
     def get_t_args(self, rel_time):
         return {'x_tit': 'Time [hh::mm]', 't_ax_off': self.get_t_off(rel_time)}
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
-        return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
+    def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
+        return self.Run.get_tree_vec(var, cut, dtype, nentries, firstentry)
 
     def get_events(self, cut=None, redo=False):
         cut = self.Cut(cut)
-        return do_hdf5(self.make_simple_hdf5_path('', cut.GetName(), 'Events'), self.get_root_vec, redo, dtype='i4', var='Entry$', cut=cut)
+        return do_hdf5(self.make_simple_hdf5_path('', cut.GetName(), 'Events'), self.get_tree_vec, redo, dtype='i4', var='Entry$', cut=cut)
 
     def get_sub_events(self, cut):
         e = array(self.get_events())
@@ -120,10 +120,8 @@ class DUTAnalysis(Analysis):
         """ :return: signal map data as numpy array [[x], [y], [ph]] with units [[mm], [mm], [mV]]
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
-        y, x = self.Cut.get_track_vars(self.DUT.Number - 1, mm=True)
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
-        n = self.Tree.Draw('{x}:{y}:{z}'.format(z=self.get_ph_str(), x=x, y=y), cut, 'goff')  # *10 to get values in mm
-        return self.Run.get_root_vecs(n, 3)
+        return self.get_tree_vec(self.get_track_vars() + [self.get_ph_str()], cut)
 
     def get_uniformity(self, use_fwc=True, redo=False):
         return do_pickle(self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal'), self.draw_uniformity, redo=redo, show=False, use_fwc=use_fwc)
@@ -284,7 +282,7 @@ class DUTAnalysis(Analysis):
 
         def f():
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            v = self.get_root_vec(var=list(reversed(self.get_track_vars())) + ([] if hitmap else [self.get_ph_str()]), cut=cut)
+            v = self.get_tree_vec(var=self.get_track_vars() + ([] if hitmap else [self.get_ph_str()]), cut=cut)
             h1 = (self.Draw.histo_2d if hitmap else self.Draw.prof2d)(*v, choose(bins, self.Bins.get_global(res, mm=True)), 'Track Hit Map' if hitmap else 'Signal Map', show=False)
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
@@ -344,13 +342,13 @@ class DUTAnalysis(Analysis):
         return points, wx, wy
 
     def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, x_range=None, show=True):
-        ph, y, x = self.get_root_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        ph, x, y = self.get_tree_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
         return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(mean_ph=mean(ph)), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
-        ph, y, x = self.get_root_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        ph, x, y = self.get_tree_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
         ix, bx, iy, by = self.get_fid_bins(m, n)
         n = cumsum(histogram2d(x, y, [bx, by])[0].flatten().astype('i'))[:-1]  # get the number of events for each bin
         values = split(ph[lexsort((digitize(x, bx), digitize(y, by)))], n)  # bin x and y and sort then ph according to bins
@@ -483,7 +481,7 @@ class DUTAnalysis(Analysis):
         f = TFile('test.root', 'RECREATE')
         t = self.Tree.CloneTree(0)
         n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
-        good_events = self.Run.get_root_vec(n, dtype='i4')
+        good_events = self.Run.get_tree_vec(n, dtype='i4')
         self.PBar.start(n)
         for i, ev in enumerate(good_events):
             self.Tree.GetEntry(ev)

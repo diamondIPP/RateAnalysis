@@ -172,11 +172,11 @@ class PadAnalysis(DUTAnalysis):
     def get_ph_data(self, cut=None):
         """ :return: pulse height data as numpy array [[time] [ph]] with units [[s], [mV]]
             :param cut: applies all cuts if None is provided."""
-        return self.get_root_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
+        return self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
 
     def get_ph_values(self, region=None, name=None, cut=None):
         """ :returns: all pulse height values for a given cut. """
-        return self.Run.get_root_vec(var=self.get_signal_var(name, cut=cut, region=region), cut=self.Cut(cut))
+        return self.Run.get_tree_vec(var=self.get_signal_var(name, cut=cut, region=region), cut=self.Cut(cut))
 
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
         """ :returns: fitted (pol0) pulse height over time """
@@ -242,7 +242,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_efficiency_map(self, res=None, n_sigma=4, cut=None, show=True):
         cut_string = choose(self.Cut(cut) + self.Cut.get('tracks'), self.Cut.generate_custom(exclude=['fiducial']), decider=cut)
         thresh = self.Pedestal.get_mean().n * n_sigma
-        e, y, x = self.get_root_vec(var=['({}>{})*100'.format(self.get_signal_var(), thresh)] + self.get_track_vars(), cut=cut_string)
+        e, x, y = self.get_tree_vec(var=['({}>{})*100'.format(self.get_signal_var(), thresh)] + self.get_track_vars(), cut=cut_string)
         p = self.Draw.prof2d(x, y, e, self.Bins.get_global(res, mm=True), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
         set_2d_ranges(p, dx=3, dy=3)
         self.draw_fid_cut(scale=10)
@@ -273,7 +273,7 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region PULSE HEIGHT
     def draw_disto_vs_time(self, bin_width=.2, signal=None, evnt_corr=False, off_corr=False, rel_t=False, show=True):
-        t, ph = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var(signal, evnt_corr, off_corr)], cut=self.Cut())
+        t, ph = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal, evnt_corr, off_corr)], cut=self.Cut())
         bins = self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)
         h = self.Draw.histo_2d(t, ph, bins, 'Signal vs. Time', pal=53, x_tit='Time [min]', y_tit='Pulse Height [au]', t_ax_off=self.get_t_off(rel_t), show=False)
         self.Draw(h, 'SignalTime', show, draw_opt='colz', rm=.15)
@@ -298,7 +298,7 @@ class PadAnalysis(DUTAnalysis):
         sig = choose(sig, self.SignalName)
 
         def f():
-            ph, t = self.get_root_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
+            ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
             return self.Draw.profile(t, ph, self.Bins.get_time(), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
 
         pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(Bins.Size, '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
@@ -336,7 +336,7 @@ class PadAnalysis(DUTAnalysis):
         def func():
             self.info('Drawing signal distribution for run {} and {}...'.format(self.Run.Number, self.DUT.Name), prnt=prnt)
             nentries = self.Run.NEvents if events is None else self.Run.find_n_events(n=events, cut=str(cut), start=start)
-            values = self.get_root_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut), nentries=nentries, firstentry=start)
+            values = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut), nentries=nentries, firstentry=start)
             return self.Draw.distribution(values, self.Bins.get_pad_ph(bin_width, mean(values)), show=False, x_tit='Pulse Height [mV]', y_off=2)
 
         suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=self.Cut(cut).GetName(), n=self.get_short_regint(sig))
@@ -347,7 +347,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
         xvar, yvar = self.Timing.get_peak_var(corr=True, fine_corr=fine_corr, region=region), self.get_signal_var()
-        x, y = self.get_root_vec(var=[xvar, yvar], cut=self.Cut(cut)) if x is None and y is None else [choose(i, self.get_root_vec(var=var, cut=self.Cut(cut))) for i, var in [(x, xvar), (y, yvar)]]
+        x, y = self.get_tree_vec(var=[xvar, yvar], cut=self.Cut(cut)) if x is None and y is None else [choose(i, self.get_tree_vec(var=var, cut=self.Cut(cut))) for i, var in [(x, xvar), (y, yvar)]]
         bins = choose(xbins, self.get_t_bins(bin_size)) + ([] if prof else self.Bins.get_pad_ph(1))
         h = (self.Draw.profile if prof else self.Draw.histo_2d)(x, y, bins, 'Signal vs Peak Position', show=show, logz=logz)
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', stats=0, y_range=y_range)
@@ -356,7 +356,7 @@ class PadAnalysis(DUTAnalysis):
         return h
 
     def draw_signal_vs_tot(self, bin_size=.5, show=True):
-        x, y = self.Peaks.get_all_tot(), self.Run.get_root_vec(var=self.get_signal_var(), cut=self.Cut())
+        x, y = self.Peaks.get_all_tot(), self.Run.get_tree_vec(var=self.get_signal_var(), cut=self.Cut())
         cut = (x > 0) & (x < 3 * mean(x))
         m, s = mean_sigma(x[cut], err=False)
         return self.Draw.histo_2d(x[cut], y[cut], Bins.make(m - 4 * s, m + 4 * s, bin_size) + self.Bins.get_pad_ph(1), 'Pulse Height vs. ToT', y_tit='Pulse Height [mV]', x_tit='ToT [ns]', show=show)
@@ -367,7 +367,7 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, show=show)
 
     def draw_tot_vs_peaktime(self, corr=True, fine_corr=False, bin_size=None, show=True):
-        x, y = self.Run.get_root_vec(var=self.Timing.get_peak_var(corr, fine_corr), cut=self.Cut()), self.Peaks.get_all_tot()
+        x, y = self.Run.get_tree_vec(var=self.Timing.get_peak_var(corr, fine_corr), cut=self.Cut()), self.Peaks.get_all_tot()
         cut = (y > 0) & (y < 3 * mean(y))
         self.Draw.profile(x[cut], y[cut], self.get_t_bins(bin_size), 'ToT vs. Peaktime', x_tit='Signal Peak Position [ns]', y_tit='ToT [ns]', stats=0, show=show)
 
@@ -381,11 +381,11 @@ class PadAnalysis(DUTAnalysis):
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_triggercell(self, bin_width=10, t_corr=True, cut=None, show=True):
-        x, y = self.get_root_vec(var=['trigger_cell', self.get_signal_var(t_corr=t_corr)], cut=self.Cut(cut))
+        x, y = self.get_tree_vec(var=['trigger_cell', self.get_signal_var(t_corr=t_corr)], cut=self.Cut(cut))
         return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_width), 'Signal vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_pathlength(self, bin_size=.1, show=True):
-        x, y = self.get_root_vec(var=[self.get_track_length_var(), self.get_signal_var()], cut=self.Cut.generate_custom(exclude=['slope_x', 'slope_y']))
+        x, y = self.get_tree_vec(var=[self.get_track_length_var(), self.get_signal_var()], cut=self.Cut.generate_custom(exclude=['slope_x', 'slope_y']))
         self.Draw.profile(x, y, Bins.make(*array([0, 1]) + self.DUT.Thickness, bin_size), 'Pulse Height vs. Path Length', x_tit='Distance [#mum]', y_tit='Pulse Height [mV]', ndivx=405, show=show)
 
     def draw_ph_peakint(self, show=True):

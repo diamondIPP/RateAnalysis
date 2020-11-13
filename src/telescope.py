@@ -49,14 +49,14 @@ class Telescope(SubAnalysis):
     # ----------------------------------------
     # region HITS
     def draw_cluster_size(self, roc, name=None, cut='', show=True):
-        values = self.get_root_vec(var='cluster_size[{}]'.format(roc), cut=self.Cut(cut))
+        values = self.get_tree_vec(var='cluster_size[{}]'.format(roc), cut=self.Cut(cut))
         h = self.Draw.distribution(values, Bins.make(0, 50), 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
         format_histo(h, x_tit='Cluster Size', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(5)])
         self.Draw.save_plots('ClusterSize{}'.format(roc), show=show)
         return h
 
     def draw_n_clusters(self, roc=0, name=None, cut='', show=True):
-        values = self.get_root_vec(var='n_clusters[{}]'.format(roc), cut=self.Cut(cut))
+        values = self.get_tree_vec(var='n_clusters[{}]'.format(roc), cut=self.Cut(cut))
         h = self.Draw.distribution(values, Bins.make(0, 50), 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
         format_histo(h, x_tit='Number of Clusters', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(2) + 1])
         self.Draw.save_plots('NClusters{}'.format(roc), show=show)
@@ -64,7 +64,7 @@ class Telescope(SubAnalysis):
 
     def draw_event(self, event, plane, show=True, grid=True):
         n = self.Tree.Draw('{}:{}'.format(*self.get_hit_vars(plane, cluster=False)), 'plane == {}'.format(plane), 'goff', 1, event)
-        x, y = [self.get_root_vec(n, i) for i in range(2)]
+        x, y = [self.get_tree_vec(n, i) for i in range(2)]
         self.Draw.histo_2d(x, y, self.Bins.get_pixel(), 'Hits in Plane {} for Event {}'.format(plane, event), draw_opt='col', x_tit='col', y_tit='row', rm=.03, stats=0, show=show)
         self.draw_pixel_grid() if grid else do_nothing()
 
@@ -75,7 +75,7 @@ class Telescope(SubAnalysis):
     def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
-        x, y = self.get_root_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
+        x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)
         format_histo(h, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2)
@@ -97,16 +97,16 @@ class Telescope(SubAnalysis):
     # ----------------------------------------
     # region TIME
     def draw_trigger_phase(self, dut=False, cut=None, show=True):
-        values = self.get_root_vec(var='trigger_phase[{}]'.format(1 if dut else 0), cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
+        values = self.get_tree_vec(var='trigger_phase[{}]'.format(1 if dut else 0), cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
         self.Draw.distribution(values, Bins.make(0, 10), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.95, fill_color=Draw.FillColor, show=show, lm=.145, stats=set_entries())
 
     def draw_trigger_phase_trend(self, dut=False, bin_width=None, cut=None, show=True):
-        values, t = self.get_root_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
+        values, t = self.get_tree_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
         p = self.Draw.profile(t, values, self.Bins.get_time(bin_width), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.StartTime)
 
     def draw_time(self, show=True, corr=False):
-        t = self.Run.Time / 1000 if corr else self.get_root_vec(var=self.get_t_var())
+        t = self.Run.Time / 1000 if corr else self.get_tree_vec(var=self.get_t_var())
         t = t[t >= 0]
         g = self.Draw.graph(t - t[0], arange(t.size), title='Events vs Time', draw_opt='al', lm=.13, tm=.11, show=show)
         fit = g.Fit('pol1', 'qs')
@@ -120,7 +120,7 @@ class Telescope(SubAnalysis):
     def draw_beam_current(self, bin_width=30, cut='', rel_t=True, prof=True, show=True, save=True):
         if not self.has_branch('beam_current'):
             return warning('Branch "beam_current" does not exist!')
-        values, t = self.get_root_vec(var=['beam_current', self.get_t_var()], cut=TCut('beam_current < 2500') + TCut(cut))
+        values, t = self.get_tree_vec(var=['beam_current', self.get_t_var()], cut=TCut('beam_current < 2500') + TCut(cut))
         if prof:
             h = self.Draw.profile(t, values, self.Bins.get_raw_time(bin_width), 'Beam Current [mA]', w=1.5, h=.75, lm=.08, draw_opt='hist', fill_color=Draw.FillColor)
         else:
@@ -132,7 +132,7 @@ class Telescope(SubAnalysis):
 
     def draw_plane_rate(self, plane=1, flux=False, rel_t=True, show=True):
         """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
-        rate, t = self.get_root_vec(var=[self.get_rate_var(plane, flux), self.get_t_var()], cut='beam_current < 10000 && rate[{}]<1e9'.format(plane + 1))
+        rate, t = self.get_tree_vec(var=[self.get_rate_var(plane, flux), self.get_t_var()], cut='beam_current < 10000 && rate[{}]<1e9'.format(plane + 1))
         g = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([rate, [0]]), title='Rate of Plane {n}'.format(n=plane), draw_opt='afp', lm=.08, w=1.5, h=.75, show=show)
         format_histo(g, x_tit='Time [hh:mm]', y_tit='{} [Hz]'.format('Flux' if flux else 'Rate'), fill_color=Draw.FillColor, markersize=.4, t_ax_off=self.StartTime if rel_t else 0)
         update_canvas()
@@ -140,7 +140,7 @@ class Telescope(SubAnalysis):
     def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
         if self.has_branch('rate'):
-            flux1, flux2, t = self.get_root_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
+            flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
             flux = mean([flux1, flux2], axis=0)[1:] / 1000
         else:
             t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
@@ -151,7 +151,7 @@ class Telescope(SubAnalysis):
 
     def draw_bc_vs_rate(self, cut='', show=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
-        flux1, flux2, bc = self.get_root_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + ['beam_current'], cut=cut)
+        flux1, flux2, bc = self.get_tree_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + ['beam_current'], cut=cut)
         h = self.Draw.histo_2d(bc, mean([flux1, flux2], axis=0)[1:] / 1000, title='Correlation between Beam Current and Flux', show=show)
         format_histo(h, x_tit='Beam Current [mA]', y_tit='Flux [kHz/cm^{2}]', y_off=1.3, stats=0)
 

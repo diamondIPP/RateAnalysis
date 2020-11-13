@@ -26,8 +26,8 @@ class SubAnalysis(Analysis):
         super().__init__(analysis.TCString, sub_dir=choose(sub_dir, analysis.Draw.SubDir), pickle_dir=pickle_dir)
         self.Config = analysis.Config
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
-        return self.Run.get_root_vec(n, ind, dtype, var, cut, nentries, firstentry)
+    def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
+        return self.Run.get_tree_vec(var, cut, dtype, nentries, firstentry)
 
     def has_branch(self, branch):
         return self.Run.has_branch(branch)

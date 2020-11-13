@@ -75,8 +75,9 @@ class Cut(SubAnalysis):
         cuts = self.CutStrings.consecutive()
         return {key: cut for key, cut in cuts.items() if key in self.get_short()} if short else cuts
 
-    def get_size(self, name):
-        return self.Run.NEvents - self.Ana.get_n_entries(name)
+    def get_size(self, name, excluded=True):
+        n = self.Ana.get_n_entries(self.get(name) if name in self.get_names() else name)
+        return self.Run.NEvents - n if excluded else n
 
     def get_sizes(self, consecutive=True, redo=False):
         def f():
@@ -112,10 +113,10 @@ class Cut(SubAnalysis):
 
     @staticmethod
     def get_track_var(num, mode, mm=False):
-        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s='*10' if mm else '')
+        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s=' * 10' if mm else '')
 
     def get_track_vars(self, num, mm=False):
-        return [self.get_track_var(num, v, mm) for v in ['y', 'x']]
+        return [self.get_track_var(num, v, mm) for v in ['x', 'y']]
 
     def get_beam_interruptions(self):
         """ :returns: list of raw interruptions, type [list[tup]]"""
@@ -139,7 +140,7 @@ class Cut(SubAnalysis):
             return Draw.add(cut)
 
     def get_raw_pulse_height(self):
-        return mean_sigma(self.Run.get_root_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
+        return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
     # endregion GET
     # ----------------------------------------
 
@@ -269,7 +270,7 @@ class Cut(SubAnalysis):
     def calc_chi2(self, mode='x', q=None):
         def f():
             t = self.Ana.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
-            values = get_root_vec(self.Ana.Tree, var='chi2_{}'.format(mode))
+            values = get_tree_vec(self.Ana.Tree, var='chi2_{}'.format(mode))
             chi2s = quantile(values[values > -500], linspace(0, 1, 101))
             self.Ana.add_to_info(t)
             return chi2s
@@ -283,7 +284,7 @@ class Cut(SubAnalysis):
 
         def f():
             t0 = self.Ana.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
-            ph, t = self.Ana.get_root_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
+            ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
             time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Run, self).get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
@@ -326,7 +327,7 @@ class Cut(SubAnalysis):
         pickle_path = self.Ana.make_pickle_path('Cuts', 'align', self.Run.Number)
 
         def f():
-            return where(get_root_vec(self.Ana.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
+            return where(get_tree_vec(self.Ana.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
         return do_pickle(pickle_path, f)
 
     # endregion COMPUTE

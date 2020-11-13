@@ -51,7 +51,7 @@ class PulserAnalysis(PadSubAnalysis):
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
 
     def get_rate(self):
-        values = self.Run.get_root_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops'))
+        values = self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops'))
         rate = calc_eff(values=values)
         self.info('pulser rate: {:1.1f} ({:1.1f}) %'.format(rate.n, rate.s))
         return rate
@@ -76,7 +76,7 @@ class PulserAnalysis(PadSubAnalysis):
         return self.get_pedestal(par=2, redo=redo)
 
     def get_values(self, cut=None):
-        return self.get_root_vec(var=self.get_signal_var(cut=self.Cut(cut)), cut=self.Cut(cut), dtype='f4')
+        return self.get_tree_vec(var=self.get_signal_var(cut=self.Cut(cut)), cut=self.Cut(cut), dtype='f4')
 
     def get_cft(self, ind=None):
         cft = self.Peaks.get_cft(ind=ind)
@@ -120,7 +120,7 @@ class PulserAnalysis(PadSubAnalysis):
     # region DRAW
     def draw_rate(self, bin_size=10, cut='', rel_t=True, show=True, prnt=True):
         """ Shows the fraction of pulser events as a function of time. Peaks appearing in this graph are most likely beam interruptions. """
-        x, y = self.get_root_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(cut))
+        x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(cut))
         p = self.Draw.profile(x, y * 100, self.Bins.get_raw_time(bin_size), 'Pulser Rate', y_tit='Pulser Fraction [%]', y_off=.8, y_range=[0, 105], markersize=.5, stats=0, lm=.08, draw_opt='bare',
                               w=1.5, h=.75, fill_color=Draw.FillColor, **self.get_t_args(rel_t), show=show)
         self.Draw.save_plots('PulserRate', prnt=prnt, show=show)
@@ -129,7 +129,7 @@ class PulserAnalysis(PadSubAnalysis):
     def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, show=True, redo=False):
         """ Shows the average pulse height of the pulser as a function of time """
         def f():
-            x, y = self.get_root_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
+            x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
             m, s = self.get_mean_sigma(cut)
             ph_cut = (m - 4 * s < y) & (y < m + 4 * s)
             return self.Draw.profile(x[ph_cut], y[ph_cut], self.Ana.Bins.get_time(bin_size), 'Pulser Pulse Height', show=False)
@@ -143,7 +143,7 @@ class PulserAnalysis(PadSubAnalysis):
         """ Shows the distribution of the pulser integrals. """
         def f():
             cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
-            x = self.Run.get_root_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
+            x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
             m, s = mean_sigma(x[x < mean(x) + 10], err=False)
             s = max(s, .1)
             return self.Draw.distribution(x, Bins.make(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
@@ -184,7 +184,7 @@ class PulserAnalysis(PadSubAnalysis):
         self.Draw.stack(histos, 'Comparison of Pulser and Signal Pedestal', ['Signal', 'Pulser'], scale=True, show=show, lw=2, rebin=3)
 
     def draw_hit_efficiency(self, bin_size=200, show=True):
-        x, y = self.get_root_vec(var=['Entry$', '@col.size() > 1'], cut=self.Ana.Cut.get('pulser', invert=True), dtype=['i4', bool])
+        x, y = self.get_tree_vec(var=['Entry$', '@col.size() > 1'], cut=self.Ana.Cut.get('pulser', invert=True), dtype=['i4', bool])
         return self.Draw.profile(x, y, Bins.make(x[::bin_size]), 'Hit Efficiency at Pulser Events', x_tit='Event Number', y_tit='Hit Efficiency [%]', y_range=[0, 5], draw_opt='hist',
                                  fill_color=Draw.FillColor, show=show, rm=.06, stats=set_entries())
 

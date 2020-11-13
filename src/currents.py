@@ -217,14 +217,12 @@ class Currents(Analysis):
 
     def draw_profile(self, bin_width=5, show=True):
         x, y = self.Data['timestamps'], self.Data['currents']
-        format_statbox(entries=True)
         return self.Draw.profile(x, y, Bins.make(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, w=1.5,
-                                 h=.75, lm=.08, y_off=.8, show=show)
+                                 h=.75, lm=.08, y_off=.8, show=show, stats=set_entries())
 
     def draw_distribution(self, show=True):
         m, s = mean_sigma(self.Data['currents'], err=False)
         xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
-        format_statbox(all_stat=True)
         return self.Draw.distribution(self.Data['currents'], Bins.make(xmin, xmax, self.Precision * 2), 'Current Distribution', show=show, x_tit='Current [nA]')
 
     def draw_flux_correlation(self, bin_fac=1, show=True):

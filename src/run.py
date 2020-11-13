@@ -308,7 +308,7 @@ class Run(Analysis):
         return make_ufloat((flux, .1 * flux))
 
     def find_n_events(self, n, cut, start=0):
-        evt_numbers = self.get_root_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
+        evt_numbers = self.get_tree_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
         return int(evt_numbers[:n][-1] + 1 - start)
     # endregion HELPERS
     # ----------------------------------------
@@ -336,11 +336,8 @@ class Run(Analysis):
             return self.NEvents - 1
         return where(self.Time <= (seconds + (0 if rel else self.StartTime)) * 1000)[0][-1]
 
-    def get_root_vec(self, n=0, ind=0, dtype=None, var=None, cut='', nentries=None, firstentry=0):
-        return get_root_vec(self.Tree, n, ind, dtype, var, cut, nentries, firstentry)
-
-    def get_root_vecs(self, n, n_ind, dtype=None):
-        return get_root_vecs(self.Tree, n, n_ind, dtype)
+    def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
+        return get_tree_vec(self.Tree, var, cut, dtype, nentries, firstentry)
 
     def get_tree_tuple(self):
         return (self.Tree, self.RootFile) if self.Tree is not None else False

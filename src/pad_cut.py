@@ -21,7 +21,7 @@ class PadCut(Cut):
     # region GET
     def get_raw_pedestal(self, sigma=False, redo=False):
         def f():
-            return mean_sigma(self.get_root_vec(var=self.Ana.get_pedestal_name(), cut=self()))
+            return mean_sigma(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()))
         return do_pickle(self.make_simple_pickle_path('RawPed'), f, redo=redo)[1 if sigma else 0]
 
     def get_raw_noise(self, redo=False):
@@ -144,7 +144,7 @@ class PadCut(Cut):
     def find_beam_interruptions(self, bin_width=100, max_thresh=.6):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
-        x, y = self.get_root_vec(var=['Entry$', 'pulser'], dtype='i4')
+        x, y = self.get_tree_vec(var=['Entry$', 'pulser'], dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
         thresh = min(max_thresh, mean(rates) + .2)
@@ -184,7 +184,7 @@ class PadCut(Cut):
             h_sig = deepcopy(h)
             h_sig.Add(ped, -1)
             format_histo(h_sig, x_range=[Bins.MinPadPH, Bins.MaxPadPH])
-            values = self.get_root_vec(var=self.Ana.get_raw_signal_var(), cut=self.get_pre_bucket())
+            values = self.get_tree_vec(var=self.Ana.get_raw_signal_var(), cut=self.get_pre_bucket())
             f0 = Draw.make_tf1('Mean', lambda x: mean(values[values > x]), -30, fit.GetParameter(1))
             self.add_to_info(t)
             threshold = f0.GetX(h_sig.GetMean())
@@ -239,7 +239,7 @@ class PadCut(Cut):
     def calc_pedestal(self, n_sigma):
         def f():
             t = self.Ana.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.DUT.Name), endl=False)
-            h0 = self.Draw.distribution(self.get_root_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
+            h0 = self.Draw.distribution(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
             fit = fit_fwhm(h0, show=False)
             self.Ana.add_to_info(t)
             return fit.Parameter(1), fit.Parameter(2)
@@ -287,7 +287,7 @@ class PadCut(Cut):
     # ----------------------------------------
     # region ANA
     def draw_bucket_histo(self, sig_var=None, show=True):
-        x = self.get_root_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
+        x = self.get_tree_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
         xmax = quantile(x, .95)
         return self.Draw.distribution(x, Bins(self.Run, self).get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
 
@@ -337,7 +337,7 @@ class PadCut(Cut):
         update_canvas()
 
     def draw_signal_vs_signale(self, show=True):
-        x, y = self.get_root_vec(var=[self.Ana.get_signal_var(), self.Ana.get_signal_var(region='e')], cut=self.generate_custom(exclude='bucket'))
+        x, y = self.get_tree_vec(var=[self.Ana.get_signal_var(), self.Ana.get_signal_var(region='e')], cut=self.generate_custom(exclude='bucket'))
         names = self.Ana.SignalRegionName.title().replace('_', ' '), 'Signal E'
         self.Draw.histo_2d(x, y, self.Bins.get_pad_ph(mean_ph=mean(x)) * 2, '{} vs. {}'.format(*names), x_tit='{} [mV]'.format(names[0]), y_tit='{} [mV]'.format(names[1]), pal=53, stats=0,
                            show=show,
