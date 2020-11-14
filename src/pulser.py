@@ -59,13 +59,13 @@ class PulserAnalysis(PadSubAnalysis):
     def get_t_bins(self, bin_size=None):
         return Bins.make(*self.SignalRegion, choose(bin_size, default=self.Waveform.BinWidth))
 
-    def get_pulse_height(self, corr=True, bin_width=.2, par=1, redo=False):
-        pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam1'))
-        fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width), redo=redo)
+    def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, par=1, redo=False):
+        pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
+        fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width, beam_on=beam_on), redo=redo)
         return make_ufloat(fit, par=par)
 
-    def get_sigma(self, corr=True, bin_width=.2, redo=False):
-        return self.get_pulse_height(corr, bin_width, par=2, redo=redo)
+    def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+        return self.get_pulse_height(corr, beam_on, bin_width, par=2, redo=redo)
 
     def get_pedestal(self, par=1, redo=False):
         pickle_path = self.make_simple_pickle_path('Pedestal')
