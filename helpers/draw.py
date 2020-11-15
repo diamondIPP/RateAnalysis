@@ -434,17 +434,17 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, show=True, *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, show=True, logx=None, color=True, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
-        leg = Draw.make_legend(nentries=len(graphs), w=.2)
-        for g, tit in zip(graphs, leg_titles):
+        leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=.2)
+        for i, g in enumerate(graphs):
             m.Add(g, 'p')
-            leg.AddEntry(g, tit, 'p')
-            format_histo(g, color=self.get_color(len(graphs)), stats=0, *args, **kwargs)
+            leg.AddEntry(g, leg_titles[i], 'p') if leg_titles is not None else do_nothing()
+            format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=0, *args, **kwargs)
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels))
         set_bin_labels(m, bin_labels)
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy, show=show)
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy, show=show, logx=logx)
         return m
     # endregion DRAW
     # ----------------------------------------
@@ -520,7 +520,7 @@ class Draw(object):
 
 # ----------------------------------------
 # region FORMATTING
-def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=20, color=None, line_color=None, line_style=None, markersize=None, x_off=None, y_off=None, z_off=None,
+def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=None, color=None, line_color=None, line_style=None, markersize=None, x_off=None, y_off=None, z_off=None,
                  lw=None, fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                  sumw2=None, do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None,
                  rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
