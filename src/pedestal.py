@@ -40,7 +40,7 @@ class PedestalAnalysis(PadSubAnalysis):
         return self.get_all_signal_names()[choose(name, self.SignalName)]
 
     def get_par(self, par=1, name=None, cut=None, redo=False):
-        suffix = '{}_fwhm_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))
+        suffix = '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))
         return make_ufloat(do_pickle(self.make_simple_pickle_path(suf=suffix), partial(self.draw_disto_fit, name=name, cut=self.Cut(cut), show=False, redo=redo), redo=redo), par=par)
 
     def get_mean(self, name=None, cut=None, redo=False, raw=False):
@@ -100,7 +100,7 @@ class PedestalAnalysis(PadSubAnalysis):
         fit = h.GetListOfFunctions()[2]
         xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
         b = Draw.box(xmin, -10, xmax, 1e7, line_color=2, width=2, fillstyle=3001, name='ped', style=7)
-        legend = Draw.make_legend(.65, y2=.64, nentries=1, margin=.45, name='la', scale=1)
+        legend = Draw.make_legend(.65, y2=.64, nentries=1, margin=.45, scale=1)
         legend.AddEntry(b, 'cut (3 sigma)', 'lf')
         legend.Draw()
         return b
