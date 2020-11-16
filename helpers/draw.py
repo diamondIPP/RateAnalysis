@@ -95,7 +95,7 @@ class Draw(object):
         do(c.SetLeftMargin, l_)
         do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
         do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
-        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else (.1 if t is None else t) - (0 if Draw.Title else .07))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else max((.1 if t is None else t) - (0 if Draw.Title else .07), 0))
     # endregion SET
     # ----------------------------------------
 
@@ -239,9 +239,10 @@ class Draw(object):
         return Draw.add(ar)
 
     @staticmethod
-    def tpad(name, tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None):
+    def tpad(tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None, c=None):
+        c.cd() if c is not None else do_nothing()
         pos = [0, 0, 1, 1] if pos is None else pos
-        p = TPad(name, tit, *pos)
+        p = TPad(Draw.get_name('pd'), tit, *pos)
         p.SetFillColor(fill_col)
         margins = margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]
         Draw.set_pad_margins(p, *full(4, .1) if margins is None else margins)
@@ -434,7 +435,8 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, show=True, logx=None, color=True, *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, bm=None, show=True, logx=None, color=True, c=None,
+                   *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=.2)
@@ -444,7 +446,8 @@ class Draw(object):
             format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=0, *args, **kwargs)
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels))
         set_bin_labels(m, bin_labels)
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, None, bin_labels), gridy=gridy, show=show, logx=logx)
+        m.GetListOfFunctions().Add(leg) if leg_titles is not None else do_nothing()
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=choose(lm, get_last_canvas().GetLeftMargin()), bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c)
         return m
     # endregion DRAW
     # ----------------------------------------
