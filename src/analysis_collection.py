@@ -89,15 +89,11 @@ class AnalysisCollection(Analysis):
     def generate_common_pickles(self):
         if self.LoadTree:
             self.generate_slope_pickle()
-            self.generate_threshold_pickle()
 
     def generate_slope_pickle(self):
         picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.MinFluxRun)
         if not file_exists(picklepath):
             DUTAnalysis(self.MinFluxRun, self.DUT.Number, self.TCString, prnt=False)
-
-    def generate_threshold_pickle(self):
-        pass
 
     def load_analysis(self, run_number):
         return DUTAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
@@ -173,7 +169,7 @@ class AnalysisCollection(Analysis):
     def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False, pbar=True):
         picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
-        return self.get_run_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
+        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
 
     def get_flux_splits(self, redo=False, show=True):
         def f():
@@ -194,7 +190,7 @@ class AnalysisCollection(Analysis):
         return array([mean(lst) for lst in split(values, self.get_flux_splits(show=False))])  # split into sub-lists of similar flux and take average
 
     def get_times(self, runs=None):
-        return self.get_run_values('times', DUTAnalysis.get_time, runs, pbar=False)
+        return self.get_values('times', DUTAnalysis.get_time, runs, pbar=False)
 
     def get_x_var(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
         return array(self.get_times()) - (time_stamp(self.FirstAnalysis.Run.LogStart) + 3600 if rel_time else 0) if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
@@ -211,25 +207,16 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return [ana.Currents.get_current() for ana in self.get_analyses()]
 
-    def get_run_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
-        return array(self.generate_run_plots(string, f, runs, pbar, avrg, picklepath, *args, **kwargs))
-
-    def get_values(self, string, f, pbar=True, avrg=False, picklepath=None, *args, **kwargs):
-        return array(self.generate_run_plots(string, f, None, pbar, avrg, picklepath, *args, **kwargs))
-
-    def generate_run_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
-        pbar = not all(file_exists(picklepath.format(run)) for run in self.Runs) if picklepath is not None and pbar is None else pbar
-        pbar = True if 'redo' in kwargs and kwargs['redo'] else pbar
+    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, *args, **kwargs):
+        runs = choose(runs, self.Runs)
+        pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
         self.info('Generating {} ...'.format(string), prnt=pbar)
-        self.PBar.start(self.NRuns if runs is None else len(runs)) if pbar else do_nothing()
+        self.PBar.start(len(runs)) if pbar else do_nothing()
         plots = []
         for ana in self.get_analyses(runs):
             plots.append(f(ana, *args, **kwargs))
             self.PBar.update() if pbar else do_nothing()
-        return array(self.get_flux_average(array(plots))) if avrg else plots
-
-    def generate_plots(self, string, f, pbar=True, *args, **kwargs):
-        return self.generate_run_plots(string, f, runs=None, pbar=pbar, *args, **kwargs)
+        return array(self.get_flux_average(array(plots))) if avrg else array(plots)[self.get_fluxes().argsort() if flux_sort else ...]
 
     @staticmethod
     def get_mode(vs_time):
@@ -255,9 +242,9 @@ class AnalysisCollection(Analysis):
 
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False):
         error = self.get_repr_error(110, peaks, redo) if err else 0
-        picklepath = self.make_simple_pickle_path('Fit', '{}_eventwise_AllCuts'.format(self.Bins.Size), run='{}', sub_dir='Ph_fit')
+        picklepath = self.make_simple_pickle_path('Fit', '{}_1_b2_AllCuts'.format(Bins.Size), run='{}', sub_dir='Ph_fit')
         pbar = False if peaks else pbar
-        return self.get_run_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks)
+        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks)
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -303,7 +290,7 @@ class AnalysisCollection(Analysis):
     def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, redo=False):
         runs = self.get_runs_below_flux(110) if low_flux else self.get_runs_above_flux(2000) if high_flux else self.Runs
         picklepath = self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal', run='{}')
-        return self.get_run_values('Getting uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, redo=redo, use_fwc=use_fwc)
+        return self.get_values('Getting uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, redo=redo, use_fwc=use_fwc)
 
     def get_mean_uniformity(self, use_fwc=True, redo=False, low_flux=False, high_flux=False):
         values = self.get_uniformities(use_fwc, redo, low_flux, high_flux)
@@ -408,7 +395,7 @@ class AnalysisCollection(Analysis):
     def draw_signal_distributions(self, bin_width=None, redo=False, logy=False, show=True):
         """Shows a stack of the signal distributions."""
         stack = THStack('hsd', 'Pulse Height Distributions')
-        histos = self.generate_plots('Generating signal distributions ...', self.Analysis.draw_signal_distribution, show=False, prnt=False, redo=redo, bin_width=bin_width)
+        histos = self.get_values('signal distributions', self.Analysis.draw_signal_distribution, show=False, prnt=False, redo=redo, bin_width=bin_width)
         for i, h in enumerate(histos):
             format_histo(h, lw=2, color=self.Draw.get_color(len(histos)), fill_color=0, fill_style=4000, stats=0)
             h.Scale(1 / h.GetMaximum())
@@ -423,7 +410,7 @@ class AnalysisCollection(Analysis):
     def draw_pulls(self, runs=None, bin_width=.5, show=True):
         s = THStack('s_phd', 'Pulse Height Distributions')
         runs = choose(runs, self.Runs)
-        histos = self.generate_run_plots('Generate ph pulls ...', self.Analysis.draw_ph_pull, runs, show=False, bin_width=bin_width, fit=False, save=False)
+        histos = self.get_values('Generate ph pulls ...', self.Analysis.draw_ph_pull, runs, show=False, bin_width=bin_width, fit=False, save=False)
         for i, h in enumerate(histos):
             format_histo(h, fill_color=4000, stats=0, line_color=self.Draw.get_color(len(runs)))
             s.Add(h)
@@ -580,7 +567,7 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region SIGNAL MAP
     def draw_signal_map(self, fid=False, res=.7, hitmap=False, redo=False, show=True):
-        histos = self.generate_plots('Getting signal maps ...', self.Analysis.draw_signal_map, show=False, prnt=False, hitmap=hitmap, res=res, redo=redo, fid=fid)
+        histos = self.get_values('signal maps', self.Analysis.draw_signal_map, show=False, prnt=False, hitmap=hitmap, res=res, redo=redo, fid=fid)
         for h in histos[1:]:
             histos[0].Add(h)
         format_histo(histos[0], title='Cumulative {} Map'.format('Hit' if hitmap else 'Signal'))
@@ -590,7 +577,7 @@ class AnalysisCollection(Analysis):
         self.draw_signal_map(fid, res, True, redo, show)
 
     def draw_signal_maps(self, hitmap=False, redo=False):
-        histos = self.generate_plots('{} maps'.format('hit' if hitmap else 'signal'), self.Analysis.draw_signal_map, show=False, prnt=False, redo=redo, hitmap=hitmap)
+        histos = self.get_values('{} maps'.format('hit' if hitmap else 'signal'), self.Analysis.draw_signal_map, show=False, prnt=False, redo=redo, hitmap=hitmap)
         glob_max = round_up_to(max([h.GetMaximum() for h in histos]), 5) + 5
         glob_min = round_down_to(min([h.GetMinimum() for h in histos]), 5) - 5
         for i, h in enumerate(histos):
@@ -652,7 +639,7 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('BeamProfileOverview', show=show, canvas=c)
 
     def draw_beam_profiles(self, mode='x', show=True):
-        histos = self.generate_plots('beam profiles in {}'.format(mode), self.Analysis.draw_beam_profile, show=False, prnt=False, fit=False, mode=mode)
+        histos = self.get_values('beam profiles in {}'.format(mode), self.Analysis.draw_beam_profile, show=False, prnt=False, fit=False, mode=mode)
         leg = Draw.make_legend(nentries=self.NRuns)
         stack = THStack('sbp', 'AllBeamProfiles{mod}'.format(mod=mode.title()))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
@@ -667,7 +654,7 @@ class AnalysisCollection(Analysis):
     # region TRACKS
     def draw_chi2(self, mode=None, show=True):
         mod_str = '' if mode is None else mode
-        histos = self.generate_plots('chi squares {}'.format(mod_str), self.Analysis.draw_chi2, show=False, prnt=False, mode=mode)
+        histos = self.get_values('chi squares {}'.format(mod_str), self.Analysis.draw_chi2, show=False, prnt=False, mode=mode)
         cut_value = self.FirstAnalysis.Cut.get_chi2(choose(mod_str, 'x'))
         cuts = array([get_quantile(h, [.99, cut_value / 100]) for h in histos])  # .99 for drawing range
         stack = THStack('hx2', '#chi^{{2}}{}'.format(' in {}'.format(mod_str) if mod_str else ''))
@@ -693,7 +680,7 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('AllChiSquares', show=show, canvas=c)
 
     def draw_angle(self, mode='x', show=True):
-        histos = self.generate_plots('angle distribution {}'.format(mode), self.Analysis.draw_angle, mode=mode, show=False, prnt=False)
+        histos = self.get_values('angle distribution {}'.format(mode), self.Analysis.draw_angle, mode=mode, show=False, prnt=False)
         legend = self.make_flux_legend(histos)
         stack = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
@@ -723,16 +710,16 @@ class AnalysisCollection(Analysis):
     # region GENERATE PLOTS
     def draw_run_currents(self):
         self.get_values('currents', self.Analysis.get_current)
-        self.generate_plots('currents', self.Analysis.draw_current, show=False)
+        self.get_values('currents', self.Analysis.draw_current, show=False)
 
     def draw_chi2s(self):
-        self.generate_plots('chi2s', self.Analysis.draw_chi2s, show=False, prnt=False)
+        self.get_values('chi2s', self.Analysis.draw_chi2s, show=False, prnt=False)
 
     def draw_angles(self):
-        self.generate_plots('angles', self.Analysis.draw_angles, show=False, prnt=False)
+        self.get_values('angles', self.Analysis.draw_angles, show=False, prnt=False)
 
     def draw_occupancies(self):
-        self.generate_plots('occupancies', self.Analysis.draw_occupancies, show=False, prnt=False, cluster=True)
+        self.get_values('occupancies', self.Analysis.draw_occupancies, show=False, prnt=False, cluster=True)
     # end region GENERATE PLOTS
     # ----------------------------------------
 
