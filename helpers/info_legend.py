@@ -48,7 +48,7 @@ class InfoLegend(object):
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
         width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * Draw.Res / 1000 * 10.5
-        legend = Draw.make_legend(.005, .1, y1=.003, x2=width, nentries=3, clean=False, scale=.75, margin=.05, fix=True)
+        legend = Draw.make_legend(x1=.005, y1=.003, w=width, nentries=3, clean=False, scale=.75, margin=.05, fix=True)
 
         legend.AddEntry(0, run_str, '')                # Run String
         legend.AddEntry(0, self.get_dia_string(), '')  # Detector and Test Campaign

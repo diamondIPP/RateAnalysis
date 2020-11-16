@@ -329,8 +329,8 @@ class Draw(object):
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     @staticmethod
-    def legend(histos, titles, styles=None, x1=.65, y2=.88, *args, **kwargs):
-        leg = Draw.make_legend(x1, y2, nentries=len(histos), *args, **kwargs)
+    def legend(histos, titles, styles=None, x2=.96, y2=.89, *args, **kwargs):
+        leg = Draw.make_legend(x2, y2, nentries=len(histos), *args, **kwargs)
         for i in range(len(histos)):
             leg.AddEntry(histos[i], titles[i],  'lpf' if styles is None else styles[i] if type(styles) is list else styles)
         leg.Draw('same')
@@ -494,17 +494,15 @@ class Draw(object):
         return Draw.make_tgrapherrors(x, y)
 
     @staticmethod
-    def make_legend(x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, clean=False, margin=.25, x2=None, w=None, cols=None, fix=False):
-        x2 = .95 if x2 is None else x2
-        x1 = x2 - w if w is not None else x1
+    def make_legend(x2=.96, y2=.89, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+        x1 = choose(x1, x2 - w)
         h = nentries * .05 * scale
-        y = array([y2 - h if y1 is None else y1, y1 + h if y1 is not None else y2])
-        y += .07 if not Draw.Title and y[1] > .5 and not fix else 0
-        y -= .07 if not Draw.Legend and y[1] < .5 and not fix else 0
-        leg = TLegend(x1, max(y[0], 0), x2, min(y[1], 1))
-        leg.SetName(name)
-        leg.SetTextFont(42)
-        leg.SetTextSize(0.03 * scale)
+        y1 = choose(y1, y2 - h)
+        y1 += .07 if not Draw.Title and y1 + h > .8 and not fix else 0
+        y1 -= .07 if not Draw.Legend and y1 < .3 and not fix else 0
+        leg = TLegend(x1, max(y1, 0), x1 + w, min(y1 + h, 1))
+        leg.SetName(Draw.get_name('l'))
+        leg.SetTextFont(Draw.Font)
         leg.SetMargin(margin)
         do(leg.SetNColumns, cols)
         if clean:
