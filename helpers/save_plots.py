@@ -62,9 +62,10 @@ class SaveDraw(Draw):
 
     # ----------------------------------------
     # region SAVE
-    def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, *args, **kwargs):
+    def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, info_leg=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
-        self.Legends.draw(c, all_pads, show and Draw.Legend)
+        if info_leg:
+            self.Legends.draw(c, all_pads, show and Draw.Legend)
         return self.save_plots(file_name, prnt=prnt, show=show, save=save)
 
     def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, w=1, h=1, *args, **kwargs):
