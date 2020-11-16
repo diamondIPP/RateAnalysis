@@ -182,9 +182,8 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
-        suffix = '{}{}_{}_{}'.format(choose(bin_size, Bins.Size), '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName())
-        picklepath = self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit')
-        ph = make_ufloat(do_pickle(picklepath, f, redo=redo), par=0)
+        suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.Size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
+        ph = make_ufloat(do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo), par=0)
         return self.Peaks.get_signal_ph() if peaks else ufloat(ph.n, ph.s + sys_err)
 
     def get_bucket_pulse_heights(self, redo=False):
