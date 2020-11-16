@@ -191,6 +191,8 @@ class Currents(Analysis):
     def get_run_number(self):
         return None if self.Ana is None else 'RP{}'.format(self.Ana.RunPlan) if self.IsCollection else self.Ana.Run.Number
 
+    def get_t0(self):
+        return self.Data['timestamps'][0]
     # endregion GET
     # ----------------------------------------
 
@@ -214,6 +216,7 @@ class Currents(Analysis):
         gc.Draw(draw_opt)
         save_name = '{}_{}{}'.format(self.get_run_number(), self.DUT.Name, 'Flux' if with_flux else '')
         self.Draw.save_plots(save_name, show=show, ftype='png')
+        return gc
 
     def draw_profile(self, bin_width=5, show=True):
         x, y = self.Data['timestamps'], self.Data['currents']
