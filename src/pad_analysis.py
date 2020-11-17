@@ -190,6 +190,9 @@ class PadAnalysis(DUTAnalysis):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
+    def get_n_bucket(self):
+        return self.Cut.print_bucket_events(prnt=False)
+
     def get_min_signal(self, name=None):
         h = self.draw_signal_distribution(show=False, save=False, sig=name)
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
