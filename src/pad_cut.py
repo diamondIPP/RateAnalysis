@@ -220,7 +220,7 @@ class PadCut(Cut):
 
         # Efficiency plot
         format_histo(e_s, title='Efficiencies', x_tit='Threshold', y_tit='Efficiency',)
-        l2 = Draw.make_legend(.13, .35, x2=.3, scale=1.5)
+        l2 = Draw.make_legend(.3, .35, scale=1.5)
         [l2.AddEntry(p, p.GetName(), 'l') for i, p in enumerate([e_s, e_b])]
         self.Draw(e_s, show=show, leg=[l2, e_b], canvas=c.cd(2), lm=.12)
 
