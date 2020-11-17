@@ -313,7 +313,7 @@ class AnalysisCollection(Analysis):
     def get_range(vs_time, x_range=None):
         return x_range if vs_time else Bins.FluxRange
 
-    def get_x_args(self, vs_time, rel_time=False, x_range=None):
+    def get_x_args(self, vs_time=False, rel_time=False, x_range=None):
         return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_range(vs_time, x_range), 'x_off': None if vs_time else 1.2}
 
     def get_cmd_strings(self, cmd, kwargs):
