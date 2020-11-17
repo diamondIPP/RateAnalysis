@@ -332,7 +332,7 @@ class Draw(object):
     def legend(histos, titles, styles=None, x2=.96, y2=.89, *args, **kwargs):
         leg = Draw.make_legend(x2, y2, nentries=len(histos), *args, **kwargs)
         for i in range(len(histos)):
-            leg.AddEntry(histos[i], titles[i],  'lpf' if styles is None else styles[i] if type(styles) is list else styles)
+            leg.AddEntry(histos[i], titles[i], 'lpf' if styles is None else styles[i] if type(styles) is list else styles)
         leg.Draw('same')
 
     @staticmethod
