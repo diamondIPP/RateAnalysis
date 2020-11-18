@@ -46,8 +46,8 @@ class PeakAnalysis(PadSubAnalysis):
     def get_binning(self, bin_size=None):
         return self.Ana.Waveform.get_binning(bin_size)
 
-    def get_from_tree(self):
-        return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_tree_vec, var=self.Ana.PeakName, cut=self.Cut(), dtype='f2')
+    def get_from_tree(self, redo=False):
+        return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_tree_vec, var=self.Ana.PeakName, cut=self.Cut(), dtype='f2', redo=redo)
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
         signal_ind, noind = self.get_signal_indices()
@@ -199,7 +199,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw(self, corr=True, scale=False, split_=1, thresh=None, y_range=None, show=True, redo=False):
+    def draw(self, corr=True, split_=1, thresh=None, y_range=None, show=True, redo=False):
         def f():
             times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
             times = self.get_corrected_times(times, n_peaks) if corr else times
@@ -211,9 +211,6 @@ class PeakAnalysis(PadSubAnalysis):
             return hs[0] if split_ == 1 else hs
         suffix = '{}{}{}'.format(int(corr), '' if split_ == 1 else '_{}'.format(split_), '' if thresh is None else '_{:1.0f}'.format(thresh))
         h = do_pickle(self.make_simple_pickle_path('Histo', suffix), f, redo=redo)
-        if scale:
-            h.Sumw2()
-            h.Scale(1e5 / self.Ana.Waveform.get_from_tree().shape[0])
         if show and split_ == 1:
             set_statbox(entries=True)
             format_histo(h, x_tit='Time [ns]', y_tit='Number of Peaks', y_off=1.3, fill_color=Draw.FillColor, y_range=y_range)
@@ -320,8 +317,8 @@ class PeakAnalysis(PadSubAnalysis):
         x = [v.n for h in self.draw(split_=n_splits) for v in self.draw_additional(h, show=False)]
         self.Draw.distribution(x, Bins.make(*ax_range(x, 0, .3, .3), n=sqrt(len(x))), 'Peak Heights', x_tit='Peak Height', show=show, stats=0)
 
-    def draw_additional(self, h=None, scale=False, show=True):
-        values = get_hist_vec(self.draw(scale=scale, show=False) if h is None else h)[self.StartAdditional:]
+    def draw_additional(self, h=None, show=True):
+        values = get_hist_vec(self.draw(show=False) if h is None else h)[self.StartAdditional:]
         peaks = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)
         g = self.Draw.graph((peaks[0] + self.StartAdditional) / 2, values[peaks[0]], title='Additional Peak Heights', show=show, w=1.5, h=.75, gridy=True)
         g.Fit('pol0', 'qs')
