@@ -367,10 +367,10 @@ class Draw(object):
         self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats)
         return th
 
-    def graph(self, x, y, c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
+    def graph(self, x, y, title='', c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
         g = Draw.make_tgrapherrors(x, y, asym_err=asym_errors)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        format_histo(g, **kwargs)
+        format_histo(g, title=title, **kwargs)
         self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c)
         return g
 
