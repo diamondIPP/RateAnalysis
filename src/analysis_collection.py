@@ -195,6 +195,12 @@ class AnalysisCollection(Analysis):
     def get_times(self, runs=None):
         return self.get_values('times', DUTAnalysis.get_time, runs, pbar=False)
 
+    def get_events(self, redo=False):
+        return self.get_values('events', DUTAnalysis.get_events, picklepath=self.make_simple_hdf5_path('', 'AllCuts', 'Events', '{}'), redo=redo)
+
+    def get_n_events(self, redo=False):
+        return array([e.size for e in self.get_events(redo)])
+
     def get_x_var(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
         return array(self.get_times()) - (time_stamp(self.FirstAnalysis.Run.LogStart) + 3600 if rel_time else 0) if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
 
@@ -219,7 +225,7 @@ class AnalysisCollection(Analysis):
         for ana in self.get_analyses(runs):
             plots.append(f(ana, *args, **kwargs))
             self.PBar.update() if pbar else do_nothing()
-        return array(self.get_flux_average(array(plots))) if avrg else array(plots)[self.get_fluxes().argsort() if flux_sort else ...]
+        return array(self.get_flux_average(array(plots))) if avrg else array(plots, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
 
     @staticmethod
     def get_mode(vs_time):
