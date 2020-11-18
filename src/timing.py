@@ -24,7 +24,7 @@ class TimingAnalysis(PadSubAnalysis):
     # region GET
     def get(self, par=1, redo=False):
         def f():
-            return FitRes(self.draw_peaks(show=False, prnt=False, redo=redo).GetListOfFunctions()[0])
+            return FitRes(self.draw_peaks(show=False, prnt=False, redo=redo).GetListOfFunctions()[1])
         return make_ufloat(do_pickle(self.make_simple_pickle_path('PeakVals'), f, redo=redo), par=par)
 
     def get_peak_var(self, corr=True, fine_corr=False, cut=None, region=None, redo=False):
@@ -46,7 +46,7 @@ class TimingAnalysis(PadSubAnalysis):
 
     def get_fine_correction(self, cut=None, redo=False):
         def f():
-            fit = self.draw_peaks_tc(show=False, prnt=False, cut=self.get_raw_cut(cut), redo=redo).GetListOfFunctions()[0]
+            fit = self.draw_peaks_tc(show=False, prnt=False, cut=self.get_raw_cut(cut), redo=redo).GetListOfFunctions()[1]
             good_pars = fit.GetChisquare() / fit.GetNDF() < 100 and abs(fit.GetParameter(0)) < 10  # require decent chi2 and a meaningful scaling of the sin(x)
             return '({0} * TMath::Sin({1} * (trigger_cell - {2})))'.format(*get_buf(fit.GetParameters(), 3)) if good_pars else '0'
         return do_pickle(self.make_simple_pickle_path('FineCorr', self.Cut(cut).GetName()), f, redo=redo)
