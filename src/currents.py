@@ -129,6 +129,19 @@ class Currents(Analysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region GET
+    def get_runs(self):
+        return self.Ana.get_runs()
+
+    def get_fluxes(self, pbar=False):
+        return self.Ana.get_fluxes(pbar=pbar)
+
+    def get_analyses(self):
+        return self.Ana.get_analyses()
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region DATA ACQUISITION
     def get_log_date(self, name):
         log_date = ''.join(basename(name).split('_')[-6:])
