@@ -157,6 +157,9 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region GET
+    def get_runs(self):
+        return self.Runs
+
     def get_ana(self, ind):
         return list(self.Analyses.values())[ind]
 
