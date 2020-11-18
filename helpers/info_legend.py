@@ -12,16 +12,20 @@ from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_ir
 
 class InfoLegend(object):
     def __init__(self, analysis=None):
-        self.Analysis = analysis
+        self.Ana = analysis
         self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
-        self.IsCollection = hasattr(analysis, 'RunSelection')
         self.HasDUT = hasattr(analysis, 'DUT')
 
         self.Objects = []
+        
+    def is_collection(self):
+        return hasattr(self.Ana, 'Runs') or hasattr(self.Ana, 'IsCollection') and self.Ana.IsCollection
 
     def is_active(self):
-        return True if self.IsCollection else hasattr(self.Analysis, 'Run') and self.Analysis.Run.Number is not None
+        if self.is_collection():
+            return self.Ana.Ana.LoadTree if hasattr(self.Ana, 'Ana') else self.Ana.LoadTree
+        return hasattr(self.Ana, 'Run') and self.Ana.Run.Number is not None and bool(self.Ana.Tree.Hash() if hasattr(self.Ana, 'Tree') else self.Ana.Ana.Tree.Hash())
 
     def draw(self, canvas=None, all_pads=True, show=True):
         """
@@ -40,7 +44,7 @@ class InfoLegend(object):
         else:
             canvas = gROOT.GetSelectedPad()
             if not canvas:
-                self.Analysis.warning('Cannot access an active Pad')
+                self.Ana.warning('Cannot access an active Pad')
                 return
 
         run_str = self.get_run_string()
@@ -80,30 +84,30 @@ class InfoLegend(object):
         return Draw.tlatex(.9, .02, txt, show=False, ndc=True, size=.02)
 
     def get_duration(self):
-        dur = sum([ana.Run.Duration for ana in list(self.Analysis.Analyses.values())], timedelta()) if self.IsCollection else self.Analysis.Run.Duration
+        dur = sum([ana.Run.Duration for ana in list(self.Ana.Analyses.values())], timedelta()) if self.is_collection() else self.Ana.Run.Duration
         return dur - timedelta(microseconds=dur.microseconds)
 
     def get_run_string(self):
         run_str = 'Run{run}: {rate}, {dur}'.format(run=self.get_runnumber_str(), rate=self.get_rate_string(), dur=self.get_duration())
-        run_str += '' if self.IsCollection else ' ({} evts)'.format(self.Analysis.Run.NEvents)
+        run_str += '' if self.is_collection() else ' ({} evts)'.format(self.Ana.Run.NEvents)
         return run_str
 
     def get_runnumber_str(self):
-        return 's {}-{}'.format(self.Analysis.Runs[0], self.Analysis.Runs[-1]) if self.IsCollection else ' {}'.format(self.Analysis.Run.Number)
+        return 's {}-{}'.format(self.Ana.Runs[0], self.Ana.Runs[-1]) if self.is_collection() else ' {}'.format(self.Ana.Run.Number)
 
     def get_dia_string(self):
-        dia_str = self.Analysis.DUT.Name if self.HasDUT else ', '.join(dut.Name for dut in self.Analysis.Run.DUTs)
-        return 'Detector{b}: {d} ({tc})'.format(b='' if self.HasDUT else 's', tc=make_tc_str(self.Analysis.TCString), d=dia_str)
+        dia_str = self.Ana.DUT.Name if self.HasDUT else ', '.join(dut.Name for dut in self.Ana.Run.DUTs)
+        return 'Detector{b}: {d} ({tc})'.format(b='' if self.HasDUT else 's', tc=make_tc_str(self.Ana.TCString), d=dia_str)
 
     def get_rate_string(self):
-        if self.IsCollection:
-            fluxes = [flux.n for flux in self.Analysis.get_fluxes(pbar=False)]
+        if self.is_collection():
+            fluxes = [flux.n for flux in self.Ana.get_fluxes(pbar=False)]
             return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes)))
         else:
-            return make_flux_string(self.Analysis.Run.Flux.n)
+            return make_flux_string(self.Ana.Run.Flux.n)
 
     def get_info_string(self):
-        voltage = '{0:+4.0f}V'.format(self.Analysis.DUT.Bias) if self.HasDUT else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Analysis.Run.DUTs)
-        irradiation = make_irr_string(self.Analysis.get_irradiation()) if self.HasDUT else '/'.join(make_irr_string(dut.get_irradiation(self.Analysis.TCString)) for dut in self.Analysis.Run.DUTs)
-        attenuator = 'Att: {}'.format(str(self.Analysis.DUT.Attenuator)) if self.HasDUT and self.Analysis.get_attenuator() else ''
+        voltage = '{0:+4.0f}V'.format(self.Ana.DUT.Bias) if self.HasDUT else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Ana.Run.DUTs)
+        irradiation = make_irr_string(self.Ana.get_irradiation()) if self.HasDUT else '/'.join(make_irr_string(dut.get_irradiation(self.Ana.TCString)) for dut in self.Ana.Run.DUTs)
+        attenuator = 'Att: {}'.format(str(self.Ana.DUT.Attenuator)) if self.HasDUT and self.Ana.get_attenuator() else ''
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')
