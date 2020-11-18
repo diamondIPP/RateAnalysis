@@ -40,11 +40,10 @@ class Waveform(PadSubAnalysis):
             self.info('Saving signal waveforms to hdf5 ...')
             waveforms = []
             events = self.Ana.get_events(cut=self.Cut())
-            self.Ana.PBar.start(events.size)
+            self.PBar.start(events.size)
             for ev in events:  # fastest found method...
-                n = self.Tree.Draw('wf{}'.format(self.Channel if channel is None else channel), '', 'goff', 1, ev)
-                waveforms.append(self.Ana.Polarity * self.Run.get_tree_vec(n, dtype='f2'))
-                self.Ana.PBar.update()
+                waveforms.append(self.Ana.Polarity * self.get_tree_vec('wf{}'.format(self.Channel if channel is None else channel), '', 'f2', 1, ev))
+                self.PBar.update()
             return array(waveforms)
         return do_hdf5(self.make_simple_hdf5_path(suf=self.get_cut_name(), dut=self.Channel if channel is None else channel), f, redo=redo)
 
