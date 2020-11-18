@@ -119,14 +119,16 @@ class Analysis(object):
     def make_simple_hdf5_path(self, *args, **kwargs):
         return self.make_simple_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
 
-    def remove_metadata(self):
-        if hasattr(self, 'Run'):
-            for f in glob(join(self.PickleDir, self.PickleSubDir, '*_{}_{}*'.format(self.TCString, self.Run.Number))):
-                remove_file(f)
+    def get_meta_files(self, all_subdirs=False):
+        runs = self.Runs if hasattr(self, 'Runs') else [self.Run.Number] if hasattr(self, 'Run') else []
+        return [f for run in runs for f in glob(join(self.PickleDir, self.PickleSubDir if not all_subdirs else '*', '*{}_{}*'.format(self.TCString, run)))]
 
-    def get_metadata_size(self):
-        if hasattr(self, 'Run'):
-            info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in glob(join(self.PickleDir, '*', '*_{}_{}*'.format(self.TCString, self.Run.Number)))))))
+    def remove_metadata(self, all_subdirs=False):
+        for f in self.get_meta_files(all_subdirs):
+            remove_file(f)
+
+    def get_metadata_size(self, all_subdirs=True):
+        info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in self.get_meta_files(all_subdirs)))))
 
     # TODO: move to higher analysis
     def calc_time_difference(self, m1, m2, p=None):
