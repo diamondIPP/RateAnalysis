@@ -354,7 +354,7 @@ def print_elapsed_time(start, what='This', show=True, color=None):
 
 
 def make_byte_string(v):
-    n = int(log2(v) // 10)
+    n = int(log2(v) // 10) if v else 0
     return '{:1.1f} {}'.format(v / 2 ** (10 * n), ['B', 'kB', 'MB', 'GB'][n])
 
 
