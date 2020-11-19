@@ -21,9 +21,9 @@ class PeakAnalysis(PadSubAnalysis):
         self.WF = self.Ana.Waveform
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
+        self.BinWidth = self.DigitiserBinWidth
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
-        self.BinWidth = self.Ana.DigitiserBinWidth
         self.BunchSpacing = self.Ana.BunchSpacing
 
     # ----------------------------------------
@@ -34,10 +34,10 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_start_additional(self, bunch=2):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
-        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch + 0.5) / self.Ana.DigitiserBinWidth)
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch + 0.5) / self.BinWidth)
 
     def calc_n_bunches(self):
-        return int((self.Run.NSamples - self.StartAdditional) * self.Ana.DigitiserBinWidth / self.Ana.BunchSpacing)
+        return arange(self.StartAdditional, self.Run.NSamples, self.BunchSpacing / self.BinWidth).size
     # endregion INIT
     # ----------------------------------------
 
