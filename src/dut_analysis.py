@@ -142,12 +142,6 @@ class DUTAnalysis(Analysis):
             return n1 / a1 * a2 / n2
         return do_pickle(self.make_pickle_path('Flux', 'Corr', self.Run.Number, self.DUT.Number), f) if correct else 1
 
-    def get_additional_peak_height(self):
-        pass
-
-    def get_peak_flux(self):
-        pass
-
     def get_ph_values(self, *args, **kwargs):
         """ :returns: all pulse height values for a given cut. [numpy.ndarray] """
 
