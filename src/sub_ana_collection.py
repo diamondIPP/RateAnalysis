@@ -31,8 +31,11 @@ class SubCollection(Analysis):
     def get_x_args(self, vs_time, rel_time=False, x_range=None):
         return self.Ana.get_x_args(vs_time, rel_time, x_range)
 
-    def get_anas(self, runs=None):
+    def get_analyses(self, runs=None):
         return self.Ana.get_analyes(runs)
+
+    def get_runs(self):
+        return self.Ana.get_runs()
 
     def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
         runs = choose(runs, self.Ana.Runs)
@@ -40,7 +43,7 @@ class SubCollection(Analysis):
         values = []
         self.info('Generating {} ...'.format(string), prnt=pbar)
         self.PBar.start(len(runs)) if pbar else do_nothing()
-        for ana in self.get_anas(runs):
+        for ana in self.get_analyses(runs):
             values.append(f(ana, *args, **kwargs))
             self.PBar.update() if pbar else do_nothing()
         return array(self.Ana.get_flux_average(array(values)) if avrg else values)
