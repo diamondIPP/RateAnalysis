@@ -216,16 +216,19 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return [ana.Currents.get_current() for ana in self.get_analyses()]
 
-    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, *args, **kwargs):
+    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
         runs = choose(runs, self.Runs)
         pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
         self.info('Generating {} ...'.format(string), prnt=pbar)
         self.PBar.start(len(runs)) if pbar else do_nothing()
-        plots = []
+        values = []
         for ana in self.get_analyses(runs):
-            plots.append(f(ana, *args, **kwargs))
+            values.append(f(ana, *args, **kwargs))
             self.PBar.update() if pbar else do_nothing()
-        return array(self.get_flux_average(array(plots))) if avrg else array(plots, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
+        return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
+
+    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
+        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, *args, **kwargs)
 
     @staticmethod
     def get_mode(vs_time):
@@ -249,11 +252,11 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False):
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False, flux_sort=False):
         error = self.get_repr_error(110, peaks, redo) if err else 0
         picklepath = self.make_simple_pickle_path('Fit', '{}_1_b2_AllCuts'.format(Bins.Size), run='{}', sub_dir='Ph_fit')
         pbar = False if peaks else pbar
-        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks)
+        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks, flux_sort=flux_sort)
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -304,12 +307,6 @@ class AnalysisCollection(Analysis):
     def get_mean_uniformity(self, use_fwc=True, redo=False, low_flux=False, high_flux=False):
         values = self.get_uniformities(use_fwc, redo, low_flux, high_flux)
         return [mean_sigma(values[:, i][where(values[:, i] > 0)[0]]) for i in range(values[0].size)]
-
-    def get_additional_peak_heights(self):
-        return self.get_values('Peak Heights', f=self.Analysis.get_additional_peak_height)
-
-    def get_peak_flux(self):
-        return self.get_values('Peak Flux', f=self.Analysis.get_peak_flux)
 
     @staticmethod
     def get_x_tit(vs_time):
@@ -430,7 +427,7 @@ class AnalysisCollection(Analysis):
         return ls.GetMean(), ls.GetStdDev()
 
     def draw_signal_spread(self, peaks=False, redo=False, show=True, save=True):
-        values = self.get_pulse_heights(redo=redo, err=False, peaks=peaks)[self.get_fluxes().argsort()]  # sort by ascending fluxes
+        values = self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True)
         rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
         if rel_values.size < 2:
             warning('Not enough data for signal spread ...')
@@ -586,7 +583,7 @@ class AnalysisCollection(Analysis):
         self.draw_signal_map(fid, res, True, redo, show)
 
     def draw_signal_maps(self, hitmap=False, redo=False):
-        histos = self.get_values('{} maps'.format('hit' if hitmap else 'signal'), self.Analysis.draw_signal_map, show=False, prnt=False, redo=redo, hitmap=hitmap)
+        histos = self.get_plots('{} maps'.format('hit' if hitmap else 'signal'), self.Analysis.draw_signal_map, show=False, prnt=False, redo=redo, hitmap=hitmap)
         glob_max = round_up_to(max([h.GetMaximum() for h in histos]), 5) + 5
         glob_min = round_down_to(min([h.GetMinimum() for h in histos]), 5) - 5
         for i, h in enumerate(histos):

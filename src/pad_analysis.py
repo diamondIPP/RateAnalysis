@@ -214,7 +214,7 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region ALIASES
     def get_additional_peak_height(self):
-        return self.Peaks.draw_additional(scale=True, show=False)
+        return self.Peaks.draw_additional(show=False)
 
     def get_peak_flux(self, prnt=True, redo=False):
         return self.Peaks.get_flux(prnt=prnt, redo=redo)
