@@ -57,8 +57,7 @@ class Bins:
         Bins.FluxRange = loads(Bins.Config.get('PLOTS', 'flux range'))
 
     def __call__(self, bin_width=None):
-        self.set_bin_size(bin_width)
-        return Bins.Size
+        return self.set_bin_size(bin_width)
 
     # ----------------------------------------
     # region INIT
@@ -67,7 +66,7 @@ class Bins:
         return array([self.Run.get_time_at_event(event) for event in self.Binning], 'd')
 
     def create(self, evts_per_bin=None):
-        evts_per_bin = choose(evts_per_bin, Bins.Size)
+        evts_per_bin = choose(evts_per_bin, self.Size)
         if self.Cut is None:
             return self.get_raw(evts_per_bin)
         jumps = [r for r in self.Cut.get_interruptions_ranges() if r[1] > self.Cut.get_min_event()]  # filter out interruptions outside event range
@@ -77,9 +76,9 @@ class Bins:
         return append(events, self.Cut.get_max_event()) if self.Cut.get_max_event() != events[-1] else events
 
     def set_bin_size(self, value):
-        if value is None or value == Bins.Size:
-            return
-        Bins.Size = value
+        if value is None or value == self.Size:
+            return self.Size
+        self.Size = value
         self.Binning = self.create()
         self.TimeBinning = self.load_time_binning()
         self.NBins = len(self.Binning)
@@ -89,11 +88,15 @@ class Bins:
 
     # ----------------------------------------
     # region GENERAL
+    @staticmethod
+    def get_size(bin_size):
+        return choose(bin_size, Bins.Size)
+
     def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, rel_time=False, t_from_event=False):
         return self.get_raw_time(bin_width, rel_time, start_event, end_event, t_from_event) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
 
     def get_raw_event(self, bin_width=None, start_event=0, end_event=None):
-        end_event, bin_width = choose(end_event, self.NEvents), choose(bin_width, Bins.Size)
+        end_event, bin_width = choose(end_event, self.NEvents), Bins.get_size(bin_width)
         return Bins.make(start_event, end_event, bin_width, last=end_event - start_event % bin_width > bin_width / 4)
 
     def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None, t_from_event=False):

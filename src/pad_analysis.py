@@ -182,7 +182,7 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
-        suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.Size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
+        suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = make_ufloat(do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo), par=0)
         return self.Peaks.get_signal_ph() if peaks else ufloat(ph.n, ph.s + sys_err)
 
@@ -303,7 +303,7 @@ class PadAnalysis(DUTAnalysis):
             ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
             return self.Draw.profile(t, ph, self.Bins.get_time(), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
 
-        pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(Bins.Size, '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
+        pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(self.Bins.Size, '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
         p = do_pickle(pickle_path, f, redo=redo)
         y = get_hist_vec(p, err=False)
         y_range = ax_range(min(y), max(y), .5, .5) if y_range is None else y_range
@@ -311,7 +311,7 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, pickle_path)
         format_statbox(p, fit=True)
-        self.Draw.save_plots('PulseHeight{}'.format(Bins.Size), show=show, save=save, prnt=prnt)
+        self.Draw.save_plots('PulseHeight{}'.format(self.Bins.Size), show=show, save=save, prnt=prnt)
         return p, fit
 
     def fit_pulse_height(self, p, picklepath):

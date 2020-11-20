@@ -248,10 +248,10 @@ class DUTAnalysis(Analysis):
 
     def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
         p = self.draw_pulse_height(event_bin_width, show=False, save=False)[0]
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(Bins.Size), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
+        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.Size), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
         format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
         set_statbox(all_stat=True, fit=fit)
-        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.Size), save=save, lm=.12, show=show, stats=True)
+        self.Draw(h, 'SignalBin{0}Disto'.format(self.Bins.Size), save=save, lm=.12, show=show, stats=True)
         return h
 
     def draw_track_length(self, show=True):
