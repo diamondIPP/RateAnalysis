@@ -129,17 +129,17 @@ class PulserAnalysis(PadSubAnalysis):
         self.Draw.save_plots('PulserRate', prnt=prnt, show=show)
         return p
 
-    def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, show=True, redo=False):
+    def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, show=True, redo=False, prnt=True):
         """ Shows the average pulse height of the pulser as a function of time """
         def f():
             x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
             m, s = self.get_mean_sigma(cut)
             ph_cut = (m - 4 * s < y) & (y < m + 4 * s)
-            return self.Draw.profile(x[ph_cut], y[ph_cut], self.Ana.Bins.get_time(bin_size), 'Pulser Pulse Height', show=False)
-        p = do_pickle(self.make_simple_pickle_path('PHT', self.Cut(cut).GetName()), f, redo=redo)
+            return self.Draw.profile(x[ph_cut], y[ph_cut], self.Bins.get_time(bin_size), 'Pulser Pulse Height', show=False)
+        p = do_pickle(self.make_simple_pickle_path('PHT', '{}{}'.format(self.Cut(cut).GetName(), self.Bins(bin_size))), f, redo=redo)
         fit = p.Fit('pol0', 'qs')
         format_histo(p, y_off=1.7, **self.get_t_args(), y_range=choose(y_range, ax_range(get_hist_vec(p), 0, .6, 1)))
-        self.Draw(p, 'PulserPulserHeight{}'.format(bin_size), show, gridy=True, lm=.14, stats=set_statbox(fit=True, entries=True))
+        self.Draw(p, 'PulserPulserHeight', show, gridy=True, lm=.14, stats=set_statbox(fit=True, entries=True), prnt=prnt)
         return p, FitRes(fit)
 
     def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, show=True, save=True):
