@@ -22,13 +22,16 @@ class SubCollection(Analysis):
     def get_times(self):
         return self.Ana.get_times()
 
-    def get_fluxes(self):
-        return self.Ana.get_fluxes()
+    def get_time_bins(self, bin_width=None, only_edges=False):
+        return self.Ana.get_time_bins(bin_width, only_edges)
+
+    def get_fluxes(self, pbar=False):
+        return self.Ana.get_fluxes(pbar=pbar)
 
     def get_x(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
         return self.Ana.get_x_var(vs_time, rel_time, rel_error, avrg)
 
-    def get_x_args(self, vs_time, rel_time=False, x_range=None):
+    def get_x_args(self, vs_time=False, rel_time=False, x_range=None):
         return self.Ana.get_x_args(vs_time, rel_time, x_range)
 
     def get_analyses(self, runs=None):
