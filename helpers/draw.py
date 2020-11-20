@@ -370,6 +370,7 @@ class Draw(object):
     def graph(self, x, y, title='', c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, **kwargs):
         g = Draw.make_tgrapherrors(x, y, asym_err=asym_errors)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         format_histo(g, title=title, **kwargs)
         self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c)
         return g
@@ -378,6 +379,7 @@ class Draw(object):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
+        kwargs['stats'] = stats
         p = TProfile(Draw.get_name('p'), title, *choose(binning, make_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
@@ -778,6 +780,8 @@ def get_hist_args(h, err=True, raw=False):
 
 
 def get_hist_vecs(p, err=True, raw=False):
+    if type(p) in [ndarray, list]:
+        return array([tup for ip in p for tup in array(get_hist_vecs(ip, err, raw)).T]).T
     return get_hist_args(p, err, raw), get_hist_vec(p, err)
 
 
