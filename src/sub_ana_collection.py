@@ -37,7 +37,7 @@ class SubCollection(Analysis):
     def get_runs(self):
         return self.Ana.get_runs()
 
-    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
+    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
         runs = choose(runs, self.Ana.Runs)
         pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
         values = []
@@ -46,4 +46,7 @@ class SubCollection(Analysis):
         for ana in self.get_analyses(runs):
             values.append(f(ana, *args, **kwargs))
             self.PBar.update() if pbar else do_nothing()
-        return array(self.Ana.get_flux_average(array(values)) if avrg else values)
+        return values if plots else array(self.Ana.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
+
+    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
+        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, *args, **kwargs)
