@@ -174,6 +174,9 @@ class AnalysisCollection(Analysis):
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
         return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
 
+    def get_flux_strings(self, prec=0, runs=None):
+        return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
+
     def get_flux_splits(self, redo=False, show=True):
         def f():
             values = sort([flux.n for flux in self.get_fluxes()])
