@@ -886,6 +886,13 @@ def show_wheel():
     Draw.add(t)
 
 
+def show_line_styles():
+    Draw.canvas(w=1.5, title='Line Styles')
+    for i in range(1, 11):
+        Draw.horizontal_line(1 / 11 * i, 0.1, .95, w=2, style=i)
+        Draw.tlatex(.07, 1 / 11 * i, str(i), align=32)
+
+
 def ax_range(low=None, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
