@@ -67,16 +67,16 @@ class PulserAnalysis(PadSubAnalysis):
     def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
         return self.get_pulse_height(corr, beam_on, bin_width, par=2, redo=redo)
 
-    def get_pedestal(self, par=1, redo=False):
-        pickle_path = self.make_simple_pickle_path('Pedestal')
-        fit = do_pickle(pickle_path, partial(self.draw_pedestal_fit, show=False, prnt=False, redo=redo), redo=redo)
-        return make_ufloat(fit, par=par)
+    def get_pedestal(self, sigma=False, beam_on=True, redo=False):
+        pickle_path = self.make_simple_pickle_path('Pedestal', str(int(beam_on)))
+        fit = do_pickle(pickle_path, partial(self.draw_pedestal_fit, show=False, prnt=False, redo=redo, beam_on=beam_on), redo=redo)
+        return make_ufloat(fit, par=[1, 2][sigma])
 
     def get_pedestal_mean(self, redo=False):
-        return self.get_pedestal(par=1, redo=redo)
+        return self.get_pedestal(redo=redo)
 
     def get_pedestal_sigma(self, redo=False):
-        return self.get_pedestal(par=2, redo=redo)
+        return self.get_pedestal(sigma=True, redo=redo)
 
     def get_values(self, cut=None):
         return self.get_tree_vec(var=self.get_signal_var(cut=self.Cut(cut)), cut=self.Cut(cut), dtype='f4')
@@ -150,8 +150,7 @@ class PulserAnalysis(PadSubAnalysis):
             m, s = mean_sigma(x[x < mean(x) + 10], err=False)
             s = max(s, .1)
             return self.Draw.distribution(x, Bins.make(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
-        suf = '{corr}_{beam}_{}'.format(self.get_all_signal_names()[choose(name, self.SignalName)], corr='ped_corr' if corr else '', beam='BeamOff' if not beam_on else 'BeamOn')
-        h = do_pickle(self.make_simple_pickle_path('Disto', suf), f, redo=redo)
+        h = do_pickle(self.make_simple_pickle_path('Disto', '{}{}{}'.format(int(corr), int(beam_on), self.get_all_signal_names()[choose(name, self.SignalName)])), f, redo=redo)
         self.Draw(h, 'PulserDistribution', show=show, lm=.12, save=save)
         return h
 
@@ -179,8 +178,8 @@ class PulserAnalysis(PadSubAnalysis):
     def draw_pedestal(self, show=True, save=True, prnt=True, redo=False):
         return self.Ana.Pedestal.draw_distribution(name=self.PedestalName, cut=self.Cut(), show=show, save=save, prnt=prnt, redo=redo)
 
-    def draw_pedestal_fit(self, show=True, save=True, prnt=True, redo=False):
-        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.Cut(), show=show, save=save, prnt=prnt, redo=redo)
+    def draw_pedestal_fit(self, beam_on=True, show=True, save=True, prnt=True, redo=False):
+        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.Ana.Cut.get_pulser(beam_on=beam_on)(), show=show, save=save, prnt=prnt, redo=redo)
 
     def compare_pedestal(self, show=True):
         histos = [self.Ana.Pedestal.draw_distribution(show=False), self.draw_pedestal(show=False)]
