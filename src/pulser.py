@@ -50,14 +50,16 @@ class PulserAnalysis(PadSubAnalysis):
         h = self.draw_distribution(name, show=False, save=False)
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
 
-    def get_rate(self):
-        values = self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops'))
-        rate = calc_eff(values=values)
-        self.info('pulser rate: {:1.1f} ({:1.1f}) %'.format(rate.n, rate.s))
-        return rate
+    def get_rate(self, prnt=True, redo=False):
+        def f():
+            values = self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops'))
+            rate = calc_eff(values=values)
+            self.info('pulser rate: {:1.1f} ({:1.1f}) %'.format(rate.n, rate.s), prnt=prnt)
+            return rate
+        return do_pickle(self.make_simple_pickle_path('Rate'), f, redo=redo)
 
     def get_t_bins(self, bin_size=None):
-        return Bins.make(*self.SignalRegion, choose(bin_size, default=self.Waveform.BinWidth))
+        return Bins.make(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
     def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, par=1, redo=False):
         pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
@@ -86,6 +88,11 @@ class PulserAnalysis(PadSubAnalysis):
         tmin, tmax = self.SignalRegion
         cft = array([[t for t in lst if tmin <= t <= tmax] for lst in cft])
         return array([lst[0] if len(lst) else 0 for lst in cft])
+
+    def get_peak_time(self, sigma=False, redo=False):
+        def f():
+            return mean_sigma(array(self.Peaks.get_from_tree())[self.get_signal_indices()])
+        return do_pickle(self.make_simple_pickle_path('PeakTime'), f, redo=redo)[sigma]
 
     def get_mean_sigma(self, cut=None, redo=False):
         def f():
