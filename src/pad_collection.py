@@ -2,7 +2,7 @@
 #       Analysis collection child for pad detectors
 # revised on Nov 19th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.PulserCollection import PulserCollection
+from src.pulser_collection import PulserCollection
 from src.analysis_collection import *
 from src.pad_analysis import PadAnalysis
 
