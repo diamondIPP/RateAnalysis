@@ -123,7 +123,7 @@ class PulserAnalysis(PadSubAnalysis):
     # region DRAW
     def draw_rate(self, bin_size=10, cut='', rel_t=True, show=True, prnt=True):
         """ Shows the fraction of pulser events as a function of time. Peaks appearing in this graph are most likely beam interruptions. """
-        x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(cut))
+        x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(choose(cut, self.Ana.Cut.get('beam stops'))))
         p = self.Draw.profile(x, y * 100, self.Bins.get_raw_time(bin_size), 'Pulser Rate', y_tit='Pulser Fraction [%]', y_off=.8, y_range=[0, 105], markersize=.5, stats=0, lm=.08, draw_opt='bare',
                               w=1.5, h=.75, fill_color=Draw.FillColor, **self.get_t_args(rel_t), show=show)
         self.Draw.save_plots('PulserRate', prnt=prnt, show=show)
