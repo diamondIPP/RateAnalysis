@@ -64,7 +64,7 @@ class PulserAnalysis(PadSubAnalysis):
     def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, par=1, redo=False):
         pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
         fit = do_pickle(pickle_path, partial(self.draw_distribution_fit, show=False, prnt=False, corr=corr, redo=redo, bin_width=bin_width, beam_on=beam_on), redo=redo)
-        return make_ufloat(fit, par=par)
+        return fit2u(fit, par=par)
 
     def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
         return self.get_pulse_height(corr, beam_on, bin_width, par=2, redo=redo)
@@ -72,7 +72,7 @@ class PulserAnalysis(PadSubAnalysis):
     def get_pedestal(self, sigma=False, beam_on=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Pedestal', str(int(beam_on)))
         fit = do_pickle(pickle_path, partial(self.draw_pedestal_fit, show=False, prnt=False, redo=redo, beam_on=beam_on), redo=redo)
-        return make_ufloat(fit, par=[1, 2][sigma])
+        return fit2u(fit, par=[1, 2][sigma])
 
     def get_pedestal_mean(self, redo=False):
         return self.get_pedestal(redo=redo)
@@ -99,7 +99,7 @@ class PulserAnalysis(PadSubAnalysis):
             values = array(self.get_values(cut))
             h = self.Draw.distribution(values, self.Ana.Bins.get_pad_ph(bin_width=.5), '', show=False)
             fit = fit_fwhm(h)
-            return make_ufloat(fit, par=1), make_ufloat(fit, par=2)
+            return fit2u(fit, par=1), fit2u(fit, par=2)
         return do_pickle(self.make_simple_pickle_path('MeanSigma', self.Cut(cut).GetName()), f, redo=redo)
 
     def get_fraction(self, show=False, prnt=True):
@@ -108,7 +108,7 @@ class PulserAnalysis(PadSubAnalysis):
         format_statbox(h, fit=True)
         format_histo(h, markersize=None)
         fit = h.Fit('pol0', 'qs')
-        return make_ufloat(FitRes(fit), par=0)
+        return fit2u(FitRes(fit), par=0)
 
     def get_real_fraction(self):
         """ :returns the real fraction of pulser events compared to signal events. (pulser in rate / flux / area)  """

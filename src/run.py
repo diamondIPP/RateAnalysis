@@ -305,7 +305,7 @@ class Run(Analysis):
             fluxes.append(self.Info['measuredflux'])
         flux = mean(fluxes)
         self.Info['mean flux'] = flux
-        return make_ufloat((flux, .1 * flux))
+        return ufloat(flux, .1 * flux)
 
     def find_n_events(self, n, cut, start=0):
         evt_numbers = self.get_tree_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
@@ -319,7 +319,7 @@ class Run(Analysis):
         return ufloat(self.Flux.n, self.Flux.s + self.Flux.n * rel_error) if self.Flux else self.Info['aimed flux']
 
     def get_time(self):
-        return make_ufloat((time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2))
+        return ufloat(time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2)
 
     def get_channel_name(self, channel):
         self.Tree.GetEntry()

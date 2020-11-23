@@ -442,7 +442,7 @@ class DUTAnalysis(Analysis):
             y = zeros(2, 'd')
             mean_error = mean([v.n for v in get_2d_hist_vec(self.draw_error_signal_map(show=False))])
             h.GetQuantiles(2, y, q)
-            return make_ufloat([y[1], mean_error]) / make_ufloat([y[0], mean_error]) - 1
+            return ufloat(y[1], mean_error) / ufloat(y[0], mean_error) - 1
         ratio = do_pickle(pickle_path, f)
         self.info('Relative Signal Spread is: {:2.2f} %'.format(ratio * 100), prnt=prnt)
         return ratio

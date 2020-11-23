@@ -186,7 +186,7 @@ class PadAnalysis(DUTAnalysis):
         def f():
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
-        ph = make_ufloat(do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo), par=0)
+        ph = fit2u(do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo), par=0)
         return self.Peaks.get_signal_ph() if peaks else ufloat(ph.n, ph.s + sys_err)
 
     def get_bucket_pulse_heights(self, redo=False):
@@ -281,7 +281,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pulse_height_vs_binsize(self, show=True):
         bin_sizes = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-        pulse_heights = [make_ufloat(self.draw_pulse_height(bin_size=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
+        pulse_heights = [fit2u(self.draw_pulse_height(bin_size=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         g = Draw.make_tgrapherrors(bin_sizes, pulse_heights, title='Pulse Height vs Number of Events per Bin', x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2, x_off=1.2)
         self.Draw(g, lm=.12, show=show, gridy=True, logx=True)
 

@@ -518,7 +518,7 @@ class PeakAnalysis(PadSubAnalysis):
             for i in range(n):
                 g = self.WF.draw_single(ind=i, show=False)
                 fit = g.Fit('landau', 'qs0', '', times[i] - 4, times[i] + 5)
-                c.append(make_ufloat(FitRes(fit), par=0))
+                c.append(fit2u(FitRes(fit), par=0))
             g = Draw.make_tgrapherrors('gsm', 'Model Scale', x=heights, y=c)
             fit = g.Fit('pol1', 'qs0')
             return fit.Parameter(1)

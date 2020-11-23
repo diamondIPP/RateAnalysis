@@ -7,7 +7,7 @@
 from os.path import join
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
-from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute
+from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute, frombuffer
 from src.binning import Bins
 from helpers.utils import *
 from inspect import signature
@@ -496,8 +496,8 @@ class Draw(object):
     @staticmethod
     def make_graph_from_profile(p):
         x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
-        x = [make_ufloat([p.GetBinCenter(i), p.GetBinWidth(i) / 2]) for i in x_range]
-        y = [make_ufloat([p.GetBinContent(i), p.GetBinError(i)]) for i in x_range]
+        x = [ufloat(p.GetBinCenter(i), p.GetBinWidth(i) / 2) for i in x_range]
+        y = [ufloat(p.GetBinContent(i), p.GetBinError(i)) for i in x_range]
         return Draw.make_tgrapherrors(x, y)
 
     @staticmethod
@@ -751,25 +751,23 @@ def get_graph_vecs(g, err=True):
 
 
 def get_graph_x(g, err=True):
-    values = array([make_ufloat([g.GetX()[i], g.GetEX()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetX()[i]) for i in range(g.GetN())])
-    return values if err else array([v.n for v in values])
+    return make_ufloat(frombuffer(g.GetX()), frombuffer(g.GetEX())) if err else frombuffer(g.GetX())
 
 
 def get_graph_y(g, err=True):
-    if type(g) in [ndarray, list]:
+    if is_iter(g):
         return array([v for ig in g for v in get_graph_y(ig, err)])
-    values = array([make_ufloat([g.GetY()[i], g.GetEY()[i]]) for i in range(g.GetN())]) if 'Error' in g.ClassName() else array([make_ufloat(g.GetY()[i]) for i in range(g.GetN())])
-    return values if err else array([v.n for v in values])
+    return make_ufloat(frombuffer(g.GetY()), frombuffer(g.GetEY())) if err else frombuffer(g.GetY())
 
 
 def get_hist_vec(p, err=True):
-    return array([make_ufloat([p.GetBinContent(ibin), p.GetBinError(ibin)]) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
+    return array([ufloat(p.GetBinContent(ibin), p.GetBinError(ibin)) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
 
 
 def get_hist_args(h, err=True, raw=False):
     if raw:
         return array([h.GetBinLowEdge(i) for i in range(1, h.GetNbinsX() + 2)], 'd')
-    return array([make_ufloat([h.GetBinCenter(ibin), h.GetBinWidth(ibin) / 2]) if err else h.GetBinCenter(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
+    return array([ufloat(h.GetBinCenter(ibin), h.GetBinWidth(ibin) / 2) if err else h.GetBinCenter(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
 
 
 def get_hist_vecs(p, err=True, raw=False):

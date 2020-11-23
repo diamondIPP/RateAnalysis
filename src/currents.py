@@ -175,7 +175,7 @@ class Currents(Analysis):
     def get_current(self):
         if self.Ana is not None and not self.Ana.DUT.Bias:
             warning('Bias of run {} is 0!'.format(self.Run.Number))
-            current = make_ufloat((0, 0))
+            current = ufloat(0, 0)
         else:
             h = self.draw_distribution(show=False)
             if h.GetEntries() < 3:

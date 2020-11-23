@@ -25,7 +25,7 @@ class TimingAnalysis(PadSubAnalysis):
     def get(self, par=1, redo=False):
         def f():
             return FitRes(self.draw_peaks(show=False, prnt=False, redo=redo).GetListOfFunctions()[1])
-        return make_ufloat(do_pickle(self.make_simple_pickle_path('PeakVals'), f, redo=redo), par=par)
+        return fit2u(do_pickle(self.make_simple_pickle_path('PeakVals'), f, redo=redo), par=par)
 
     def get_peak_var(self, corr=True, fine_corr=False, cut=None, region=None, redo=False):
         fine_corr = ' - {}'.format(self.get_fine_correction(cut, redo=redo)) if fine_corr else ''
@@ -245,7 +245,7 @@ class TimingAnalysis(PadSubAnalysis):
         return FitRes(fit_res)
 
     def draw_rf_phases(self, n=100, start_event=0, show=True):
-        y = [make_ufloat(self.fit_rf(i + start_event, show=False), par=2) for i in range(n)]
+        y = [fit2u(self.fit_rf(i + start_event, show=False), par=2) for i in range(n)]
         self.Draw.graph(arange(len(y)), y, title='RF Phases', x_tit='event', y_tit='RF Phase', show=show)
 
     def draw_rf_period(self, cut=None, show=True):

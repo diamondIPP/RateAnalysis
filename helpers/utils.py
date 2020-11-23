@@ -453,7 +453,7 @@ def get_fwhm(h, fit_range=.8, ret_edges=False):
     half_max0 = h.GetMaximum() * fit_range
     # fit the top with a gaussian to get better maxvalue
     fit = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]]))
-    half_max = make_ufloat(fit, par=0) * .5
+    half_max = fit2u(fit, par=0) * .5
     blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
     low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
     high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
@@ -643,18 +643,26 @@ def log_bins(n_bins, min_val, max_val):
     return [n_bins, array([pow(10, log10(min_val) + i * width) for i in range(n_bins + 1)])]
 
 
-def make_ufloat(tup, par=0):
-    if is_ufloat(tup):
-        return tup
-    if isinstance(tup, FitRes):
-        return ufloat(tup.Parameter(par), tup.ParError(par))
-    if type(tup) in [tuple, list, ndarray]:
-        return ufloat(*tup) if not is_ufloat(tup[0]) else ufloat(tup[0].n, tup[1].n)
-    return ufloat(tup, 0)
+def fit2u(fit, par):
+    return ufloat(fit.Parameter(par), fit.ParError(par))
+
+
+def make_ufloat(n, s=0):
+    if is_iter(n):
+        return array([ufloat(*v) for v in array([n, s]).T])
+    return n if is_ufloat(n) else ufloat(n, s)
 
 
 def is_ufloat(value):
     return type(value) in [Variable, AffineScalarFunc]
+
+
+def is_iter(v):
+    try:
+        iter(v)
+        return True
+    except TypeError:
+        return False
 
 
 def find_graph_margins(graphs):
