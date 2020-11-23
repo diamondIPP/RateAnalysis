@@ -75,10 +75,13 @@ class DUTAnalysis(Analysis):
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
 
+    def get_eff_var(self, *args, **kwargs):
+        return ''
+
     def get_t_off(self, rel_time):
         return self.Run.StartTime if rel_time else 0
 
-    def get_t_args(self, rel_time):
+    def get_t_args(self, rel_time=False):
         return {'x_tit': 'Time [hh::mm]', 't_ax_off': self.get_t_off(rel_time)}
 
     def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
@@ -196,6 +199,8 @@ class DUTAnalysis(Analysis):
     # endregion ALIASES
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region SIZES
     def draw_size(self, size=None, color=1, name=''):
         if size is None:
             return warning('The {} size of "{}" was not specified in the dia info'.format(' {}'.format(name) if name else '', self.DUT.Name))
@@ -228,6 +233,24 @@ class DUTAnalysis(Analysis):
             my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() / 2), py.FindLastBinAbove(py.GetMaximum() / 2)]])
             return array([mx, my])
         return do_pickle(self.make_simple_pickle_path('Center', sub_dir='Center'), f, redo=redo)
+    # endregion SIZES
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region EFFICIENCY
+    def draw_efficiency(self, bin_size=None, show=True):
+        self.Draw.efficiency(*self.get_tree_vec([self.get_t_var(), self.get_eff_var()], self.Cut()), self.Bins.get_time(bin_size), show=show, **self.get_t_args())
+
+    def draw_efficiency_map(self, res=None, n_sigma=4, cut=None, show=True):
+        cut_string = choose(self.Cut(cut) + self.Cut.get('tracks'), self.Cut.generate_custom(exclude=['fiducial']), decider=cut)
+        e, x, y = self.get_tree_vec(var=[self.get_eff_var(n_sigma)] + self.get_track_vars(), cut=cut_string)
+        p = self.Draw.prof2d(x, y, e * 100, self.Bins.get_global(res, mm=True), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
+        set_2d_ranges(p, dx=3, dy=3)
+        self.draw_fid_cut(scale=10)
+        self.draw_detector_size()
+        self.Draw.save_plots('EffMap')
+    # endregion SIZES
+    # ----------------------------------------
 
     def draw_alignment(self, bin_size=200, thresh=40, show=True):
         """ draw the aligment of telescope and DUT events """
