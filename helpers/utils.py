@@ -795,9 +795,14 @@ def get_buf(buf, n, dtype=None):
 
 def calc_eff(k=0, n=0, values=None):
     values = array(values) if values is not None else None
+    if n == 0 and not values.size:
+        return zeros(3)
     k = float(k if values is None else count_nonzero(values))
     n = float(n if values is None else values.size)
-    return make_ufloat((100 * (k + 1) / (n + 2), 100 * sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))))
+    m = (k + 1) / (n + 2)
+    mode = k / n
+    s = sqrt(((k + 1) / (n + 2) * (k + 2) / (n + 3) - ((k + 1) ** 2) / ((n + 2) ** 2)))
+    return array([mode, max(s + (mode - m), 0), max(s - (mode - m), 0)]) * 100
 
 
 def init_argparser(run=None, tc=None, dut=False, tree=False, has_verbose=False, has_collection=False, return_parser=False):
