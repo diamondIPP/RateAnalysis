@@ -357,11 +357,12 @@ class PadCut(Cut):
 
     @staticmethod
     def fit_bucket(h, show=True):
-        x1, y1, x2, y2 = concatenate(find_maxima(h, n=3, sigma=2.5, sort_x=True))  # n one larger than the expected otherwise buffer full
-        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), x2 + 5)
-        if y1 < 20 or y1 > 1e10:
+        maxima = concatenate(find_maxima(h, n=3, sigma=2.5, sort_x=True))  # n one larger than the expected otherwise buffer full
+        if maxima.size < 3 or maxima[1] < 20 or maxima[1] > 1e10:
             return  # didn't find pedestal peak!
+        x1, y1, x2, y2 = maxima
         d = x2 - x1
+        fit = TF1('fit', 'gaus(0) + gaus(3) + gaus(6)', h.GetXaxis().GetXmin(), x2 + 5)
         fit.SetParameters(y2, x2, 10, y1, x1, 3, min(y1, y2) / 4, x1 + d / 4, 5)
         fit.SetParLimits(1, x2 - 5, x2 + 5)         # signal mean
         fit.SetParLimits(3, 1, y1 * 2)              # pedestal height
