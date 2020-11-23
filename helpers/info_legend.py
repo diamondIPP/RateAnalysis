@@ -7,7 +7,7 @@
 from os import chdir
 from subprocess import check_output
 from ROOT import gROOT
-from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string
+from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string, mean
 
 
 class InfoLegend(object):
@@ -104,7 +104,7 @@ class InfoLegend(object):
     def get_rate_string(self):
         if self.is_collection():
             fluxes = [flux.n for flux in self.Ana.get_fluxes(pbar=False)]
-            return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes)))
+            return '{} - {}'.format(make_flux_string(min(fluxes)), make_flux_string(max(fluxes))) if 'voltage' not in self.Ana.Type else make_flux_string(mean(fluxes), prec=0)
         else:
             return make_flux_string(self.Ana.Run.Flux.n)
 
