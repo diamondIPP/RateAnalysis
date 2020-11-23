@@ -147,6 +147,9 @@ class PadAnalysis(DUTAnalysis):
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
 
+    def get_eff_var(self, n_sigma=3):
+        return '{} > {} * {}'.format(self.get_signal_var(evnt_corr=False, off_corr=False), n_sigma, self.Pedestal.get_signal_var())
+
     def get_ph_str(self):
         return self.get_signal_var()
 
@@ -208,6 +211,11 @@ class PadAnalysis(DUTAnalysis):
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
+
+    def get_efficiency(self, n_sigma=3, redo=False):
+        def f():
+            return calc_eff(values=self.get_tree_vec(self.get_eff_var(n_sigma), self.Cut()))
+        return do_pickle(self.make_simple_pickle_path(suf=str(n_sigma), sub_dir='Efficiency'), f, redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -241,16 +249,6 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region 2D MAPS
-    def draw_efficiency_map(self, res=None, n_sigma=4, cut=None, show=True):
-        cut_string = choose(self.Cut(cut) + self.Cut.get('tracks'), self.Cut.generate_custom(exclude=['fiducial']), decider=cut)
-        thresh = self.Pedestal.get_mean().n * n_sigma
-        e, x, y = self.get_tree_vec(var=['({}>{})*100'.format(self.get_signal_var(), thresh)] + self.get_track_vars(), cut=cut_string)
-        p = self.Draw.prof2d(x, y, e, self.Bins.get_global(res, mm=True), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
-        set_2d_ranges(p, dx=3, dy=3)
-        self.draw_fid_cut(scale=10)
-        self.draw_detector_size()
-        self.Draw.save_plots('EffMap')
-
     def draw_efficiency_vs_threshold(self, thresh=None, bin_width=.5, show=True):
         thresh = self.Pedestal.get_noise().n * 4 if thresh is None else thresh
         h = self.draw_signal_distribution(show=False, bin_width=bin_width)
