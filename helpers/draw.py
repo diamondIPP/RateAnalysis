@@ -418,7 +418,7 @@ class Draw(object):
         p = self.profile(x, e, binning, show=False)
         x = get_hist_args(p)
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
-        return self.graph(x, y, title, lm=lm, show=show, **kwargs)
+        return self.graph(x, y, title, lm=lm, show=show, y_tit='Efficiency [%]', **kwargs)
 
     def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)
