@@ -6,13 +6,6 @@ from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, upd
 from os.path import getsize
 
 
-def load_main_config(config='main', ext='ini'):
-    file_name = join(get_base_dir(), 'config', '{}.{}'.format(config.split('.')[0], ext.strip('.')))
-    if not file_exists(file_name):
-        critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
-    return Config(file_name)
-
-
 class Analysis(object):
     """ This class provides default behaviour objects in the analysis framework and is the parent of all analyses.
         It contains, among other things, the root drawing methods, the main config and information about the directory structure. """

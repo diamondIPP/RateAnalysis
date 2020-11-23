@@ -20,7 +20,7 @@ from numpy import sqrt, array, average, mean, arange, log10, concatenate, where,
 from numpy import histogram, log2
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
-from os.path import dirname, realpath
+from os.path import dirname, realpath, join
 from pytz import timezone, utc
 from termcolor import colored
 from uncertainties import ufloat
@@ -906,6 +906,13 @@ class PBar(object):
 
     def finish(self):
         self.PBar.finish()
+
+
+def load_main_config(config='main', ext='ini'):
+    file_name = join(get_base_dir(), 'config', '{}.{}'.format(config.split('.')[0], ext.strip('.')))
+    if not file_exists(file_name):
+        critical('{} does not exist. Please copy it from the main.default and adapt it to your purpose!'.format(file_name))
+    return Config(file_name)
 
 
 class Config(ConfigParser):
