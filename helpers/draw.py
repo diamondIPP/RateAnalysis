@@ -369,8 +369,8 @@ class Draw(object):
         self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats)
         return th
 
-    def graph(self, x, y, title='', c=None, asym_errors=False, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
-        g = Draw.make_tgrapherrors(x, y, asym_err=asym_errors)
+    def graph(self, x, y, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
+        g = Draw.make_tgrapherrors(x, y)
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         format_histo(g, title=title, **kwargs)
@@ -413,17 +413,12 @@ class Draw(object):
         self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, stats=True if stats is None else stats)
         return h
 
-    def efficiency(self, x, e, binning=None, title='', lm=None, show=True, **kwargs):
+    def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
         binning = choose(binning, Bins.make, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
         p = self.profile(x, e, binning, show=False)
-        x = get_hist_args(p, err=False)
-        values = [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]
-        e = array([calc_eff(p0 / 100 * n, n) for p0, n in values])
-        ey = array([e[:, 1], e[:, 2]])
-        g = Draw.make_tgrapherrors(x=x, y=e[:, 0], ey=ey, asym_err=True)
-        format_histo(g, title=title, **kwargs)
-        self.histo(g, show=show, lm=lm, draw_opt='ap')
-        return g
+        x = get_hist_args(p)
+        y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
+        return self.graph(x, y, title, lm=lm, show=show, **kwargs)
 
     def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)
@@ -484,8 +479,15 @@ class Draw(object):
         return f0
 
     @staticmethod
-    def make_tgrapherrors(x=None, y=None, ex=None, ey=None, asym_err=False, **kwargs):
-        g = (TGraphAsymmErrors if asym_err else TGraphErrors)(*make_graph_args(x, y, ex, ey, asym_err))
+    def make_tgrapherrors(x=None, y=None, **kwargs):
+        if len(list(x)) != len(list(y)) or not len(x):
+            return warning('Arrays have different size!')
+        x, y = array(x), array(y)
+        asym = len(x.shape) == 2 or len(y.shape) == 2
+        s, utypes, has_ers = len(x), [type(v[0]) in [Variable, AffineScalarFunc] for v in [x, y]], [len(v.shape) > 1 for v in [x, y]]
+        ex, ey = [array([[v.s for v in vals]] if is_u and not asym else vals[:, 1:3].T if has_e else zeros((2, s)) if asym else [zeros(s)], 'd') for vals, is_u, has_e in zip([x, y], utypes, has_ers)]
+        x, y = [array([v.n for v in vals] if utype else vals[:, 0] if has_e else vals, 'd') for vals, utype, has_e in zip([x, y], utypes, has_ers)]
+        g = (TGraphAsymmErrors if asym else TGraphErrors)(s, x, y, *array(ex.tolist()), *array(ey.tolist()))  # doesn't work without double conversion...
         kwargs['marker'] = 20 if 'marker' not in kwargs else kwargs['marker']
         kwargs['markersize'] = 1 if 'markersize' not in kwargs else kwargs['markersize']
         format_histo(g, Draw.get_name('g'), **kwargs)
@@ -722,20 +724,6 @@ def fix_chi2(g, prec=.01, show=True):
 
 def make_darray(values):
     return array([v.n for v in values] if is_ufloat(values[0]) else values, dtype='d')
-
-
-def make_graph_args(x, y, ex=None, ey=None, asym_errors=False):
-    if x is None:
-        return []
-    if len(list(x)) != len(list(y)):
-        warning('Arrays have different size!')
-        return []
-    s = len(x)
-    utypes = [Variable, AffineScalarFunc]
-    ex, ey = [v if type(v) in [list, ndarray] or v is None else full(s, v) for v in [ex, ey]]
-    ex, ey = [array([v.s for v in vals], 'd') if type(vals[0]) in utypes else zeros((2, s) if asym_errors else s) if ers is None else array(ers, 'd') for vals, ers in zip([x, y], [ex, ey])]
-    x, y = [array([v.n for v in vals] if type(vals[0]) in utypes else vals, 'd') for vals in [x, y]]
-    return [s, array(x, 'd'), array(y, 'd')] + ([ex[0], ex[1], ey[0], ey[1]] if asym_errors else [ex, ey])
 
 
 def set_bin_labels(g, labels):
