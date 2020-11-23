@@ -3,7 +3,7 @@ from ROOT import TFile, TTree
 from numpy import inf
 from src.analysis import Analysis
 from src.converter import *
-from src.dut import DUT
+from src.dut import DUT, Plane
 
 
 class Run(Analysis):
@@ -38,8 +38,7 @@ class Run(Analysis):
         self.DUTs = [DUT(i + 1, self.Info) for i in range(self.get_n_diamonds())] if self.Number is not None else None
 
         # Settings
-        self.PixelSize = loads(self.MainConfig.get('PIXEL', 'size'))
-        self.NPixels = loads(self.MainConfig.get('PIXEL', 'amount'))
+        self.Plane = Plane()
         self.TriggerPlanes = self.load_trigger_planes()
 
         # General Information
@@ -238,20 +237,14 @@ class Run(Analysis):
             warning('Could not read mask file... not taking any mask!')
         return mask_data
 
-    def get_pixel_area(self):
-        return self.PixelSize[0] * self.PixelSize[1]
-
-    def get_full_area(self):
-        return self.NPixels[0] * self.NPixels[1] * self.get_pixel_area()
-
     def get_unmasked_area(self):
         if self.Number is None:
             return
         mask = self.load_mask()
         if mask is None:
-            return {plane: self.get_full_area() for plane in self.TriggerPlanes}
+            return {plane: Plane.Area / 100 for plane in self.TriggerPlanes}
         # format {plane: [x1, y1, x2, y2]}
-        return {plane: self.get_pixel_area() * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
+        return {plane: Plane.PixArea / 100 * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:

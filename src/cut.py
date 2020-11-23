@@ -6,6 +6,7 @@ from numpy import quantile, diff
 from ROOT import TCut, TPie
 from helpers.draw import *
 from src.sub_analysis import SubAnalysis
+from src.dut import Plane
 
 
 class Cut(SubAnalysis):
@@ -234,8 +235,8 @@ class Cut(SubAnalysis):
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
     def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial'):
-        x = choose(x, self.load_fiducial(fid_name)[0]) + (self.Bins.PX / 2 if center else 0)
-        y = choose(y, self.load_fiducial(fid_name)[1]) + (self.Bins.PY / 2 if center else 0)
+        x = choose(x, self.load_fiducial(fid_name)[0]) + (Plane.PX / 20 if center else 0)
+        y = choose(y, self.load_fiducial(fid_name)[1]) + (Plane.PY / 20 if center else 0)
         cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
         cut.SetVarX(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'x'))
         cut.SetVarY(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'y'))

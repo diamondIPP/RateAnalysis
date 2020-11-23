@@ -25,13 +25,13 @@ def collection_selector(rp, dut, tc, tree, verbose=False):
     if dummy.get_selected_type() == 'pad':
         from src.pad_collection import PadCollection
         if 'voltage' in dummy.SelectedType:
-            from src.VoltageScan import make_volage_scan
+            from src.voltage_scan import make_volage_scan
             return make_volage_scan(PadCollection)(rp, dut, tc, tree, verbose)
         return PadCollection(rp, dut, tc, tree, verbose)
     elif dummy.get_selected_type() == 'pixel':
         from src.pix_collection import PixCollection
         if 'voltage' in dummy.SelectedType:
-            from src.VoltageScan import make_volage_scan
+            from src.voltage_scan import make_volage_scan
             return make_volage_scan(PixCollection)(rp, dut, tc, tree, verbose)
         return PixCollection(rp, dut, tc, tree, verbose)
     else:

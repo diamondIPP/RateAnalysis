@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.analysis import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads
 
 
 class DUT:
@@ -50,3 +50,36 @@ class DUT:
 
     def set_number(self, value):
         self.Number = value
+
+
+class Plane(object):
+    """ Class with all information about a single pixel plane. """
+
+    conf = load_main_config()
+    Type = conf.get('PLANE', 'name')
+    NCols, NRows = conf.get_list('PLANE', 'pixel')
+    NPixels = NCols * NRows
+    PX, PY = conf.get_list('PLANE', 'pitch')  # mm
+    PixArea = PX * PY
+    Area = PixArea * NPixels
+
+    def __str__(self):
+        return '{} Plane'.format(Plane.Type.title())
+
+    def __repr__(self):
+        return '{} Plane with {}x{} pixels of a size {:1.1f} x {:1.1f}um'.format(Plane.Type.upper(), Plane.NCols, Plane.NRows, Plane.PX * 1e3, Plane.PY * 1e3)
+
+    def __call__(self, number=None):
+        return self
+
+    @staticmethod
+    def get_max_width():
+        return max(Plane.get_x_width(), Plane.get_y_width())
+
+    @staticmethod
+    def get_x_width():
+        return Plane.PX * Plane.NCols
+
+    @staticmethod
+    def get_y_width():
+        return Plane.PY * Plane.NRows
