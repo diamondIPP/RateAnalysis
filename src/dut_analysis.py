@@ -196,6 +196,9 @@ class DUTAnalysis(Analysis):
 
     def check_alignment(self, redo):
         pass
+
+    def get_efficiency(self):
+        pass
     # endregion ALIASES
     # ----------------------------------------
 
