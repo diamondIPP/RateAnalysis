@@ -50,7 +50,7 @@ class PulserCollection(SubCollection):
         y /= mean(y) if scaled else 1
         marker, colors, ms = [20, 22, 23], [self.Draw.get_color(10, 6)] + [int(Draw.Colors[0])] * 2, [1, 2, 2]
         graphs = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
-        mg = self.Draw.multigraph(graphs[:(1 if vs_time else 3)], 'Pulser Pulse Height', ['data', 'first', 'last'] if legend else None, logx=not vs_time, color=False, show=show, lm=.12)
+        mg = self.Draw.multigraph(graphs[:(1 if vs_time else 3)], 'Pulser Pulse Height', ['data', 'first', 'last'] if legend else None, **self.get_x_draw(vs_time), color=False, show=show, lm=.12)
         format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit='Pulser Pulse Height [mV]')
         self.draw_type()
         if vs_time and show_flux:
@@ -86,7 +86,7 @@ class PulserCollection(SubCollection):
     def draw_pedestals(self, vs_time=False, rel_time=False, sigma=False, beam_on=True, redo=False, show=True):
         x, y = self.get_x(vs_time, rel_time), self.get_pedestals(sigma, beam_on, redo)
         tit = 'Pulser {}'.format('Noise' if sigma else 'Pedestal')
-        return self.Draw.graph(x, y, tit, **self.get_x_args(vs_time, rel_time), y_tit='{} [mV]'.format(tit), show=show, logx=not vs_time)
+        return self.Draw.graph(x, y, tit, **self.get_x_args(vs_time, rel_time, draw_args=True), y_tit='{} [mV]'.format(tit), show=show)
 
     def compare_pedestals(self, sigma=False, show=True):
         graphs = [self.Ana.draw_pedestals(sigma=sigma, show=False)] + [self.draw_pedestals(sigma=sigma, beam_on=i, show=False) for i in [1, 0]]
@@ -102,11 +102,11 @@ class PulserCollection(SubCollection):
 
     def draw_rates(self, vs_time=False, redo=False, show=True):
         x, y = self.get_x(vs_time), self.get_values('pulser rates', PulserAnalysis.get_rate, prnt=False, redo=redo, picklepath=self.Analysis.make_simple_pickle_path('Rate', run='{}'))
-        self.Draw.graph(x, y, 'Pulser Rates', y_tit='Pulser Rate [%]', **self.get_x_args(vs_time), logx=not vs_time, show=show)
+        self.Draw.graph(x, y, 'Pulser Rates', y_tit='Pulser Rate [%]', **self.get_x_args(vs_time, draw_args=True), show=show)
 
     def draw_fractions(self, vs_time=False, show=True):
         x, y = self.get_x(vs_time), self.get_values('', PulserAnalysis.get_real_fraction, pbar=False)
-        self.Draw.graph(x, y, 'Real Pulser Fraction', y_tit='Pulser Fraction [%]', **self.get_x_args(vs_time), logx=not vs_time, show=show)
+        self.Draw.graph(x, y, 'Real Pulser Fraction', y_tit='Pulser Fraction [%]', **self.get_x_args(vs_time, draw_args=True), show=show)
 
     def make_rate_plots(self):
         self.get_values('pulser rates', PulserAnalysis.draw_rate, show=False, prnt=False)
@@ -115,4 +115,4 @@ class PulserCollection(SubCollection):
 
     def draw_peak_times(self, sigma=False, vs_time=False, show=True, redo=False):
         x, y = self.get_x(vs_time), self.get_values('pulser peak times', PulserAnalysis.get_peak_time, redo=redo, sigma=sigma, picklepath=self.Analysis.make_simple_pickle_path('PeakTime', run='{}'))
-        self.Draw.graph(x, y, 'Pulser Peak Times', y_tit='Pulser Peak Time [ns]', **self.get_x_args(vs_time), logx=not vs_time, show=show, lm=.13, y_off=1.6)
+        self.Draw.graph(x, y, 'Pulser Peak Times', y_tit='Pulser Peak Time [ns]', **self.get_x_args(vs_time, draw_args=True), show=show, lm=.13, y_off=1.6)

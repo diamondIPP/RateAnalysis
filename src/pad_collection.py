@@ -30,17 +30,15 @@ class PadCollection(AnalysisCollection):
     # region RESULTS
     def draw_all(self, redo=False):
         t0 = self.info('Generate all plots ... ')
-        if self.Type == 'voltage scan':
-            self.VoltageScan.draw_all(redo)
-        else:
-            self.draw_pulse_heights(show=False, redo=redo)
+        self.draw_pulse_heights(show=False, redo=redo)
+        self.Pulser.draw_pulse_heights(show=False, redo=redo)
+        self.draw_pedestals(show=False, redo=redo)
+        self.draw_pedestals(show=False, sigma=True, redo=redo)
+        self.Pulser.draw_pedestals(show=False, redo=redo)
+        self.Pulser.draw_pedestals(show=False, redo=redo, sigma=True)
+        if 'voltage' not in self.Type.lower():
             self.draw_scaled_pulse_heights(show=False)
             self.draw_scaled_pulse_heights(show=False, vs_time=True)
-            self.Pulser.draw_pulse_heights(show=False, redo=redo)
-            self.draw_pedestals(show=False, redo=redo)
-            self.draw_pedestals(show=False, sigma=True, redo=redo)
-            self.Pulser.draw_pedestals(show=False, redo=redo)
-            self.Pulser.draw_pedestals(show=False, redo=redo, sigma=True)
         self.draw_currents(show=False, draw_opt='al')
         self.draw_flux(show=False)
         self.draw_ph_currents(show=False)
@@ -89,7 +87,7 @@ class PadCollection(AnalysisCollection):
     def draw_pedestals(self, vs_time=False, sigma=False, redo=False, show=True):
         x, y = self.get_x_var(vs_time), self.get_pedestals(redo=redo, sigma=sigma)
         y_tit = ['Pedestal', 'Noise'][sigma]
-        return self.Draw.graph(x, y, title=y_tit, y_tit='{} [mV]'.format(y_tit), **self.get_x_args(vs_time), color=810, logx=not vs_time, show=show)
+        return self.Draw.graph(x, y, title=y_tit, y_tit='{} [mV]'.format(y_tit), **self.get_x_args(vs_time, draw_args=True), color=810, show=show)
 
     def draw_noise(self, vs_time=False, redo=False, show=True):
         return self.draw_pedestals(vs_time, True, redo, show)

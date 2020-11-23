@@ -31,8 +31,11 @@ class SubCollection(Analysis):
     def get_x(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
         return self.Ana.get_x_var(vs_time, rel_time, rel_error, avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, x_range=None):
-        return self.Ana.get_x_args(vs_time, rel_time, x_range)
+    def get_x_args(self, vs_time=False, rel_time=False, x_range=None, draw_args=False):
+        return self.Ana.get_x_args(vs_time, rel_time, x_range, draw_args)
+
+    def get_x_draw(self, vs_time=False):
+        return self.Ana.get_x_draw(vs_time)
 
     def get_analyses(self, runs=None):
         return self.Ana.get_analyes(runs)
