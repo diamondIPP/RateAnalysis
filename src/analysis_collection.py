@@ -1,8 +1,7 @@
 #! /usr/bin/env python
-from ROOT import THStack, TF1, TMultiGraph, TMath
+from ROOT import THStack, TF1, TMath
 from numpy import sort, log, argmin, argmax
 
-from src.VoltageScan import VoltageScan
 from src.analysis import Analysis, glob
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis
@@ -45,7 +44,6 @@ class AnalysisCollection(Analysis):
         self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else time_stamp(self.FirstAnalysis.Run.LogStart)
 
         # Sub Classes
-        self.VoltageScan = VoltageScan(self)
         self.Currents = Currents(self)
 
         self.print_finished() if verbose else print()
@@ -204,8 +202,8 @@ class AnalysisCollection(Analysis):
     def get_n_events(self, redo=False):
         return array([e.size for e in self.get_events(redo)])
 
-    def get_x_var(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
-        return array(self.get_times()) - (time_stamp(self.FirstAnalysis.Run.LogStart) + 3600 if rel_time else 0) if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
+    def get_x_var(self, vs_time=False, rel_error=0., avrg=False):
+        return self.get_times() if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
 
     def get_irradiation(self):
         return self.FirstAnalysis.get_irradiation()
@@ -251,7 +249,7 @@ class AnalysisCollection(Analysis):
         runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
 
         def f():
-            return mean_sigma([v for run, v in list(self.get_sm_std_devs(redo).items()) if run in runs]) if runs else make_ufloat((0, 0))
+            return mean_sigma([v for run, v in list(self.get_sm_std_devs(redo).items()) if run in runs]) if runs else ufloat(0, 0)
 
         return do_pickle(pickle_path, f, redo=redo)
 
@@ -263,6 +261,9 @@ class AnalysisCollection(Analysis):
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
+
+    def get_efficiencies(self, suf='3', redo=False):
+        return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.make_simple_pickle_path(suf=suf, sub_dir='Efficiency', run='{}'), redo=redo)
 
     def get_rate_dependence(self, redo=False):
         values = self.get_pulse_heights(redo=redo, pbar=False)
@@ -313,7 +314,11 @@ class AnalysisCollection(Analysis):
 
     @staticmethod
     def get_x_tit(vs_time):
-        return '{mod}{unit}'.format(mod='Time' if vs_time else 'Flux', unit=' [hh:mm]' if vs_time else ' [kHz/cm^{2}]')
+        return 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
+
+    @staticmethod
+    def get_x_draw(vs_time=False):
+        return {'logx': not vs_time, 'grid': vs_time}
 
     def get_tax_off(self, vs_time, rel_time=False):
         return None if not vs_time else self.StartTime if rel_time else 0
@@ -322,8 +327,9 @@ class AnalysisCollection(Analysis):
     def get_range(vs_time, x_range=None):
         return x_range if vs_time else Bins.FluxRange
 
-    def get_x_args(self, vs_time=False, rel_time=False, x_range=None):
-        return {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_range(vs_time, x_range), 'x_off': None if vs_time else 1.2}
+    def get_x_args(self, vs_time=False, rel_time=False, x_range=None, draw_args=False):
+        hist_kwargs = {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_range(vs_time, x_range), 'x_off': None if vs_time else 1.2}
+        return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw_args else hist_kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
         return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
@@ -332,32 +338,29 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region PULSE HEIGHT
-    def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
+    @staticmethod
+    def draw_legend(graphs, x=.17):
+        return Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l' if i < 2 else 'p' for i in range(len(graphs))], x1=x, y1=.21, w=.2)
 
+    def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
         x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo, corr=corr, err=i, avrg=avrg, peaks=peaks) for i in [False, err]]
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=1, lw=2)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, lw=2)
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
         graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg else [])
-        leg = Draw.make_legend(x2=.37, y1=.21, nentries=len(graphs), w=.2)
-        mg = TMultiGraph('mg_ph', 'Pulse Height vs {mod} - {dia}'.format(mod='Time' if vs_time else 'Flux', dia=self.DUT.Name))
-        for i, gr in enumerate(graphs):
-            leg.AddEntry(gr, gr.GetTitle(), 'l' if i < 2 else 'p')
-            mg.Add(gr, '')
+        mg = self.Draw.multigraph(graphs, 'Pulse Height', color=False, show=False)
         if legend:
-            mg.GetListOfFunctions().Add(leg)
+            mg.GetListOfFunctions().Add(self.draw_legend(graphs))
         if vs_time:
-            g = mg.GetListOfGraphs()[0]
-            for i, (ana, ix) in enumerate(zip(list(self.Analyses.values()), x)):
-                y, ey = g.GetY()[i], g.GetErrorY(i)
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, y + ey * 1.2, '{:1.0f}'.format(ana.get_flux().n), color=1, align=21, size=.02, show=0))
+            for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.02))
         return mg
 
     def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False, peaks=False):
         """ Shows the scaled pulse heights of the single runs. """
         mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks)
         scale_multigraph(mg, scale, scale_to_low)
-        self.Draw(mg, show=show, lm=.14, draw_opt='ap', logx=not vs_time, grid=vs_time, gridy=True, bm=.18)
+        self.Draw(mg, show=show, lm=.14, draw_opt='ap', **self.get_x_draw(vs_time), gridy=True, bm=.18)
         Draw.irradiation(make_irr_string(self.RunSelection.get_irradiation()))
         format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, y_range=choose(y_range, [.95, 1.05]), ndivx=503, center_y=True, **self.get_x_args(vs_time))
         self.Draw.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
@@ -370,7 +373,7 @@ class AnalysisCollection(Analysis):
         format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, draw_first=True, y_range=y_range, **self.get_x_args(vs_time))
         if fit:
             mg.GetListOfGraphs()[0].Fit('pol0', 'qs')
-        self.Draw(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=show, lm=.14, draw_opt='ap', logx=not vs_time, grid=vs_time, stats=set_statbox(fit=fit, form='2.1f', stats=fit))
+        self.Draw(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=show, lm=.14, draw_opt='ap', **self.get_x_draw(vs_time), stats=set_statbox(fit=fit, form='2.1f', stats=fit))
         return mg
 
     def draw_full_pulse_height(self, bin_width=10000, show=True, rel_t=True, redo=False, with_flux=True):
@@ -455,6 +458,10 @@ class AnalysisCollection(Analysis):
 
     def draw_uniformity(self, vs_time=False, show=True, redo=False):
         return self.draw_fwhm(2, vs_time, show=show, redo=redo)
+
+    def draw_ph_slope(self, vs_time=False, show=True):
+        y = [fit2u(ana.draw_pulse_height(show=False)[0].Fit('pol1', 'qs0'), par=1) * 60 for ana in self.get_analyses()]
+        self.Draw.graph(self.get_x_var(vs_time), y, 'Pulse Height Slope', **self.get_x_args(vs_time, draw_args=True), y_tit='Slope [mV/min]', show=show)
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
@@ -611,8 +618,8 @@ class AnalysisCollection(Analysis):
 
     def draw_signal_spreads(self, vs_time=True, rel_time=True, show=True):
         spreads = [ana.get_signal_spread(prnt=False) for ana in self.get_analyses()]
-        g = Draw.make_tgrapherrors(self.get_x_var(vs_time, rel_time=rel_time), spreads, title='Relative Spread')
-        format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='Relative Spread [%]', y_off=1.2, t_ax_off=self.get_tax_off(vs_time))
+        g = Draw.make_tgrapherrors(self.get_x_var(vs_time), spreads, title='Relative Spread')
+        format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='Relative Spread [%]', y_off=1.2, t_ax_off=self.get_tax_off(vs_time, rel_time))
         self.Draw(g, 'RelativeSpread', lm=.12, logx=not vs_time, show=show)
 
     def draw_sm_std(self, vs_time=False, redo=False, show=True):
@@ -629,7 +636,7 @@ class AnalysisCollection(Analysis):
     def draw_beam_info(self, mode='x', fit_margin=.5, vs_time=True, rel_time=True, show=True):
         tits = ['Mean', 'Sigma']
         values = self.get_values('beam profile {}'.format(mode), self.Analysis.draw_beam_profile, show=False, fit=True, fit_range=fit_margin, mode=mode, prnt=False)
-        values = [[make_ufloat(value, par=par) for value in values] for par in [1, 2]]
+        values = [[fit2u(value, par=par) for value in values] for par in [1, 2]]
         graphs = [Draw.make_tgrapherrors(self.get_x_var(vs_time, rel_time), vals, title='{} of the Beam Profile in {}'.format(tit, mode.title())) for tit, vals in zip(tits, values)]
         c = Draw.canvas('Beam Infos {}'.format(mode.title()), x=1.5, y=.75, divide=2, show=show)
         for i, g in enumerate(graphs, 1):
@@ -731,6 +738,10 @@ class AnalysisCollection(Analysis):
         self.get_values('occupancies', self.Analysis.draw_occupancies, show=False, prnt=False, cluster=True)
     # end region GENERATE PLOTS
     # ----------------------------------------
+
+    def draw_efficiencies(self, vs_time=False, show=True):
+        x, y = self.get_x_var(vs_time), self.get_efficiencies()
+        self.Draw.graph(x, y, 'Efficiencies', **self.get_x_args(vs_time, draw_args=True), y_tit='Effciency [%]', show=show, lm=.12, y_off=1.8)
 
 
 if __name__ == '__main__':
