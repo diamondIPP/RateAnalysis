@@ -66,7 +66,8 @@ class SaveDraw(Draw):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
         if info_leg:
             self.Legends.draw(c, all_pads, show and Draw.Legend)
-        return self.save_plots(file_name, prnt=prnt, show=show, save=save)
+        self.save_plots(file_name, prnt=prnt, show=show, save=save)
+        return c
 
     def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, w=1, h=1, *args, **kwargs):
         th = super(SaveDraw, self).distribution(values, binning, title, show=show, w=w, h=h, *args, **kwargs)
