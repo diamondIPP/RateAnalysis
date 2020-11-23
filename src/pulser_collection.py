@@ -13,7 +13,7 @@ class PulserCollection(SubCollection):
         super().__init__(ana_collection)
         if self.Ana.FirstAnalysis.Tree.Hash():
             self.Analysis = self.Ana.FirstAnalysis.Pulser
-        self.Type = self.Ana.FirstAnalysis.Run.Info['pulser']
+        self.Type = '?' if 'pulser' not in self.Ana.FirstAnalysis.Run.Info else self.Ana.FirstAnalysis.Run.Info['pulser']
 
     # ----------------------------------------
     # region GET
