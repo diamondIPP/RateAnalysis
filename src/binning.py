@@ -7,6 +7,9 @@
 from json import loads
 from numpy import arange, array, delete, append, concatenate, sqrt, zeros, ndarray, linspace
 from helpers.utils import choose
+from src.dut import Plane
+
+# TODO Use cut to make bins with same amount of events? -> pickle -> subanalysis?
 
 
 class Bins:
@@ -30,7 +33,7 @@ class Bins:
     PadPHBinWidth = 1
 
     # Miscellaneous
-    GlobalCoods = [-.5025, .5175, -.505, .515]  # range in x and y in telescope coordinates [cm]
+    GlobalCoods = [-5.025, 5.175, -5.05, 5.15]  # range in x and y in telescope coordinates [cm]
 
     def __init__(self, run=None, cut=None):
 
@@ -38,8 +41,6 @@ class Bins:
         self.Cut = cut
         Bins.Config = self.Run.MainConfig
 
-        self.NCols, self.NRows = self.Run.NPixels
-        self.PX, self.PY = self.Run.PixelSize
         Bins.Size = self.Config.getint('PLOTS', 'bin size')
 
         if run is not None:
@@ -144,14 +145,14 @@ class Bins:
         :param res_fac: telescope resolution in um
         :param mm: use mm as unit of return [default cm]
         :return: [nbins, bin_array] """
-        res = self.PX * (2 / sqrt(12) if res_fac is None else res_fac)
+        res = Plane.PX * (2 / sqrt(12) if res_fac is None else res_fac)
         bins = arange(self.GlobalCoods[0], self.GlobalCoods[1] + res / 1000., res)
-        return [bins.size - 1, bins * (10 if mm else 1)]
+        return [bins.size - 1, bins * (1 if mm else 1)]
 
     def get_global_y(self, res_fac=None, mm=False):
-        res = self.PY * (2 / sqrt(12) if res_fac is None else res_fac)
+        res = Plane.PY * (2 / sqrt(12) if res_fac is None else res_fac)
         bins = arange(self.GlobalCoods[2], self.GlobalCoods[3] + res / 1000., res)
-        return [bins.size - 1, bins * (10 if mm else 1)]
+        return [bins.size - 1, bins * (1 if mm else 1)]
 
     @staticmethod
     def get_angle(bin_size=.1, max_angle=4):
