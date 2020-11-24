@@ -448,6 +448,11 @@ class Draw(object):
         m.GetListOfFunctions().Add(leg) if leg_titles is not None else do_nothing()
         self.histo(m, draw_opt=draw_opt, leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c)
         return m
+
+    @staticmethod
+    def info(txt, c=None, size=.04):
+        c = (get_last_canvas() if c is None else c).cd()
+        Draw.tlatex(c.GetLeftMargin() + .02, 1 - (c.GetTopMargin() + .02), txt, align=13, ndc=True, size=size)
     # endregion DRAW
     # ----------------------------------------
 
