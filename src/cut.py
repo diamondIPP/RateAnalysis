@@ -52,7 +52,7 @@ class Cut(SubAnalysis):
         return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
 
     def load_dut_config(self, option, warn=True):
-        if option not in self.Config.options('CUT'):
+        if option not in self.Config.options('CUT') or self.Ana.DUT.Name not in self.Config.get_list('CUT', option):
             return warning('No option {} in the analysis config for {}!'.format(option, make_tc_str(self.TCString)), prnt=warn)
         return self.Config.get_list('CUT', option)[self.Ana.DUT.Name]
     # endregion CONFIG
