@@ -269,8 +269,9 @@ class PadAnalysis(DUTAnalysis):
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
 
     def draw_sm_correlation(self, run, m=10, show=True):
-        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0]) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
-        g = self.Draw.graph(x0, x1, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run))
+        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
+        g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
+                               x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
         Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
 
     # endregion 2D MAPS
