@@ -271,7 +271,7 @@ class Cut(SubAnalysis):
     def calc_chi2(self, mode='x', q=None):
         def f():
             t = self.Ana.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
-            values = get_tree_vec(self.Ana.Tree, var='chi2_{}'.format(mode))
+            values = self.Ana.get_tree_vec('chi2_{}'.format(mode))
             chi2s = quantile(values[values > -500], linspace(0, 1, 101))
             self.Ana.add_to_info(t)
             return chi2s
@@ -343,26 +343,25 @@ class Cut(SubAnalysis):
     def draw_contributions(self, flat=False, short=False, show=True):
         set_root_output(show)
         contr = OrderedDict()
-        n_events = self.Run.NEvents
+        n, n_events = len(self.get_consecutive()), self.Run.NEvents
         cut_events = 0
         for i, (key, cut) in enumerate(self.get_consecutive().items()):
             if key == 'raw':
                 continue
             events = n_events - int(self.Ana.Tree.Draw('1', cut, 'goff'))
             print(key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.))
-            contr[key.title().replace('_', ' ')] = (events - cut_events, self.Ana.get_color())
+            contr[key.title().replace('_', ' ')] = (events - cut_events, self.Draw.get_color(n))
             cut_events = events
-        contr['Good Events'] = (n_events - cut_events, self.Ana.get_color())
+        contr['Good Events'] = (n_events - cut_events, self.Draw.get_color(n))
         sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * n_events if short else 0)).items(), key=lambda x: x[1]))  # sort by size
-        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Ana.get_color())} if short else {})
+        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Draw.get_color(n))} if short else {})
         sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in range(len(sorted_contr)))  # sort by largest->smallest->next largest...
         pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
         for i, label in enumerate(sorted_contr.keys()):
             pie.SetEntryRadiusOffset(i, .05)
             pie.SetEntryLabel(i, label)
         format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
-        self.Ana.save_histo(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
-        self.Ana.reset_colors()
+        self.Draw(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
         return sorted_contr
 
     def draw_fid(self, scale=10):
