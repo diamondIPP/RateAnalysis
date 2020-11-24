@@ -9,6 +9,7 @@ from src.pad_run import PadRun
 from src.peaks import PeakAnalysis
 from src.pulser import PulserAnalysis
 from src.waveform import Waveform
+from src.correlation import correlate
 
 
 class PadAnalysis(DUTAnalysis):
@@ -273,6 +274,13 @@ class PadAnalysis(DUTAnalysis):
         g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
                                x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
         Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
+        return x0, x1
+
+    def draw_corr_coeff(self, run, show=True):
+        x = [5, 10, 25, 50, 100, 200]
+        ana = PadAnalysis(run, self.DUT.Number, self.TCString)
+        y = [correlate(*[get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False, zero_supp=0) for f in [self, ana]]) for m in x]
+        self.Draw.graph(x, y, 'Signal Map Correlation', x_tit='Number of Bins', y_tit='Correlation Coefficient', show=show)
 
     # endregion 2D MAPS
     # ----------------------------------------
