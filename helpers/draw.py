@@ -788,11 +788,11 @@ def get_h_args(h):
     return get_graph_x(h) if 'Graph' in h.ClassName() else get_hist_args(h)
 
 
-def get_2d_hist_vec(h, err=True, flat=True):
+def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
     values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for xbin in xbins for ybin in ybins])
     values = values if err else array([v.n for v in values])
-    return values[values != 0] if flat else values.reshape(len(xbins), len(ybins))
+    return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(xbins), len(ybins))
 
 
 def get_2d_args(h):
