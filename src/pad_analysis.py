@@ -267,6 +267,12 @@ class PadAnalysis(DUTAnalysis):
         fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
         kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
+
+    def draw_sm_correlation(self, run, m=10, show=True):
+        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0]) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
+        g = self.Draw.graph(x0, x1, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run))
+        Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
+
     # endregion 2D MAPS
     # ----------------------------------------
 
