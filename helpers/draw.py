@@ -7,7 +7,6 @@
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
 from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute
-from src.binning import Bins
 from helpers.utils import *
 from inspect import signature
 
@@ -362,7 +361,7 @@ class Draw(object):
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        th = TH1F(Draw.get_name('h'), title, *choose(binning, make_bins, values=values, thresh=thresh))
+        th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
         fill_hist(th, values)
         format_histo(th, **kwargs)
         self.histo(th, show=show, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats)
@@ -381,7 +380,7 @@ class Draw(object):
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['stats'] = stats
-        p = TProfile(Draw.get_name('p'), title, *choose(binning, make_bins, values=x, thresh=thresh))
+        p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         format_histo(p, **kwargs)
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
@@ -391,7 +390,7 @@ class Draw(object):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
-        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size))
+        dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size))
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
         format_histo(p, pal=55, **kwargs)
@@ -404,7 +403,7 @@ class Draw(object):
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
-        dflt_bins = Bins.make(min(x), max(x), sqrt(x.size)) + Bins.make(min(y), max(y), sqrt(x.size)) if binning is None else None
+        dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
         h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
@@ -413,7 +412,7 @@ class Draw(object):
         return h
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
-        binning = choose(binning, Bins.make, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
+        binning = choose(binning, make_bins, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
         p = self.profile(x, e, binning, show=False)
         x = get_hist_args(p)
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
@@ -700,7 +699,7 @@ def adapt_z_range(h, n_sigma=2):
     format_histo(h, z_range=z_range)
 
 
-def make_bins(values, thresh=.02):
+def find_bins(values, thresh=.02):
     binning = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
     return [binning.size - 1, binning]
 
@@ -932,6 +931,14 @@ def normalise_bins(h):
         for ybin in range(h.GetNbinsY()):
             h.SetBinContent(xbin, ybin, h.GetBinContent(xbin, ybin) / (px.GetBinContent(xbin) if px.GetBinContent(xbin) else 1))
     update_canvas()
+
+
+def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None):
+    bins = array(min_val, 'd')
+    if type(min_val) not in [ndarray, list]:
+        min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
+        bins = append(arange(min_val, max_val, bin_width, dtype='d'), max_val if last else []) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
+    return [bins.size - 1, bins]
 
 
 if __name__ == '__main__':
