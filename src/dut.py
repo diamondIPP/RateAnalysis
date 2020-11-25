@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt
 
 
 class DUT:
@@ -62,6 +62,9 @@ class Plane(object):
     PX, PY = conf.get_list('PLANE', 'pitch')  # mm
     PixArea = PX * PY
     Area = PixArea * NPixels
+    WX, WY = PX * NCols, PY * NRows
+    WMax = max(WX, WY)
+    R0 = 2 / sqrt(12)
 
     def __str__(self):
         return '{} Plane'.format(Plane.Type.title())
@@ -73,13 +76,9 @@ class Plane(object):
         return self
 
     @staticmethod
-    def get_max_width():
-        return max(Plane.get_x_width(), Plane.get_y_width())
+    def get_xpix(aspect_ratio=False):
+        return round((max(Plane.WX, Plane.WY) - Plane.WX) / 2 / Plane.PX) if aspect_ratio else 0
 
     @staticmethod
-    def get_x_width():
-        return Plane.PX * Plane.NCols
-
-    @staticmethod
-    def get_y_width():
-        return Plane.PY * Plane.NRows
+    def get_ypix(aspect_ratio=False):
+        return round((max(Plane.WX, Plane.WY) - Plane.WY) / 2 / Plane.PY) if aspect_ratio else 0
