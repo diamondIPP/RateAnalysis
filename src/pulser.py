@@ -59,7 +59,7 @@ class PulserAnalysis(PadSubAnalysis):
         return do_pickle(self.make_simple_pickle_path('Rate'), f, redo=redo)
 
     def get_t_bins(self, bin_size=None):
-        return Bins.make(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
+        return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
     def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, par=1, redo=False):
         pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
@@ -142,8 +142,8 @@ class PulserAnalysis(PadSubAnalysis):
             x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
             m, s = self.get_mean_sigma(cut)
             ph_cut = (m - 4 * s < y) & (y < m + 4 * s)
-            return self.Draw.profile(x[ph_cut], y[ph_cut], self.Bins.get_time(bin_size), 'Pulser Pulse Height', show=False)
-        p = do_pickle(self.make_simple_pickle_path('PHT', '{}{}'.format(self.Cut(cut).GetName(), self.Bins(bin_size))), f, redo=redo)
+            return self.Draw.profile(x[ph_cut], y[ph_cut], self.Bins.get_time(bin_size, cut), 'Pulser Pulse Height', show=False)
+        p = do_pickle(self.make_simple_pickle_path('PHT', '{}{}'.format(self.Cut(cut).GetName(), self.Bins.w(bin_size))), f, redo=redo)
         fit = p.Fit('pol0', 'qs')
         format_histo(p, y_off=1.7, **self.get_t_args(), y_range=choose(y_range, ax_range(get_hist_vec(p), 0, .6, 1)))
         self.Draw(p, 'PulserPulserHeight', show, gridy=True, lm=.14, stats=set_statbox(fit=True, entries=True), prnt=prnt)
@@ -156,7 +156,7 @@ class PulserAnalysis(PadSubAnalysis):
             x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
             m, s = mean_sigma(x[x < mean(x) + 10], err=False)
             s = max(s, .1)
-            return self.Draw.distribution(x, Bins.make(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
+            return self.Draw.distribution(x, make_bins(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
         h = do_pickle(self.make_simple_pickle_path('Disto', '{}{}{}'.format(int(corr), int(beam_on), self.get_all_signal_names()[choose(name, self.SignalName)])), f, redo=redo)
         self.Draw(h, 'PulserDistribution', show=show, lm=.12, save=save)
         return h
@@ -194,7 +194,7 @@ class PulserAnalysis(PadSubAnalysis):
 
     def draw_hit_efficiency(self, bin_size=200, show=True):
         x, y = self.get_tree_vec(var=['Entry$', '@col.size() > 1'], cut=self.Ana.Cut.get('pulser', invert=True), dtype=['i4', bool])
-        return self.Draw.profile(x, y, Bins.make(x[::bin_size]), 'Hit Efficiency at Pulser Events', x_tit='Event Number', y_tit='Hit Efficiency [%]', y_range=[0, 5], draw_opt='hist',
+        return self.Draw.profile(x, y, make_bins(x[::bin_size]), 'Hit Efficiency at Pulser Events', x_tit='Event Number', y_tit='Hit Efficiency [%]', y_range=[0, 5], draw_opt='hist',
                                  fill_color=Draw.FillColor, show=show, rm=.06, stats=set_entries())
 
     def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):

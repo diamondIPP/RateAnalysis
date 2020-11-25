@@ -4,182 +4,147 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from json import loads
-from numpy import arange, array, delete, append, concatenate, sqrt, zeros, ndarray, linspace
-from helpers.utils import choose
+from helpers.draw import make_bins, choose, array, append, do_pickle, load_main_config
 from src.dut import Plane
+from src.sub_analysis import SubAnalysis
 
-# TODO Use cut to make bins with same amount of events? -> pickle -> subanalysis?
 
+class Bins(SubAnalysis):
 
-class Bins:
-
-    Config = None
-    Size = 10000
-    FluxRange = [5, 20000]
+    Config = load_main_config()
+    Size = Config.get_value('PLOTS', 'bin size', int)
+    FluxRange = Config.get_list('PLOTS', 'flux range')
 
     # Pixel
-    MaxADC = 2 ** 8 - 1
-    MinPH = -5000
-    MaxPH = 100000
-    PHBinWidth = 200
-    MinVcal = -100
-    MaxVcal = 1250
+    ADCBits = 2 ** 8
+    PHRange = array([-5000, 100000])
+    PHWidth = 200
     VcalToEl = 47.
 
-    # Pad Pulse Height
-    MinPadPH = -50
-    MaxPadPH = 500
+    # Pad
+    PadPHRange = [-50, 500]
     PadPHBinWidth = 1
 
-    # Miscellaneous
-    GlobalCoods = [-5.025, 5.175, -5.05, 5.15]  # range in x and y in telescope coordinates [cm]
+    def __init__(self, analysis=None):
 
-    def __init__(self, run=None, cut=None):
+        if analysis is not None:
+            super().__init__(analysis, pickle_dir='Bins')
 
-        self.Run = run
-        self.Cut = cut
-        Bins.Config = self.Run.MainConfig
-
-        Bins.Size = self.Config.getint('PLOTS', 'bin size')
-
-        if run is not None:
             # Run Info
-            self.NDevices = run.NPlanes
-            self.NEvents = run.NEvents
-
-            # Binning
-            self.RawBinning = self.get_raw()
-            if self.Cut is not None:
-                self.Binning = self.create()
-                self.TimeBinning = self.load_time_binning()
-                self.NBins = len(self.Binning)
-
-        Bins.FluxRange = loads(Bins.Config.get('PLOTS', 'flux range'))
-
-    def __call__(self, bin_width=None):
-        return self.set_bin_size(bin_width)
+            self.NEvents = self.Run.NEvents
 
     # ----------------------------------------
-    # region INIT
+    # region GET
+    @staticmethod
+    def w(bin_size):
+        return Bins.get_size(bin_size)
 
-    def load_time_binning(self):
-        return array([self.Run.get_time_at_event(event) for event in self.Binning], 'd')
-
-    def create(self, evts_per_bin=None):
-        evts_per_bin = choose(evts_per_bin, self.Size)
-        if self.Cut is None:
-            return self.get_raw(evts_per_bin)
-        jumps = [r for r in self.Cut.get_interruptions_ranges() if r[1] > self.Cut.get_min_event()]  # filter out interruptions outside event range
-        delete_events = concatenate([arange(self.Cut.get_min_event(), dtype='i8'), zeros(0, 'i8') if not len(jumps) else concatenate([arange(start, stop + 1) for start, stop in jumps])])
-        events = delete(arange(self.Cut.get_max_event()), delete_events) if delete_events.size else arange(self.Cut.get_max_event())
-        events = events[::evts_per_bin]  # slice out every nth entry
-        return append(events, self.Cut.get_max_event()) if self.Cut.get_max_event() != events[-1] else events
-
-    def set_bin_size(self, value):
-        if value is None or value == self.Size:
-            return self.Size
-        self.Size = value
-        self.Binning = self.create()
-        self.TimeBinning = self.load_time_binning()
-        self.NBins = len(self.Binning)
-        return value
-    # endregion INIT
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # region GENERAL
     @staticmethod
     def get_size(bin_size):
         return choose(bin_size, Bins.Size)
 
-    def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, rel_time=False, t_from_event=False):
-        return self.get_raw_time(bin_width, rel_time, start_event, end_event, t_from_event) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
+    def get(self, time=True, bin_size=None, cut=None):
+        return (self.get_time if time else self.get_events)(bin_size, cut)
+
+    def get_time(self, bin_size=None, cut=None):
+        i, events = self.get_events(bin_size, cut)
+        return [i, self.Run.Time[events.astype('i4')] / 1000]
+
+    def get_events(self, bin_size=None, cut=None, redo=False):
+        def f():
+            t = self.info('create binning ...')
+            events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')
+            b = events[::self.get_size(bin_size)]
+            self.add_to_info(t)
+            return append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 else [])
+        bins = do_pickle(self.make_simple_pickle_path(suf='{}_{}'.format(self.get_size(bin_size), self.Cut(cut).GetName())), f, redo=redo)
+        return [bins.size - 1, array(bins, 'd')]
+
+    def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, t_from_event=False):
+        return self.get_raw_time(bin_width, start_event, end_event, t_from_event) if vs_time else self.get_raw_event(bin_width, start_event, end_event)
 
     def get_raw_event(self, bin_width=None, start_event=0, end_event=None):
         end_event, bin_width = choose(end_event, self.NEvents), Bins.get_size(bin_width)
         return Bins.make(start_event, end_event, bin_width, last=end_event - start_event % bin_width > bin_width / 4)
 
-    def get_raw_time(self, bin_width, rel_time=False, start_time=0, end_time=None, t_from_event=False):
+    def get_raw_time(self, bin_width=None, start_time=0, end_time=None, t_from_event=False):
         """ returns bins with fixed time width. bin_width in seconds """
-        offset = self.Run.StartTime if rel_time else 0
         if t_from_event:
-            bins = array([self.Run.get_time_at_event(int(ev)) for ev in self.get_raw_event(bin_width, start_time, end_time)[1]], 'd')
-            return [bins.size - 1, bins - offset]
+            i, events = self.get_raw_event(bin_width, start_time, end_time)
+            return [i, self.Run.Time[events.astype('i4')]]
         else:
-            start, end = self.Run.StartTime + start_time - offset, choose(end_time, self.Run.EndTime) - offset
+            start, end = self.Run.StartTime + start_time, self.Run.EndTime if end_time is None else self.Run.StartTime + end_time
             return Bins.make(start, end, bin_width, last=end - start % bin_width > bin_width / 4)
+    # endregion GET
+    # ----------------------------------------
 
-    def get(self, bin_width=None, vs_time=False):
-        return self.get_time(bin_width) if vs_time else self.get_event(bin_width)
+    # ----------------------------------------
+    # region TELESCOPE
+    @staticmethod
+    def get_pixel_x(bin_width=1, aspect_ratio=False):
+        return Bins.make(-Plane.get_xpix(aspect_ratio) - .5, Plane.NCols + Plane.get_xpix(aspect_ratio) - .5, bin_width)
 
-    def get_event(self, bin_width=None):
-        self.set_bin_size(bin_width)
-        return [self.NBins - 1, array(self.Binning, 'd')]
+    @staticmethod
+    def get_pixel_y(bin_width=1, aspect_ratio=False):
+        return Bins.make(-Plane.get_ypix(aspect_ratio) - .5, Plane.NRows + Plane.get_ypix(aspect_ratio) - .5, bin_width)
 
-    def get_time(self, bin_width=None):
-        self.set_bin_size(bin_width)
-        return [self.NBins - 1, self.TimeBinning]
+    @staticmethod
+    def get_pixel(bin_width=1, aspect_ratio=False):
+        return Bins.get_pixel_x(bin_width, aspect_ratio) + Bins.get_pixel_y(bin_width, aspect_ratio)
 
-    def get_pixel(self):
-        x, y = (arange(-.5, n) for n in self.Run.NPixels)
-        return [x.size - 1, x, y.size - 1, y]
+    @staticmethod
+    def get_global(res=None):
+        return Bins.get_global_x(res) + Bins.get_global_y(res)
 
-    def get_pixel_x(self):
-        return [self.Run.NPixels[0], arange(-.5, self.Run.NPixels[0])]
+    @staticmethod
+    def get_native_global():
+        return Bins.get_global()
 
-    def get_pixel_y(self):
-        return [self.Run.NPixels[1], arange(-.5, self.Run.NPixels[1])]
+    @staticmethod
+    def get_global_cood(mode, res=None):
+        return Bins.get_global_x(res) if mode == 'x' else Bins.get_global_y(res)
 
-    def get_native_global(self, mm=False):
-        return self.get_global(res_fac=1, mm=mm)
+    @staticmethod
+    def get_global_x(res=None):
+        wmax = Plane.WMax * .6  # to keep the aspect ratio
+        return Bins.make(-wmax, wmax, choose(res, Plane.R0) * Plane.PX)
 
-    def get_global(self, res_fac=None, mm=False):
-        return self.get_global_x(res_fac, mm) + self.get_global_y(res_fac, mm)
-
-    def get_global_cood(self, mode, res_fac=None, mm=False):
-        return self.get_global_x(res_fac, mm) if mode == 'x' else self.get_global_y(res_fac, mm)
-
-    def get_global_x(self, res_fac=None, mm=False):
-        """ calculates the global telescope bins
-        :param res_fac: telescope resolution in um
-        :param mm: use mm as unit of return [default cm]
-        :return: [nbins, bin_array] """
-        res = Plane.PX * (2 / sqrt(12) if res_fac is None else res_fac)
-        bins = arange(self.GlobalCoods[0], self.GlobalCoods[1] + res / 1000., res)
-        return [bins.size - 1, bins * (1 if mm else 1)]
-
-    def get_global_y(self, res_fac=None, mm=False):
-        res = Plane.PY * (2 / sqrt(12) if res_fac is None else res_fac)
-        bins = arange(self.GlobalCoods[2], self.GlobalCoods[3] + res / 1000., res)
-        return [bins.size - 1, bins * (1 if mm else 1)]
+    @staticmethod
+    def get_global_y(res=None):
+        wmax = Plane.WMax * .6  # to keep the aspect ratio
+        return Bins.make(-wmax, wmax, choose(res, Plane.R0) * Plane.PY)
 
     @staticmethod
     def get_angle(bin_size=.1, max_angle=4):
         return Bins.make(-max_angle, max_angle, bin_size)
-    # endregion GENERAL
+    # endregion TELESCOPE
     # ----------------------------------------
 
     # ----------------------------------------
     # region PIXEL
-    def get_adc(self):
-        return Bins.make(0, self.MaxADC, bin_width=1)
+    @staticmethod
+    def get_adc():
+        return Bins.make(0, Bins.ADCBits)
 
-    def get_vcal(self):
-        return Bins.make(self.MinVcal, self.MaxVcal, int(self.PHBinWidth / self.VcalToEl))
+    @staticmethod
+    def get_vcal():
+        return Bins.make(*Bins.PHRange / Bins.VcalToEl)
 
-    def get_electrons(self, bin_width=None):
-        return Bins.make(self.MinPH, self.MaxPH, self.PHBinWidth if bin_width is None else bin_width)
+    @staticmethod
+    def get_electrons(bin_width=None):
+        return Bins.make(*Bins.PHRange, choose(bin_width, Bins.PHWidth))
 
-    def get_ph(self, vcal=False, adc=False, bin_width=None):
-        return self.get_vcal() if vcal else self.get_adc() if adc else self.get_electrons(bin_width)
+    @staticmethod
+    def get_ph(vcal=False, adc=False, bin_width=None):
+        return Bins.get_vcal() if vcal else Bins.get_adc() if adc else Bins.get_electrons(bin_width)
     # endregion PIXEL
     # ----------------------------------------
 
     # ----------------------------------------
     # region PAD
-    def get_pad_ph(self, bin_width=None, mean_ph=None):
-        return Bins.make(self.MinPadPH, self.MaxPadPH, choose(bin_width, self.PadPHBinWidth if mean_ph is None else mean_ph / 40))
+    @staticmethod
+    def get_pad_ph(bin_width=None, mean_ph=None):
+        return Bins.make(*Bins.PadPHRange, choose(bin_width, Bins.PadPHBinWidth if mean_ph is None else mean_ph / 40))
 
     def get_wf(self, bin_width=1):
         return Bins.make(0, self.Run.NSamples, bin_width)
@@ -188,11 +153,7 @@ class Bins:
 
     @staticmethod
     def make(min_val, max_val=None, bin_width=1, last=False, n=None):
-        bins = array(min_val, 'd')
-        if type(min_val) not in [ndarray, list]:
-            min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
-            bins = arange(min_val, max_val + (bin_width if last else 0), bin_width, dtype='d') if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
-        return [bins.size - 1, bins]
+        return make_bins(min_val, max_val, bin_width, last, n)
 
     @staticmethod
     def make2d(x, y):

@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF1
-from src.cut import Cut, CutString
+from src.cut import Cut, CutString, Bins
 from helpers.draw import *
 from numpy import quantile, histogram2d
 
@@ -183,7 +183,7 @@ class PadCut(Cut):
             ped = Draw.make_f('ped', 'gaus(0) + gaus(3)', -50, 300, [fit.GetParameter(i) for i in range(3, 9)])
             h_sig = deepcopy(h)
             h_sig.Add(ped, -1)
-            format_histo(h_sig, x_range=[Bins.MinPadPH, Bins.MaxPadPH])
+            format_histo(h_sig, x_range=Bins.PadPHRange)
             values = self.get_tree_vec(var=self.Ana.get_raw_signal_var(), cut=self.get_pre_bucket())
             f0 = Draw.make_tf1('Mean', lambda x: mean(values[values > x]), -30, fit.GetParameter(1))
             self.add_to_info(t)
@@ -289,7 +289,7 @@ class PadCut(Cut):
     def draw_bucket_histo(self, sig_var=None, show=True):
         x = self.get_tree_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
         xmax = quantile(x, .95)
-        return self.Draw.distribution(x, Bins(self.Run, self).get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
+        return self.Draw.distribution(x, Bins.get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
 
     def print_bucket_events(self, prnt=True, redo=False):
         def f():

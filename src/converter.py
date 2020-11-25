@@ -1,6 +1,6 @@
 from glob import glob
 from os import getcwd, chdir, rename, system
-from os.path import expanduser, basename, join
+from os.path import expanduser, basename
 from re import sub
 from shutil import move, copy
 from subprocess import check_call

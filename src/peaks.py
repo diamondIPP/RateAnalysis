@@ -264,7 +264,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_n(self, do_fit=False, show=True):
         n_peaks = self.find_n_additional()
-        h = self.Draw.distribution(n_peaks, Bins.make(11), 'Number of Peaks', show=False)
+        h = self.Draw.distribution(n_peaks, make_bins(11), 'Number of Peaks', show=False)
         if do_fit:
             fit_poissoni(h, show=show)
         format_histo(h, x_tit='Number of Peaks', y_tit='Number of Entries', y_off=1.4, fill_color=Draw.FillColor, lw=2)
@@ -309,13 +309,13 @@ class PeakAnalysis(PadSubAnalysis):
         values = values[values != 0]
         values = ((values + self.BunchSpacing / 2) % self.BunchSpacing + self.BunchSpacing / 2) if overlay else values
         m, w = mean(values), self.Ana.get_t_bins()[1][-1] - self.Ana.get_t_bins()[1][0]
-        bins = Bins.make(m - w / 2, m + w / 2, bin_size) if overlay else self.get_binning(bin_size)
+        bins = make_bins(m - w / 2, m + w / 2, bin_size) if overlay else self.get_binning(bin_size)
         x, y = [1, 1] if overlay else [1.5, .75]
         self.Draw.distribution(values, bins, 'Peak Spacing', x_tit='Peak Distance [ns]', w=x, h=y, show=show, stats=set_statbox(entries=True, w=.2))
 
     def draw_additional_disto(self, n_splits=4, show=True):
         x = [v.n for h in self.draw(split_=n_splits) for v in self.draw_additional(h, show=False)]
-        self.Draw.distribution(x, Bins.make(*ax_range(x, 0, .3, .3), n=sqrt(len(x))), 'Peak Heights', x_tit='Peak Height', show=show, stats=0)
+        self.Draw.distribution(x, make_bins(*ax_range(x, 0, .3, .3), n=sqrt(len(x))), 'Peak Heights', x_tit='Peak Height', show=show, stats=0)
 
     def draw_additional(self, h=None, show=True):
         values = get_hist_vec(self.draw(show=False) if h is None else h)[self.StartAdditional:]

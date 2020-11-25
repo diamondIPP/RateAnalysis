@@ -101,7 +101,7 @@ class Tracks(SubAnalysis):
             xmax = -self.Cut.get_track_angle()
             line = Draw.vertical_line(-xmax, -100, 1e6, style=7, w=2, color=2)
             Draw.vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
-            legend = Draw.make_legend(.65, y2=.73, nentries=1, margin=.35, name='la', scale=1.3)
+            legend = Draw.make_legend(.65, y2=.73, nentries=1, margin=.35, scale=1.3)
             legend.AddEntry(line, 'cut ({} deg)'.format(xmax), 'l')
             legend.Draw()
 
@@ -141,7 +141,7 @@ class Tracks(SubAnalysis):
     # region RESIDUALS
     def draw_residual(self, roc, mode='', cut=None, x_range=None, fit=False, show=True):
         x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4
-        h = self.Draw.distribution(x, Bins.make(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
+        h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
         self.fit_residual(h, show=fit)
         self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))
         return h

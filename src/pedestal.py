@@ -124,7 +124,7 @@ class PedestalAnalysis(PadSubAnalysis):
             x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
             name = 'Sigma' if sigma else 'Pedestal'
             return self.Draw.graph(x, y, title='{} Trend'.format(name), y_tit='{} [mV]'.format(name), show=False)
-        g = do_pickle(self.make_simple_pickle_path('Trend', '{}_{}{}'.format(int(sigma), self.get_short_name(signal_name), self.Bins(bin_size))), f, redo=redo)
+        g = do_pickle(self.make_simple_pickle_path('Trend', '{}_{}{}'.format(int(sigma), self.get_short_name(signal_name), self.Bins.w(bin_size))), f, redo=redo)
         format_histo(g, **self.get_t_args(rel_t))
         self.Draw(g, show=show)
         return g

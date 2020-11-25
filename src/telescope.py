@@ -65,18 +65,19 @@ class Telescope(SubAnalysis):
     def draw_event(self, event, plane, show=True, grid=True):
         n = self.Tree.Draw('{}:{}'.format(*self.get_hit_vars(plane, cluster=False)), 'plane == {}'.format(plane), 'goff', 1, event)
         x, y = [self.get_tree_vec(n, i) for i in range(2)]
-        self.Draw.histo_2d(x, y, self.Bins.get_pixel(), 'Hits in Plane {} for Event {}'.format(plane, event), draw_opt='col', x_tit='col', y_tit='row', rm=.03, stats=0, show=show)
+        self.Draw.histo_2d(x, y, Bins.get_pixel(), 'Hits in Plane {} for Event {}'.format(plane, event), draw_opt='col', x_tit='col', y_tit='row', rm=.03, stats=0, show=show)
         self.draw_pixel_grid() if grid else do_nothing()
 
-    def draw_pixel_grid(self):
-        n, x, n, y = self.Bins.get_pixel()
+    @staticmethod
+    def draw_pixel_grid():
+        n, x, n, y = Bins.get_pixel()
         Draw.grid(x, y, color=921)
 
     def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
-        bins = self.Bins.get_native_global(mm=True) if tel_coods else self.Bins.get_pixel()
+        bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)
         format_histo(h, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2)
         self.Draw.save_plots('{}Map{}'.format('Cluster' if cluster else 'Hit', plane), prnt=prnt)
@@ -102,7 +103,7 @@ class Telescope(SubAnalysis):
 
     def draw_trigger_phase_trend(self, dut=False, bin_width=None, cut=None, show=True):
         values, t = self.get_tree_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
-        p = self.Draw.profile(t, values, self.Bins.get_time(bin_width), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
+        p = self.Draw.profile(t, values, self.Bins.get_time(bin_width, cut), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.StartTime)
 
     def draw_time(self, show=True, corr=False):

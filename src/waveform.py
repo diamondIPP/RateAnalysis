@@ -29,7 +29,7 @@ class Waveform(PadSubAnalysis):
         return array([wf for wf in range(self.NChannels) if self.Run.wf_exists(wf)])
 
     def get_binning(self, bin_size=None):
-        return Bins.make(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
+        return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
     def get_trigger_cells(self, redo=False):
         return do_hdf5(self.make_simple_hdf5_path('TC', self.get_cut_name()), self.Run.get_tree_vec, redo=redo, var='trigger_cell', cut=self.Cut(), dtype='i2')
@@ -296,11 +296,11 @@ class Waveform(PadSubAnalysis):
 
     def draw_rise_time(self, cut=None, show=True):
         values = self.get_tree_vec(var='rise_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        return self.Draw.distribution(values, Bins.make(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
+        return self.Draw.distribution(values, make_bins(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         values = self.get_tree_vec(var='fall_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        return self.Draw.distribution(values, Bins.make(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
+        return self.Draw.distribution(values, make_bins(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
 
     def draw_rise_time_map(self, res=None, cut=None, show=True):
         cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)

@@ -5,6 +5,7 @@
 from numpy import quantile, diff
 from ROOT import TCut, TPie
 from helpers.draw import *
+from src.binning import Bins
 from src.sub_analysis import SubAnalysis
 from src.dut import Plane
 
@@ -286,7 +287,7 @@ class Cut(SubAnalysis):
         def f():
             t0 = self.Ana.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
             ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
-            time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Run, self).get_raw_time(30), show=False), err=False)
+            time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
             i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
             ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
             i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if abs(v) < .2 * ph and v), None)

@@ -4,7 +4,7 @@ from numpy import sort, log, argmin, argmax
 
 from src.analysis import Analysis, glob
 from src.currents import Currents
-from src.dut_analysis import DUTAnalysis
+from src.dut_analysis import DUTAnalysis, Bins
 from src.run_selection import RunSelection
 from helpers.draw import *
 
@@ -253,11 +253,8 @@ class AnalysisCollection(Analysis):
 
         return do_pickle(pickle_path, f, redo=redo)
 
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False, flux_sort=False):
-        error = self.get_repr_error(110, peaks, redo) if err else 0
-        picklepath = self.make_simple_pickle_path('Fit', '{}_1_b2_AllCuts'.format(Bins.get_size(bin_width)), run='{}', sub_dir='Ph_fit')
-        pbar = False if peaks else pbar
-        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks, flux_sort=flux_sort)
+    def get_pulse_heights(self, *args, **kwargs):
+        return []
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())

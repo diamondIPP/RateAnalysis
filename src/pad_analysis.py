@@ -274,7 +274,6 @@ class PadAnalysis(DUTAnalysis):
         g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
                                x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
         Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
-        return x0, x1
 
     def draw_corr_coeff(self, run, show=True):
         x = [5, 10, 25, 50, 100, 200]
@@ -309,14 +308,10 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(g, lm=.14, show=show, gridy=True, logx=True)
 
     def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
-        self.Bins.set_bin_size(bin_size)
-        sig = choose(sig, self.SignalName)
-
         def f():
             ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
-            return self.Draw.profile(t, ph, self.Bins.get_time(), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
-
-        pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(self.Bins.Size, '' if not corr else '_eventwise', self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
+            return self.Draw.profile(t, ph, self.Bins.get_time(bin_size, cut), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
+        pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(Bins.w(bin_size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
         p = do_pickle(pickle_path, f, redo=redo)
         y = get_hist_vec(p, err=False)
         y_range = ax_range(min(y), max(y), .5, .5) if y_range is None else y_range
@@ -324,7 +319,7 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, pickle_path)
         format_statbox(p, fit=True)
-        self.Draw.save_plots('PulseHeight{}'.format(self.Bins.Size), show=show, save=save, prnt=prnt)
+        self.Draw.save_plots('PulseHeight{}'.format(Bins.w(bin_size)), show=show, save=save, prnt=prnt)
         return p, fit
 
     def fit_pulse_height(self, p, picklepath):

@@ -16,6 +16,7 @@ from src.telescope import Telescope
 from helpers.save_plots import *
 from src.analysis import Analysis
 from helpers.fit import Langau
+from src.binning import Bins
 
 
 class DUTAnalysis(Analysis):
@@ -39,7 +40,7 @@ class DUTAnalysis(Analysis):
             self.Cut = self.init_cut()
             self.StartEvent = self.Cut.get_min_event()
             self.EndEvent = self.Cut.get_max_event()
-            self.Bins = Bins(self.Run, cut=self.Cut)
+            self.Bins = Bins(self)
             self.Tracks = Tracks(self)
             self.Tel = Telescope(self)
 
@@ -247,7 +248,7 @@ class DUTAnalysis(Analysis):
     def draw_efficiency_map(self, res=None, n_sigma=4, cut=None, show=True):
         cut_string = choose(self.Cut(cut) + self.Cut.get('tracks'), self.Cut.generate_custom(exclude=['fiducial']), decider=cut)
         e, x, y = self.get_tree_vec(var=[self.get_eff_var(n_sigma)] + self.get_track_vars(), cut=cut_string)
-        p = self.Draw.prof2d(x, y, e * 100, self.Bins.get_global(res, mm=True), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
+        p = self.Draw.prof2d(x, y, e * 100, Bins.get_global(res), 'Efficiency Map', x_tit='X [cm]', y_tit='Y [cm]', z_tit='Efficiency [%]', ncont=100, z_range=[0, 100], show=show)
         set_2d_ranges(p, dx=3, dy=3)
         self.draw_fid_cut(scale=10)
         self.draw_detector_size()
@@ -272,12 +273,12 @@ class DUTAnalysis(Analysis):
     def draw_ph_pull(self, *args, **kwargs):
         return self._draw_ph_pull(*args, **kwargs)
 
-    def _draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
-        p = self.draw_pulse_height(event_bin_width, show=False, save=False)[0]
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(self.Bins.Size), binning=self.Bins.get_pad_ph(bin_width=bin_width) if binning is None else binning, fit=fit)
+    def _draw_ph_pull(self, evts_per_bin=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
+        p = self.draw_pulse_height(evts_per_bin, show=False, save=False)[0]
+        h = get_pull(p, 'Signal Bin{0} Distribution'.format(Bins.get_size(evts_per_bin)), binning=Bins.get_pad_ph(bin_width) if binning is None else binning, fit=fit)
         format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
         set_statbox(all_stat=True, fit=fit)
-        self.Draw(h, 'SignalBin{0}Disto'.format(self.Bins.Size), save=save, lm=.12, show=show, stats=True)
+        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.get_size(evts_per_bin)), save=save, lm=.12, show=show, stats=True)
         return h
 
     def draw_track_length(self, show=True):
@@ -303,7 +304,7 @@ class DUTAnalysis(Analysis):
         def f():
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
             v = self.get_tree_vec(var=self.get_track_vars() + ([] if hitmap else [self.get_ph_str()]), cut=cut)
-            h1 = (self.Draw.histo_2d if hitmap else self.Draw.prof2d)(*v, choose(bins, self.Bins.get_global(res, mm=True)), 'Track Hit Map' if hitmap else 'Signal Map', show=False)
+            h1 = (self.Draw.histo_2d if hitmap else self.Draw.prof2d)(*v, choose(bins, Bins.get_global(res)), 'Track Hit Map' if hitmap else 'Signal Map', show=False)
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
             return h1

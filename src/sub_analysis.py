@@ -18,8 +18,8 @@ class SubAnalysis(Analysis):
         if dut and hasattr(analysis, 'DUT'):
             self.DUT = analysis.DUT
         try:
-            self.Bins = analysis.Bins
             self.Cut = analysis.Cut
+            self.Bins = analysis.Bins
             self.StartEvent = analysis.StartEvent
         except AttributeError:
             pass

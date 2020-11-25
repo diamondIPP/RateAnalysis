@@ -67,7 +67,7 @@ class TimingAnalysis(PadSubAnalysis):
     # region RAW
     def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
         x = self.get_tree_vec(var=self.get_raw_var(corr, ch), cut=self.Cut(cut))
-        return self.Draw.distribution(x, Bins.make(xmin, xmax, bin_width), x_tit='Time [ns]' if corr else 'Digitiser Bin', show=show, x_range=ax_range(x[(x > xmin) & (x < xmax)], thresh=4))
+        return self.Draw.distribution(x, make_bins(xmin, xmax, bin_width), x_tit='Time [ns]' if corr else 'Digitiser Bin', show=show, x_range=ax_range(x[(x > xmin) & (x < xmax)], thresh=4))
 
     def draw_max_peaks(self, cut=None):
         h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=True, show=False, cut=self.TimingCut(cut))
@@ -101,7 +101,7 @@ class TimingAnalysis(PadSubAnalysis):
 
     def draw_cft_vs_triggercell(self, bin_size=10, show=True):
         x, y = self.Ana.get_tree_vec(var=['trigger_cell', self.get_cft_var()], cut=self.Cut())
-        return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_size), 'CFT vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Constant Fraction Time [ns]', show=show)
+        return self.Draw.profile(x, y, make_bins(0, self.Run.NSamples, bin_size), 'CFT vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Constant Fraction Time [ns]', show=show)
 
     def get_tc_correction(self, redo=False, show=False):
         def f():
@@ -126,7 +126,7 @@ class TimingAnalysis(PadSubAnalysis):
             x = self.get_tree_vec(var=self.get_peak_var(corr, fine_corr, self.TimingCut(cut), redo=redo), cut=self.TimingCut(cut))
             x *= self.DigitiserBinWidth if not corr else 1
             bin_width = max(.1, min(.4, mean_sigma(x[(x > mean(x) - 5) & (x < mean(x) + 5)])[1].n / 8)) if corr else self.DigitiserBinWidth  # adjust bin width according to width of values
-            return self.Draw.distribution(x, Bins.make(*self.Ana.get_signal_range(.5, .5), bin_width), '{}Peak Positions'.format('Time Corrected ' if corr else ''), show=False)
+            return self.Draw.distribution(x, make_bins(*self.Ana.get_signal_range(.5, .5), bin_width), '{}Peak Positions'.format('Time Corrected ' if corr else ''), show=False)
         h = do_pickle(self.make_simple_pickle_path('Peak', '{}_{}{}'.format(self.TimingCut(cut).GetName(), int(corr), int(fine_corr))), f, redo=redo)
         if not h.GetEntries():
             return warning('histogram has no entries')
@@ -173,7 +173,7 @@ class TimingAnalysis(PadSubAnalysis):
     def draw_peaks_tc(self, bin_size=4, corr=True, fine_corr=False, fit=True, cut=None, show=True, prnt=True, save=True, redo=False):
         def f():
             x, y = self.get_tree_vec(var=['trigger_cell', self.get_peak_var(corr, fine_corr)], cut=self.TimingCut(cut))
-            return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_size), '{}Peak Position vs Trigger Cell'.format('Corrected ' if corr else ''), show=False)
+            return self.Draw.profile(x, y, make_bins(0, self.Run.NSamples, bin_size), '{}Peak Position vs Trigger Cell'.format('Corrected ' if corr else ''), show=False)
         h = do_pickle(self.make_simple_pickle_path('PeakTC', '{}{}{}'.format(self.TimingCut(cut).GetName(), bin_size, int(fine_corr))), f, redo=redo)
         self.fit_sin(h, fit)
         format_histo(h, x_tit='Trigger Cell', y_tit='Signal Peak Time [ns]', y_off=1.8, stats=fit)
@@ -202,7 +202,7 @@ class TimingAnalysis(PadSubAnalysis):
     # --------------------------
     # region TRIGGER CELL
     def draw_trigger_cell(self, bin_width=1, show=True, cut=None):
-        h = self.Draw.distribution(self.get_tree_vec(var='trigger_cell', cut=self.Cut(cut)), Bins.make(0, self.Run.NSamples, bin_width), 'Trigger Cell', show=show)
+        h = self.Draw.distribution(self.get_tree_vec(var='trigger_cell', cut=self.Cut(cut)), make_bins(0, self.Run.NSamples, bin_width), 'Trigger Cell', show=show)
         format_histo(h, x_tit='Trigger Cell', y_range=[0, 1.2 * h.GetMaximum()])
         h.Fit('pol0', 'qs')
         format_statbox(h, fit=True, entries=True)
@@ -226,7 +226,7 @@ class TimingAnalysis(PadSubAnalysis):
         format_statbox(g, fit=fit, entries=True)
 
     def draw_tcal_disto(self, bin_size=.01, show=True):
-        self.Draw.distribution(self.Run.TCal, Bins.make(0, self.DigitiserBinWidth * 2, bin_size), 'TCal Distribution', x_tit='Bin Size [ns]', show=show)
+        self.Draw.distribution(self.Run.TCal, make_bins(0, self.DigitiserBinWidth * 2, bin_size), 'TCal Distribution', x_tit='Bin Size [ns]', show=show)
     # endregion TRIGGER CELL
     # --------------------------
 
@@ -250,15 +250,15 @@ class TimingAnalysis(PadSubAnalysis):
 
     def draw_rf_period(self, cut=None, show=True):
         x = self.get_tree_vec(var='rf_period', cut=self.Cut(cut))
-        self.Draw.distribution(x, Bins.make(19.7, 19.8, n=500), 'RF Period', x_tit='RF Period [ns]', ndivx=507, show=show)
+        self.Draw.distribution(x, make_bins(19.7, 19.8, n=500), 'RF Period', x_tit='RF Period [ns]', ndivx=507, show=show)
 
     def draw_rf_phase(self, cut=None, show=True):
         x = self.get_tree_vec(var='rf_phase', cut=self.Cut(cut) + TCut('rf_chi2 < 100'))
-        self.Draw.distribution(x, Bins.make(-30, 30, n=500), 'RF Phase', x_tit='RF Phase [ns]', show=show)
+        self.Draw.distribution(x, make_bins(-30, 30, n=500), 'RF Phase', x_tit='RF Phase [ns]', show=show)
 
     def draw_rf_vs_peak(self, show=True):
         x, y = self.get_tree_vec(var=['signal_peak_time[{}]'.format(self.Channel), 'rf_phase'], cut=self.Cut() + TCut('rf_chi2 < 100'))
-        h = self.Draw.histo_2d(x, y, Bins.make(0, 500, .25) + Bins.make(-12, 12, .1), 'RF Phase vs. Peak Timings', x_tit='Signal Peak Timing [ns]', y_tit='RF Phase [ns]', stats=0, show=show)
+        h = self.Draw.histo_2d(x, y, make_bins(0, 500, .25) + make_bins(-12, 12, .1), 'RF Phase vs. Peak Timings', x_tit='Signal Peak Timing [ns]', y_tit='RF Phase [ns]', stats=0, show=show)
         format_histo(h, **{n: v for n, v in zip(['x_range', 'y_range'], ax_range(5, 5, .2, .2, h))})
     # endregion RF
     # --------------------------
@@ -267,11 +267,11 @@ class TimingAnalysis(PadSubAnalysis):
     # region MISCELLANEOUS
     def draw_fit_peak_timing(self, show=True):
         x = self.get_tree_vec(var='fit_peak_time[{}]'.format(self.Channel), cut=self.Cut())
-        self.Draw.distribution(x, Bins.make(*self.Ana.get_signal_range(), n=sqrt(x.size)), 'Fitted Peak Positions', x_tit='Time [ns]', show=show)
+        self.Draw.distribution(x, make_bins(*self.Ana.get_signal_range(), n=sqrt(x.size)), 'Fitted Peak Positions', x_tit='Time [ns]', show=show)
 
     def draw_peaking_time(self, show=True):
         x = self.get_tree_vec(var='peaking_time[{}]'.format(self.Channel), cut=self.Cut())
-        self.Draw.distribution(x, Bins.make(0, 20, n=sqrt(x.size)), 'Peaking Time', x_tit='Time [ns]', show=show)
+        self.Draw.distribution(x, make_bins(0, 20, n=sqrt(x.size)), 'Peaking Time', x_tit='Time [ns]', show=show)
 
     def draw_forc_times(self, bin_size=.5, corr=False, show=True):
         x = self.get_tree_vec(var=self.get_forc_var(corr), cut=self.Cut())
@@ -279,7 +279,7 @@ class TimingAnalysis(PadSubAnalysis):
 
     def draw_signal_peak(self, cut=None, corr=False, show=True):
         x = self.get_tree_vec(var='signal_peak_time[{}]{}'.format(self.Channel, '+rf_phase' if corr else ''), cut=self.Cut(cut))
-        h = self.Draw.distribution(x, Bins.make(0, 500, .1 if corr else .2), 'Signal Peak Timings', x_tit='Signal Peak Timing [ns]', show=show)
+        h = self.Draw.distribution(x, make_bins(0, 500, .1 if corr else .2), 'Signal Peak Timings', x_tit='Signal Peak Timing [ns]', show=show)
         format_histo(h, x_range=ax_range(5, 5, .1, .3, h))
 
     def draw_scint_inflexion(self, corr=False, show=True):
@@ -287,29 +287,29 @@ class TimingAnalysis(PadSubAnalysis):
 
     def draw_peak_width(self, show=True):
         x = abs(self.get_tree_vec(var='rise_width[{}]'.format(self.Channel), cut=self.Cut()))
-        return self.Draw.distribution(x, Bins.make(0, 1, n=500), 'Peak Width', x_tit='Rise Width [ns]', show=show, x_range=ax_range(x, 0, .1, .3, thresh=3))
+        return self.Draw.distribution(x, make_bins(0, 1, n=500), 'Peak Width', x_tit='Rise Width [ns]', show=show, x_range=ax_range(x, 0, .1, .3, thresh=3))
 
     def draw_threshold(self, corr=False, channel=None, show=True):
         ch = choose(channel, self.Channel)
         x = self.get_tree_vec(var='signal_peak_time[{}]{}'.format(ch, '+rf_phase' if corr else ''), cut=self.Cut() + TCut('t_thresh[{}] > 10'.format(ch)))
-        return self.Draw.distribution(x, Bins.make(0, 500, .1 if corr else .2), 'Time over Threshold', x_tit='ToT [ns]', show=show, x_range=ax_range(x, 0, .1, .3, thresh=3))
+        return self.Draw.distribution(x, make_bins(0, 500, .1 if corr else .2), 'Time over Threshold', x_tit='ToT [ns]', show=show, x_range=ax_range(x, 0, .1, .3, thresh=3))
 
     def draw_scint_threshold(self, corr=False, show=True):
         return self.draw_threshold(corr=corr, channel=self.get_scint_channel(), show=show)
 
     def draw_inflexion_time(self, corr=False, channel=None, show=True):
         x = self.get_tree_vec(var='rise_time[{}]{}'.format(choose(channel, self.Channel), '+rf_phase' if corr else ''), cut=self.Cut() + TCut('rise_time[{}]'.format(choose(channel, self.Channel))))
-        h = self.Draw.distribution(x, Bins.make(0, 20, .05), 'Inflexion Time', x_tit='Rise Time [ns]', show=show)
+        h = self.Draw.distribution(x, make_bins(0, 20, .05), 'Inflexion Time', x_tit='Rise Time [ns]', show=show)
         format_histo(h, x_range=ax_range(5, h.GetMaximum() * .01, .1, .3, h))
 
     def draw_inter_dia_corr(self, show=True):
         x, y = self.get_tree_vec(var=['rise_time[{}]'.format(ch) for ch in self.Run.Channels], cut=self.Cut() + TCut('rise_time[{}]'.format(self.Channel)))
-        h = self.Draw.histo_2d(x, y, Bins.make(0, 20, .05) * 2, 'Inflextion Times of Diamond Signals', x_tit='Inflexion Time1 [ns]', y_tit='Inflexion Time2 [ns]', show=show)
+        h = self.Draw.histo_2d(x, y, make_bins(0, 20, .05) * 2, 'Inflextion Times of Diamond Signals', x_tit='Inflexion Time1 [ns]', y_tit='Inflexion Time2 [ns]', show=show)
         format_histo(h, **{n: v for n, v in zip(['x_range', 'y_range'], ax_range(5, 5, .2, .2, h))})
 
     def draw_inter_dia(self, show=True):
         x = self.get_tree_vec(var='rise_time[{}] - rise_time[{}]'.format(*self.Run.Channels), cut=self.Cut() + TCut('rise_time[{}]'.format(self.Channel)))
-        h = self.Draw.distribution(x, Bins.make(-10, 10, .05), 'Peak Width', x_tit='Rise Time Difference [ns]', show=show)
+        h = self.Draw.distribution(x, make_bins(-10, 10, .05), 'Peak Width', x_tit='Rise Time Difference [ns]', show=show)
         format_histo(h, x_range=ax_range(5, 5, .1, .3, h))
     # endregion MISCELLANEOUS
     # --------------------------
