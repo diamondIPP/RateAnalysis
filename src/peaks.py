@@ -194,6 +194,10 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_cut_name(self):
         return self.Cut().GetName() if not self.Cut().GetName().startswith('All') else ''
+
+    def get_bunch_events(self, n):
+        n_peaks = self.find_n_additional(n, n + 1)
+        return self.Ana.get_events()[n_peaks > 0]
     # endregion GET
     # ----------------------------------------
 
