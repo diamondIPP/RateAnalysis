@@ -73,6 +73,13 @@ class PedestalAnalysis(PadSubAnalysis):
         format_histo(s, x_range=x_range)
         print([h.GetRMS() for h in histos])
 
+    def draw_correlation(self, cut=None, bin_size=.1, rnge=None):
+        cut = choose(cut, self.Cut.get_pulser().Value)
+        x, y = [self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut)) for name in [None, self.get_signal_name('aa')]]
+        rnge = choose(rnge, [-15, 15])
+        h = self.Draw.histo_2d(x, y, self.get_bins(bin_size) * 2, 'Pedstal Correlation', x_tit='Bucket 0', y_tit='Bucket 1', x_range=rnge, y_range=rnge)
+        Draw.info('Correlation Factor: {:.2f}'.format(h.GetCorrelationFactor()))
+
     def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         def f():
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
