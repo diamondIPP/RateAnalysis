@@ -6,7 +6,7 @@
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
-from numpy import sign, linspace, ones, ceil, append, pi, tile, absolute
+from numpy import sign, linspace, ones, ceil, append, tile, absolute
 from helpers.utils import *
 from inspect import signature
 
@@ -147,7 +147,7 @@ class Draw(object):
         return Draw.add(c)
 
     @staticmethod
-    def axis(x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False):
+    def axis(x1, x2, y1, y2, title, limits=None, name='ax', col=1, width=1, off=.15, tit_size=.035, lab_size=0.035, tick_size=0.03, line=False, opt='+SU', l_off=.01, log=False, center=None):
         limits = ([y1, y2] if x1 == x2 else [x1, x2]) if limits is None else limits
         a = TGaxis(x1, y1, x2, y2, limits[0], limits[1], 510, opt + ('G' if log else ''))
         a.SetName(name)
@@ -161,6 +161,7 @@ class Draw(object):
         a.SetLabelColor(col)
         a.SetLabelFont(Draw.Font)
         a.SetTitleFont(Draw.Font)
+        do(a.CenterTitle, center)
         a.SetTickSize(tick_size if not line else 0)
         a.SetTickLength(tick_size if not line else 0)
         a.SetNdivisions(0) if line else do_nothing()
@@ -169,12 +170,12 @@ class Draw(object):
         return Draw.add(a)
 
     @staticmethod
-    def y_axis(x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
-        return Draw.axis(x, x, ymin, ymax, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log)
+    def y_axis(x, ymin, ymax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False, center=None):
+        return Draw.axis(x, x, ymin, ymax, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log, center)
 
     @staticmethod
-    def x_axis(y, xmin, xmax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False):
-        return Draw.axis(xmin, xmax, y, y, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log)
+    def x_axis(y, xmin, xmax, tit, limits=None, name='ax', col=1, off=1, w=1, opt='+L', tit_size=.035, lab_size=0.035, tick_size=0.03, l_off=.01, line=False, log=False, center=None):
+        return Draw.axis(xmin, xmax, y, y, tit, limits, name, col, w, off, tit_size, lab_size, tick_size, line, opt, l_off, log, center)
 
     @staticmethod
     def line(x1, x2, y1, y2, color=1, width=1, style=1):
@@ -432,8 +433,8 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, bm=None, show=True, logx=None, color=True, c=None, y_range=None,
-                   *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, bm=None, show=True, logx=None, logy=None, color=True, c=None,
+                   y_range=None, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=.2)
@@ -445,7 +446,7 @@ class Draw(object):
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels), y_range=y_range)
         set_bin_labels(m, bin_labels)
         m.GetListOfFunctions().Add(leg) if leg_titles is not None else do_nothing()
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c)
+        self.histo(m, draw_opt=draw_opt, leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy)
         return m
 
     @staticmethod
@@ -463,23 +464,24 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_f(name, function, xmin=0, xmax=1, pars=None, *args, **kwargs):
+    def make_f(name, function, xmin=0, xmax=1, pars=None, npx=None, *args, **kwargs):
         f = TF1(name, function, xmin, xmax)
         f.SetParameters(*pars) if pars is not None else do_nothing()
+        do(f.SetNpx, npx)
         format_histo(f, *args, **kwargs)
-        return f
+        return Draw.add(f)
 
     @staticmethod
-    def make_tf1(name, f, xmin=0, xmax=1, n=1, color=None, w=None, *args, **kwargs):
+    def make_tf1(name, f, xmin=0, xmax=1, color=None, w=None, style=None, title=None, *args, **kwargs):
         def tmp(x, pars):
             _ = pars
             return f(x[0], pars, *args, **kwargs) if 'pars' in signature(f).parameters else f(x[0], *args, **kwargs)
+
         Draw.add(tmp)
-        f0 = TF1(name, tmp, xmin, xmax, n)
-        do(f0.SetLineColor, color)
-        do(f0.SetLineWidth, w)
-        Draw.add(f0)
-        return f0
+        f0 = TF1(name, tmp, xmin, xmax)
+        do([f0.SetLineColor, f0.SetLineWidth, f0.SetLineStyle], [color, w, style])
+        do(f0.SetTitle, title)
+        return Draw.add(f0)
 
     @staticmethod
     def make_tgrapherrors(x=None, y=None, **kwargs):
@@ -534,7 +536,7 @@ class Draw(object):
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=None, color=None, line_color=None, line_style=None, markersize=None, x_off=None, y_off=None, z_off=None,
                  lw=None, fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                  sumw2=None, do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None,
-                 rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None):
+                 rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None, center_tit=None):
     h = histo
     if draw_first:
         set_root_output(False)
@@ -574,8 +576,8 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         pass
     # axes
     try:
-        x_args = [x_tit, x_off, tit_size, center_x, lab_size, l_off_x, x_range, ndivx, choose(x_ticks, tick_size), ]
-        y_args = [y_tit, y_off, tit_size, center_y, lab_size, l_off_y, y_range, ndivy, choose(y_ticks, tick_size), yax_col]
+        x_args = [x_tit, x_off, tit_size, choose(center_tit, center_x), lab_size, l_off_x, x_range, ndivx, choose(x_ticks, tick_size), ]
+        y_args = [y_tit, y_off, tit_size, choose(center_tit, center_y), lab_size, l_off_y, y_range, ndivy, choose(y_ticks, tick_size), yax_col]
         z_args = [z_tit, z_off, tit_size, False, lab_size, None, z_range, None, choose(z_ticks, tick_size)]
         for i, name in enumerate(['X', 'Y', 'Z']):
             format_axis(getattr(h, 'Get{}axis'.format(name))(), h, *[x_args, y_args, z_args][i])
