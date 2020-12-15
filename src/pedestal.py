@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import gPad
-from numpy import log, diff
+from numpy import log
 
 from src.sub_analysis import PadSubAnalysis
 from helpers.save_plots import *
@@ -62,15 +62,23 @@ class PedestalAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw_under_signal(self, name=None, show=True):
-        x = self.get_tree_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=self.Cut.get_pulser().Value)
-        self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', x_tit='Pedestal [mV]', y_off=1.8, show=show, lm=.13, x_range=ax_range(x, 0, .1, .1, thresh=5))
+    def draw_under_signal(self, name=None, cut=None, show=True):
+        x = self.get_tree_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=choose(cut, self.Cut.get_pulser().Value))
+        return self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', x_tit='Pedestal [mV]', y_off=1.8, show=show, lm=.13, x_range=ax_range(x, 0, .1, .1, thresh=5))
 
-    def draw_distribution(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
+    def compare_under_signal(self, cut=None, bin_size=None, x_range=None):
+        cut = choose(cut, self.Cut.get_pulser().Value)
+        histos = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, self.get_signal_name('aa')]]
+        s = self.Draw.stack(histos, 'Pedestal Comparison', ['Bucket 0', 'Bucket 1'], scale=1, x_range=[-15, 15])
+        format_histo(s, x_range=x_range)
+        print([h.GetRMS() for h in histos])
+
+    def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         def f():
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
             x = self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
-            return self.Draw.distribution(x, self.get_bins(max(.1, 30 / sqrt(x.size))), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
+            bs = choose(bin_size, max(.1, 30 / sqrt(x.size)))
+            return self.Draw.distribution(x, self.get_bins(bs), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
         h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))), f, redo=redo)
         format_histo(h, normalise=normalise, sumw2=False)
         self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
