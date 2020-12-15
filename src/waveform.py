@@ -241,11 +241,11 @@ class Waveform(PadSubAnalysis):
         Draw.vertical_line(x, -1000, 1000, color=4, w=3)
         Draw.tlatex(x + 2, y, 'Peak Position', color=4, align=12)
 
-    def draw_region(self, region=None):
+    def draw_region(self, region=None, lw=2):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
         for region in regions:
             x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
-            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2)
+            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2, width=lw)
         Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
 
     @staticmethod
