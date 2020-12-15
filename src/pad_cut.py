@@ -287,7 +287,7 @@ class PadCut(Cut):
     # ----------------------------------------
     # region ANA
     def draw_bucket_histo(self, sig_var=None, show=True):
-        x = self.get_tree_vec(var=choose(sig_var, self.Ana.get_signal_var()), cut=self.get_pre_bucket())
+        x = self.get_tree_vec(var=choose(sig_var, self.Ana.get_signal_var(evnt_corr=False)), cut=self.get_pre_bucket())
         xmax = quantile(x, .95)
         return self.Draw.distribution(x, Bins.get_pad_ph(max(1, xmax / 40)), 'Bucket Events', y_tit='Pulse Height [mV]', show=show, x_range=[-50, xmax])
 
