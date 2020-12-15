@@ -791,7 +791,7 @@ def get_h_args(h):
 
 def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
-    values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for xbin in xbins for ybin in ybins])
+    values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for ybin in ybins for xbin in xbins])
     values = values if err else array([v.n for v in values])
     return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(xbins), len(ybins))
 
