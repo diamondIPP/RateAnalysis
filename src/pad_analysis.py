@@ -355,6 +355,14 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save, stats=None)
         return h
 
+    def draw_bunch_distribution(self, n, region, bin_width=2):
+        x = self.get_tree_vec(self.get_signal_var(region=region))[self.Peaks.get_bunch_events(n)]
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n + 2), x_tit='Pulse Height [mV]')
+
+    def draw_bunch_comparison(self, n, regions, bin_width=5):
+        histos = [self.draw_bunch_distribution(i, r, bin_width) for i, r in zip(n, regions)]
+        self.Draw.stack(histos, 'Bunch Distributions', ['Bucket {}'.format(i + 2) for i in n], scale=True)
+
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
         xvar, yvar = self.Timing.get_peak_var(corr=True, fine_corr=fine_corr, region=region), self.get_signal_var()
         x, y = self.get_tree_vec(var=[xvar, yvar], cut=self.Cut(cut)) if x is None and y is None else [choose(i, self.get_tree_vec(var=var, cut=self.Cut(cut))) for i, var in [(x, xvar), (y, yvar)]]
