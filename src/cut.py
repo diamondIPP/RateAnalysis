@@ -2,7 +2,7 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import quantile, diff
+from numpy import quantile
 from ROOT import TCut, TPie
 from helpers.draw import *
 from src.binning import Bins
