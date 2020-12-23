@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import vectorize, meshgrid, diff, digitize, histogram2d, lexsort
+from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort
 from numpy.random import rand
 from uncertainties import umath
 
@@ -114,7 +114,7 @@ class DUTAnalysis(Analysis):
     def get_attenuator(self):
         return False
 
-    def get_ph_str(self):
+    def get_ph_var(self, ped=False):
         return ''
 
     def get_pulse_height(self, *args, **kwargs):
@@ -125,7 +125,7 @@ class DUTAnalysis(Analysis):
             :param cut: applies all cuts if None is provided.
             :param fid: return only values within the fiducial region set in the AnalysisConfig.ini"""
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
-        return self.get_tree_vec(self.get_track_vars() + [self.get_ph_str()], cut)
+        return self.get_tree_vec(self.get_track_vars() + [self.get_ph_var()], cut)
 
     def get_uniformity(self, use_fwc=True, redo=False):
         return do_pickle(self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal'), self.draw_uniformity, redo=redo, show=False, use_fwc=use_fwc)
@@ -157,6 +157,9 @@ class DUTAnalysis(Analysis):
 
     def get_alignment(self, *args, **kwargs):
         return array([0, 1]), array([False])
+
+    def get_split_ph(self, m=2):
+        return get_2d_hist_vec(self.split_signal_map(m, show=0)[0])
     # endregion GET
     # ----------------------------------------
 
@@ -296,14 +299,14 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL MAP
-    def draw_signal_map(self, res=None, cut=None, fid=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True, scale=False):
+    def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True, scale=False):
 
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
         suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.get_chi2(), res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
 
         def f():
             self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            v = self.get_tree_vec(var=self.get_track_vars() + ([] if hitmap else [self.get_ph_str()]), cut=cut)
+            v = self.get_tree_vec(var=self.get_track_vars() + ([] if hitmap else [self.get_ph_var(ped)]), cut=cut)
             h1 = (self.Draw.histo_2d if hitmap else self.Draw.prof2d)(*v, choose(bins, Bins.get_global(res)), 'Track Hit Map' if hitmap else 'Signal Map', show=False)
             set_2d_ranges(h1, *([3, 3] if size is None else size))
             adapt_z_range(h1) if not hitmap else do_nothing()
@@ -339,13 +342,20 @@ class DUTAnalysis(Analysis):
         cut = self.Cut.generate_sub_fid('f{}{}{}{}'.format(m, n, mi, ni), *array([x[mi], x[mi + 1], y[ni], y[ni + 1]]) / 10)
         return self.get_sub_events(cut)
 
-    def split_signal_map(self, m=2, n=None, grid=True, redo=False, show=True, z_range=None):
+    def split_signal_map(self, m=2, n=None, grid=True, redo=False, show=True, z_range=None, draw_n=False):
         m, x_bins, n, y_bins = self.get_fid_bins(m, n)
         h = self.draw_signal_map(bins=[m, x_bins, n, y_bins], show=False, fid=True, redo=redo)
         format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0, z_range=z_range)
         self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
         Draw.grid(x_bins, y_bins, width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
+        i = 0
+        if draw_n:
+            dx, dy = diff(x_bins)[0] / 2, diff(y_bins)[0] / 2
+            for i_n in range(n):
+                for i_m in range(m):
+                    Draw.tlatex(x_bins[i_m] + dx, y_bins[i_n] + dy, '{}'.format(i))
+                    i += 1
         return h, x_bins, y_bins
 
     def draw_split_means(self, n=10):
@@ -363,13 +373,13 @@ class DUTAnalysis(Analysis):
         return points, wx, wy
 
     def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, x_range=None, show=True):
-        ph, x, y = self.get_tree_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
         return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(mean_ph=mean(ph)), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
-        ph, x, y = self.get_tree_vec(var=[self.get_ph_str()] + self.get_track_vars(), cut=self.Cut())
+        ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
         ix, bx, iy, by = self.get_fid_bins(m, n)
         n = cumsum(histogram2d(x, y, [bx, by])[0].flatten().astype('i'))[:-1]  # get the number of events for each bin
         values = split(ph[lexsort((digitize(x, bx), digitize(y, by)))], n)  # bin x and y and sort then ph according to bins
