@@ -398,6 +398,13 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('FullPulseHeight')
         return h1
 
+    def draw_splits(self, m=2, show=True, normalise=False):
+        x, y = self.get_x_var(), self.get_values('split pulse heights', DUTAnalysis.get_split_ph, m=m).T
+        y /= mean(y, axis=1).reshape(m ** 2, 1) if normalise else 1
+        graphs = [self.Draw.graph(x, iy, y_tit='Pulse Height [mV]', **self.get_x_args(), show=False) for iy in y]
+        mg = self.Draw.multigraph(graphs, 'Region Pulse Heights', ['{}'.format(i) for i in range(y.shape[0])], show=show, draw_opt='alp', logx=True)
+        format_histo(mg, **self.get_x_args())
+
     def draw_signal_legend(self):
         pass
 
