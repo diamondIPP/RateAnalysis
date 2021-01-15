@@ -399,7 +399,7 @@ class Draw(object):
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, **kwargs):
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, grid=None, **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
@@ -409,7 +409,7 @@ class Draw(object):
         fill_hist(h, x, y)
         format_histo(h, **kwargs)
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, stats=True if stats is None else stats)
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=True if stats is None else stats)
         return h
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
@@ -433,20 +433,20 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='ap', gridy=None, lm=None, bm=None, show=True, logx=None, logy=None, color=True, c=None,
-                   y_range=None, *args, **kwargs):
+    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='p', gridy=None, lm=None, bm=None, show=True, logx=None, logy=None, color=True, c=None,
+                   y_range=None, w=1, grid=None, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
         leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=.2)
         for i, g in enumerate(graphs):
-            m.Add(g, 'p')
+            m.Add(g, draw_opt)
             leg.AddEntry(g, leg_titles[i], 'p') if leg_titles is not None else do_nothing()
             format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=0, *args, **kwargs)
         y_range = choose(y_range, ax_range(get_graph_y(graphs, err=False), 0, .3, .6))
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels), y_range=y_range)
         set_bin_labels(m, bin_labels)
         m.GetListOfFunctions().Add(leg) if leg_titles is not None else do_nothing()
-        self.histo(m, draw_opt=draw_opt, leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy)
+        self.histo(m, draw_opt='ap', leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy, w=w, grid=grid)
         return m
 
     @staticmethod
@@ -617,8 +617,9 @@ def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, r
         p.SetX2NDC(cx + w / 2 if center_x else x2)
         p.SetY1NDC(cy - h / 2 if center_y else y2 - h)
         p.SetY2NDC(cy + h / 2 if center_y else y2)
-        p.SetOptStat(int('100000{}{}{}0'.format(*stats)))
+        p.SetOptStat(int('100000{}{}{}0'.format(*stats * 2)))
         p.SetOptFit(int(fit))
+        p.SetStatFormat('1.1f')
         p.SetFitFormat(form) if form is not None else do_nothing()
         update_canvas(c)
 
