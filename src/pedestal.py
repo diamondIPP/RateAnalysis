@@ -21,8 +21,8 @@ class PedestalAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_bins(self, bin_size=.1):
-        return self.Bins.make(-150, 150, bin_size)
+    def get_bins(self, bin_size=.1, ph_max=150):
+        return self.Bins.make(-ph_max, ph_max, bin_size)
 
     def get_signal_name(self, region=None, peak_int=None):
         return self.Ana.get_signal_name(region=region, peak_int=peak_int, sig_type='pedestal')
@@ -62,23 +62,45 @@ class PedestalAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region DRAW
+    def draw_map(self, res=None, fid=False, cut=None, show=True):
+        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
+        h0 = self.Draw.prof2d(*self.get_tree_vec(self.Ana.get_track_vars() + [self.get_signal_var()], self.Cut()), self.Bins.get_global(res), show=False)
+        fid_vals = [h0.GetBinContent(ibin) for ibin in range(h0.GetNbinsY() * h0.GetNbinsX()) if h0.GetBinEntries(ibin) > 20]
+        v = self.get_tree_vec(self.Ana.get_track_vars() + [self.get_signal_var()], cut)
+        self.Draw.prof2d(*v, self.Bins.get_global(res), 'Pedestal Map', show=show, z_range=ax_range(fid_vals, 0))
+        self.Cut.draw_fid()
+        update_canvas()
+        return fid_vals
+
     def draw_under_signal(self, name=None, cut=None, show=True):
         x = self.get_tree_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=choose(cut, self.Cut.get_pulser().Value))
         return self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', x_tit='Pedestal [mV]', y_off=1.8, show=show, lm=.13, x_range=ax_range(x, 0, .1, .1, thresh=5))
 
     def compare_under_signal(self, cut=None, bin_size=None, x_range=None):
         cut = choose(cut, self.Cut.get_pulser().Value)
-        histos = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, self.get_signal_name('aa')]]
-        s = self.Draw.stack(histos, 'Pedestal Comparison', ['Bucket 0', 'Bucket 1'], scale=1, x_range=[-15, 15])
-        format_histo(s, x_range=x_range)
+        histos = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
+        s = self.Draw.stack(histos, 'Pedestal Comparison', ['Bucket 0', 'Bucket 1', 'Bucket 6'], scale=True)
+        format_histo(s, x_range=choose(x_range, [-20, 20]))
         print([h.GetRMS() for h in histos])
 
-    def draw_correlation(self, cut=None, bin_size=.1, rnge=None):
+    def draw_diffs(self, cut=None, bin_size=None, x_range=None):
         cut = choose(cut, self.Cut.get_pulser().Value)
-        x, y = [self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut)) for name in [None, self.get_signal_name('aa')]]
+        h = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
+        for ih in h:
+            ih.Sumw2(True)
+            ih.Scale(1 / ih.GetMaximum())
+        [h[i].Add(h[i + 2], -1) for i in range(2)]
+        graphs = [self.Draw.make_graph_from_profile(h[i]) for i in range(2)]
+        mg = self.Draw.multigraph(graphs, 'Pedestal differences', ['#Delta 0-1', '#Delta 0-6'])
+        format_histo(mg, x_range=choose(x_range, [-20, 20]))
+
+    def draw_correlation(self, r0=None, r1='aa', cut=None, bin_size=.1, rnge=None, show=True):
+        cut = choose(cut, self.Cut.get_pulser().Value)
+        x, y = [self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut)) for name in [self.get_signal_name(r) for r in [r0, r1]]]
         rnge = choose(rnge, [-15, 15])
-        h = self.Draw.histo_2d(x, y, self.get_bins(bin_size) * 2, 'Pedstal Correlation', x_tit='Bucket 0', y_tit='Bucket 1', x_range=rnge, y_range=rnge)
+        h = self.Draw.histo_2d(x, y, self.get_bins(bin_size, 300) * 2, 'Pedstal Correlation', x_tit='Bucket 5', y_tit='Bucket 6', x_range=rnge, y_range=rnge, show=show, grid=True)
         Draw.info('Correlation Factor: {:.2f}'.format(h.GetCorrelationFactor()))
+        return h
 
     def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
         def f():
@@ -91,9 +113,9 @@ class PedestalAnalysis(PadSubAnalysis):
         self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
         return h
 
-    def draw_disto_fit(self, name=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
+    def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
-        h = self.draw_distribution(name, cut, logy, show=show, save=save, redo=redo, prnt=prnt, normalise=normalise)
+        h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, normalise=normalise)
         fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
         f = deepcopy(h.GetFunction('gaus'))
         f.SetNpx(1000)
