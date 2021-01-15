@@ -349,7 +349,7 @@ class PeakAnalysis(PadSubAnalysis):
         return array([lst.size for lst in times], dtype='u2')
 
     def find_all(self, redo=False, thresh=None, fit=False):
-        suf = '' if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
+        suf = '{:1.0f}'.format(self.Threshold) if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
         hdf5_path = self.make_simple_hdf5_path(suf=suf + self.get_cut_name(), dut=self.Channel)
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')

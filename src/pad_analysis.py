@@ -151,8 +151,8 @@ class PadAnalysis(DUTAnalysis):
     def get_eff_var(self, n_sigma=3):
         return '{} > {} * {}'.format(self.get_signal_var(evnt_corr=False, off_corr=False), n_sigma, self.Pedestal.get_signal_var())
 
-    def get_ph_str(self):
-        return self.get_signal_var()
+    def get_ph_var(self, ped=False):
+        return self.Pedestal.get_signal_var() if ped else self.get_signal_var()
 
     def get_integral_names(self):
         return self.Run.TreeConfig.get_value('Integral Names', 'Names', dtype=list)
@@ -263,7 +263,7 @@ class PadAnalysis(DUTAnalysis):
         Draw.tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.Draw.save_plots('EffThresh')
 
-    def draw_pedestal_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
+    def draw_low_sig_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
         low = '&&{}>{}'.format(self.get_signal_var(), low) if low is not None else ''
         fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
         kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
