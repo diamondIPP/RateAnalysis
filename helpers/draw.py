@@ -399,7 +399,7 @@ class Draw(object):
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, grid=None, **kwargs):
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
@@ -409,7 +409,7 @@ class Draw(object):
         fill_hist(h, x, y)
         format_histo(h, stats=stats, **kwargs)
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=choose(stats, True))
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=choose(stats, True), canvas=canvas)
         return h
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
@@ -678,6 +678,8 @@ def fill_hist(h, x, y=None, zz=None):
     if len(x.shape) > 1:
         y = array(x[:, 1])
         x = array(x[:, 0])
+    if not x.size:  # return if there are no entries
+        return
     if h.ClassName() == 'TProfile2D':
         for i in range(x.size):
             h.Fill(x[i], y[i], zz[i])
