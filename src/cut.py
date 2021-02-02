@@ -235,17 +235,17 @@ class Cut(SubAnalysis):
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial'):
+    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
         x = choose(x, self.load_fiducial(fid_name)[0]) + (Plane.PX / 20 if center else 0)
         y = choose(y, self.load_fiducial(fid_name)[1]) + (Plane.PY / 20 if center else 0)
         cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
-        cut.SetVarX(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'x'))
-        cut.SetVarY(self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'y'))
+        cut.SetVarX(choose(xvar, self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'x')))
+        cut.SetVarY(choose(yvar, self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'y')))
         description = 'x: {}, y: {}, area: {:.1f} mm2'.format(x * 10, y * 10, poly_area(x, y) * 100)
         return CutString(choose(name, 'fiducial'), TCut(cut.GetName()) if cut is not None else '', description)
 
     def generate_sub_fid(self, name, x1, x2, y1, y2):
-        x, y = make_box_args(x1, x2, y1, y2)
+        x, y = make_box_args(x1, y1, x2, y2)
         return self.generate_fiducial(x=x, y=y, name=name)() + self()
 
     def generate_jump_cut(self):
