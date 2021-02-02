@@ -7,6 +7,7 @@
 from ROOT import TF1, TCut, gPad
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
+from string import ascii_lowercase
 
 
 class TimingAnalysis(PadSubAnalysis):
@@ -90,6 +91,15 @@ class TimingAnalysis(PadSubAnalysis):
         for i, h in enumerate((h0, h1), 1):
             c.cd(i)
             h.Draw()
+
+    def print_regions(self, ch=None):
+        h = self.draw_raw_peaks(50, 450, ch=ch, show=False)
+        m, bw = int(round(h.GetMean())), self.BunchSpacing / self.DigitiserBinWidth
+        letters = list(filter(lambda x: x != 'e', ascii_lowercase))
+        for i in range(int((self.Run.NSamples - m - bw / 2) / bw) + 1):
+            border1 = m + bw / 2 + i * bw
+            print('signal_{}_region = [{}, {}]'.format(letters[i + 1], round(border1 - bw), round(border1)))
+
     # endregion RAW
     # --------------------------
 
