@@ -407,9 +407,9 @@ class Draw(object):
         dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
         h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(h, x, y)
-        format_histo(h, **kwargs)
+        format_histo(h, stats=stats, **kwargs)
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=True if stats is None else stats)
+        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=choose(stats, True))
         return h
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
