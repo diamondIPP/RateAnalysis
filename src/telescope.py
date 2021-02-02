@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TH1F, TCut
-from numpy import arange, concatenate, mean, sqrt, full
+from numpy import arange, concatenate, mean, sqrt, full, ceil
 from src.binning import Bins
 from helpers.draw import Draw, format_histo, set_statbox, set_entries, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
 from src.sub_analysis import SubAnalysis
@@ -62,11 +62,12 @@ class Telescope(SubAnalysis):
         self.Draw.save_plots('NClusters{}'.format(roc), show=show)
         return h
 
-    def draw_event(self, event, plane, show=True, grid=True):
-        n = self.Tree.Draw('{}:{}'.format(*self.get_hit_vars(plane, cluster=False)), 'plane == {}'.format(plane), 'goff', 1, event)
-        x, y = [self.get_tree_vec(n, i) for i in range(2)]
-        self.Draw.histo_2d(x, y, Bins.get_pixel(), 'Hits in Plane {} for Event {}'.format(plane, event), draw_opt='col', x_tit='col', y_tit='row', rm=.03, stats=0, show=show)
-        self.draw_pixel_grid() if grid else do_nothing()
+    def draw_event(self, event, show=True, grid=True):
+        x, y, p = self.get_tree_vec(self.get_hit_vars(0, cluster=False) + ['plane'], nentries=1, firstentry=event)
+        c = self.Draw.canvas(w=1.5, h=1.5, divide=(int(ceil(sqrt(self.NRocs))), int(ceil(sqrt(self.NRocs)))), show=show)
+        for i in range(self.NRocs):
+            self.Draw.histo_2d(x[p == i], y[p == i], Bins.get_pixel(), 'Hits', draw_opt='col', x_tit='col', y_tit='row', rm=.03, stats=0, show=show, canvas=c.cd(i + 1))
+            self.draw_pixel_grid() if grid else do_nothing()
 
     @staticmethod
     def draw_pixel_grid():
