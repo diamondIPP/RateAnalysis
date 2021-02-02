@@ -6,8 +6,8 @@
 from ROOT import TH1F, TCut
 from numpy import arange, concatenate, mean, sqrt, full, ceil
 from src.binning import Bins
-from helpers.draw import Draw, format_histo, set_statbox, set_entries, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle
-from src.sub_analysis import SubAnalysis
+from helpers.draw import Draw, format_histo, set_statbox, set_entries, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle, calc_eff
+from src.sub_analysis import SubAnalysis, choose
 
 
 class Telescope(SubAnalysis):
@@ -55,10 +55,10 @@ class Telescope(SubAnalysis):
         self.Draw.save_plots('ClusterSize{}'.format(roc), show=show)
         return h
 
-    def draw_n_clusters(self, roc=0, name=None, cut='', show=True):
+    def draw_n_clusters(self, roc=0, name=None, cut='', y_range=None, x_range=None, show=True):
         values = self.get_tree_vec(var='n_clusters[{}]'.format(roc), cut=self.Cut(cut))
         h = self.Draw.distribution(values, Bins.make(0, 50), 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
-        format_histo(h, x_tit='Number of Clusters', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(2) + 1])
+        format_histo(h, x_tit='Number of Clusters', y_off=1.3, fill_color=Draw.FillColor, x_range=choose(x_range, [0, h.FindLastBinAbove(2) + 1]), y_range=y_range)
         self.Draw.save_plots('NClusters{}'.format(roc), show=show)
         return h
 
@@ -93,6 +93,11 @@ class Telescope(SubAnalysis):
             pad.SetBottomMargin(.15)
             h.Draw('colz')
         self.Draw.save_plots('HitMaps', show=show, prnt=prnt)
+
+    def draw_hit_efficiency(self, plane=0, cut=None, y_range=None, show=True):
+        e, x = self.get_tree_vec(var=['n_clusters[{}]'.format(plane)] + [self.get_t_var()], cut=choose(cut, self.Cut.get('pulser')))
+        self.Draw.efficiency(x, e > 0, self.Bins.get_time(), x_tit='Time[hh:mm]', stats=set_entries(), y_range=y_range, show=show, t_ax_off=0)
+        self.Draw.info('Efficiency: {:1.2f}%'.format(calc_eff(values=e > 0)[0]))
     # endregion HITS
     # ----------------------------------------
 
