@@ -419,13 +419,14 @@ class Draw(object):
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
         return self.graph(x, y, title, lm=lm, show=show, y_tit='Efficiency [%]', **kwargs)
 
-    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, w=.2, *args, **kwargs):
+    def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, fill=None, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)
         leg = Draw.make_legend(nentries=len(histos), w=w)
         for h, tit in zip(histos, leg_titles):
             s.Add(h, 'hist')
-            leg.AddEntry(h, tit, 'l')
-            format_histo(h, color=self.get_color(len(histos)), fill_color=0, fill_style=4000, stats=0, *args, **kwargs)
+            leg.AddEntry(h, tit, choose('lf', 'l', fill))
+            color = self.get_color(len(histos))
+            format_histo(h, color=color, fill_color=choose(color, 0, fill), fill_style=choose(1001, 4000, fill), stats=0, *args, **kwargs)
             if scale:
                 h.Scale(1 / h.GetMaximum())
         h0 = histos[0]
