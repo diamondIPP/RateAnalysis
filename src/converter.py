@@ -118,6 +118,12 @@ class Converter(object):
         self.add_tracking()
         remove(self.get_eudaqfile_path())
 
+    def convert_shadow_run(self):
+        self.convert_raw_to_root(tree='telescopetree')
+        self.add_tracking()
+        remove(self.get_eudaqfile_path())
+
+
     def convert_raw_to_root(self, tree=None):
         if not file_exists(self.RawFilePath):
             critical('The raw file {} does not exist ...'.format(self.RawFilePath))
