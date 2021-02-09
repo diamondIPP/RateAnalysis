@@ -53,7 +53,7 @@ class InfoLegend(object):
         info_str = self.get_info_string()
         # width = len(run_str) * min(canvas.GetWw(), canvas.GetWh()) * .01
         # if canvas.GetWw() > canvas.GetWh():
-        width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * Draw.Res / 1000 * 10.5
+        width = float(max(len(run_str), len(info_str))) / canvas.GetWw() * Draw.Res / 1000 * 11
         legend = Draw.make_legend(x1=.005, y1=.003, w=width, nentries=3, clean=False, scale=.75, margin=.05, fix=True)
 
         legend.AddEntry(0, run_str, '')                # Run String
