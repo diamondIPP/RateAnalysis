@@ -175,9 +175,9 @@ class AnalysisCollection(Analysis):
     def get_flux_strings(self, prec=0, runs=None):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
 
-    def get_flux_splits(self, redo=False, show=True):
+    def get_flux_splits(self, redo=False, corr=True, show=True):
         def f():
-            values = sort([flux.n for flux in self.get_fluxes()])
+            values = sort([flux.n for flux in self.get_fluxes(corr=corr)])
             h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
             h.FillN(values.size, values, full(values.size, 1, 'd'))
             format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
