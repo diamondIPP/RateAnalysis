@@ -262,12 +262,12 @@ class AnalysisCollection(Analysis):
     def get_efficiencies(self, suf='3', redo=False):
         return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.make_simple_pickle_path(suf=suf, sub_dir='Efficiency', run='{}'), redo=redo)
 
-    def get_rate_dependence(self, redo=False):
-        values = self.get_pulse_heights(redo=redo, pbar=False)
+    def get_rate_dependence(self, redo=False, values=None):
+        values = choose(values, self.get_pulse_heights(redo=redo, pbar=False))
         return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
 
-    def print_rate_dependence(self):
-        s1, s2 = self.get_rate_dependence()
+    def print_rate_dependence(self, values=None):
+        s1, s2 = self.get_rate_dependence(values=values)
         print('Rel STD:    {:2.1f}'.format(s1.n * 100))
         print('Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
 
@@ -352,6 +352,24 @@ class AnalysisCollection(Analysis):
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.02))
         return mg
+
+    def draw_low_scale(self, avrg=True, yoff=.07):
+        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        y /= y[argmin(x)].n
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.print_rate_dependence(y)
+
+    def draw_mean_scale(self, avrg=True, yoff=.07):
+        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        y /= mean(y).n
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.print_rate_dependence(y)
+
+    def draw_mid_mean_scale(self, avrg=True, yoff=.07):
+        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        y /= mean(y[1:-1]).n
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.print_rate_dependence(y)
 
     def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False, peaks=False):
         """ Shows the scaled pulse heights of the single runs. """
