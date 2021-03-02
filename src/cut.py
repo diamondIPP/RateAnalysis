@@ -49,7 +49,8 @@ class Cut(SubAnalysis):
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
         v = self.load_dut_config(option, warn=False)
         if v is None:
-            critical('fiducial cut not defined!')
+            warning('fiducial cut not defined!')
+            return make_box_args(-1, 1, -1, 1)
         return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
 
     def load_dut_config(self, option, warn=True):
