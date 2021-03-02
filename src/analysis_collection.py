@@ -354,19 +354,19 @@ class AnalysisCollection(Analysis):
         return mg
 
     def draw_low_scale(self, avrg=True, yoff=.07):
-        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= y[argmin(x)].n
         self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mean_scale(self, avrg=True, yoff=.07):
-        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y).n
         self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mid_mean_scale(self, avrg=True, yoff=.07):
-        x, y = self.get_fluxes(avrg=avrg), self.get_pulse_heights(err=False, avrg=avrg)
+        x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y[1:-1]).n
         self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
         self.print_rate_dependence(y)
