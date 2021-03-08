@@ -1,5 +1,4 @@
 [MAIN]
-data directory = /scratch/psi
 default test campaign = 201908
 run plan path = Runinfos/run_plans.json
 ;hv config file = ''
@@ -34,7 +33,8 @@ pitch = [0.15, 0.10]
 pixel = [52, 80]
 
 [Directories]
-software = ~/..
+data = ...
+software = ~/<eudaq and tracking directory>
 eudaq = eudaq-drs4
 converter config = converter_waveform_integrals.conf
 tracking = TrackingTelescope

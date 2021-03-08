@@ -19,7 +19,7 @@ class DUT:
         self.Attenuator = run_info['att_dia{}'.format(self.Number)] if 'att_dia{}'.format(self.Number) in run_info else None
 
         # Specs
-        self.Specs = load_json(join(self.Config.get('MAIN', 'data directory'), 'dia_info.json'))[self.Name.upper()]
+        self.Specs = load_json(join(self.Config.get('Directories', 'data'), 'dia_info.json'))[self.Name.upper()]
         self.Irradiation = self.load_spec('irradiation')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)

@@ -22,7 +22,7 @@ class Analysis(object):
 
     # Directories
     PickleDir = join(Dir, MainConfig.get('SAVE', 'pickle directory'))
-    DataDir = MainConfig.get('MAIN', 'data directory')
+    DataDir = MainConfig.get('Directories', 'data')
 
     def __init__(self, testcampaign=None, results_dir=None, sub_dir='', pickle_dir='', verbose=None):
 
