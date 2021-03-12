@@ -53,7 +53,8 @@ if __name__ == "__main__":
         try:
             p = z.Peaks if pargs.tree else None
             w = z.Waveform if pargs.tree else None
-            t = z.Timing if pargs.tree else None
+            t = z.Tracks if pargs.tree else None
+            c = z.Run.Converter
         except AttributeError:
             pass
         if pargs.draw:
