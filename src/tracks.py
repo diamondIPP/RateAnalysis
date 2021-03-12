@@ -8,6 +8,7 @@ from ROOT import TCut, TF1, TMultiGraph, THStack
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
+from scipy.stats import norm
 
 
 class Tracks(SubAnalysis):
@@ -29,26 +30,38 @@ class Tracks(SubAnalysis):
             return mean_sigma(self.get_angles(mode))
         return do_pickle(self.make_simple_pickle_path('TrackAngle{}'.format(mode)), f, redo=redo)
 
-    def get_residual(self, roc, chi2, mode='x', redo=False):
+    def get_residual(self, roc=0, mode='x', cut='', redo=False):
+        pickle_path = self.make_simple_pickle_path('Res{}{}'.format(mode.title(), roc), self.Cut(cut).GetName() if cut else '')
+        return do_pickle(pickle_path, self.draw_residual, redo=redo, roc=roc, cut=cut, ret_res=True, show=False, mode=mode)
+
+    def get_residuals(self, mode='x', cut='', redo=False):
+        return [self.get_residual(roc, mode, cut, redo) for roc in range(self.NRocs)]
+
+    def get_resolution(self, mode='x', cut=''):
+        return self.draw_resolution(mode, cut=cut, show=False)
+
+    def get_chi2_residual(self, roc, chi2, mode='x', redo=False):
         def f():
             self.Cut.set_chi2(chi2)
             values = self.get_tree_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
             return mean_sigma(values)[1]
         return do_pickle(self.make_simple_pickle_path('Res{}'.format(mode.title()), chi2, dut=roc), f, redo=redo)
 
-    def get_residuals(self, roc, chi2s=None, mode='x'):
+    def get_chi2_residuals(self, roc, chi2s=None, mode='x'):
         chi2s = choose(chi2s, arange(10, 101, 10))
-        return [self.get_residual(roc, chi2, mode) for chi2 in chi2s]
+        return [self.get_chi2_residual(roc, chi2, mode) for chi2 in chi2s]
 
-    def get_plane_hits(self):
+    def get_z_positions(self, e=0):
+        x = genfromtxt(join(self.Run.Converter.TrackingDir, 'data', 'alignments.txt'), usecols=[0, 2, 6])
+        return array([ufloat(ix, e) if e else ix for ix in x[(x[:, 0] == self.Run.Converter.TelescopeID) & (x[:, 1] > -1)][:, 2] * 10])  # [mm]
+
+    def get_plane_hits(self, local=True):
         t = self.info('getting plane hits...', endl=False)
         self.Tree.SetEstimate(self.Cut.get_size('tracks', excluded=False) * self.NRocs)
-        x, y = self.get_tree_vec(['cluster_xpos_local', 'cluster_ypos_local'], self.Cut['tracks'])
+        x, y = self.get_tree_vec(['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']], self.Cut['tracks'])
         x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
-        z_positions = genfromtxt(join(self.Run.Converter.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.Run.Converter.TelescopeID)), skip_header=1, usecols=[1, 5])
-        z_positions = z_positions[z_positions[:, 0] > -1][:, 1] * 10
         self.add_to_info(t)
-        return x, y, z_positions
+        return x, y, self.get_z_positions()
     # endregion GET
     # ----------------------------------------
 
@@ -115,19 +128,19 @@ class Tracks(SubAnalysis):
             stack.Add(h)
         self.Draw(stack, 'TrackAngles', lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
 
-    def draw_resolution(self, roc, mode='x', step_size=10, y_range=None, show=True):
+    def draw_residual_vs_chi2(self, roc, mode='x', step_size=10, y_range=None, show=True):
         chi2s = arange(10, 101, step_size)
-        residuals = self.get_residuals(roc, chi2s, mode)
+        residuals = self.get_chi2_residuals(roc, chi2s, mode)
         g = Draw.make_tgrapherrors(x=chi2s, y=residuals, title='Tracking Resolution in {} for Plane {}'.format(mode.title(), roc))
         format_histo(g, y_tit='Residual Standard Deviation [#mum]', y_off=1.4, y_range=y_range)
         self.Draw(g, 'TrackRes', draw_opt='alp', show=show)
         return g
 
-    def draw_resolutions(self, show=True):
+    def draw_residuals_vs_chi2(self, show=True):
         mg = TMultiGraph('mgtr', 'Tracking Resolution')
         leg = Draw.make_legend(y2=.41, nentries=4)
         for roc, mode in zip([1, 1, 2, 2], ['x', 'y', 'x', 'y']):
-            g = self.draw_resolution(roc, mode, show=False)
+            g = self.draw_residual_vs_chi2(roc, mode, show=False)
             format_histo(g, color=self.Draw.get_color(4))
             mg.Add(g, 'pl')
             leg.AddEntry(g, 'ROC {} in {}'.format(roc, mode.title()), 'pl')
@@ -139,12 +152,12 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region RESIDUALS
-    def draw_residual(self, roc, mode='', cut=None, x_range=None, fit=False, show=True):
-        x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4
+    def draw_residual(self, roc, mode='', cut='', x_range=None, fit=False, ret_res=False, show=True):
+        x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4  # convert to [um]
         h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
-        self.fit_residual(h, show=fit)
+        res = self.fit_residual(h, show=fit)
         self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))
-        return h
+        return res if ret_res else h
 
     def draw_raw_residuals(self, roc=None, steps=0, show=True):
         x, y, z_positions = self.get_plane_hits()
@@ -182,6 +195,20 @@ class Tracks(SubAnalysis):
             da = self.align(x, y, dx, dy)
         return dx, dy, da
 
+    def draw_resolution(self, mode='x', cut='', n=1e5, y_range=None, show=True):
+        z_ = self.get_z_positions()
+        r = self.get_residuals(mode=mode, cut=cut)
+        x_range = -20, max(z_) + 20
+        self.Draw.graph(z_, [ufloat(0, ex) for ex in r], x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=choose(y_range, [-200, 200]), x_range=x_range, show=show)
+        x = array([norm.rvs(0, ir, size=int(n)) for ir in r])
+        fits = array(polyfit(z_, x, deg=1))
+        p = linspace(*x_range, 100)
+        z0 = polyval(fits, p.reshape(p.size, 1))
+        ex = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in z0]])
+        g = self.Draw.make_tgrapherrors(p, ex, fill_color=2, opacity=.5)
+        g.Draw('e3')
+        return min(e.s for e in ex)
+
     @staticmethod
     def calc_residual_step(x, y, z_positions):
         x_fits, y_fits = [polyfit(z_positions, vec, 1) for vec in [x, y]]
@@ -210,18 +237,19 @@ class Tracks(SubAnalysis):
 
     @staticmethod
     def fit_residual(h, show=True):
-        fit = TF1('f', 'gaus(0) + gaus(3)', -.4, .4)
+        fit = TF1('f', 'gaus(0) + gaus(3)')
         sigma = (get_fwhm(h) / (2 * sqrt(2 * log(2)))).n
         fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
         fit.SetParNames('c1', 'mean1', '#sigma1', 'c2', 'mean2', '#sigma2')
         fit.SetNpx(500)
         h.Fit(fit, 'q{}'.format('' if show else 0))
-        f2 = TF1('f2', 'gaus', -1, 1)
+        f2 = TF1('f2', 'gaus')
         f2.SetParameters(fit.GetParameters())
         f2.SetLineStyle(2)
         if show:
             f2.Draw('same')
         h.GetListOfFunctions().Add(f2)
+        return min(abs(fit.GetParameter(i)) for i in [2, 5])
     # endregion RESIDUALS
     # ----------------------------------------
 
