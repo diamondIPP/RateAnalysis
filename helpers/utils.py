@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2
+from numpy import histogram, log2, diff, isfinite, pi
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -498,17 +498,25 @@ def print_table(rows, header=None, footer=None, prnt=True):
     col_width = [len(max(t[:, i], key=len)) for i in range(t.shape[1])]
     total_width = sum(col_width) + len(col_width) * 3 + 1
     hline = '{}'.format('~' * total_width)
+    lines = []
+    for i, row in enumerate(t):
+        if i in [0] + choose([1], [], header) + choose([t.shape[0] - 1], [], footer):
+            lines.append(hline)
+        lines.append('| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width))))
+    lines.append('{}\n'.format(hline))
     if prnt:
-        for i, row in enumerate(t):
-            if i in [0] + choose([1], [], header) + choose([t.shape[0] - 1], [], footer):
-                print(hline)
-            print('| {r} |'.format(r=' | '.join(word.ljust(n) for word, n in zip(row, col_width))))
-        print('{}\n'.format(hline))
-    return rows
+        print('\n'.join(lines))
+    return '\n'.join(lines)
 
 
 def get_base_dir():
     return dirname(dirname(realpath(__file__)))
+
+
+def make_meta_path(main_dir, sub_dir='', name='', ext='pickle', suffix=''):
+    ensure_dir(join(main_dir, sub_dir))
+    suf = '{}{}'.format('-' if suffix and name else '', '_'.join(make_list(suffix)))
+    return join(main_dir, sub_dir, '{}{}.{}'.format(name, suf, ext.strip('.')))
 
 
 def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
@@ -750,9 +758,9 @@ def correct_time(times, run):
     i_off = i_off[0] if i_off else None
     if i_off is not None:
         warning('Need to correct timing vector for run {}\n'.format(run))
-        diff = times[i_off + 1] - times[i_off]
+        delta = times[i_off + 1] - times[i_off]
         i_off += 1  # because range does not include the last index
-        return concatenate((times[:i_off], times[i_off:] - diff + 500))  # one TU step should be 500 ms
+        return concatenate((times[:i_off], times[i_off:] - delta + 500))  # one TU step should be 500 ms
     return times
 
 
@@ -848,6 +856,19 @@ def u_to_str(v, prec=2):
 
 def poly_area(x, y):
     return .5 * abs(dot(x, roll(y, 1)) - dot(y, roll(x, 1)))
+
+
+def discrete_int(x, y):
+    """ assume linear interpolation between the points. """
+    cut = x.argsort()
+    x, y = x[cut], y[cut]
+    dx, dy = diff(x), diff(y)
+    i = dx * y[:-1] + .5 * dx * dy
+    return sum(i[isfinite(i)])
+
+
+def kramers_kronig(x, y):
+    return 1 + 2 / pi * array([discrete_int(x, x * y / (x ** 2 - ix ** 2)) for ix in x])
 
 
 class FitRes(object):
@@ -956,6 +977,19 @@ def calc_speed(p, m):
     return 1 / sqrt(1 + m * m / (p * p))
 
 
+def beta_gamma(p, m):
+    v = calc_speed(p, m)
+    return lorentz_factor(v) * v
+
+
+def beta(bg):
+    return sqrt(1 / (1 / (bg * bg) + 1))
+
+
+def gamma(bg):
+    return bg / beta(bg)
+
+
 def t_diff(s, p, m1, m2):
     return s * (1 / calc_speed(p, m1) - 1 / calc_speed(p, m2)) / constants.c * 1e9
 
@@ -964,12 +998,20 @@ def e_kin(p, m):
     return sqrt(p**2 + m**2) - m
 
 
-def gamma_factor(v):
+def p2e(p, m):
+    return e_kin(p, m)
+
+
+def e2p(e, m):
+    return sqrt((e + m) * (e + m) - m * m)
+
+
+def lorentz_factor(v):
     return 1 / sqrt(1 - v * v)
 
 
 def momentum(m, v):
-    return m * v * gamma_factor(v)
+    return m * v * lorentz_factor(v)
 
 
 def decay_ratio(p, m, d, tau):
@@ -987,7 +1029,7 @@ def decay_energy(m, m1, m2=0):
 def decay_angle(theta, p, m, m1, m2=0):
     p1 = decay_momentum(m, m1, m2)
     v = calc_speed(p, m)
-    return arctan(p1 * sin(theta) / (gamma_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
+    return arctan(p1 * sin(theta) / (lorentz_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
 
 
 def multi_threading(lst, timeout=60 * 60 * 2):
