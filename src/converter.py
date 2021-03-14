@@ -2,9 +2,8 @@ from glob import glob
 from os import getcwd, chdir, rename, system
 from os.path import expanduser, basename
 from re import sub
-from shutil import move, copy
 from subprocess import check_call
-from numpy import sign
+from numpy import sign, genfromtxt
 
 from src.pad_alignment import PadAlignment
 from src.pix_alignment import *
@@ -94,7 +93,7 @@ class Converter(object):
         return self.get_eudaqfile_path().replace('.root', '_withTracks.root')
 
     def get_alignment_file_path(self):
-        return join(self.TrackingDir, 'ALIGNMENT', 'telescope{}.dat'.format(self.TelescopeID))
+        return join(self.TrackingDir, 'data', 'alignments.txt')
 
     def file_is_valid(self, file_path):
         return False if not file_exists(file_path) else self.Run.rootfile_is_valid(file_path)
@@ -110,19 +109,13 @@ class Converter(object):
             self.Run.info('Found eudaq root file --> starting conversion')
         else:
             self.Run.info('did not find any matching root file --> starting conversion')
-            if not self.has_alignment():
-                self.align_telescope()
             self.convert_raw_to_root()
+        if not self.has_alignment():
+            self.align_telescope()
         self.add_plane_errors()
         self.align_run()
         self.add_tracking()
         remove(self.get_eudaqfile_path())
-
-    def convert_shadow_run(self):
-        self.convert_raw_to_root(tree='telescopetree')
-        self.add_tracking()
-        remove(self.get_eudaqfile_path())
-
 
     def convert_raw_to_root(self, tree=None):
         if not file_exists(self.RawFilePath):
@@ -140,31 +133,34 @@ class Converter(object):
         self.remove_decodingfile()
         chdir(curr_dir)
 
+    def convert_shadow_run(self):
+        self.convert_raw_to_root(tree='telescopetree')
+        self.add_tracking()
+        remove(self.get_eudaqfile_path())
+
     def align_run(self):
         aligner = PadAlignment(self) if self.Type == 'pad' else PixAlignment(self)
         aligner.run()
 
     def align_telescope(self):
-        if not file_exists(self.get_eudaqfile_path()):  # convert raw file with telescope tree
+        has_eudaq_file = file_exists(self.get_eudaqfile_path())
+        if not has_eudaq_file:  # convert raw file with telescope tree
             self.RunConfig.set('ROOTFILE_GENERATION', 'max_event_number', '100000')
             self.convert_raw_to_root('telescopetree')
             self.RunConfig.set('ROOTFILE_GENERATION', 'max_event_number', '0')
-        self.create_telescope_file()
+        if not self.has_alignment():
+            self.create_new_tel_id()
         self.tracking_tel(1)
-        remove_file(self.get_eudaqfile_path())
-
-    def create_telescope_file(self):
-        file_name = self.get_alignment_file_path()
-        if not file_exists(file_name):
-            self.Run.info('creating alignment file: {}'.format(file_name))
-            copy(join(self.TrackingDir, 'ALIGNMENT', '{}Planes.raw'.format(4 if self.Run.Type == 'pad' else 7)), file_name)
+        if not has_eudaq_file:
+            remove_file(self.get_eudaqfile_path())
 
     def has_alignment(self):
-        file_name = self.get_alignment_file_path()
-        if file_exists(file_name):
-            with open(self.get_alignment_file_path(), 'r') as f:
-                return float(f.readlines()[3].split()[2]) != 0
-        return False
+        return self.TelescopeID in genfromtxt(join(self.TrackingDir, 'config', 'telescopes.txt'), usecols=[0])
+
+    def create_new_tel_id(self, tel_id=None):
+        root_file = self.Run.RootFilePath if file_exists(self.Run.RootFilePath) else self.get_eudaqfile_path()
+        cmd_list = [join(self.TrackingDir, 'python', 'add_new_telescope.py'), root_file, str(choose(tel_id, self.TelescopeID))]
+        check_call(cmd_list)
 
     def add_plane_errors(self):
         if self.MainConfig.getboolean('MISC', 'plane errors'):
@@ -184,21 +180,19 @@ class Converter(object):
     def rename_tracking_file(self):
         rename(self.get_trackingfile_path(), self.Run.RootFilePath)
 
-    def tracking_tel(self, action='0'):
+    def tracking_tel(self, action=0):
         root_file = self.Run.RootFilePath if file_exists(self.Run.RootFilePath) else self.get_eudaqfile_path()
-        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '' if self.Type == 'pad' else '1']
+        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '1']
         print(' '.join(cmd_list))
-        curr_dir = getcwd()
-        chdir(self.TrackingDir)
         check_call(cmd_list)
-        chdir(curr_dir)
 
     def add_tracking(self):
         print_banner('START TRACKING FOR RUN {}'.format(self.Run.Number))
+        curr_dir = getcwd()
+        chdir(self.Run.RootFileDir)
         self.tracking_tel()
-        # move file from tracking directory to data directory
-        move(join(self.TrackingDir, basename(self.get_trackingfile_path())), self.Run.RootFileDir)
         self.rename_tracking_file()
+        chdir(curr_dir)
 
     def load_polarities(self, pulser=False):
         option = '{}polarities'.format('pulser_' if pulser else '')
