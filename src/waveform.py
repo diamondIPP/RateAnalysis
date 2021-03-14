@@ -31,50 +31,42 @@ class Waveform(PadSubAnalysis):
     def get_binning(self, bin_size=None):
         return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
-    def get_trigger_cells(self, redo=False):
-        return do_hdf5(self.make_simple_hdf5_path('TC', self.get_cut_name()), self.Run.get_tree_vec, redo=redo, var='trigger_cell', cut=self.Cut(), dtype='i2')
+    def get_cut(self, cut=None):
+        return array(cut) if is_iter(cut) else self.Ana.get_event_cut() if cut is None else ...
+
+    def get_trigger_cells(self):
+        return self.get_tree_vec('trigger_cell', dtype='i2')
 
     def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
             self.info('Saving signal waveforms to hdf5 ...')
             waveforms = []
-            events = self.Ana.get_events(cut=self.Cut())
-            self.PBar.start(events.size)
-            for ev in events:  # fastest found method...
-                waveforms.append(self.Ana.Polarity * self.get_tree_vec('wf{}'.format(self.Channel if channel is None else channel), '', 'f2', 1, ev))
+            self.PBar.start(self.Run.NEvents)
+            for ev in range(self.PBar.N):  # fastest found method...
+                waveforms.append(self.Ana.Polarity * self.get_tree_vec('wf{}'.format(choose(channel, self.Channel)), '', 'f2', 1, ev))
                 self.PBar.update()
             return array(waveforms)
-        return do_hdf5(self.make_simple_hdf5_path(suf=self.get_cut_name(), dut=self.Channel if channel is None else channel), f, redo=redo)
-
-    def get_n(self):
-        return self.get_all().shape[0]
-
-    def get_cut_name(self):
-        return self.Cut().GetName() if not self.Cut().GetName().startswith('All') else ''
+        return array(do_hdf5(self.make_simple_hdf5_path(dut=choose(channel, self.Channel)), f, redo=redo))
 
     def get_values(self, ind=None, channel=None, n=None):
-        ind = choose(ind, choose(range, ..., n, n))
-        return array(self.get_all(channel=channel))[ind].flatten()
+        return array(self.get_all(channel=channel)[self.get_cut(ind)][... if n is None else range(n)]).flatten()
 
     def get_times(self, corr=True, ind=None, n=None):
-        ind = choose(ind, choose(range, ..., n, n))
-        return array(self.get_all_times(corr))[ind].flatten()
+        return array(self.get_all_times(corr, cut=ind)[... if n is None else range(n)]).flatten()
 
-    def get_all_times(self, corr=False, redo=False):
+    def get_all_times(self, corr_signal=False, redo=False, cut=None):
         def f():
             self.info('Saving waveforms timings to hdf5 ...')
-            self.PBar.start(self.get_trigger_cells().size)
+            self.PBar.start(self.Run.NEvents)
             times = []
-            for i, tc in enumerate(self.get_trigger_cells()):
+            for tc in self.get_trigger_cells():
                 times.append(self.get_calibrated_times(tc).astype('f2'))
-                if not i % 100:
-                    self.PBar.update(i)
-            self.PBar.finish()
+                self.PBar.update()
             return array(times)
-        t = do_hdf5(self.make_simple_hdf5_path('Times', self.get_cut_name()), f, redo=redo)
-        peaks = self.Ana.Peaks.get_from_tree() if corr else []
-        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr else t
+        t = array(do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo))[self.get_cut(cut)]
+        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut)) if corr_signal else []
+        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr_signal else t
 
     def get_calibrated_times(self, trigger_cell):
         return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
@@ -182,7 +174,7 @@ class Waveform(PadSubAnalysis):
             return (self.Draw.profile if prof else self.Draw.histo_2d)(t, v, bins, '{} Waveform'.format('Averaged' if prof else 'Overlayed'), show=False)
         suf = '{}{}'.format('{}{}_'.format(ind.nonzero()[0].size if ind.dtype == bool else len(ind), ind[0]) if ind is not None else '', int(prof))
         p = do_pickle(self.make_simple_pickle_path('AWF', suf), f, redo=redo)
-        x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
+        x_range = ax_range(self.Ana.get_signal_range(), fl=.5, fh=1) if x_range is None else x_range
         format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range, y_range=y_range)
         self.Draw(p, show=show, draw_opt='' if prof else 'col')
         if show_noise:
@@ -211,12 +203,13 @@ class Waveform(PadSubAnalysis):
         f2.Draw('same')
         return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
 
-    def compare_averages(self, ind1=None, ind2=None, x_range=None, normalise=False, show=True):
+    def compare_averages(self, ind1=None, ind2=None, cut=None, x_range=None, normalise=False, show=True):
         """Compare the average waveform at two subsets, choose index ranges acordingly."""
-        n = min(100000, self.get_n() // 2)
-        ind1, ind2 = choose(ind1, range(n)), choose(ind2, arange(n) + self.get_n() - n)
+        cut = self.get_cut(cut)
+        n = cut.size // 2
+        ind1, ind2 = choose(ind1, concatenate([cut[:n], zeros(cut.size - n, dtype=bool)])), choose(ind2, concatenate([zeros(cut.size - n, dtype=bool), cut[n:]]))
         leg = Draw.make_legend(nentries=2, w=.25)
-        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, ind=ind)) for ind in [ind1, ind2]]
+        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, ind=ind, n=None)) for ind in [ind1, ind2]]
         for i, g in enumerate(graphs):
             scale_graph(g, 1 / max(get_graph_y(g)).n) if normalise else do_nothing()
             x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
