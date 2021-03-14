@@ -911,10 +911,12 @@ class PBar(object):
         self.PBar = None
         self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.Step = 0
+        self.N = 0
 
     def start(self, n):
         self.Step = 0
         self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+        self.N = n
 
     def update(self, i=None):
         i = self.Step if i is None else i
