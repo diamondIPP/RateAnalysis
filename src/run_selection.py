@@ -1,7 +1,7 @@
 from glob import glob
 from json import dump
 from os import system
-from os.path import join, basename
+from os.path import basename
 from subprocess import check_call
 from textwrap import fill
 from numpy import sort
@@ -398,6 +398,9 @@ class RunSelection(object):
         all_runs = [run for run in self.RunNumbers if runs[-1] >= run >= runs[0]]
         missing_runs = [run for run in all_runs if run not in runs]
         return str(missing_runs if len(missing_runs) <= 3 else '{0}, ...]'.format(str(missing_runs[:2]).strip(']'))) if missing_runs else ''
+
+    def select_runplan(self, plan_nr, dut=1, unselect=False):
+        return self.select_runs_from_runplan(plan_nr, dut, unselect)
 
     def select_runs_from_runplan(self, plan_nr, dut=1, unselect=False):
         if unselect:
