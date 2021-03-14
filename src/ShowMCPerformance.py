@@ -17,10 +17,10 @@ min_bincontent = 50
 pathExtension = ""
 
 PerfResults = "MC/Performance_Results/"
-#foldername = "2015-05-04 16-24-09.965268/"
-foldername = "_"+str(min_bincontent)+"_"+str(binning)+"_"+str(hits)+"_"+pathExtension+"/"
+# foldername = "2015-05-04 16-24-09.965268/"
+foldername = "_" + str(min_bincontent) + "_" + str(binning) + "_" + str(hits) + "_" + pathExtension + "/"
 filename = "MCPerformanceLog.root"
-filepath = PerfResults+foldername+filename
+filepath = PerfResults + foldername + filename
 
 file = TFile(filepath)
 
@@ -42,9 +42,8 @@ tmp_RecSA_M = np.zeros(tries)
 tmp_Ghosts = np.zeros(tries)
 tmp_Minimas = np.zeros(tries)
 
-
 count = 0
-for i in xrange(LogTree.GetEntries()):
+for i in range(LogTree.GetEntries()):
     # read the ROOT TTree
     LogTree.GetEntry(i)
     TrueNPeaks = LogTree.TrueNPeaks
@@ -56,20 +55,20 @@ for i in xrange(LogTree.GetEntries()):
     Minimas = LogTree.Minimas
     Repetition = LogTree.Repetition
 
-    tmp_success[Repetition] = 1.*(TrueNPeaks-Ninjas)/TrueNPeaks
+    tmp_success[Repetition] = 1. * (TrueNPeaks - Ninjas) / TrueNPeaks
     tmp_RecSA_M[Repetition] = RecSA_MinMax
     tmp_RecSA_Q[Repetition] = RecSA_Quantiles
     tmp_Ghosts[Repetition] = Ghosts
     tmp_Minimas[Repetition] = Minimas
 
-    if Repetition == tries-1:
+    if Repetition == tries - 1:
         mean_success = tmp_success.mean()
         mean_RecSA_Q = tmp_RecSA_Q.mean()
         mean_RecSA_M = tmp_RecSA_M.mean()
         # success.append(mean_success)
         # real_amplitude.append(RealSignalAmplitude)
         success_graph.SetPoint(count, RealSignalAmplitude, mean_success)
-        success_graph.SetPointError(count, 0, tmp_success.std()/np.sqrt(tries))
+        success_graph.SetPointError(count, 0, tmp_success.std() / np.sqrt(tries))
 
         RecSA_MinMax_graph.SetPoint(count, RealSignalAmplitude, mean_RecSA_M)
         RecSA_MinMax_graph.SetPointError(count, 0, tmp_RecSA_M.std())
@@ -89,18 +88,18 @@ pad = canvas.GetPad(0)
 success_graph.SetNameTitle("success", "MC Performance Analysis Result ({0} Hits)".format(hits))
 success_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 success_graph.GetYaxis().SetTitle("Peak Finding Efficiency | Reconstructed Signal Amplitude")
-success_graph.GetYaxis().SetRangeUser(0,1.1)
+success_graph.GetYaxis().SetRangeUser(0, 1.1)
 success_graph.Draw("ALP*")
 
 ghost_graph.SetNameTitle("ghost_graph", "Ghost Peaks")
 ghost_graph.Draw("SAME LP*")
 
-func = TF1("func", "x", 0,1)
+func = TF1("func", "x", 0, 1)
 func.Draw("SAME")
 RecSA_Quantiles_graph.SetMarkerColor(ROOT.kRed)
 RecSA_Quantiles_graph.Draw("SAME P*")
-PngSaveName = PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep_"+str(binning)+"_"+str(min_bincontent)+".png").format(hits, tries)
-RootSaveName = PerfResults+foldername+("MC_PerformanceAnalysis_{0}_"+peaks+"_{1}rep_"+str(binning)+"_"+str(min_bincontent)+".root").format(hits, tries)
+PngSaveName = PerfResults + foldername + ("MC_PerformanceAnalysis_{0}_" + peaks + "_{1}rep_" + str(binning) + "_" + str(min_bincontent) + ".png").format(hits, tries)
+RootSaveName = PerfResults + foldername + ("MC_PerformanceAnalysis_{0}_" + peaks + "_{1}rep_" + str(binning) + "_" + str(min_bincontent) + ".root").format(hits, tries)
 ROOT.gPad.Print(PngSaveName)
 ROOT.gPad.Print(RootSaveName)
 # RecSA_MinMax_graph.SetMarkerColor(ROOT.kBlue)
@@ -112,7 +111,7 @@ ghost_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 ghost_graph.GetYaxis().SetTitle("NGhostPeaks/NRepetitions")
 ghost_graph.Draw("ALP*")
 ghostcanvas.Update()
-ROOT.gPad.Print(PerfResults+foldername+"ghosts.png")
+ROOT.gPad.Print(PerfResults + foldername + "ghosts.png")
 
 minimascanvas = TCanvas("minimascanvas", "minimascanvas")
 minimascanvas.cd()
@@ -121,7 +120,6 @@ minimas_graph.GetXaxis().SetTitle("Relative Real Signal Amplitude")
 minimas_graph.GetYaxis().SetTitle("NMinimas/NRepetitions")
 minimas_graph.Draw("ALP*")
 minimascanvas.Update()
-ROOT.gPad.Print(PerfResults+foldername+"minimas.png")
+ROOT.gPad.Print(PerfResults + foldername + "minimas.png")
 
-
-raw_input("finish")
+input("finish")
