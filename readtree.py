@@ -1,31 +1,22 @@
 #!/usr/bin/env python
 from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
-from sys import argv, path
-path.append('src')
-from utils import *
-from json import load
+from sys import argv
 from run import Run
-from datetime import datetime
-from ConfigParser import ConfigParser, NoSectionError
-from numpy import mean
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
-from argparse import ArgumentParser
 from os import chdir, system
-from os.path import dirname, join
-from draw import Draw, format_histo
+from helpers.draw import *
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
-plotter = Draw()
+plot = Draw()
 
 
 def load_runinfo():
     run_info = {}
     try:
-        fi = open(run.RunInfoFile, 'r')
+        fi = open(run.InfoFile, 'r')
         data = load(fi)
         fi.close()
     except NoSectionError as err:
-        log_warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
+        warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
         return None
 
     if run >= 0:
@@ -59,23 +50,23 @@ def trig_edges(nwf=None):
     h = TH1F('h_te', 'Trigger Edges', 1024, 0, 1024)
     t.Draw('wf8', '', 'goff', nwf, 0)
     buf = t.GetV1()
-    for i in xrange(nwf):
+    for i in range(nwf):
         pbar.update(i + 1)
-        for k in xrange(1023):
+        for k in range(1023):
             # print i * 1204 + j, int(buf[i * 1204 + j])
             if abs(buf[i * 1024 + k] - buf[i * 1024 + k + 1]) > 50:
                 h.Fill(k)
     format_histo(h, x_tit='Bin Number', y_tit='Number of Entries', y_off=1.4, stats=0, fill_color=407)
-    plotter.draw_histo(h, lm=.12)
+    plot.histo(h, lm=.12)
 
 
 def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=None, ch=0):
     channel = ch
     global count
     start = start_event + count
-    print 'starting at event', start
+    print('starting at event', start)
     if not wf_exists(channel):
-        log_warning('This waveform is not stored in the tree!')
+        warning('This waveform is not stored in the tree!')
         return
     cut = cut_string
     n_events = find_n_events(n, cut, start)
@@ -86,15 +77,15 @@ def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=
     h.SetMarkerStyle(20)
     if fixed_range is None and n > 1:
         ymin, ymax = h.GetYaxis().GetBinCenter(h.FindFirstBinAbove(0, 2)), h.GetYaxis().GetBinCenter(h.FindLastBinAbove(0, 2))
-        diff = ymax - ymin
-        h.GetYaxis().SetRangeUser(ymin - diff * .1, ymax + diff * .1)
+        delta = ymax - ymin
+        h.GetYaxis().SetRangeUser(ymin - delta * .1, ymax + delta * .1)
     elif fixed_range:
         assert type(fixed_range) is list, 'Range has to be a list!'
         h.GetYaxis().SetRangeUser(fixed_range[0], fixed_range[1])
     if show:
         gROOT.SetBatch(0)
     format_histo(h, title='Waveform', name='wf', x_tit='Time [ns]', y_tit='Signal [mV]', markersize=.4, y_off=.4, stats=0, tit_size=.05)
-    plotter.draw_histo(h, '', show, lm=.06, rm=.045, draw_opt='alp' if n == 1 else 'col', x=1.5, y=.5)
+    plot.histo(h, show, lm=.06, rm=.045, draw_opt='alp' if n == 1 else 'col', w=1.5, h=.5)
     count += n_events
     return h, n_events
 
@@ -102,9 +93,9 @@ def draw_waveforms(n=1000, start_event=0, cut_string='', show=True, fixed_range=
 def show_single_waveforms(n=1, cut='', start_event=0):
     global count
     start = start_event + count
-    activated_wfs = [wf for wf in xrange(4) if wf_exists(wf)]
-    print 'activated wafeforms:', activated_wfs
-    print 'Start at event number:', start
+    activated_wfs = [wf for wf in range(4) if wf_exists(wf)]
+    print('activated wafeforms:', activated_wfs)
+    print('Start at event number:', start)
     wfs = [draw_waveforms(n=n, start_event=start, cut_string=cut, show=False, ch=wf) for wf in activated_wfs]
     n_wfs = len(activated_wfs)
     cs = {c.GetName(): c for c in gROOT.GetListOfCanvases()}
@@ -131,22 +122,19 @@ def show_single_waveforms(n=1, cut='', start_event=0):
 
 def find_n_events(n, cut, start):
     total_events = t.Draw('event_number', cut, 'goff', entries, start)
-    evt_numbers = [t.GetV1()[i] for i in xrange(total_events)]
+    evt_numbers = [t.GetV1()[i] for i in range(total_events)]
     return int(evt_numbers[:n][-1] + 1 - start)
 
 
 def wf_exists(channel):
     wf_exist = True if t.FindBranch('wf{ch}'.format(ch=channel)) else False
     if not wf_exist:
-        print 'The waveform for Channel {ch} is not stored in the tree'.format(ch=channel)
+        print('The waveform for Channel {ch} is not stored in the tree'.format(ch=channel))
     return wf_exist
 
 
 def get_branch(n, name='IntegralPeaks[13]'):
-    t.GetEntry(n)
-    data = None
-    exec 'info = t.{br}'.format(br=name)
-    print data
+    print(get_tree_vec(t, name, nentries=1, firstentry=n))
 
 
 def load_diamond_name(ch):
@@ -166,7 +154,7 @@ def calc_flux():
     f.close()
     pixel_size = 0.01 * 0.015
     area = [(data[1][0] - data[0][0]) * (data[1][1] - data[0][1]) * pixel_size, (data[3][0] - data[2][0]) * (data[3][1] - data[2][1]) * pixel_size]
-    flux = [runinfo['for{0}'.format(i + 1)] / area[i] / 1000. for i in xrange(2)]
+    flux = [runinfo['for{0}'.format(i + 1)] / area[i] / 1000. for i in range(2)]
     return mean(flux)
 
 
@@ -188,7 +176,7 @@ def draw_peak_timings(xmin=100, xmax=400, ch=0, corr=False):
     h = TH1F('h_pt', 'PeakTimings', xmax - xmin, xmin, xmax)
     t.Draw('max_peak_{p}[{c}]>>h_pt'.format(c=ch, p='position' if not corr else 'time'), '', 'goff')
     format_histo(h, x_tit='Digitiser Bin', y_tit='Number of Entries')
-    plotter.draw_histo(h)
+    plot.histo(h)
 
 
 def draw_both_wf(ch, show=True):
@@ -200,7 +188,7 @@ def draw_both_wf(ch, show=True):
     s = [s_proj.GetBinCenter(p_proj.FindFirstBinAbove(0)), s_proj.GetBinCenter(p_proj.FindLastBinAbove(0))]
     y = [min(p + s) - 10, max(p + s) + 10]
     format_histo(pulser, y_range=y, stats=0, markersize=.4, y_off=.5, tit_size=.05)
-    plotter.draw_histo(pulser, '', show, lm=.06, rm=.045, bm=.2, draw_opt='col', x=1.5, y=.5)
+    plot.histo(pulser, show, lm=.06, rm=.045, bm=.2, draw_opt='col', w=1.5, h=.5)
     signal.Draw('samecol')
     leg_ch = 1 if not ch else 2
     draw_runinfo_legend(leg_ch)
@@ -216,7 +204,7 @@ def read_macro(f):
         for j, line in enumerate(regions):
             if 'Sensor Names' in line:
                 chan = regions[j + 1].strip(' ').split(',')
-        print chan
+        print(chan)
     except AttributeError:
         pass
     return chan
@@ -226,13 +214,13 @@ def draw_peak_values(ch=0, show=True):
     h = TH1F('h_pv', 'PH', 100, -450, -350)
     t.Draw('max_peak_position[{c}]>>h_pv'.format(c=ch), '', 'goff')
     format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
-    plotter.draw_histo(h, show=show)
+    plot.histo(h, show=show)
     return h
 
 
 def fit_peak_values(ch=0, show=True):
-    plotter.format_statbox(only_fit=True)
     h = draw_peak_values(ch, show)
+    format_statbox(h, fit=True)
     fit = h.Fit('gaus', 'sq')
     return fit
 
@@ -241,13 +229,13 @@ def draw_pedestal(ch=0, show=True):
     h = TH1F('h_pd', 'PH', 120, -30, 30)
     t.Draw('pedestals[{c}]>>h_pd'.format(c=ch), '', 'goff')
     format_histo(h, x_tit='Peak Value [mV]', y_tit='Number of Entries', y_off=1.4)
-    plotter.draw_histo(h, show=show)
+    plot.histo(h, show=show)
     return h
 
 
 def fit_pedestal(ch=0, show=True):
-    plotter.format_statbox(only_fit=True)
     h = draw_pedestal(ch, show)
+    format_statbox(h, fit=True)
     fit = h.Fit('gaus', 'sq')
     return fit
 
@@ -256,15 +244,15 @@ def draw_pulser_pulse_height(ch=0, show=True):
     h = TH1F('h_ph', 'PH', 2000, -500, 500)
     t.Draw('peak_values[{c}] - pedestals[{c}]>>h_ph'.format(c=ch), '', 'goff')
     format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
-    plotter.draw_histo(h, show=show)
+    plot.histo(h, show=show)
     return h
 
 
 def fit_pulser_ph(ch=0, show=True):
-    plotter.format_statbox(only_fit=True, entries=4, w=.3)
     h = draw_pulser_pulse_height(ch, show)
+    format_statbox(h, fit=True, entries=4, w=.3)
     fit = h.Fit('gaus', 'sq')
-    print fit.Parameter(1), fit.Parameter(2)
+    print(fit.Parameter(1), fit.Parameter(2))
     return fit
 
 
@@ -272,47 +260,47 @@ def draw_integral(ch=0, show=True):
     h = TH1F('h_int', 'PH', 2000, -500, 500)
     t.Draw('peak_integrals[{c}] - pedestals[{c}]>>h_int'.format(c=ch), '', 'goff')
     format_histo(h, x_tit='Pulser Pulse Height [mV]', y_tit='Number of Entries', y_off=1.4, x_range=[h.GetMean() - 10, h.GetMean() + 20])
-    plotter.draw_histo(h, show=show)
+    plot.histo(h, show=show)
     return h
 
 
 def fit_integral(ch=0, show=True):
-    plotter.format_statbox(only_fit=True, entries=4, w=.3)
     h = draw_integral(ch, show)
+    format_statbox(h, fit=True, entries=4, w=.3)
     fit = h.Fit('gaus', 'sq')
-    print fit.Parameter(1), fit.Parameter(2)
+    print(fit.Parameter(1), fit.Parameter(2))
     return fit
 
 
 def calc_integral():
     n = t.Draw('peak_positions[0]:pedestals[0]', '', 'goff', 100)
-    # ped = [t.GetV1()[i] for i in xrange(n)]
-    pp = [t.GetV2()[i] for i in xrange(n)]
+    # ped = [t.GetV1()[i] for i in range(n)]
+    pp = [t.GetV2()[i] for i in range(n)]
     n = t.Draw('wf0', '', 'goff', 100)
-    wf = [t.GetV1()[i] for i in xrange(n)]
-    wf = [wf[i * 1024: (i + 1) * 1024] for i in xrange(len(wf) - 1)]
-    print wf[0]
+    wf = [t.GetV1()[i] for i in range(n)]
+    wf = [wf[i * 1024: (i + 1) * 1024] for i in range(len(wf) - 1)]
+    print(wf[0])
     integral = mean([sum(w[pp[i] - 20:pp[i] + 20]) for i, w in enumerate(wf)])
-    print integral
+    print(integral)
 
 
 def get_real_zero(nwf=0, channel=0):
-    print nwf
+    print(nwf)
     try:
         n = t.Draw('wf{ch}:Iteration$'.format(ch=channel), '', 'goff', 1, nwf)
-        wf = [t.GetV1()[i] for i in xrange(n)]
-        diff = [wf[i + 1] - wf[i] for i in xrange(len(wf) - 2)]
-        m, s = mean_sigma(diff[5:200])
-        start = next(diff.index(d) for d in diff[5:] if d > 6 * s)
+        wf = [t.GetV1()[i] for i in range(n)]
+        delta = [wf[i + 1] - wf[i] for i in range(len(wf) - 2)]
+        m, s = mean_sigma(delta[5:200])
+        start = next(delta.index(d) for d in delta[5:] if d > 6 * s)
         return wf[start]
     except StopIteration:
         return 0
 
 
 def get_real_zeros(ch=0):
-    zeros = [get_real_zero(i, ch) for i in xrange(entries)]
+    z_ = [get_real_zero(i, ch) for i in range(entries)]
     # peaks = t.Draw('peak_values[{c}]:pedestals[{c}]'.format(c=ch), '', 'goff')
-    m, s = mean_sigma([t.GetV1()[i] - t.GetV2()[i] - zeros[i] for i in xrange(entries)])
+    m, s = mean_sigma([t.GetV1()[i] - t.GetV2()[i] - z_[i] for i in range(entries)])
     return m, s
 
 
@@ -322,7 +310,7 @@ def convert(file_name):
         chdir(file_dir)
         raw_file = file_name.replace('test', 'run').replace('root', 'raw')
         cmd = '~/scripts/converter.py -t waveformtree -p {r}'.format(r=raw_file)
-        print cmd
+        print(cmd)
         system(cmd)
 
 
@@ -349,10 +337,10 @@ if __name__ == '__main__':
             run = None
 
     try:
-        run = Run(run, test_campaign=tc, tree=False)
+        run = Run(run, testcampaign=tc, tree=False)
         runinfo = load_runinfo()
     except ValueError:
-        run = Run(2, test_campaign='201807', tree=False)
+        run = Run(2, testcampaign='201807', tree=False)
 
     channels = read_macro(rootfile)
     t = rootfile.Get('tree')
