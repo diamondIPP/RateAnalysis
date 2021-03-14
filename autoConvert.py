@@ -5,12 +5,9 @@
 # --------------------------------------------------------
 
 
-from os import stat, sys
-from os.path import join, dirname, realpath
-file_dir = dirname(realpath(__file__))
-sys.path.append(join(file_dir, 'src'))
-from utils import *
-from converter import Converter
+from os import stat
+from helpers.utils import *
+from src.converter import Converter
 from run import Run
 
 
@@ -18,11 +15,11 @@ class AutoConvert:
 
     def __init__(self, multi, end_run=None, test_campaign=None, verbose=False):
 
-        self.Run = Run(None, test_campaign=test_campaign, tree=False, verbose=verbose)
+        self.Run = Run(None, testcampaign=test_campaign, tree=False, verbose=verbose)
         self.Converter = Converter(self.Run)
         self.RunInfos = self.load_run_infos()
 
-        self.Dir = file_dir
+        self.Dir = get_base_dir()
         self.LastConvertedFile = join(self.Dir, '.last_converted.txt')
 
         self.Multi = multi
@@ -32,7 +29,7 @@ class AutoConvert:
 
     def load_last_converted(self):
         if not file_exists(self.LastConvertedFile):
-            return self.RunInfos.keys()[0]
+            return list(self.RunInfos.keys())[0]
         with open(self.LastConvertedFile) as f:
             last_run = int(f.read())
             return next(run for run in self.RunInfos if run >= last_run)
@@ -51,7 +48,7 @@ class AutoConvert:
 
         # check if we have to convert the run
         if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
-            print '{}: final file exists'.format(run)
+            print('{}: final file exists'.format(run))
             return
         raw_file = self.Converter.RawFilePath
         if not file_exists(raw_file, warn=True):
@@ -59,9 +56,9 @@ class AutoConvert:
 
         t = time()
         while file_is_beeing_written(raw_file):
-            info('waiting until run {} is finished since {}'.format(run, get_running_time(t)), next_line=False)
+            info('waiting until run {} is finished since {}'.format(run, get_running_time(t)), endl=False)
             sleep(1)
-        print
+        print()
         Run(run, self.Converter.Run.TCString)
         self.save_last_converted(run)
 
@@ -73,7 +70,7 @@ class AutoConvert:
             # wait until a new run was added to the run log
             t = time()
             while run == max(self.RunInfos):
-                info('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), next_line=False)
+                info('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), endl=False)
                 self.RunInfos = self.load_run_infos()
                 sleep(1)
 
@@ -89,7 +86,7 @@ class AutoConvert:
         runs = [run for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
         results = [pool.apply_async(self, [run]) for run in runs]
         for res in results:
-            print res.get(timeout=2 * 24 * 60 * 60)
+            print(res.get(timeout=2 * 24 * 60 * 60))
 
     def run(self):
         self.multi() if self.Multi else self.auto_convert()
