@@ -168,7 +168,7 @@ class Tracks(SubAnalysis):
         tit = '{} Residuals for Plane {}'.format(mode.title(), roc)
         h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), tit, y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False, normalise=True)
         res = self.fit_residual(h, show=fit)
-        self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))
+        self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, lm=.14, stats=set_statbox(fit=fit, all_stat=True))
         return res if ret_res else h
 
     def draw_raw_residuals(self, roc=None, steps=0, show=True):
