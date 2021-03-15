@@ -163,9 +163,10 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region RESIDUALS
-    def draw_residual(self, roc, mode='', cut='', x_range=None, fit=False, ret_res=False, show=True):
+    def draw_residual(self, roc, mode='x', cut='', x_range=None, fit=False, ret_res=False, show=True):
         x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4  # convert to [um]
-        h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), '{} Residuals for Plane {}'.format(mode.title(), roc), y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False)
+        tit = '{} Residuals for Plane {}'.format(mode.title(), roc)
+        h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), tit, y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False, normalise=True)
         res = self.fit_residual(h, show=fit)
         self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, .16, stats=set_statbox(fit=fit, all_stat=True))
         return res if ret_res else h
