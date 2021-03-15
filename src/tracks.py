@@ -55,10 +55,14 @@ class Tracks(SubAnalysis):
         x = genfromtxt(join(self.Run.Converter.TrackingDir, 'data', 'alignments.txt'), usecols=[0, 2, 6])
         return array([ufloat(ix, e) if e else ix for ix in x[(x[:, 0] == self.Run.Converter.TelescopeID) & (x[:, 1] > -1)][:, 2] * 10])  # [mm]
 
+    @staticmethod
+    def get_vars(local=False):
+        return ['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']]
+
     def get_plane_hits(self, local=True):
         t = self.info('getting plane hits...', endl=False)
         self.Tree.SetEstimate(self.Cut.get_size('tracks', excluded=False) * self.NRocs)
-        x, y = self.get_tree_vec(['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']], self.Cut['tracks'])
+        x, y = self.get_tree_vec(*self.get_vars(local), self.Cut['tracks'])
         x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
         self.add_to_info(t)
         return x, y, self.get_z_positions()
