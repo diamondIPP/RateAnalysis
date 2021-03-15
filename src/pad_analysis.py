@@ -355,8 +355,8 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save, stats=None)
         return h
 
-    def draw_bunch_distribution(self, n, region, bin_width=2, show=True):
-        x = self.get_tree_vec(self.get_signal_var(region=region))[self.Peaks.get_bunch_events(n)]
+    def draw_bunch_distribution(self, n=-1, region=None, corr=True, bin_width=2, cut=..., show=True):
+        x = self.get_tree_vec(self.get_signal_var(region=region, evnt_corr=corr))[self.Peaks.get_bunch_cut(n, cut)]
         return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n + 2), x_tit='Pulse Height [mV]', show=show)
 
     def draw_bunch_comparison(self, n, regions, bin_width=5, show=True):

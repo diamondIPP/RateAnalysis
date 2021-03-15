@@ -27,7 +27,7 @@ class Cut(SubAnalysis):
         self.generate()
 
     def __call__(self, cut=None):
-        return self.CutStrings() if cut is None else TCut(cut)
+        return self.CutStrings() if cut is None else TCut('' if cut == Ellipsis else cut)
 
     def __getitem__(self, name):
         return self.get(name)
