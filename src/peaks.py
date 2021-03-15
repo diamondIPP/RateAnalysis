@@ -32,9 +32,9 @@ class PeakAnalysis(PadSubAnalysis):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
         return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
-    def get_start_additional(self, bunch=2):
-        """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal."""
-        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch + 0.5) / self.BinWidth)
+    def get_start_additional(self, bunch=4):
+        """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal. Signalbunch = bunch 1 """
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch - 1.5) / self.BinWidth)
 
     def calc_n_bunches(self):
         return arange(self.StartAdditional, self.Run.NSamples, self.BunchSpacing / self.BinWidth).size
@@ -44,10 +44,13 @@ class PeakAnalysis(PadSubAnalysis):
     # ----------------------------------------
     # region GET
     def get_binning(self, bin_size=None):
-        return self.Ana.Waveform.get_binning(bin_size)
+        return self.WF.get_binning(bin_size)
 
-    def get_from_tree(self, redo=False):
-        return do_hdf5(self.make_simple_hdf5_path('Peaks', self.get_cut_name()), self.Run.get_tree_vec, var=self.Ana.PeakName, cut=self.Cut(), dtype='f2', redo=redo)
+    def get_from_tree(self, redo=False, cut=...):
+        return array(do_hdf5(self.make_simple_hdf5_path('Peaks'), self.Run.get_tree_vec, var=self.Ana.PeakName, dtype='f2', redo=redo))[cut]
+
+    def get_cut(self, cut=None):
+        return self.WF.get_cut(cut)
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
         signal_ind, noind = self.get_signal_indices()
@@ -83,9 +86,16 @@ class PeakAnalysis(PadSubAnalysis):
         n_signals = repeat(n_signals, n)
         return where((m - w < values) & (values < m + w) & (n_signals == 1))[0], no_signals - arange(no_signals.size)
 
-    def get(self, flat=False, fit=False):
-        times, heights, n_peaks = self.find_all(fit=fit)
-        return array(times) if flat else array(split(times, cumsum(n_peaks)[:-1]), dtype=object)
+    def get_all(self, cut=None, thresh=None, fit=False, redo=False):
+        t, h, n = self.find_all(thresh, fit, redo)
+        cut = self.WF.get_cut(cut)
+        lcut = cut.repeat(n)  # make cut for the flat arrays
+        return array(t)[lcut], array(h)[lcut], array(n)[cut]
+
+    def get(self, flat=False, thresh=None, fit=False, cut=None):
+        cut = self.WF.get_cut(cut)
+        times, heights, n_peaks = self.find_all(thresh, fit)
+        return array(times)[cut] if flat else array(split(times, cumsum(n_peaks)[:-1]), dtype=object)
 
     def get_heights(self, flat=False):
         times, heights, n_peaks = self.find_all()
@@ -127,9 +137,9 @@ class PeakAnalysis(PadSubAnalysis):
         suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
         return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
 
-    def get_corrected_times(self, times, n_peaks=None, events=None):
-        signal_peak_times = repeat(self.get_from_tree(), n_peaks) if events is None else array(self.get_from_tree())[events]
-        return times - (signal_peak_times - self.get_from_tree()[0])
+    def get_corrected_times(self, times, n_peaks=None, events=None, cut=None):
+        signal_peak_times = repeat(self.get_from_tree(cut=self.get_cut(cut)), n_peaks) if events is None else array(self.get_from_tree())[events]
+        return times - (signal_peak_times - self.get_from_tree(cut=self.get_cut())[0])  # subtract the first from the signal events
 
     def get_n_times(self, n=2, ret_indices=False):
         """ :returns all times with exactly [n] additional peaks. """
@@ -192,34 +202,36 @@ class PeakAnalysis(PadSubAnalysis):
         m, s = mean_sigma(bin_centers, weights)
         return ufloat(m, s / sqrt(values.size)) - self.Ana.Pedestal.get_raw_mean()
 
-    def get_cut_name(self):
-        return self.Cut().GetName() if not self.Cut().GetName().startswith('All') else ''
-
-    def get_bunch_events(self, n):
-        n_peaks = self.find_n_additional(n, n + 1)
-        return self.Ana.get_events()[n_peaks > 0]
+    def get_bunch_cut(self, n, cut=...):
+        n_peaks = self.find_n_additional(n, n + 1, cut=cut)
+        return self.Ana.make_event_cut(self.Ana.get_events(cut)[n_peaks > 0])
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
-    def draw(self, corr=True, split_=1, thresh=None, y_range=None, show=True, redo=False):
-        def f():
-            times, heights, n_peaks = self.find_all(redo=redo, thresh=thresh)
-            times = self.get_corrected_times(times, n_peaks) if corr else times
-            times = array_split(times, split_)
-            hs = [TH1F('hp{}{}'.format(self.Run.Number, i), 'Peak Times', 512 * 2, 0, 512) for i in range(split_)]
-            for i in range(split_):
-                v = times[i]
-                hs[i].FillN(v.size, array(v, 'd'), ones(v.size))
-            return hs[0] if split_ == 1 else hs
-        suffix = '{}{}{}'.format(int(corr), '' if split_ == 1 else '_{}'.format(split_), '' if thresh is None else '_{:1.0f}'.format(thresh))
-        h = do_pickle(self.make_simple_pickle_path('Histo', suffix), f, redo=redo)
+    def draw_thresh(self, thresh=None):
+        self.Draw.info('Threshold: {:.1f}'.format(choose(thresh, self.Threshold)))
+
+    def draw(self, corr=True, split_=1, thresh=None, bin_size=None, y_range=None, cut=None, show=True, redo=False):
+        times, heights, n_peaks = self.get_all(cut=cut, thresh=thresh, redo=redo)
+        times = self.get_corrected_times(times, n_peaks, cut=cut) if corr else times
+        times = array_split(times, split_)
+        h = [TH1F('hp{}{}'.format(self.Run.Number, i), 'Peak Times', *self.get_binning(bin_size)) for i in range(split_)]
+        for i in range(split_):
+            v = times[i]
+            h[i].FillN(v.size, array(v, 'd'), ones(v.size))
+        h = h[0] if split_ == 1 else h
         if show and split_ == 1:
             set_statbox(entries=True)
             format_histo(h, x_tit='Time [ns]', y_tit='Number of Peaks', y_off=1.3, fill_color=Draw.FillColor, y_range=y_range)
             self.Draw(h, lm=.12, show=show, w=1.5, h=0.75, logy=True, stats=True)
         return h
+
+    def draw_events(self, events=None, show=True):
+        t, h, n = self.get_all(cut=events)
+        h = self.Draw.distribution(t, self.get_binning(.5), 'Peak Times', x_tit='Time [ns]', y_tit='Number of Peaks', show=show, w=1.5, h=0.75)
+        format_statbox(h, entries=True)
 
     def draw_signal(self, bin_size=.5, ind=None, fit=False, y=None, x=None, x_range=None, y_range=None, show=True, draw_ph=False, smear=None):
         times = choose(x, self.get_signal_times, fit=fit, ind=ind)
@@ -333,24 +345,30 @@ class PeakAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region FIND
-    def find_bunches(self, center=False):
-        values = get_hist_vec(self.draw(show=False))[self.StartAdditional:]
-        bunches = (find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.Ana.BunchSpacing)[0] + self.StartAdditional) * self.BinWidth
-        bunches -= self.BunchSpacing / 2. if not center else 0
-        return concatenate([bunches, [bunches[-1] + self.BunchSpacing]])
+    def find_bunches(self, center=False, bin_size=.5, show=False):
+        h = self.draw(corr=False, show=show, bin_size=bin_size)
+        values = get_hist_vec(self.draw(corr=False, show=False, bin_size=bin_size))[self.StartAdditional:]
+        peaks, d = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.BunchSpacing)
+        peaks += self.StartAdditional
+        fit_peaks = []
+        for p, ph in zip(peaks, d['peak_heights']):
+            low, hi = int(p - 4 / bin_size), int(p + 4 / bin_size)
+            f = h.Fit('gaus', 'qs', '', *[h.GetBinCenter(ibin) for ibin in [h.FindFirstBinAbove(ph / 3, 1, low, hi), h.FindLastBinAbove(ph / 2, 1, low, hi)]])
+            fit_peaks.append(f.Parameter(1))
+        fit_peaks = array(fit_peaks) - (self.BunchSpacing / 2. if not center else 0)
+        return concatenate([fit_peaks, [fit_peaks[-1] + self.BunchSpacing]])
 
-    def find_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
-        times, heights, n_peaks = self.find_all(thresh=thresh)
-        times = array(split(times, cumsum(n_peaks)[:-1]), dtype=object)
-        start = (self.StartAdditional if start_bunch is None else self.get_start_additional(start_bunch)) * self.Ana.DigitiserBinWidth
-        end = (self.Run.NSamples if end_bunch is None else self.get_start_additional(end_bunch)) * self.Ana.DigitiserBinWidth
+    def find_n_additional(self, start_bunch=4, end_bunch=None, thresh=None, cut=None):
+        times = self.get(cut=cut, thresh=thresh)
+        start = (self.get_start_additional(start_bunch)) * self.BinWidth
+        end = (self.Run.NSamples if end_bunch is None else self.get_start_additional(end_bunch)) * self.BinWidth
         for i in range(times.size):
             times[i] = times[i][(times[i] > start) & (times[i] < end)]
         return array([lst.size for lst in times], dtype='u2')
 
-    def find_all(self, redo=False, thresh=None, fit=False):
+    def find_all(self, thresh=None, fit=False, redo=False):
         suf = '{:1.0f}'.format(self.Threshold) if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
-        hdf5_path = self.make_simple_hdf5_path(suf=suf + self.get_cut_name(), dut=self.Channel)
+        hdf5_path = self.make_simple_hdf5_path(suf=suf, dut=self.Channel)
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights'], f['n_peaks']
@@ -440,7 +458,7 @@ class PeakAnalysis(PadSubAnalysis):
                 cfts.append(self.find_cft(values[i], times[i], peaks[i], peak_times[i], thresh=thresh))
                 self.PBar.update()
             return concatenate(cfts).astype('f2')
-        return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}{}'.format(thresh * 100, self.get_cut_name())), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path('cft', '{:.0f}{}'.format(thresh * 100, self.Cut.get_name())), f, redo=redo)
 
     def draw_cft(self, thresh=.5, bin_size=.5, show=True, draw_ph=False, x=None, y=None, x_range=None, y_range=None, smear=None):
         times = choose(x, self.get_all_cft, thresh=thresh)
@@ -481,7 +499,7 @@ class PeakAnalysis(PadSubAnalysis):
                 self.PBar.update()
             return concatenate(tots).astype('f2')
         suffix = '' if thresh is None else '{:.0f}'.format(thresh if fixed else thresh * 100)
-        return do_hdf5(self.make_simple_hdf5_path('TOT', suffix + self.get_cut_name()), f, redo=redo)
+        return do_hdf5(self.make_simple_hdf5_path('TOT', suffix + self.Cut.get_name()), f, redo=redo)
 
     def calc_tot(self, values=None, times=None, peaks=None, peak_times=None, ind=None, thresh=None, fixed=True, show=False):
         x, y, p, t = (times, values, peaks, peak_times) if ind is None else self.get_event(ind)
