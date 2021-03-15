@@ -585,7 +585,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     except AttributeError or ReferenceError:
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
-    do(h.Sumw2, sumw2) if hasattr(h, 'Sumw2') else do_nothing()
+    h.Sumw2(False if sumw2 is None else sumw2) if hasattr(h, 'Sumw2') else do_nothing()
     update_canvas()
     return h
 
