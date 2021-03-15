@@ -71,6 +71,13 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region DRAW
+    def draw(self, n=0, angle=None):
+        add = TCut('total_hits == 4') + ('' if angle is None else 'angle_x < {0} + .05 & angle_x > {0} - .05'.format(angle))
+        cut = self.Cut.generate_custom(include='tracks', add=add, name='t1{}'.format(choose(angle, '')))
+        (x, y), z_ = 10 * array(self.get_tree_vec(self.get_vars(), cut, nentries=1, firstentry=self.Ana.get_events(cut)[n])), self.get_z_positions()
+        self.Draw.graph(z_, x, y_range=ax_range(min(x), min(x) + .3, .3, .3), y_tit='x').Fit('pol1', 'q')
+        self.Draw.graph(z_, y, y_range=ax_range(min(y), min(y) + .3, .3, .3), y_tit='y').Fit('pol1', 'q')
+
     def draw_n(self, show=True):
         p = self.Draw.profile(*self.get_tree_vec(var=[self.get_t_var(), 'n_tracks']), self.Bins.get_raw_time(10), 'Number of Tracks vs. Time', x_tit='Time [hh:mm}', y_tit='Number of Tracks',
                               t_ax_off=0, fill_color=Draw.FillColor, show=False)
@@ -254,6 +261,15 @@ class Tracks(SubAnalysis):
             f2.Draw('same')
         h.GetListOfFunctions().Add(f2)
         return min(abs(fit.GetParameter(i)) for i in [2, 5])
+
+    def calc_res(self, x1=0, x2=0, x3=1, mode='x'):
+        z_ = sorted(self.get_z_positions())
+        x = array([0, x1, x2, x3]) * (self.Run.Plane.PX if mode == 'x' else self.Run.Plane.PY)
+        g = self.Draw.graph(z_, [ufloat(i, .15/sqrt(12)) for i in x])
+        g.Fit('pol1')
+        f = polyfit(z_, x, 1)
+        print(polyval(f, 0) * 1000)
+        return f
     # endregion RESIDUALS
     # ----------------------------------------
 
