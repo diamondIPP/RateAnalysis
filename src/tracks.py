@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 from scipy.stats import norm
@@ -31,11 +31,15 @@ class Tracks(SubAnalysis):
         return do_pickle(self.make_simple_pickle_path('TrackAngle{}'.format(mode)), f, redo=redo)
 
     def get_residual(self, roc=0, mode='x', cut='', redo=False):
-        pickle_path = self.make_simple_pickle_path('Res{}{}'.format(mode.title(), roc), self.Cut(cut).GetName() if cut else '')
+        pickle_path = self.make_simple_pickle_path('Res{}{}'.format(mode.title(), roc), self.Cut.get_name(cut))
         return do_pickle(pickle_path, self.draw_residual, redo=redo, roc=roc, cut=cut, ret_res=True, show=False, mode=mode)
 
-    def get_residuals(self, mode='x', cut='', redo=False):
-        return [self.get_residual(roc, mode, cut, redo) for roc in range(self.NRocs)]
+    def get_unbiased_residual(self, roc=0, mode='x', cut='', redo=False):
+        pickle_path = self.make_simple_pickle_path('URes{}{}'.format(mode.title(), roc), self.Cut.get_name(cut))
+        return do_pickle(pickle_path, self.draw_unbiased_residual, redo=redo, roc=roc, cut=cut, fit=True, show=False, mode=mode)
+
+    def get_residuals(self, mode='x', cut='', unbias=False, redo=False):
+        return array([(self.get_unbiased_residual(roc, mode, cut, redo) if unbias else self.get_residual(roc, mode, cut, redo)) for roc in range(self.NRocs)])
 
     def get_resolution(self, mode='x', cut=''):
         return self.draw_resolution(mode, cut=cut, show=False)
@@ -171,6 +175,17 @@ class Tracks(SubAnalysis):
         self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, lm=.14, stats=set_statbox(fit=fit, all_stat=True))
         return res if ret_res else h
 
+    def draw_unbiased_residual(self, roc=0, mode='x', cut='', x_range=None, fit=False, show=True):
+        """ fit the track without the plane under test and calculate residuals. """
+        x, y, z_ = self.get_plane_hits(local=False, add_cut=cut)
+        var = x if mode == 'x' else y
+        fits = polyfit(delete(z_, roc), delete(var, roc, axis=0), deg=1)
+        v = (polyval(fits, z_[roc]) - var[roc]) * 1e3  # to mm -> um
+        tit = 'Unbiased Residuals in {} for Plane {}'.format(mode.title(), roc)
+        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=show, normalise=True, lm=.14)
+        res = mean_sigma(v, err=0)[1] if 'chi2' in self.Cut.get_name(cut) else self.fit_residual(h, show=fit)
+        return res if fit else h
+
     def draw_raw_residuals(self, roc=None, steps=0, show=True):
         x, y, z_positions = self.get_plane_hits()
         dx, dy, da = self.calculate_residuals(x, y, z_positions, steps)
@@ -207,9 +222,9 @@ class Tracks(SubAnalysis):
             da = self.align(x, y, dx, dy)
         return dx, dy, da
 
-    def draw_resolution(self, mode='x', cut='', n=1e5, y_range=None, show=True):
+    def draw_resolution(self, mode='x', cut='', n=1e5, y_range=None, unbias=False, show=True):
         z_ = self.get_z_positions()
-        r = self.get_residuals(mode=mode, cut=cut)
+        r = self.get_residuals(mode=mode, cut=cut, unbias=unbias)
         x_range = -20, max(z_) + 20
         self.Draw.graph(z_, [ufloat(0, ex) for ex in r], x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=choose(y_range, [-200, 200]), x_range=x_range, show=show)
         x = array([norm.rvs(0, ir, size=int(n)) for ir in r])
@@ -249,8 +264,10 @@ class Tracks(SubAnalysis):
 
     @staticmethod
     def fit_residual(h, show=True):
-        fit = TF1('f', 'gaus(0) + gaus(3)')
+        fit = Draw.make_f('f', 'gaus(0) + gaus(3)', npx=500)
         sigma = (get_fwhm(h) / (2 * sqrt(2 * log(2)))).n
+        fit.SetParLimits(2, sigma / 2, 5 * sigma)
+        fit.SetParLimits(5, sigma / 2, 5 * sigma)
         fit.SetParameters(h.GetMaximum() / 10, 0, sigma * 5, h.GetMaximum(), 0, sigma)
         fit.SetParNames('c1', 'mean1', '#sigma1', 'c2', 'mean2', '#sigma2')
         fit.SetNpx(500)
