@@ -102,8 +102,8 @@ class Cut(SubAnalysis):
     def get_track_angle(self):
         return self.get_config('track angle', dtype=int)
 
-    def get_chi2(self, mode='x'):
-        return self.get_config('chi2{}'.format(mode.title()), dtype=int)
+    def get_chi2(self, mode='x', value=None):
+        return choose(value, self.get_config('chi2{}'.format(mode.title()), dtype=int))
 
     def get_min_event(self):
         """ :return: number of the first event, type [int] """
@@ -212,11 +212,15 @@ class Cut(SubAnalysis):
         description = '{:1.0f}k - {:1.0f}k'.format(*self.get_event_range() / 1000.)
         return CutString('event range', 'event_number>={} && event_number<={}'.format(*event_range), description)
 
-    def generate_chi2(self, mode='x', value=None):
-        cut_value = self.calc_chi2(mode, value)
+    def generate_chi2s(self, q=None):
+        string = (self.generate_chi2('x', q) + self.generate_chi2('y', q)).Value
+        return CutString('chi2', string, 'chi2 x&y < {}'.format(self.get_chi2(value=q)))
+
+    def generate_chi2(self, mode='x', q=None):
+        cut_value = self.calc_chi2(mode, q)
         if cut_value is None:
             return CutString('chi2_{}'.format(mode), '')
-        description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, choose(value, self.get_chi2(mode)))
+        description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, self.get_chi2(mode, q))
         return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
 
     def generate_track_angle(self, mode='x', amin=None, amax=None):
@@ -280,8 +284,7 @@ class Cut(SubAnalysis):
             chi2s = quantile(values[values > -500], linspace(0, 1, 101))
             self.Ana.add_to_info(t)
             return chi2s
-
-        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2', sub_dir='Cuts'), f)
+        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2{}'.format(mode.title), sub_dir='Cuts'), f)
         q = choose(q, self.get_chi2(mode))
         return chi2[q] if q != 100 else None
 
