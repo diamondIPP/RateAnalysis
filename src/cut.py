@@ -219,8 +219,8 @@ class Cut(SubAnalysis):
         description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, choose(value, self.get_chi2(mode)))
         return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
 
-    def generate_track_angle(self, mode='x'):
-        amin, amax = array([-1, 1]) * self.get_track_angle()
+    def generate_track_angle(self, mode='x', amin=None, amax=None):
+        amin, amax = (array([-1, 1]) * self.get_track_angle()) if amin is None else (amin, amax)
         string = '{v}>{} && {v}<{}'.format(amin, amax, v='angle_{}'.format(mode))
         description = '{:1.1f} < tracking angle in {} < {:1.1f} [degrees]'.format(amin, mode, amax)
         return CutString('track_angle_{}'.format(mode), string if amax > 0 else '', description)
