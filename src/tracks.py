@@ -232,8 +232,11 @@ class Tracks(SubAnalysis):
         p = linspace(*x_range, 100)
         z0 = polyval(fits, p.reshape(p.size, 1))
         ex = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in z0]])
-        g = self.Draw.make_tgrapherrors(p, ex, fill_color=2, opacity=.5)
+        g = self.Draw.make_tgrapherrors(p, ex, fill_color=634, opacity=.5)
         g.Draw('e3')
+        xm, ym = mean(z_), mean_sigma(polyval(fits, mean(z_)))[1].n
+        Draw.arrow(xm, xm, -ym, ym, width=2, opt='<|>', size=.02)
+        Draw.tlatex(xm, ym + 10, '{:2.0f}#mum'.format(ym), align=21)
         return min(e.s for e in ex)
 
     @staticmethod
