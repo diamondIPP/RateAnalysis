@@ -36,7 +36,7 @@ class Cut(SubAnalysis):
         return bool(self.get(name).GetTitle())
 
     def get_name(self, cut=None):
-        return self(cut).GetName() if not self(cut).GetName().startswith('All') else ''
+        return 'NoCut' if cut == '' else self(cut).GetName() if not self(cut).GetName().startswith('All') else ''
 
     # ----------------------------------------
     # region CONFIG
