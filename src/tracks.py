@@ -59,10 +59,10 @@ class Tracks(SubAnalysis):
     def get_vars(local=False):
         return ['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']]
 
-    def get_plane_hits(self, local=True):
+    def get_plane_hits(self, local=True, add_cut=''):
         t = self.info('getting plane hits...', endl=False)
         self.Tree.SetEstimate(self.Cut.get_size('tracks', excluded=False) * self.NRocs)
-        x, y = self.get_tree_vec(*self.get_vars(local), self.Cut['tracks'])
+        x, y = self.get_tree_vec(self.get_vars(local), self.Cut['tracks'] + add_cut)
         x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
         self.add_to_info(t)
         return x, y, self.get_z_positions()
