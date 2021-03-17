@@ -231,15 +231,31 @@ class Waveform(PadSubAnalysis):
     # region SHOW INTEGRATION
     def draw_peak_pos(self, h):
         x, y = self.get_max(h)
-        Draw.vertical_line(x, -1000, 1000, color=4, w=3)
+        Draw.vertical_line(x, color=4, w=3)
         Draw.tlatex(x + 2, y, 'Peak Position', color=4, align=12)
 
-    def draw_region(self, region=None, lw=2):
+    def draw_buckets(self, start=0, n=8):
+        x0 = self.Ana.SignalRegion[0] * self.BinWidth - (1 - start) * self.BunchSpacing
+        for i in range(n + 1):
+            Draw.vertical_line(x0 + i * self.BunchSpacing, style=3)
+
+    def draw_region(self, region=None, lw=2, show_leg=True, fill=False):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
+        lines = []
         for region in regions:
             x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
-            Draw.box(x1, -500, x2, 500, line_color=self.Draw.get_color(len(regions)), style=2, width=lw)
-        Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
+            color = self.Draw.get_color(len(regions))
+            lines.append(Draw.box(x1, -1000, x2, 1000, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=.2))
+        if show_leg:
+            Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
+        return lines
+
+    def draw_sig_region(self):
+        return self.draw_region(show_leg=False, fill=True)[0]
+
+    def draw_sig_ped(self):
+        s, p = self.draw_sig_region(), self.draw_ped_time()
+        Draw.legend([s, p], ['Signal Region', 'Pedestal Time'], scale=2, x2=.95)
 
     @staticmethod
     def draw_integral(h, xmin, xmax, color=2):
@@ -265,8 +281,12 @@ class Waveform(PadSubAnalysis):
         format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
         self.draw_integral(h, xmin, xmax)
 
+    def draw_ped_time(self, color=4, lw=2):
+        return Draw.vertical_line(self.Ana.Pedestal.Region * self.BinWidth, -1000, 1000, color=color, w=lw)
+
     def draw_pedestal(self, peakint=None):
         x, y = self.Ana.get_region('pedestal')[0] * self.BinWidth, 20 * self.Polarity
+        print(x, y)
         Draw.vertical_line(x, -1000, 1000, color=4, w=3)
         Draw.tlatex(x + 1, -y, 'Pedestal', color=4, align=12)
         self.draw_peakint(x, peakint)
