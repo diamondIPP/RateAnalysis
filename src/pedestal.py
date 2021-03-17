@@ -16,6 +16,7 @@ class PedestalAnalysis(PadSubAnalysis):
         super().__init__(pad_analysis, pickle_dir='Pedestal')
         self.SignalName = self.get_signal_name()
         self.RawName = self.get_signal_name(peak_int=1)
+        self.Region = self.Ana.get_region('pedestal')[0]
 
         self.Histogram = None
 
