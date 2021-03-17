@@ -196,11 +196,11 @@ class Draw(object):
         return Draw.add(line)
 
     @staticmethod
-    def vertical_line(x, ymin, ymax, color=1, w=1, style=1, tline=False):
+    def vertical_line(x, ymin=-1e9, ymax=1e9, color=1, w=1, style=1, tline=False):
         return Draw.line(x, x, ymin, ymax, color, w, style) if not tline else Draw.tline(x, x, ymin, ymax, color, w, style)
 
     @staticmethod
-    def horizontal_line(y, xmin, xmax, color=1, w=1, style=1, tline=False):
+    def horizontal_line(y, xmin=-1e9, xmax=1e9, color=1, w=1, style=1, tline=False):
         return Draw.line(xmin, xmax, y, y, color, w, style) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
 
     @staticmethod
