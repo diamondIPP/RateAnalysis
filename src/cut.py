@@ -284,7 +284,7 @@ class Cut(SubAnalysis):
             chi2s = quantile(values[values > -500], linspace(0, 1, 101))
             self.Ana.add_to_info(t)
             return chi2s
-        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2{}'.format(mode.title), sub_dir='Cuts'), f)
+        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2{}'.format(mode.title()), sub_dir='Cuts'), f)
         q = choose(q, self.get_chi2(mode))
         return chi2[q] if q != 100 else None
 
