@@ -52,10 +52,10 @@ class Waveform(PadSubAnalysis):
     def get_values(self, ind=None, channel=None, n=None):
         return array(self.get_all(channel=channel)[self.get_cut(ind)][... if n is None else range(n)]).flatten()
 
-    def get_times(self, corr=True, ind=None, n=None):
-        return array(self.get_all_times(corr, cut=ind)[... if n is None else range(n)]).flatten()
+    def get_times(self, signal_corr=True, ind=None, n=None):
+        return array(self.get_all_times(signal_corr, cut=ind)[... if n is None else range(n)]).flatten()
 
-    def get_all_times(self, corr_signal=False, redo=False, cut=None):
+    def get_all_times(self, signal_corr=False, redo=False, cut=None):
         def f():
             self.info('Saving waveforms timings to hdf5 ...')
             self.PBar.start(self.Run.NEvents)
@@ -65,8 +65,8 @@ class Waveform(PadSubAnalysis):
                 self.PBar.update()
             return array(times)
         t = array(do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo))[self.get_cut(cut)]
-        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut)) if corr_signal else []
-        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if corr_signal else t
+        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut)) if signal_corr else []
+        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if signal_corr else t
 
     def get_calibrated_times(self, trigger_cell):
         return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
