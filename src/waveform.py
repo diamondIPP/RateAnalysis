@@ -121,21 +121,21 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, show=True):
+    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, t_corr=True, grid=True, show=True):
         n = -1 if n is None else 1024 * n
-        values, times = self.get_values(ind, channel)[:n], self.get_times(corr, ind)[:n]
+        values, times = self.get_values(ind, channel)[:n], self.get_times(signal_corr, ind)[:n]
         if values.size > self.Run.NSamples:
             h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], 'All Waveforms', show=False)
         else:
-            h = Draw.make_tgrapherrors(times, values, title='Single Waveform')
+            h = Draw.make_tgrapherrors(times if t_corr else arange(self.NSamples) * self.BinWidth, values, title='Single Waveform')
         y_range = ax_range(min(values), max(values), .1, .2) if y_range is None else y_range
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         draw_opt = draw_opt if draw_opt is not None else 'col' if values.size > self.Run.NSamples else 'ap'
-        self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.18, w=1.5, h=.5, grid=1, logz=True)
+        self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.225, w=1.5, h=.5, grid=grid, gridy=True, logz=True)
         return h, n
 
-    def draw_single(self, cut=None, event=None, ind=None, x_range=None, y_range=None, draw_opt=None, show=True, show_noise=False):
-        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, draw_opt=draw_opt, show=show)
+    def draw_single(self, cut=None, event=None, ind=None, x_range=None, y_range=None, draw_opt=None, t_corr=True, grid=True, show=True, show_noise=False):
+        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, None, draw_opt, t_corr, grid, show)
         if show_noise:
             self.__draw_noise()
         return h
