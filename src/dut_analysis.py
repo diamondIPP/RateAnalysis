@@ -102,6 +102,9 @@ class DUTAnalysis(Analysis):
         c[events] = True
         return c
 
+    def get_pulser_cut(self):
+        return self.make_event_cut(self.get_events(self.Cut['pulser']))
+
     def get_sub_events(self, cut):
         e = array(self.get_events())
         s = array(self.get_events(cut))
