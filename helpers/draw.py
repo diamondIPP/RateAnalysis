@@ -204,23 +204,19 @@ class Draw(object):
         return Draw.line(xmin, xmax, y, y, color, w, style) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
 
     @staticmethod
-    def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, show=True):
+    def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, opacity=None, show=True):
         if get_object(name) is not None:  # check if name already exists
             get_object(name).Clear()
         line = TCutG(choose(name, Draw.get_name('poly')), len(x) + 1, append(x, x[0]).astype('d'), append(y, y[0]).astype('d'))
-        line.SetLineColor(line_color)
-        do(line.SetFillColor, fill_color)
-        line.SetLineWidth(width)
-        line.SetLineStyle(style)
-        do(line.SetFillStyle, fillstyle)
+        format_histo(line, line_color=line_color, lw=width, line_style=style, fill_color=fill_color, fill_style=fillstyle, opacity=opacity)
         if show:
             line.Draw('l')
             line.Draw('f') if fill_color is not None or fillstyle is not None and fillstyle < 4000 else do_nothing()
         return Draw.add(line)
 
     @staticmethod
-    def box(x1, y1, x2, y2, line_color=1, width=1, style=1, name=None, fillstyle=None, fillcolor=None, show=True):
-        return Draw.polygon(*make_box_args(x1, y1, x2, y2), line_color, width, style, name, fillstyle, fillcolor, show)
+    def box(x1, y1, x2, y2, line_color=1, width=1, style=1, name=None, fillstyle=None, fillcolor=None, opacity=None, show=True):
+        return Draw.polygon(*make_box_args(x1, y1, x2, y2), line_color, width, style, name, fillstyle, fillcolor, opacity, show)
 
     @staticmethod
     def tlatex(x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
