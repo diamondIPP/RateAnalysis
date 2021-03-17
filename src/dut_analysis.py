@@ -89,6 +89,8 @@ class DUTAnalysis(Analysis):
         return self.Run.get_tree_vec(var, cut, dtype, nentries, firstentry)
 
     def get_events(self, cut=None, redo=False):
+        if type(cut) == str:
+            return self.get_tree_vec('Entry$', cut, dtype='i4')
         cut = self.Cut(cut)
         return do_hdf5(self.make_simple_hdf5_path('', cut.GetName(), 'Events'), self.get_tree_vec, redo, dtype='i4', var='Entry$', cut=cut) if cut.GetTitle() else arange(self.Run.NEvents)
 
