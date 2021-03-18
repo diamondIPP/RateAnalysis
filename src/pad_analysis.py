@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum
+from numpy import quantile, insert, sum, invert
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -355,9 +355,21 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save, stats=None)
         return h
 
-    def draw_bunch_distribution(self, n=-1, region=None, corr=True, bin_width=2, cut=..., show=True):
-        x = self.get_tree_vec(self.get_signal_var(region=region, evnt_corr=corr))[self.Peaks.get_bunch_cut(n, cut)]
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n + 2), x_tit='Pulse Height [mV]', show=show)
+    def find_bunch_region(self, n=1):
+        w = self.BunchSpacing / self.DigitiserBinWidth
+        m0 = mean(self.SignalRegion) + (n - 1) * w
+        for key, r in self.Run.IntegralRegions[self.DUT.Number - 1].items():
+            if 'signal' in key and r[0] < m0 < r[1] and r[1] - r[0] < 1.1 * w:
+                return key
+
+    def draw_bunch_distribution(self, n=1, region=None, corr=False, bin_width=5, cut=True, show=True):
+        cut = self.get_pulser_cut() & invert(self.Peaks.get_bunch_cut(n - 1)) & invert(self.Peaks.get_bunch_cut(n + 1)) & cut
+        x = self.get_tree_vec(self.get_signal_var(region=choose(region, self.find_bunch_region(n)), evnt_corr=corr))
+        h = self.Draw.distribution(x[cut], self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n), x_tit='Pulse Height [mV]', show=show)
+        if h.GetBinCenter(h.GetMaximumBin()) < 10:
+            m, s = self.Pedestal()
+            x, y = get_hist_vecs(h, err=False)
+            format_histo(h, y_range=ax_range(0, max(y[x > m + 6 * s]), 0, .05))
 
     def draw_bunch_comparison(self, n, regions, bin_width=5, show=True):
         histos = [self.draw_bunch_distribution(i, r, bin_width, show=False) for i, r in zip(n, regions)]
