@@ -19,6 +19,9 @@ class PedestalAnalysis(PadSubAnalysis):
         self.Region = self.Ana.get_region('pedestal')[0]
 
         self.Histogram = None
+        
+    def __call__(self, err=False):
+        return (self.get_mean(), self.get_noise()) if err else (self.get_mean().n, self.get_noise().n)
 
     # ----------------------------------------
     # region GET
