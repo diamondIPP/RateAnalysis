@@ -474,7 +474,7 @@ def scale_histo(histo, value=None, to_max=False, x_range=None):
         h.GetXaxis().UnZoom()
     value = maximum if to_max else value
     if value:
-        h.Scale(1. / value)
+        h.Scale(1 / value)
     return h
 
 

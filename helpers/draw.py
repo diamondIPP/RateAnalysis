@@ -343,7 +343,7 @@ class Draw(object):
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
         do([c.SetPhi, c.SetTheta], [phi, theta])
-        th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else '')
+        th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else 'histo')
         if leg is not None:
             update_canvas()
             for i_leg in make_list(leg):
@@ -544,7 +544,6 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     do(set_palette, pal)
     if normalise is not None:
         y_tit = y_tit.replace('Number', 'Percentage') if y_tit is not None else y_tit
-        h.Sumw2(True)
         normalise_histo(h)
     try:
         do(h.SetStats, stats)
@@ -581,7 +580,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     except AttributeError or ReferenceError:
         pass
     set_time_axis(h, off=t_ax_off) if t_ax_off is not None else do_nothing()
-    h.Sumw2(False if sumw2 is None else sumw2) if hasattr(h, 'Sumw2') else do_nothing()
+    do(h.Sumw2, sumw2) if hasattr(h, 'Sumw2') else do_nothing()
     update_canvas()
     return h
 
@@ -922,8 +921,8 @@ def normalise_histo(histo, x_range=None, from_min=False):
     h = histo
     x_axis = h.GetXaxis()
     x_axis.SetRangeUser(*x_range) if x_range is not None else do_nothing()
-    min_bin = h.GetMinimumBin() if from_min else 0
-    integral = h.Integral(min_bin, h.GetNbinsX() - 1)
+    min_bin = h.GetMinimumBin() if from_min else 1
+    integral = h.Integral(min_bin, h.GetNbinsX() - 2)
     return scale_histo(h, integral)
 
 
