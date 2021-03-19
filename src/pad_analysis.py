@@ -342,7 +342,7 @@ class PadAnalysis(DUTAnalysis):
         return h.GetBinCenter(h.GetNbinsX()) + 1000
 
     def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=None, events=None,
-                                 start=0, x_range=None, redo=False, prnt=True, save=True, normalise=None, sumw2=False):
+                                 start=0, x_range=None, redo=False, prnt=True, save=True, normalise=None):
         def func():
             self.info('Drawing signal distribution for run {} and {}...'.format(self.Run.Number, self.DUT.Name), prnt=prnt)
             nentries = self.Run.NEvents if events is None else self.Run.find_n_events(n=events, cut=str(cut), start=start)
@@ -352,7 +352,7 @@ class PadAnalysis(DUTAnalysis):
         suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=self.Cut(cut).GetName(), n=self.get_short_regint(sig))
         h = do_pickle(self.make_simple_pickle_path('Histo', suffix, 'PulseHeight'), func, redo=redo)
         format_histo(h, x_range=choose(x_range, ax_range(0, 3, .1, h=h)), normalise=normalise)
-        self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, sumw2=sumw2, save=save, stats=None)
+        self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, stats=None)
         return h
 
     def find_bunch_region(self, n=1):
