@@ -4,7 +4,7 @@
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TMultiGraph
-from numpy import fft
+from numpy import fft, argmax
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 from helpers.fit import ErfLand
@@ -52,8 +52,9 @@ class Waveform(PadSubAnalysis):
     def get_values(self, cut=None, channel=None, n=None):
         return array(self.get_all(channel))[self.get_cut(cut)][... if n is None else range(n)].flatten()
 
-    def get_times(self, signal_corr=True, ind=None, n=None):
-        return array(self.get_all_times(signal_corr, cut=ind)[... if n is None else range(n)]).flatten()
+    def get_times(self, signal_corr=True, cut=None, n=None):
+        t = self.get_all_calibrated_times(cut)
+        return (self.correct_times(t, cut) if signal_corr else t)[... if n is None else range(n)].flatten()
 
     def get_all_calibrated_times(self, cut=None):
         t = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)])
@@ -183,6 +184,28 @@ class Waveform(PadSubAnalysis):
         c.fit(n, show)
         format_histo(h, x_range=ax_range(fit_range, fl=.5, fh=.5), stats=0)
         return c
+
+    def fit_landau(self, i, tc, peak_i=None):
+        y, t = self.get_all()[i], self.get_calibrated_times(tc)
+        imin, imax = self.Ana.SignalRegion
+        ip = choose(peak_i, argmax(y[imin:imax])) + imin
+        g = Draw.make_tgrapherrors(t[max(0, ip - 6):ip + 8], y[max(0, ip - 6):ip + 8], x_tit='Time [s]', y_tit='Signal [mV]')
+        f = TF1('f', 'landau', 0, 512)
+        g.Fit(f, 'q')
+        m = f.GetMaximumX()
+        return f.Integral(m - 4, m + 6) / 10
+
+    def get_fits(self):
+        def f():
+            events = self.Ana.get_events()
+            self.PBar.start(events.size)
+            v = []
+            tcs = self.get_trigger_cells()
+            for ev, tc in zip(events, tcs):
+                v.append(self.fit_landau(ev, tc))
+                self.PBar.update()
+            return array(v).astype('f4')
+        return do_hdf5(self.make_simple_hdf5_path('LFits'), f)
 
     def draw_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=True):
         h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
