@@ -86,10 +86,10 @@ class Waveform(PadSubAnalysis):
         self.info('Starting at event {}'.format(start_event))
         n_events = self.Run.find_n_events(n, self.Cut(cut), start_event)
         self.Tree.SetEstimate(n * 1024)
-        values, trigger_cells = self.get_tree_vec(['wf{}'.format(channel), 'trigger_cell'], self.Cut(cut), nentries=n_events, firstentry=start_event)
+        values = self.get_tree_vec(['wf{}'.format(channel)], self.Cut(cut), nentries=n_events, firstentry=start_event)
         times = arange(self.Run.NSamples, dtype='u2') * (1 if raw else self.BinWidth)
         if t_corr:
-            times = array([v for lst in [self.get_calibrated_times(int(self.Tree.GetV2()[1024 * i])) for i in range(n)] for v in lst])
+            times = array([self.get_calibrated_times(tc) for tc in self.get_trigger_cells(cut)[:5000]]).flatten()
         self.Tree.SetEstimate()
         self.Count += n_events
         return values, times
