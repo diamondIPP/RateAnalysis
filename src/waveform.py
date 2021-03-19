@@ -34,8 +34,8 @@ class Waveform(PadSubAnalysis):
     def get_cut(self, cut=None):
         return array(cut) if is_iter(cut) or isint(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
 
-    def get_trigger_cells(self):
-        return self.get_tree_vec('trigger_cell', dtype='i2')
+    def get_trigger_cells(self, cut=...):
+        return self.get_tree_vec('trigger_cell', dtype='i2')[self.get_cut(cut)]
 
     def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
@@ -47,26 +47,21 @@ class Waveform(PadSubAnalysis):
                 waveforms.append(self.Ana.Polarity * self.get_tree_vec('wf{}'.format(choose(channel, self.Channel)), '', 'f2', 1, ev))
                 self.PBar.update()
             return array(waveforms)
-        return array(do_hdf5(self.make_simple_hdf5_path(dut=choose(channel, self.Channel)), f, redo=redo))
+        return do_hdf5(self.make_simple_hdf5_path(dut=choose(channel, self.Channel)), f, redo=redo)
 
-    def get_values(self, ind=None, channel=None, n=None):
-        return array(self.get_all(channel=channel)[self.get_cut(ind)][... if n is None else range(n)]).flatten()
+    def get_values(self, cut=None, channel=None, n=None):
+        return array(self.get_all(channel))[self.get_cut(cut)][... if n is None else range(n)].flatten()
 
     def get_times(self, signal_corr=True, ind=None, n=None):
         return array(self.get_all_times(signal_corr, cut=ind)[... if n is None else range(n)]).flatten()
 
-    def get_all_times(self, signal_corr=False, redo=False, cut=None):
-        def f():
-            self.info('Saving waveforms timings to hdf5 ...')
-            self.PBar.start(self.Run.NEvents)
-            times = []
-            for tc in self.get_trigger_cells():
-                times.append(self.get_calibrated_times(tc).astype('f2'))
-                self.PBar.update()
-            return array(times)
-        t = array(do_hdf5(self.make_simple_hdf5_path('Times'), f, redo=redo))[self.get_cut(cut)]
-        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut)) if signal_corr else []
-        return array(t) - (peaks - peaks[0]).reshape(peaks.size, 1) if signal_corr else t
+    def get_all_calibrated_times(self, cut=None):
+        t = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)])
+        return t[self.get_trigger_cells(cut)]
+
+    def correct_times(self, t, cut=None):
+        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut))
+        return t - (peaks - peaks[0]).reshape(peaks.size, 1)
 
     def get_calibrated_times(self, trigger_cell):
         return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
@@ -122,8 +117,7 @@ class Waveform(PadSubAnalysis):
         return h, self.Count - start_count
 
     def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, t_corr=True, grid=True, show=True):
-        n = -1 if n is None else 1024 * n
-        values, times = self.get_values(ind, channel)[:n], self.get_times(signal_corr, ind)[:n]
+        values, times = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n)
         if values.size > self.Run.NSamples:
             h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], 'All Waveforms', show=False)
         else:
