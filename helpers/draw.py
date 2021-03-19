@@ -543,7 +543,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     do(h.SetName, name)
     do(set_palette, pal)
     if normalise is not None:
-        y_tit = y_tit.replace('Number', 'Percentage') if y_tit is not None else y_tit
+        y_tit = (h.GetYaxis().GetTitle() if y_tit is None else y_tit).replace('Number', 'Percentage')
         normalise_histo(h)
     try:
         do(h.SetStats, stats)
