@@ -473,9 +473,9 @@ class DUTAnalysis(Analysis):
     # endregion SIGNAL MAP
     # ----------------------------------------
 
-    def draw_uniformity(self, histo=None, use_fwc=False, show=True, redo=False):
+    def draw_uniformity(self, histo=None, use_fwc=False, x_range=None, corr_noise=True, show=True, redo=False):
         noise = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
-        h = self.draw_signal_distribution(show=show, normalise=True, sumw2=True, redo=redo) if histo is None else histo
+        h = self.draw_signal_distribution(show=show, normalise=True, redo=redo, x_range=x_range) if histo is None else histo
         (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
         Draw.vertical_line(m.n, 0, 1e7, style=7, w=2)
         fwhm, half_max = high - low, h.GetMaximum() / 2
@@ -483,7 +483,7 @@ class DUTAnalysis(Analysis):
         Draw.arrow(low.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
         Draw.arrow(high.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
         Draw.tlatex(high.n + 5, half_max, 'FWHM', align=12, color=2)
-        fwhm = umath.sqrt(fwhm ** 2 - noise ** 2)
+        fwhm = umath.sqrt(fwhm ** 2 - noise ** 2) if corr_noise else fwhm
         value = fwhm / m
         legend = Draw.make_legend(w=.3, y2=.768, nentries=1, margin=.1, cols=2, scale=1.1)
         legend.AddEntry('', 'FWHM/{}'.format('FWC' if use_fwc else 'Mean'), '')
