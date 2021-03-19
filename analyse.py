@@ -4,6 +4,8 @@
 # created on Oct 15th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from helpers.draw import *  # import everything so that methods are available in ipython
+from src.binning import Bins
+_ = Bins.Verbose
 
 
 def analysis_selector(run, dut, tc, tree, verbose=False):
