@@ -32,7 +32,7 @@ class Waveform(PadSubAnalysis):
         return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
     def get_cut(self, cut=None):
-        return array(cut) if is_iter(cut) or isint(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
+        return array(cut) if is_iter(cut) else self.Ana.make_event_cut(cut) if isint(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
 
     def get_trigger_cells(self, cut=...):
         return self.get_tree_vec('trigger_cell', dtype='i2')[self.get_cut(cut)]
@@ -70,24 +70,19 @@ class Waveform(PadSubAnalysis):
     def get_calibrated_time(self, t, b):
         return self.Run.TCalSum[t + b] - self.Run.TCalSum[t]
 
-    def get_start_event(self, start_event):
-        return self.Count + self.StartEvent if start_event is None else start_event
-
-    def get_tree_values(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, raw=False):
+    def get_tree_values(self, n=1, cut=None, t_corr=True, channel=None, raw=False):
         """ return lists of the values and times of the waveform. """
         channel = choose(channel, self.Channel)
+        np = self.Count
         if not self.Run.wf_exists(channel):
             return
-        start_event = self.get_start_event(start_event)
-        self.info('Starting at event {}'.format(start_event))
-        n_events = self.Run.find_n_events(n, self.Cut(cut), start_event)
-        self.Tree.SetEstimate(n * 1024)
-        values = self.get_tree_vec(['wf{}'.format(channel)], self.Cut(cut), nentries=n_events, firstentry=start_event)
+        events = self.Ana.get_events(cut)[np:np + n]
+        self.info('Starting at event {}'.format(events[0]))
+        values = concatenate([self.get_tree_vec(['wf{}'.format(channel)], nentries=1, firstentry=ev) for ev in events])
         times = arange(self.Run.NSamples, dtype='u2') * (1 if raw else self.BinWidth)
         if t_corr:
-            times = array([self.get_calibrated_times(tc) for tc in self.get_trigger_cells(cut)[:5000]]).flatten()
-        self.Tree.SetEstimate()
-        self.Count += n_events
+            times = array([self.get_calibrated_times(tc) for tc in self.get_trigger_cells(cut)[np:np + n]]).flatten()
+        self.Count += n
         return values, times
 
     def get_average_rise_time(self, p=.1, redo=False):
@@ -104,11 +99,11 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region WAVEFORMS
-    def draw(self, n=1, cut=None, start_event=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
+    def draw(self, n=1, cut=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
         """ Draws a stack of n waveforms. """
         start_count = deepcopy(self.Count)
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
-        values, times = self.get_tree_values(n, cut, start_event, t_corr, channel, raw)
+        values, times = self.get_tree_values(n, cut, t_corr, channel, raw)
         values = choose(x, values)
         h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], title, show=False)
         y_range = ax_range(min(values), max(values), .1, .2) if y_range is None else y_range
@@ -129,25 +124,25 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.225, w=1.5, h=.5, grid=grid, gridy=True, logz=True)
         return h, n
 
-    def draw_single(self, cut=None, event=None, ind=None, x_range=None, y_range=None, draw_opt=None, t_corr=True, grid=True, show=True, show_noise=False):
-        h, n = self.draw(n=1, start_event=event, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, None, draw_opt, t_corr, grid, show)
+    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, draw_opt=None, t_corr=True, grid=True, show=True, show_noise=False):
+        h, n = self.draw(n=1, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, None, draw_opt, t_corr, grid, show)
         if show_noise:
             self.__draw_noise()
         return h
 
-    def draw_all_single(self, n=1, cut='', start_event=5000):
+    def draw_all_single(self, n=1, cut=''):
         activated_wfs = self.get_active()
         self.info('activated wafeforms: {}'.format(activated_wfs))
-        wfs = [self.draw(n=n, start_event=start_event, cut=cut, show=False, channel=wf)[0] for wf in activated_wfs]
+        wfs = [self.draw(n=n, cut=cut, show=False, channel=wf)[0] for wf in activated_wfs]
         c = Draw.canvas('Waveforms', w=2, h=len(wfs) * .5, divide=(1, len(wfs)))
         for i, wf in enumerate(wfs):
             format_histo(wf, title='{} WaveForm'.format(self.Run.DigitizerChannels[activated_wfs[i]]))
             Draw.histo(wf, canvas=c.cd(i + 1), draw_opt='aclp')
 
-    def draw_bucket(self, show=True, t_corr=True, start=100000):
-        good = self.draw(1, show=False, start_event=start, t_corr=t_corr)[0]
-        bucket = self.draw(1, cut=self.Cut.generate_custom(invert='bucket'), show=False, start_event=start, t_corr=t_corr)[0]
-        bad_bucket = self.draw(1, cut=self.Cut.get_bad_bucket(), show=False, t_corr=t_corr, start_event=start)[0]
+    def draw_bucket(self, show=True, t_corr=True):
+        good = self.draw(1, show=False, t_corr=t_corr)[0]
+        bucket = self.draw(1, cut=self.Cut.generate_custom(invert='bucket'), show=False, t_corr=t_corr)[0]
+        bad_bucket = self.draw(1, cut=self.Cut.get_bad_bucket(), show=False, t_corr=t_corr)[0]
         mg = TMultiGraph('mg_bw', 'Bucket Waveforms')
         leg = Draw.make_legend(.85, .4, nentries=3)
         names = ['good wf', 'bucket wf', 'both wf']
@@ -262,7 +257,7 @@ class Waveform(PadSubAnalysis):
         for region in regions:
             x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
             color = self.Draw.get_color(len(regions))
-            lines.append(Draw.box(x1, -1000, x2, 1000, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=.2))
+            lines.append(Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=.2))
         if show_leg:
             Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
         return lines
