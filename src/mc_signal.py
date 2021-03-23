@@ -10,13 +10,11 @@ from helpers.draw import Draw, choose, get_base_dir, join
 from scipy.stats import poisson
 
 
-# 20, 20, 80,100, .8
-
 class MCSignal(object):
 
     def __init__(self):
-        self.Noise = 8
-        self.Pedestal = 2
+        self.Noise = 7
+        self.Pedestal = -2
 
         self.N = int(1e6)
         self.Rate = 1e7
@@ -24,7 +22,8 @@ class MCSignal(object):
         self.AreaScint = 1 ** 2  # cm²
         self.NOther = self.Rate * self.Area * 19.8e-9
         self.NScint = self.Rate * (1 - self.Area) * 19.8e-9
-        self.PBucket = (1 - self.Area / self.AreaScint) * (1 - poisson.cdf(1, self.NOther, 1))
+        # self.PBucket = (1 - self.Area / self.AreaScint) * (1 - poisson.cdf(1, self.NOther, 1))
+        self.PBucket = 0.05246
 
         self.Draw = Draw(join(get_base_dir(), 'config', 'main.ini'))
 
@@ -40,7 +39,7 @@ class MCSignal(object):
         g = concatenate([normal(choose(m, 80), choose(w, 20), round(choose(n, self.N) * ip)) for w, ip, m in [(w0, p, m0), (w1, 1 - p, m1)]])
         return [gRandom.Landau(ig, ig / 8) for ig in g]  # assuming R=FWHM/MPV=.5, FWHM=4*width
 
-    def draw_signal(self, x=None, n=None, w0=20, w1=20, m0=70, m1=85, p=.6):
+    def draw_signal(self, x=None, n=None, w0=20, w1=20, m0=80, m1=95, p=.6):
         x = choose(x, self.gen_signal(n, w0, w1, m0, m1, p))
         self.Draw.distribution(x, x_range=[-50, 400], x_tit='Pulse Height [mV]', lm=.15, y_off=2, w=1.2)
 
@@ -60,6 +59,9 @@ class MCSignal(object):
         b2[b2_noise] = self.gen_noise(b2_noise.size)
         b2[b2_signals] = self.gen_signal(b2_signals.size)
         return b1, b2
+
+    def get_bcut_eff(self):
+        return invert(self.BCut)[self.EBuc].nonzero()[0].size / self.EBuc.size
 
 
 if __name__ == '__main__':
