@@ -49,15 +49,10 @@ def get_track_vars(roc=0, local=False):
 
 
 def draw_occupancies():
-    h = []
+    c = plot.canvas('c', w=1.5, h=1.5, divide=(2, 2))
     for i in range(z.NPlanes):
         x, y = z.get_tree_vec(['cluster_col[{}]'.format(i), 'cluster_row[{}]'.format(i)])
-        h.append(plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0))
-    c = plot.canvas('c', w=2, h=2, divide=(2, 2))
-    for i, h in enumerate(h, 1):
-        pad = c.cd(i)
-        pad.SetBottomMargin(.15)
-        h.Draw('colz')
+        plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0, canvas=c.cd(i + 1))
 
 
 def trig_edges(nwf=None):
@@ -358,8 +353,8 @@ def get_inner_efficiency(roc=1, q=.2):
     return eff
 
 
-def get_p_miss():
-    e1, e2 = (get_inner_efficiency(i) for i in [1, 2])
+def get_p_miss(q=.2):
+    e1, e2 = (get_inner_efficiency(i, q) for i in [1, 2])
     p_miss = (100 - ufloat(e1[0], mean(e1[1:]))) * (100 - ufloat(e2[0], mean(e2[1:]))) / 100
     info('p-miss: {:1.3f}%'.format(p_miss))
     return p_miss
