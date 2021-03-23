@@ -9,6 +9,7 @@ from ROOT.gRandom import Landau
 from numpy import polyfit, RankWarning, vectorize, size, repeat, argmax, insert, array_split, invert
 from numpy.random import normal, rand
 from scipy.signal import find_peaks, savgol_filter
+from scipy.stats import poisson
 
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
@@ -32,9 +33,13 @@ class PeakAnalysis(PadSubAnalysis):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
         return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
-    def get_start_additional(self, bunch=4):
+    def get_start_additional(self, b0=None):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal. Signalbunch = bunch 1 """
-        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (bunch - 1.5) / self.BinWidth)
+        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (choose(b0, 4) - 1.5) / self.BinWidth)
+
+    def get_bunch_range(self, b0=None, b_end=None, bins=False):
+        a = array([self.get_start_additional(b0), self.Run.NSamples if b_end is None else self.get_start_additional(b_end)])
+        return [int(i) for i in a] if bins else [float(i) for i in a * self.BinWidth]
 
     def calc_n_bunches(self):
         return arange(self.StartAdditional, self.Run.NSamples, self.BunchSpacing / self.BinWidth).size
@@ -157,15 +162,42 @@ class PeakAnalysis(PadSubAnalysis):
     def get_n(self, n=1):
         return self.get_n_times(n, ret_indices=True)
 
-    def get_flux(self, n_peaks=None, lam=None, redo=False, prnt=True):
-        def f():
-            n = self.find_n_additional() if n_peaks is None and lam is None else n_peaks
-            lambda_ = ufloat(mean(n), sqrt(mean(n) / n.size)) if lam is None else lam
-            flux = lambda_ / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
-            return flux
-        value = do_pickle(self.make_simple_pickle_path('Flux'), f, redo=redo)
-        self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(value)), prnt=prnt)
-        return value
+    def get_n_total(self, cut=None, b0=None, b_end=None):
+        return self.draw(show=False, cut=cut).Integral(*self.get_bunch_range(b0, b_end, bins=True))
+
+    def get_lambda(self, n_peaks=None, lam=None, cut=None):
+        cut = choose(cut, self.Ana.get_pulser_cut())
+        lam = choose(lam, choose(self.get_n_total(cut), n_peaks) / cut[cut].size)
+        return ufloat(lam, sqrt(lam / (cut[cut].size - 1)))
+
+    def get_flux(self, n_peaks=None, lam=None, prnt=True):
+        flux = self.get_lambda(n_peaks, lam) / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
+        self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)), prnt=prnt)
+        return flux
+
+    def get_n_consecutive(self, n=2):
+        cut = self.Ana.get_pulser_cut()
+        lam = self.get_lambda(cut=cut).n / self.NBunches  # lambda for a single bunch
+        n_events = cut[cut].size
+        p = 1 - poisson.cdf(0, lam)  # probability to have at least one peak in a single bunch
+        return sum(p ** (n - 1) * poisson.pmf(i, lam) * i for i in range(50)) * n_events
+
+    def get_peak_fac(self):
+        h = self.draw(cut=self.Ana.get_pulser_cut(), corr=False, show=False)
+        facs = [self.get_n_bunch(i, h) / h.Integral(*self.get_bunch_range(i, i + 1, bins=True))  for i in range(4, self.NBunches + 3)]
+        return mean_sigma(facs)[0]
+
+    def get_bunch_eff(self, n=0):
+        cut = self.Ana.get_pulser_cut() & self.Ana.get_event_cut('!bucket1[{}]'.format(self.Channel))
+        return self.get_n_bunch(n, cut=cut) / self.get_peak_fac() / cut[cut].size
+
+    def get_n_bunch(self, n=0, h=None, cut=None, show=False):
+        h = self.draw(corr=False, show=show, cut=choose(cut, self.Ana.get_pulser_cut())) if h is None else h
+        f = Draw.make_f('f', 'gaus', *self.get_bunch_range(n, n + 1))
+        h.Fit(f, 'q', '', *self.get_bunch_range(n, n + 1))
+        if show:
+            f.Draw('same')
+        return f.Integral(0, self.Run.NSamples) / self.BinWidth
 
     def get_area(self, bcm=False):
         """ :returns area of the DUT in cm^2"""
@@ -226,7 +258,7 @@ class PeakAnalysis(PadSubAnalysis):
         times, heights, n_peaks = self.get_all(cut=cut, thresh=thresh, redo=redo)
         times = self.get_corrected_times(times, n_peaks, cut=cut) if corr else times
         times = array_split(times, split_)
-        h = [TH1F('hp{}{}'.format(self.Run.Number, i), 'Peak Times', *self.get_binning(bin_size)) for i in range(split_)]
+        h = [TH1F(Draw.get_name('h'), 'Peak Times', *self.get_binning(bin_size)) for _ in range(split_)]
         for i in range(split_):
             v = times[i]
             h[i].FillN(v.size, array(v, 'd'), ones(v.size))
@@ -326,7 +358,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_flux_vs_threshold(self, tmin=None, tmax=None, steps=20):
         x = linspace(choose(tmin, self.NoiseThreshold), choose(tmax, self.Threshold), steps)
-        y = array([self.get_flux(lam=self.get_n_additional(thresh=ix), redo=1) for ix in x]) / 1000.
+        y = array([self.get_flux(lam=self.get_n_additional(thresh=ix)) for ix in x]) / 1000.
         return self.Draw.graph(x, y, title='Flux vs. Peak Threshold', x_tit='Peak Finding Threshold [mV]', y_tit='Flux [MHz/cm^{2}]')
 
     def draw_spacing(self, overlay=False, bin_size=.5, show=True):
@@ -394,10 +426,9 @@ class PeakAnalysis(PadSubAnalysis):
         fit_peaks = array(fit_peaks) - (self.BunchSpacing / 2. if not center else 0)
         return concatenate([fit_peaks, [fit_peaks[-1] + self.BunchSpacing]])
 
-    def find_n_additional(self, start_bunch=4, end_bunch=None, thresh=None, cut=None):
+    def find_n_additional(self, start_bunch=None, end_bunch=None, thresh=None, cut=None):
         times = self.get(cut=cut, thresh=thresh)
-        start = self.get_start_additional(start_bunch) * self.BinWidth
-        end = (self.Run.NSamples if end_bunch is None else self.get_start_additional(end_bunch)) * self.BinWidth
+        start, end = self.get_bunch_range(start_bunch, end_bunch)
         for i in range(times.size):
             times[i] = times[i][(times[i] > start) & (times[i] < end)]
         return array([lst.size for lst in times], dtype='u2')
