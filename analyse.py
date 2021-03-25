@@ -57,6 +57,7 @@ if __name__ == "__main__":
             w = z.Waveform if pargs.tree else None
             t = z.Tracks if pargs.tree else None
             c = z.Run.Converter
+            cut = z.Cut
         except AttributeError:
             pass
         if pargs.draw:
