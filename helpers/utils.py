@@ -884,11 +884,17 @@ class FitRes(object):
         self.NPar = f.GetNpar() if is_tf1 else f.NPar()
         if self.NPar < 1:
             return
-        self.Pars = [f.GetParameter(i) for i in range(self.NPar)] if is_tf1 else list(f.Parameters())
+        self.Pars = array([f.GetParameter(i) for i in range(self.NPar)] if is_tf1 else list(f.Parameters()))
         self.Errors = [f.GetParError(i) for i in range(self.NPar)] if is_tf1 else list(f.Errors())
         self.Names = [f.GetParName(i) if is_tf1 else f.ParName(i) for i in range(self.NPar)]
         self.vChi2 = f.GetChisquare() if is_tf1 else f.Chi2()
         self.vNdf = f.GetNDF() if is_tf1 else f.Ndf()
+
+    def __getitem__(self, item):
+        return self.Pars[item]
+
+    def __repr__(self):
+        return str(self.Pars)
 
     def Parameter(self, arg):
         return self.Pars[arg]
