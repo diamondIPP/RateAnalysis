@@ -310,6 +310,10 @@ class DUTAnalysis(Analysis):
         format_histo(p, x_tit='Track Angle [deg]', y_tit='Pulse Height [mV]', y_off=1.5)
         self.Draw(p, show=show, lm=.12, stats=set_entries())
 
+    def draw_signal_vs_trigger_phase(self, dut=False, cut=None, show=True):
+        x, y = self.get_tree_vec(['trigger_phase[{}]'.format([0, 1][dut]), self.get_signal_var()], self.Cut(cut))
+        self.Draw.profile(x, y, make_bins(11), 'Signal vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Pulse Height [mV]', show=show)
+
     # ----------------------------------------
     # region SIGNAL MAP
     def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True, scale=False):
