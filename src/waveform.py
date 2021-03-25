@@ -20,6 +20,9 @@ class Waveform(PadSubAnalysis):
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
 
+    def __getitem__(self, item):
+        return self.get_all()[item]
+
     def reset(self):
         self.Count = 0
 
