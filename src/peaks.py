@@ -22,6 +22,8 @@ class PeakAnalysis(PadSubAnalysis):
         self.WF = self.Ana.Waveform
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
+        self.Prominence = 10
+        self.Distance = 10
         self.BinWidth = self.DigitiserBinWidth
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
@@ -184,7 +186,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_peak_fac(self):
         h = self.draw(cut=self.Ana.get_pulser_cut(), corr=False, show=False)
-        facs = [self.get_n_bunch(i, h) / h.Integral(*self.get_bunch_range(i, i + 1, bins=True))  for i in range(4, self.NBunches + 3)]
+        facs = [self.get_n_bunch(i, h) / h.Integral(*self.get_bunch_range(i, i + 1, bins=True)) for i in range(4, self.NBunches + 3)]
         return mean_sigma(facs)[0]
 
     def get_bunch_eff(self, n=0):
@@ -254,7 +256,7 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_thresh(self, thresh=None):
         self.Draw.info('Threshold: {:.1f}'.format(choose(thresh, self.Threshold)))
 
-    def draw(self, corr=True, split_=1, thresh=None, bin_size=None, y_range=None, cut=None, show=True, redo=False):
+    def draw(self, corr=False, split_=1, thresh=None, bin_size=None, y_range=None, cut=None, show=True, redo=False):
         times, heights, n_peaks = self.get_all(cut=cut, thresh=thresh, redo=redo)
         times = self.get_corrected_times(times, n_peaks, cut=cut) if corr else times
         times = array_split(times, split_)
@@ -396,11 +398,14 @@ class PeakAnalysis(PadSubAnalysis):
         for i in x:
             heights.append(self.get_bunch_height(i, thresh=thresh, cut=cut))
             self.PBar.update()
-        return self.Draw.graph(x, heights, x_tit='Bunch', y_tit='Peak Height [mV]', w=2, show=show)
+        g = Draw.make_tgrapherrors(x, heights, x_tit='Bunch', y_tit='Peak Height [mV]')
+        ga = Draw.make_tgrapherrors([ufloat(mean(x[3:]), (x[-1] - x[3]) / 2)], [mean_sigma(heights[3:])[0]], color=2)
+        return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], w=2, show=show, color=False, gridy=True)
 
     def draw_pre_bunch_heights(self, b=-1, thresh=80, y_range=None):
-        g = [self.draw_bunch_heights(thresh=thresh, show=False, cut=cut) for cut in [None, b]]
-        self.Draw.multigraph(g, 'Bunch Peak Heights', ['single peak', 'peak in bunch {}'.format(b)], w=2, y_range=y_range)
+        g = [ig for cut in [None, b] for ig in self.draw_bunch_heights(thresh=thresh, show=False, cut=cut).GetListOfGraphs()]
+        tits = ['single peak', 'single average', 'peak in bunch {}'.format(b), 'B{} average'.format(b)]
+        self.Draw.multigraph(g, 'Bunch Peak Heights', tits, w=2, y_range=y_range, gridy=True)
 
     def draw_height_evolution(self, n=1, bin_size=10000, thresh=60):
         x = self.find_bunch_heights(n)
@@ -466,7 +471,7 @@ class PeakAnalysis(PadSubAnalysis):
         return f['times'], f['heights'], f['n_peaks']
 
     def find(self, values, trigger_cell, thresh=None):
-        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=10, prominence=20)
+        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=self.Distance, prominence=self.Prominence)
         return array([peaks[0], array([self.Ana.Waveform.get_calibrated_time(trigger_cell, value) for value in peaks[0]]), peaks[1]['peak_heights']])
 
     def find_from_event(self, event=1819, fit=False):
