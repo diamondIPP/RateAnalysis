@@ -343,7 +343,7 @@ class Draw(object):
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
         do([c.SetGridx, c.SetGridy], [gridx or grid, gridy or grid])
         do([c.SetPhi, c.SetTheta], [phi, theta])
-        th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else 'histo')
+        th.Draw(draw_opt if draw_opt is not None else 'ap' if is_graph(th) else 'hist' if 'TH' in th.ClassName() else '')
         if leg is not None:
             update_canvas()
             for i_leg in make_list(leg):
