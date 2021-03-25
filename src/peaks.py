@@ -22,8 +22,8 @@ class PeakAnalysis(PadSubAnalysis):
         self.WF = self.Ana.Waveform
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
-        self.Prominence = 10
-        self.Distance = 10
+        self.Prominence = 5
+        self.Distance = 35
         self.BinWidth = self.DigitiserBinWidth
         self.StartAdditional = self.get_start_additional()
         self.NBunches = self.calc_n_bunches()
@@ -95,12 +95,12 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_all(self, cut=None, thresh=None, fit=False, redo=False):
         t, h, n = self.find_all(thresh, fit, redo)
-        cut = self.WF.get_cut(cut)
+        cut = self.get_cut(cut)
         lcut = cut.repeat(n)  # make cut for the flat arrays
         return array(t)[lcut], array(h)[lcut], array(n)[cut]
 
     def get(self, flat=False, thresh=None, fit=False, cut=None, i=0):
-        cut = self.WF.get_cut(cut)
+        cut = self.get_cut(cut)
         t, h, n = self.get_all(cut, thresh, fit)
         data = [t, h]
         return array(data[i]) if flat else array(split(data[i], cumsum(n)[:-1]), dtype=object)

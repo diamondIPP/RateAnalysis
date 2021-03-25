@@ -35,6 +35,7 @@ class Waveform(PadSubAnalysis):
         return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
     def get_cut(self, cut=None):
+        cut = self.Ana.get_event_cut(self.Cut.to_string(cut)) if type(cut) == TCut or type(cut) == str else cut
         return array(cut) if is_iter(cut) else self.Ana.make_event_cut(cut) if isint(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
 
     def get_trigger_cells(self, cut=...):
