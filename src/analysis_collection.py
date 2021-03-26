@@ -142,9 +142,9 @@ class AnalysisCollection(Analysis):
     def fix_t_arrays(self, t_arrays):
         """ Add the logged time between two runs if the start time of a run is less than the stop time of the previous. """
         for i in range(len(t_arrays) - 1):
-            diff = t_arrays[i + 1][0] - t_arrays[i][-1]  # check the time difference from the first bin of the next array and the last of the current
-            if diff < 0:
-                t_arrays[i + 1] += self.get_break_time(i) - diff
+            delta = t_arrays[i + 1][0] - t_arrays[i][-1]  # check the time difference from the first bin of the next array and the last of the current
+            if delta < 0:
+                t_arrays[i + 1] += self.get_break_time(i) - delta
         return t_arrays
 
     def get_break_time(self, ind):
@@ -276,6 +276,11 @@ class AnalysisCollection(Analysis):
 
     def get_runs_above_flux(self, flux):
         return [key for key, ana in list(self.Analyses.items()) if ana.Run.Flux >= flux]
+
+    def get_signal_spread(self, peaks=False, redo=False, rel=False):
+        groups = split(self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True), self.get_flux_splits(show=False))
+        values = array([(value - mean_sigma(grp)[0]) / (mean_sigma(grp)[0] if rel else 1) for grp in groups for value in grp if grp.size > 1])
+        return values if values.size > 1 else None
 
     def get_repr_error(self, flux=None, peaks=False, redo=False):
         values = self.draw_signal_spread(peaks, redo, show=False, save=False)
@@ -454,15 +459,16 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('PulseHeightDistributions')
         return ls.GetMean(), ls.GetStdDev()
 
-    def draw_signal_spread(self, peaks=False, redo=False, show=True, save=True):
-        values = self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True)
-        rel_values = array([value - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for value in lst if lst.size > 1])
-        if rel_values.size < 2:
+    def draw_signal_spread(self, rel=False, peaks=False, redo=False, show=True, save=True):
+        values = self.get_signal_spread(peaks, redo)
+        if values is None:
             warning('Not enough data for signal spread ...')
             return
-        h = self.Draw.distribution(rel_values, [40, -2, 2], 'Relative Signal Spread', x_tit='Relative Signal', y_tit='Number of Entries', show=False)
+        t = 'Relative ' if rel else ''
+        bins = make_bins(*ax_range(values, fl=.5, fh=.5), n=2 * sqrt(values.size)) if rel else [40, -2, 2]
+        h = self.Draw.distribution(values, bins, '{}Signal Spread'.format(t), x_tit='{}Signal [mV]'.format(t), y_tit='Number of Entries', show=False)
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
-        return rel_values
+        return values
 
     def draw_fwhm(self, arg=1, vs_time=False, use_fcw=True, show=True, redo=False):
         x, y = self.get_x_var(vs_time), self.get_uniformities(use_fcw, redo)[:, arg]
