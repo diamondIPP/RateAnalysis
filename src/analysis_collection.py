@@ -460,13 +460,14 @@ class AnalysisCollection(Analysis):
         return ls.GetMean(), ls.GetStdDev()
 
     def draw_signal_spread(self, rel=False, peaks=False, redo=False, show=True, save=True):
-        values = self.get_signal_spread(peaks, redo)
+        values = self.get_signal_spread(peaks, redo, rel)
         if values is None:
             warning('Not enough data for signal spread ...')
             return
         t = 'Relative ' if rel else ''
-        bins = make_bins(*ax_range(values, fl=.5, fh=.5), n=2 * sqrt(values.size)) if rel else [40, -2, 2]
-        h = self.Draw.distribution(values, bins, '{}Signal Spread'.format(t), x_tit='{}Signal [mV]'.format(t), y_tit='Number of Entries', show=False)
+        values *= 100 if rel else 1
+        bins = make_bins(*ax_range(values, fl=.5, fh=.5), n=3 * sqrt(values.size)) if rel else [40, -2, 2]
+        h = self.Draw.distribution(values, bins, '{}Signal Spread'.format(t), x_tit='{}Diff [{}]'.format(t, '%' if rel else 'mV'), y_tit='Number of Entries', show=False)
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return values
 
