@@ -245,10 +245,16 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region SHOW INTEGRATION
+    def draw_signal_integral(self, ind=None):
+        w = self.draw_all(ind=ind, n=1)[0]
+        self.draw_sig_int(w)
+        pp = self.draw_peak_pos(w)
+        arrows = self.draw_sig_peakint(w)
+        Draw.legend([pp] + arrows, ['peak position', 'left width', 'right width'], 'l')
+
     def draw_peak_pos(self, h):
         x, y = self.get_max(h)
-        Draw.vertical_line(x, color=4, w=3)
-        Draw.tlatex(x + 2, y, 'Peak Position', color=4, align=12)
+        return Draw.vertical_line(x, color=4, w=2)
 
     def draw_buckets(self, start=0, n=8):
         x0 = self.Ana.SignalRegion[0] * self.BinWidth - (1 - start) * self.BunchSpacing
@@ -274,28 +280,27 @@ class Waveform(PadSubAnalysis):
         Draw.legend([s, p], ['Signal Region', 'Pedestal Time'], scale=2, x2=.95)
 
     @staticmethod
-    def draw_integral(h, xmin, xmax, color=2):
+    def draw_integral(h, xmin, xmax, color=None):
         x, y = get_graph_vecs(h, err=False)
         cut = (x > xmin) & (x < xmax)
         i0, i1 = where(cut)[0][[0, -1]]  # find first and last index fulfilling the condition
         ymin, ymax = interpolate_y(x[i0 - 1], x[i0], y[i0 - 1], y[i0], xmin), interpolate_y(x[i1], x[i1 + 1], y[i1], y[i1 + 1], xmax)
         x = concatenate([[xmin] * 2, x[cut], [xmax] * 2])
         y = concatenate([[0, ymin], y[cut], [ymax, 0]])
-        Draw.polygon(x=x, y=y, line_color=color, fillstyle=3344, fill_color=color)
+        Draw.polygon(x=x, y=y, line_color=2, fill_color=choose(color, Draw.FillColor), opacity=.5)
 
     def draw_peakint(self, x, peakint=None, y=None):
         y = choose(y, -20 * self.Polarity)
         imin, imax = self.Ana.get_peak_integral(peakint) * self.BinWidth
-        Draw.arrow(x - imin, x, y, y, col=618, width=3, opt='<', size=.02)
-        Draw.arrow(x + imax, x, y, y, col=434, width=3, opt='<', size=.02)
+        return [Draw.arrow(x + v, x, y, y, col=col, width=2, opt='<', size=.02) for v, col in [(-imin, 618), (imax, 434)]]
 
     def draw_sig_peakint(self, h, peakint=None):
-        self.draw_peakint(self.get_max(h)[0], peakint)
+        return self.draw_peakint(self.get_max(h)[0], peakint)
 
-    def draw_sig_int(self, h, peakint=None):
+    def draw_sig_int(self, h, peakint=None, color=None):
         xmin, xmax = self.Ana.get_peak_integral(peakint) * [-1, 1] * self.BinWidth + self.get_max(h)[0]
         format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
-        self.draw_integral(h, xmin, xmax)
+        self.draw_integral(h, xmin, xmax, color)
 
     def draw_ped_time(self, color=4, lw=2):
         return Draw.vertical_line(self.Ana.Pedestal.Region * self.BinWidth, -1000, 1000, color=color, w=lw)
