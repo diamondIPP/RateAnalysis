@@ -106,25 +106,25 @@ class PedestalAnalysis(PadSubAnalysis):
         Draw.info('Correlation Factor: {:.2f}'.format(h.GetCorrelationFactor()))
         return h
 
-    def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, normalise=None):
+    def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, **kwargs):
         def f():
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
             x = self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
             bs = choose(bin_size, max(.1, 30 / sqrt(x.size)))
             return self.Draw.distribution(x, self.get_bins(bs), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
-        h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))), f, redo=redo)
-        format_histo(h, normalise=normalise)
+        h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name), bin_size)), f, redo=redo)
+        format_histo(h, **kwargs)
         self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
         return h
 
-    def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, normalise=None):
+    def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, **kwargs):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
-        h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, normalise=normalise)
+        h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, **kwargs)
         fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
         f = Draw.make_f('f', 'gaus', -100, 100, pars=fit_pars[...], npx=1000, line_style=2)
         h.GetFunction('gaus').Draw('same')
         f.Draw('same')
-        format_statbox(h, fit=True)
+        format_statbox(h, fit=True, all_stat=True)
         if draw_cut:
             b = self.__draw_cut(h)
             h.Draw('same')
