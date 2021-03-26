@@ -152,7 +152,7 @@ class DUTAnalysis(Analysis):
 
     def get_flux_correction(self, correct=True):
         def f():
-            if not self.Cut.has('fiducial'):
+            if not self.Cut.HasFid:
                 return 1
             n1, n2 = self.get_n_entries(self.Cut.generate_custom(include=['tracks', 'fiducial'], prnt=False)), self.get_n_entries(self.Cut.get('tracks'))
             a1, a2 = self.Cut.get_fiducial_area(), min(self.Run.get_unmasked_area().values())

@@ -22,6 +22,7 @@ class Cut(SubAnalysis):
 
         # Cut Strings
         self.CutStrings = CutStrings()
+        self.HasFid = False
 
         # generate cut strings
         self.generate()
@@ -54,6 +55,7 @@ class Cut(SubAnalysis):
         if v is None:
             warning('fiducial cut not defined!')
             return make_box_args(-1, -1, 1, 1)
+        self.HasFid = True
         return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
 
     def load_dut_config(self, option, warn=True):
