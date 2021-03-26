@@ -283,7 +283,7 @@ class AnalysisCollection(Analysis):
         return values if values.size > 1 else None
 
     def get_repr_error(self, flux=None, peaks=False, redo=False):
-        values = self.draw_signal_spread(peaks, redo, show=False, save=False)
+        values = self.get_signal_spread(peaks, redo)
         return self.get_repr_error_old(flux, show=False) if values is None else mean_sigma(values, err=False)[1]
 
     def get_repr_error_old(self, flux, show=True, redo=False):
