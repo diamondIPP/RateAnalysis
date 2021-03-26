@@ -3,17 +3,14 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-
 from ROOT import TH1F
-from numpy import linspace, split, cumsum
-
-from Correlation import Correlation
-from event_alignment import EventAligment
-from utils import *
+from numpy import linspace
+from src.correlation import Correlation
+from src.event_alignment import *
 
 
 class PixAlignment(EventAligment):
-    def __init__(self, converter):
+    def __init__(self, converter=None):
 
         # Info
         self.Threshold = .4
@@ -32,7 +29,7 @@ class PixAlignment(EventAligment):
 
     def update_variables(self):
         """Find all events with have both hits in the two checked planes"""
-        t = self.Run.info('Loading pixel information from tree ... ', next_line=False)
+        t = self.Run.info('Loading pixel information from tree ... ', endl=False)
         for i, ev in enumerate(self.Variables):
             plane, row = ev[0], ev[2]
             if count_nonzero(plane == self.TelPlane) == 1:
@@ -44,12 +41,12 @@ class PixAlignment(EventAligment):
 
     def check_alignment_fast(self):
         """ only check alignment for subsets of 10k events """
-        t = self.Run.info('Fast check for event alignment ... ', next_line=False)
+        t = self.Run.info('Fast check for event alignment ... ', endl=False)
         corrs = []
         for start_event in linspace(0, self.NEntries, 10, endpoint=False, dtype='i4'):
             correlation = Correlation(self, bucket_size=10000)
             n = self.InTree.Draw('plane:row', '', 'goff', 10000, start_event)
-            planes, rows = get_root_vecs(self.InTree, n, 2, dtype='u1')
+            planes, rows = get_tree_vec(self.InTree, n, 2, dtype='u1')
             n_hits = self.load_n_hits(10000, start_event)
             for i, (plane, row) in enumerate(split(array([planes, rows]), cumsum(n_hits), axis=1)):
                 if count_nonzero(plane == self.TelPlane) == 1 and count_nonzero(plane == self.DUTPlane) == 1:  # if both planes have exactly one hit
@@ -61,9 +58,9 @@ class PixAlignment(EventAligment):
         return is_aligned
 
     def check_alignment(self):
-        t = self.Run.info('Checking aligment ... ', next_line=False)
+        t = self.Run.info('Checking aligment ... ', endl=False)
         correlation = Correlation(self)
-        for ev, row in self.TelRow.iteritems():
+        for ev, row in self.TelRow.items():
             correlation.fill(ev)
         correlations = correlation.get_all_zero()
         h = TH1F('h_ee', 'Event Alignment', int(sqrt(len(correlations))), 0, 1)
@@ -108,7 +105,7 @@ class PixAlignment(EventAligment):
         except StopIteration:
             off_event = correlations.keys()[max_index]
         if debug:
-            print mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1)
+            print(mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1))
         return off_event
 
     def find_offset(self, correlation, debug=False):
@@ -117,7 +114,7 @@ class PixAlignment(EventAligment):
             return None
         min_anti_corr = min(inter_correlations.keys())
         if debug:
-            print 'anti correlation:', min_anti_corr
+            print('anti correlation:', min_anti_corr)
         return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
 
     def find_start_offset(self):
@@ -134,10 +131,10 @@ class PixAlignment(EventAligment):
 
     def draw_sliding(self, correlation):
         correlations = correlation.get_all_sliding()
-        for off, corrs in correlations.iteritems():
+        for off, corrs in correlations.items():
             self.Run.set_root_output(False)
             g = self.Run.make_tgrapherrors('g{o}'.format(o=off), 'Sliding correlation for offset {o}'.format(o=off), x=corrs.keys(), y=corrs.values())
-            self.Run.draw_histo(g, draw_opt='alp')
+            self.Run.histo(g, draw_opt='alp')
 
     def find_jump(self, correlation, debug=False):
         correlations = correlation.get_sliding()
@@ -160,9 +157,9 @@ class PixAlignment(EventAligment):
         if o_off_event is None:
             return None, None, None
         if debug:
-            print l_mean, l_off_event
-            print o_off_event
-            print offset
+            print(l_mean, l_off_event)
+            print(o_off_event)
+            print(offset)
         return l_off_event, o_off_event, offset
 
     @staticmethod
@@ -192,14 +189,14 @@ class PixAlignment(EventAligment):
         return correlations.keys()[correlations.values().index(next(c for c in correlations.values()[ind:] if c > self.Threshold)) - 3]
 
     def find_manual_offsets(self, debug=False):
-        t = self.Run.info('Scanning for precise offsets ... ', next_line=False)
+        t = self.Run.info('Scanning for precise offsets ... ', endl=False)
 
         n = self.BinSize
         correlation = Correlation(self, n_offsets=2, bucket_size=n)
 
         offsets = OrderedDict()
         offset = 0
-        for ev in self.TelRow.iterkeys():
+        for ev in self.TelRow.keys():
             # fill the correlation vectors
             correlation.fill(ev, offset)
             if correlation.start():
@@ -218,7 +215,7 @@ class PixAlignment(EventAligment):
                             correlation.reset_except_last(2)
                     # now we have lost correlation for at least three buckets
                     else:
-                        last_off_event = offsets.keys()[-1] if offsets else 0
+                        last_off_event = list(offsets.keys())[-1] if offsets else 0
                         off_event = self.find_lose_corr_event(correlation, last_off_event, debug=debug)
                         off = self.find_offset(correlation)
                         if off is not None:
@@ -239,7 +236,7 @@ class PixAlignment(EventAligment):
         """ take first 10000 events and find a suitable bucket size to build the correlation """
         correlation = Correlation(self, bucket_size=10)
         max_ev = 10000
-        for ev in self.TelRow.iterkeys():
+        for ev in self.TelRow.keys():
             if ev > max_ev:
                 break
             correlation.fill(ev)
@@ -249,7 +246,7 @@ class PixAlignment(EventAligment):
             if correlation.get_events() < 700:
                 break
             try:
-                for i, n in enumerate(xrange(10, 100)):
+                for i, n in enumerate(range(10, 100)):
                     correlation.set_bucket_size(n)
                     corrs = correlation.get_all_zero()
                     mean_, sigma = mean_sigma(corrs)
@@ -257,7 +254,7 @@ class PixAlignment(EventAligment):
                 # if show:
                 #     g = self.Run.make_tgrapherrors('g_bs', 'Sigma of the Bucket Sizes', x=sigmas.values(), y=sigmas.keys())
                 #     self.Run.draw_histo(g, draw_opt='alp')
-                size = next(n for sig, n in sigmas.iteritems() if sig < .09)
+                size = next(n for sig, n in sigmas.items() if sig < .09)
                 break
             except StopIteration:
                 correlation.delete_events(len(correlation.TelRow[0]) / 2, max_ev)
@@ -273,16 +270,16 @@ class PixAlignment(EventAligment):
             tel_event, dut_event = self.Variables[self.AtEntry + tel_offset], self.Variables[self.AtEntry + dut_offset]
             # merge the right parts of the events
             event = concatenate((tel_event[:, tel_event[0] < self.NDutPlanes], dut_event[:, dut_event[0] >= self.NDutPlanes]), axis=1)
-        for i, name in enumerate(self.Branches.iterkeys()):
+        for i, name in enumerate(self.Branches.keys()):
             for value in event[i]:
                 self.Branches[name].push_back(value)
 
 
 if __name__ == '__main__':
 
-    from pixel_run import PixelRun
-    from converter import Converter
+    from src.pix_run import PixelRun
+    from src.converter import Converter
 
     args = init_argparser(run=147, tc='201810')
-    zrun = PixelRun(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
+    zrun = PixelRun(args.run, testcampaign=args.testcampaign, tree=False, verbose=True)
     z = PixAlignment(Converter(zrun))
