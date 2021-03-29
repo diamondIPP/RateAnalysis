@@ -35,7 +35,6 @@ class AutoConvert:
 
         # check if we have to convert the run
         if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:
-            print('{}: final file exists'.format(run))
             return
         raw_file = self.Run.Converter.RawFilePath
         if not file_exists(raw_file, warn=True):
@@ -45,8 +44,8 @@ class AutoConvert:
         while file_is_beeing_written(raw_file):
             info('waiting until run {} is finished since {}'.format(run, get_running_time(t)), endl=False)
             sleep(1)
-        print()
-        Run(run, self.Run.TCString)
+        r = Run(run, self.Run.TCString)
+        return f'{run} --> {timedelta(seconds=round(time() - r.InitTime))}'
 
     def auto_convert(self):
         """Sequential conversion with check if the file is currently written. For usage during beam tests."""
@@ -71,8 +70,11 @@ class AutoConvert:
 
         runs = [run for run in self.Runs if self.FirstRun <= run <= self.EndRun]
         results = [pool.apply_async(self, [run]) for run in runs]
-        for res in results:
-            print(res.get(timeout=2 * 24 * 60 * 60))
+        # for res in results:
+        strings = [res.get(timeout=2 * 24 * 60 * 60) for res in results]
+        for s in strings:
+            if s is not None:
+                print(s)
 
     def run(self):
         self.multi() if self.Multi else self.auto_convert()
