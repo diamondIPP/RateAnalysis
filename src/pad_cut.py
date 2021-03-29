@@ -58,6 +58,7 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_saturated(), level=3)
 
         # -- SIGNAL --
+        self.CutStrings.register(self.generate_pedestal_bucket(), 29)
         self.CutStrings.register(self.generate_pedestal_sigma(), 30)
         # self.CutStrings.register(self.generate_threshold(), 31)
         # self.CutStrings.register(self.generate_timing(), 35)
@@ -90,11 +91,19 @@ class PadCut(Cut):
         thresh = self.calc_threshold(show=False)
         return CutString('threshold', '{} > {}'.format(self.Ana.get_raw_signal_var(), thresh), thresh)
 
+    def generate_pedestal_bucket(self):
+        """exclude events with a peak in bucket -1 (the pre-pedstal bucket)"""
+        return CutString('ped bucket', f'!ped_bucket[{self.Channel}]', 'pedestal bucket events')
+
     def generate_pre_bucket(self):
         """select only events when the signal in the signal and consecutive bucket are the same."""
         return CutString('pre-bucket', '{} == {}'.format(self.Ana.get_signal_name(region='e'), self.Ana.get_signal_name()))
 
-    def generate_bucket(self, thresh=None):
+    def generate_bucket(self):
+        """exclude events with a peak in bucket 2 and no peak in the signal region"""
+        return CutString('bucket', f'!bucket[{self.Channel}]', 'bucket events')
+
+    def generate_thresh_bucket(self, thresh=None):
         """select bucket events below threshold and then negate it"""
         thresh = choose(thresh, self.get_bucket_threshold())
         string = self.generate_pre_bucket()() if thresh is None else (CutString('', self.generate_pre_bucket().invert()) + '{} < {}'.format(self.Ana.get_raw_signal_var(), thresh)).invert()
@@ -316,8 +325,8 @@ class PadCut(Cut):
 
     def draw_bucket_means(self):
         thresh = self.calc_bucket_threshold()
-        args = [('no bucket', 'bucket', None), ('pre bucket', 'bucket', self.generate_pre_bucket()), ('with threshold', None, None), ('thresh + 5', 'bucket', self.generate_bucket(thresh + 5)),
-                ('thresh - 5', 'bucket', self.generate_bucket(thresh - 5))]
+        args = [('no bucket', 'bucket', None), ('pre bucket', 'bucket', self.generate_pre_bucket()), ('with threshold', None, None), ('thresh + 5', 'bucket', self.generate_thresh_bucket(thresh + 5)),
+                ('thresh - 5', 'bucket', self.generate_thresh_bucket(thresh - 5))]
         cuts = [self.generate_custom(name=n, exclude=e, add=a) for n, e, a in args]
         self.draw_means(cuts=cuts, names=[cut.GetName() for cut in cuts])
 
