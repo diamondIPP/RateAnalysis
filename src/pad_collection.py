@@ -133,11 +133,9 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region CUTS
-    def draw_n_bucket(self, show=True):
-        x, y = self.get_fluxes(), self.get_values('bucket events', self.Analysis.get_n_bucket, picklepath=self.FirstAnalysis.Cut.make_simple_pickle_path('BucketEvents', run='{}')).T
-        graphs = [Draw.make_tgrapherrors(x, y[i] / y[-1] * 100) for i in [0, 1]]
-        mg = self.Draw.multigraph(graphs, 'Percentage of Bucket Events', ['w/o thresh', 'with thresh'], y_tit='Percentage', show=show, logx=True)
-        format_histo(mg, **self.get_x_args(), y_range=ax_range(y[0] / y[-1] * 100, 0, 0, .3))
+    def draw_bucket_ratio(self, show=True):
+        x, y = self.get_fluxes(), self.get_values('bucket events', self.Analysis.get_bucket_ratio, picklepath=self.FirstAnalysis.make_simple_pickle_path('BucketRatio', run='{}'))
+        self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw_args=1), show=show)
 
     def draw_bucket_ph(self, show=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Fit', '{}_1_b2_nobucket'.format(Bins.Size), 'Ph_fit', '{}')

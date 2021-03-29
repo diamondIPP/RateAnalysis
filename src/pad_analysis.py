@@ -194,8 +194,11 @@ class PadAnalysis(DUTAnalysis):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
-    def get_n_bucket(self):
-        return self.Cut.print_bucket_events(prnt=False)
+    def get_bucket_ratio(self, redo=False):
+        def f():
+            cut = self.Cut['pulser'] + self.Cut['ped sigma']
+            return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
+        return do_pickle(self.make_simple_pickle_path('BucketRatio'), f, redo=redo)
 
     def get_min_signal(self, name=None):
         h = self.draw_signal_distribution(show=False, save=False, sig=name)
@@ -225,8 +228,8 @@ class PadAnalysis(DUTAnalysis):
     def get_additional_peak_height(self):
         return self.Peaks.draw_additional(show=False)
 
-    def get_peak_flux(self, prnt=True, redo=False):
-        return self.Peaks.get_flux(prnt=prnt, redo=redo)
+    def get_peak_flux(self, prnt=True):
+        return self.Peaks.get_flux(prnt=prnt)
 
     def get_n_peaks(self, start_bunch=None, end_bunch=None):
         return self.Peaks.get_n_additional(start_bunch, end_bunch)
