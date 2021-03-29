@@ -17,7 +17,8 @@ class AutoConvert:
     def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, verbose=False):
 
         self.Run = Run(None, testcampaign=test_campaign, tree=False, verbose=verbose)
-        self.RunInfos = self.Run.load_run_info_file()
+        self.RunInfos = OrderedDict((int(key), value) for key, value in self.Run.load_run_info_file().items())
+        self.Runs = array(list(self.RunInfos.keys()), 'i2')
 
         self.Multi = multi
         self.FirstRun = self.find_last_converted(first_run)
@@ -26,7 +27,7 @@ class AutoConvert:
 
     def find_last_converted(self, run=None):
         last = max([int(remove_letters(basename(name))) for name in glob(join(self.Run.TCDir, 'root', '*', 'TrackedRun*.root'))])
-        return next(int(key) for key in self.RunInfos.keys() if int(key) >= int(run)) if run is not None else last
+        return self.Runs[self.Runs >= int(run)] if run is not None else last
 
     def convert_run(self, run):
 
@@ -49,12 +50,12 @@ class AutoConvert:
 
     def auto_convert(self):
         """Sequential conversion with check if the file is currently written. For usage during beam tests."""
-        for run in self.RunInfos:
+        for run in self.Runs:
             if run >= self.FirstRun:
                 self.convert_run(run)
             # wait until a new run was added to the run log
             t = time()
-            while run == max(self.RunInfos):
+            while run == max(self.Runs):
                 info('waiting for new run ... {} since {}'.format(run + 1, get_running_time(t)), endl=False)
                 self.RunInfos = self.Run.load_run_info_file()
                 sleep(1)
@@ -68,7 +69,7 @@ class AutoConvert:
 
         pool = Pool(n_cpus)
 
-        runs = [int(run) for run in self.RunInfos if self.FirstRun <= int(run) <= self.EndRun]
+        runs = [run for run in self.Runs if self.FirstRun <= run <= self.EndRun]
         results = [pool.apply_async(self, [run]) for run in runs]
         for res in results:
             print(res.get(timeout=2 * 24 * 60 * 60))
