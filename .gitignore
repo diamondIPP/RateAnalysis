@@ -1,6 +1,5 @@
 *.pyc
 Results*
-Plots*/
 *.json
 *.pickle
 *.hdf5
@@ -10,7 +9,6 @@ Plots*/
 *.pdf
 .idea/
 test*
-.last_converted.txt
 config/soft.ini
 config/main.ini
 venv
