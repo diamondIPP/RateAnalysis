@@ -27,7 +27,7 @@ class AutoConvert:
 
     def find_last_converted(self, run=None):
         last = max([int(remove_letters(basename(name))) for name in glob(join(self.Run.TCDir, 'root', '*', 'TrackedRun*.root'))])
-        return self.Runs[self.Runs >= int(run)] if run is not None else last
+        return self.Runs[self.Runs >= int(run)][0] if run is not None else last
 
     def convert_run(self, run):
 
