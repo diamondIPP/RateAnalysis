@@ -68,7 +68,7 @@ class AutoConvert:
 
         pool = Pool(n_cpus)
 
-        runs = [run for run in self.RunInfos if self.FirstRun <= run <= self.EndRun]
+        runs = [int(run) for run in self.RunInfos if self.FirstRun <= int(run) <= self.EndRun]
         results = [pool.apply_async(self, [run]) for run in runs]
         for res in results:
             print(res.get(timeout=2 * 24 * 60 * 60))
