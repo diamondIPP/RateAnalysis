@@ -84,8 +84,7 @@ class EventAligment(object):
 
     def load_n_hits(self, n_entries=None, first_entry=0):
         self.InTree.SetEstimate(self.NEntries)
-        n = self.InTree.Draw('@plane.size()', '', 'goff', self.NEntries if n_entries is None else n_entries, first_entry)
-        return get_tree_vec(self.InTree, n, dtype='u1')
+        return get_tree_vec(self.InTree, '@plane.size()', '', 'u1', choose(n_entries, self.NEntries), first_entry)
 
     def load_variables(self):
         """ get all the telescope branches in vectors"""
