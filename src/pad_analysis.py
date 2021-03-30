@@ -10,6 +10,7 @@ from src.peaks import PeakAnalysis
 from src.pulser import PulserAnalysis
 from src.waveform import Waveform
 from src.correlation import correlate
+from src.mc_signal import MCSignal
 
 
 class PadAnalysis(DUTAnalysis):
@@ -43,6 +44,7 @@ class PadAnalysis(DUTAnalysis):
             self.Pulser = PulserAnalysis(self)
             self.Waveform = Waveform(self)
             self.Peaks = PeakAnalysis(self)
+            self.MC = MCSignal(self)
 
             # alignment
             self.IsAligned = self.check_alignment()
@@ -125,7 +127,7 @@ class PadAnalysis(DUTAnalysis):
             from src.pad_alignment import PadAlignment
             return PadAlignment(self.Run.Converter, verbose=False).IsAligned
         is_aligned = do_pickle(self.make_simple_pickle_path(sub_dir='Alignment'), f, redo=redo)
-        warning('\nRun {r} is misaligned :-('.format(r=self.Run.Number)) if not is_aligned else do_nothing()
+        warning('Run {r} is misaligned :-('.format(r=self.Run.Number)) if not is_aligned else do_nothing()
         return is_aligned
     # endregion INIT
     # ----------------------------------------
@@ -352,7 +354,7 @@ class PadAnalysis(DUTAnalysis):
             values = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut), nentries=nentries, firstentry=start)
             return self.Draw.distribution(values, self.Bins.get_pad_ph(bin_width, mean(values)), show=False, x_tit='Pulse Height [mV]', y_off=2)
 
-        suffix = '{b}_{c}_{cut}_{n}'.format(b=bin_width, c=int(evnt_corr), cut=self.Cut(cut).GetName(), n=self.get_short_regint(sig))
+        suffix = f'{bin_width}_{evnt_corr:d}_{self.Cut(cut).GetName()}_{self.get_short_regint(sig)}'
         h = do_pickle(self.make_simple_pickle_path('Histo', suffix, 'PulseHeight'), func, redo=redo)
         format_histo(h, x_range=choose(x_range, ax_range(0, 3, .1, h=h)), normalise=normalise)
         self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, stats=None)
