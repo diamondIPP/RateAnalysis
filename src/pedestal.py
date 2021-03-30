@@ -61,6 +61,12 @@ class PedestalAnalysis(PadSubAnalysis):
 
     def get_raw_noise(self, cut=None, redo=False):
         return self.get_noise(self.RawName, cut, redo)
+
+    def get_under_signal(self, err=True, redo=False):
+        def f():
+            return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
+        return do_pickle('USig', f, redo=redo).get_pars(err)[1:]
+
     # endregion GET
     # ----------------------------------------
 
