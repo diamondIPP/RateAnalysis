@@ -172,6 +172,9 @@ class PeakAnalysis(PadSubAnalysis):
         lam = choose(lam, choose(self.get_n_total(cut), n_peaks) / cut[cut].size)
         return ufloat(lam, sqrt(lam / (cut[cut].size - 1)))
 
+    def get_p_extra(self):
+        return 1 - poisson.cdf(0, self.get_lambda().n / self.NBunches)
+
     def get_flux(self, n_peaks=None, lam=None, prnt=True):
         flux = self.get_lambda(n_peaks, lam) / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
         self.info('Estimated Flux by number of peaks: {}'.format(make_flux_string(flux)), prnt=prnt)
