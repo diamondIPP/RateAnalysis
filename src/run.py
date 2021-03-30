@@ -359,7 +359,7 @@ class Run(Analysis):
     def has_branch(self, name):
         return bool(self.Tree.GetBranch(name))
 
-    def info(self, msg, endl=False, blank_lines=0, prnt=None):
+    def info(self, msg, endl=True, blank_lines=0, prnt=None):
         return info(msg, endl, prnt=self.Verbose if prnt is None else prnt, blank_lines=blank_lines)
 
     def add_to_info(self, t, txt='Done'):

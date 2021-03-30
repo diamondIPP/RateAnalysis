@@ -40,7 +40,7 @@ class PadAlignment(EventAligment):
         bins = histogram2d(x, y > 2, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)
-        self.Run.info(f'{100 * misaligned / bins.size:.1f}% of the events are misalignment :-(' if misaligned else 'Run {} is perfectly aligned :-)'.format(self.Run.Number))
+        self.Run.info(f'{100 * misaligned / bins.size:.1f}% of the events are misalignment :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
         return misaligned == 0
     # endregion INIT
     # ----------------------------------------
