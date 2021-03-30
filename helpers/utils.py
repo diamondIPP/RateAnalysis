@@ -896,6 +896,9 @@ class FitRes(object):
     def __repr__(self):
         return str(self.Pars)
 
+    def get_pars(self, err=True):
+        return array([ufloat(p, e) for p, e in zip(self.Pars, self.Errors)]) if err else self.Pars
+
     def Parameter(self, arg):
         return self.Pars[arg]
 
