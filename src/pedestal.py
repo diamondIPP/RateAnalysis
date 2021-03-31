@@ -65,7 +65,7 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_under_signal(self, err=True, redo=False):
         def f():
             return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
-        return do_pickle('USig', f, redo=redo).get_pars(err)[1:]
+        return do_pickle(self.make_simple_pickle_path('USig'), f, redo=redo).get_pars(err)[1:]
 
     # endregion GET
     # ----------------------------------------
