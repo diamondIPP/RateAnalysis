@@ -33,7 +33,7 @@ class PeakAnalysis(PadSubAnalysis):
     # region INIT
     def calc_noise_threshold(self):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
-        return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
+        return abs(self.Ana.Pedestal.get_raw_mean() + 3 * self.Ana.Pedestal.get_raw_noise()).n
 
     def get_start_additional(self, b0=None):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal. Signalbunch = bunch 1 """
@@ -173,7 +173,8 @@ class PeakAnalysis(PadSubAnalysis):
         return ufloat(lam, sqrt(lam / (cut[cut].size - 1)))
 
     def get_p_extra(self):
-        return 1 - poisson.cdf(0, self.get_lambda().n / self.NBunches)
+        scale = self.get_n_total(b0=1, b_end=2) / count_nonzero(self.get_cut())  # assume the additional miss as many events as the signal
+        return (1 - poisson.cdf(0, self.get_lambda().n / self.NBunches)) / scale
 
     def get_flux(self, n_peaks=None, lam=None, prnt=True):
         flux = self.get_lambda(n_peaks, lam) / (self.Ana.BunchSpacing * self.NBunches * self.get_area()) * 1e6
