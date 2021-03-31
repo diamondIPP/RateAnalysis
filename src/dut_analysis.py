@@ -44,6 +44,12 @@ class DUTAnalysis(Analysis):
             self.Tracks = Tracks(self)
             self.Tel = Telescope(self)
 
+    def __str__(self):
+        return f'{self.__class__.__name__} of {self.Run} and {self.DUT}'
+
+    def __repr__(self):
+        return self.__str__()
+
     @staticmethod
     def init_run(run_number, testcampaign, tree, t_vec, verbose):
         return Run(run_number, testcampaign, tree, t_vec, verbose)
