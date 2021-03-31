@@ -11,7 +11,7 @@ from helpers.utils import *
 from src.run import Run
 
 
-class RunSelection(object):
+class RunPlan(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
     def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
@@ -624,7 +624,7 @@ if __name__ == '__main__':
     p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
     args = p.parse_args()
 
-    z = RunSelection(args.testcampaign, args.runplan, args.dut, args.verbose)
+    z = RunPlan(args.testcampaign, args.runplan, args.dut, args.verbose)
     if args.show:
         if args.runplan is not None:
             print_banner(z.TCString)

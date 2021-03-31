@@ -22,8 +22,8 @@ def analysis_selector(run, dut, tc, tree, verbose=False):
 
 
 def collection_selector(rp, dut, tc, tree, verbose=False):
-    from src.run_selection import RunSelection
-    dummy = RunSelection(tc, rp, dut, verbose=False)
+    from src.run_selection import RunPlan
+    dummy = RunPlan(tc, rp, dut, verbose=False)
     if dummy.get_selected_type() == 'pad':
         from src.pad_collection import PadCollection
         if 'voltage' in dummy.SelectedType:

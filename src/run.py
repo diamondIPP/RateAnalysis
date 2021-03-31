@@ -343,8 +343,8 @@ class Run(Analysis):
 
     def get_high_rate_run(self):
         def f():
-            from src.run_selection import RunSelection
-            return int(RunSelection(testcampaign=self.TCString).get_high_rate_run(self.Number))
+            from src.run_selection import RunPlan
+            return int(RunPlan(testcampaign=self.TCString).get_high_rate_run(self.Number))
         return do_pickle(self.make_simple_pickle_path('HR', run=self.Number), f)
     # endregion GET
     # ----------------------------------------

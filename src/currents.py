@@ -4,7 +4,7 @@ from ROOT import TH2F
 from numpy import genfromtxt, isnan, datetime64, invert, uint32, char
 from helpers.save_plots import *
 from src.analysis import Analysis
-from src.run_selection import RunSelection
+from src.run_selection import RunPlan
 
 
 class Currents(Analysis):
@@ -25,7 +25,7 @@ class Currents(Analysis):
         # Config
         self.Ana = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
-        self.RunSelection = RunSelection(testcampaign=self.TCString)
+        self.RunSelection = RunPlan(testcampaign=self.TCString)
         self.RunLogs = self.RunSelection.RunInfos
         self.Run = self.RunSelection.Run if analysis is None else self.Ana.FirstAnalysis.Run if self.IsCollection else self.Ana.Run
         self.RunPlan = self.load_run_plan()  # required for plotting

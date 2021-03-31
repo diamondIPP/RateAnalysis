@@ -5,7 +5,7 @@ from numpy import sort, log, argmin, argmax
 from src.analysis import Analysis, glob
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins
-from src.run_selection import RunSelection
+from src.run_selection import RunPlan
 from helpers.draw import *
 
 
@@ -15,7 +15,7 @@ class AnalysisCollection(Analysis):
     def __init__(self, run_plan, dut_nr, testcampaign=None, load_tree=True, verbose=False):
 
         # RUN SELECTION
-        self.RunSelection = RunSelection(testcampaign, run_plan, dut_nr, verbose)
+        self.RunSelection = RunPlan(testcampaign, run_plan, dut_nr, verbose)
         self.Runs = array(self.RunSelection.get_selected_runs())
         self.NRuns = self.Runs.size
         self.RunPlan = self.RunSelection.SelectedRunplan
