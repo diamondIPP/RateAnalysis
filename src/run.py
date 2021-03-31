@@ -104,6 +104,7 @@ class Run(Analysis):
         self.info('Loading information for rootfile: {file}'.format(file=basename(self.RootFilePath)), endl=False)
         self.RootFile = TFile(self.RootFilePath)
         self.Tree = self.RootFile.Get(self.TreeName)
+        return self.Tree
 
     def load_run_config(self):
         base_file_name = join(get_base_dir(), 'config', self.TCString, 'RunConfig.ini')

@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-from ROOT import gROOT, TF1, TFile, TMath, TSpectrum
+from ROOT import gROOT, TF1, TFile, TMath, TSpectrum, TTree
 
 import pickle
 from collections import OrderedDict
@@ -728,7 +728,10 @@ class MyThread(Thread):
 
 
 def get_time_vec(sel, run=None):
-    if run is None:
+    if hasattr(run, 'Number'):
+        tree = run.load_rootfile()
+        run = run.Number
+    elif type(sel) == TTree:
         tree = sel
     else:
         t = MyThread(sel, run)

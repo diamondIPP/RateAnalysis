@@ -11,6 +11,34 @@ from helpers.utils import *
 from src.run import Run
 
 
+class RunSelection(object):
+    """ Container for an arbitrary selection of runs. """
+
+    def __init__(self, name):
+        self.Name = name
+        self.Data = self.load_data()
+        self.Type = Run(self.Data[0][0], self.Data[0][2], tree=False, verbose=False).Type
+
+    def load_data(self):
+        name = self.Name.lower()
+        data = {key.lower(): value for key, value in load_json(join(get_base_dir(), 'Runinfos', 'run_selections.json')).items()}
+        if name not in data:
+            critical(f'{self.Name} is not a valid selection name!')
+        return [(run, dut, tc) for tc, lst in data[name].items() for run, dut in lst]
+
+    def get_analyses(self):
+        if self.Type == 'pad':
+            from src.pad_analysis import PadAnalysis
+            t = self.get_time_vecs()
+            return [PadAnalysis(*self.Data[i], t_vec=t[i], prnt=False) for i in range(len(self.Data))]
+
+    def get_time_vecs(self):
+        runs = [Run(data[0], data[2], tree=False, verbose=False) for data in self.Data]
+        with Pool() as pool:
+            res = pool.starmap(get_time_vec, [(None, run) for run in runs])
+            return res
+
+
 class RunPlan(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
