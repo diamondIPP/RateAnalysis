@@ -17,6 +17,15 @@ from helpers.save_plots import *
 from src.analysis import Analysis
 from helpers.fit import Langau
 from src.binning import Bins
+from functools import wraps
+
+
+def reload_tree(func):
+    @wraps(func)
+    def my_func(*args, **kwargs):
+        DUTAnalysis.reload_tree_(args[0])
+        return func(*args, **kwargs)
+    return my_func
 
 
 class DUTAnalysis(Analysis):
@@ -49,6 +58,13 @@ class DUTAnalysis(Analysis):
 
     def __repr__(self):
         return self.__str__()
+
+    def reload_tree_(self):
+        self.Tree = self.Run.load_rootfile(prnt=False)
+
+    def set_tree(self, tree):
+        self.Tree = tree
+        self.Run.Tree = tree
 
     @staticmethod
     def init_run(run_number, testcampaign, tree, t_vec, verbose):

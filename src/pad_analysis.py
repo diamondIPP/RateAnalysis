@@ -184,6 +184,7 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: all pulse height values for a given cut. """
         return self.Run.get_tree_vec(var=self.get_signal_var(name, cut=cut, region=region), cut=self.Cut(cut))
 
+    @reload_tree
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
