@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-from ROOT import gROOT, TF1, TFile, TMath, TSpectrum, TTree
+from ROOT import gROOT, TF1, TMath, TSpectrum, TTree
 
 import pickle
 from collections import OrderedDict
@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, any, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
+from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
 from numpy import histogram, log2, diff, isfinite, pi
 from os import makedirs, _exit, remove, devnull
 from os import path as pth
@@ -681,52 +681,6 @@ def find_graph_margins(graphs):
     return min([min(gr.GetY()[i] for i in range(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
 
 
-def load_root_files(sel, init=True):
-    threads = {}
-    for run in sel.get_selected_runs():
-        thread = MyThread(sel, run, init)
-        thread.start()
-        threads[run] = thread
-    while any([thread.is_alive() for thread in threads.values()]) and init:
-        sleep(.1)
-    if init:
-        pool = Pool(len(threads))
-        results = [pool.apply_async(get_time_vec, (thread.Selection, thread.Run)) for thread in threads.values()]
-        times = [result.get(60) for result in results]
-        for thread, t in zip(iter(threads.values()), times):
-            thread.Time = t
-        pool.close()
-    return threads
-
-
-class MyThread(Thread):
-    def __init__(self, sel, run, init=True):
-        Thread.__init__(self)
-        self.Load = init
-        self.Run = run
-        self.Selection = sel
-        self.File = None
-        self.Tree = None
-        self.Tuple = None
-        self.Time = None
-
-    def run(self):
-        self.load_tree()
-
-    def load_tree(self):
-        if not self.Load:
-            self.Tuple = False
-            return
-        info('Loading run {r}'.format(r=self.Run), endl=False)
-        file_path = self.Selection.get_final_file_path(self.Run)
-        if file_exists(file_path):
-            self.File = TFile(file_path)
-            self.Tree = self.File.Get('tree')
-            self.Tuple = (self.File, self.Tree)
-        self.Tree.SetEstimate(-1)
-        return self.Tree
-
-
 def get_time_vec(sel, run=None):
     if hasattr(run, 'Number'):
         tree = run.load_rootfile()
@@ -734,8 +688,8 @@ def get_time_vec(sel, run=None):
     elif type(sel) == TTree:
         tree = sel
     else:
-        t = MyThread(sel, run)
-        tree = t.load_tree()
+        critical('unknown type')
+        return
     if tree is None:
         return
     tree.SetEstimate(-1)
