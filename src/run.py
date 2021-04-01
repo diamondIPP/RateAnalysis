@@ -105,9 +105,8 @@ class Run(Analysis):
 
     # ----------------------------------------
     # region INIT
-    def load_rootfile(self):
-        # self.info('\n\033[1A\rLoading information for rootfile: {file}'.format(file=basename(self.RootFilePath)))
-        self.info('Loading information for rootfile: {file}'.format(file=basename(self.RootFilePath)), endl=False)
+    def load_rootfile(self, prnt=True):
+        self.info('Loading information for rootfile: {file}'.format(file=basename(self.RootFilePath)), endl=False, prnt=prnt)
         self.RootFile = TFile(self.RootFilePath)
         self.Tree = self.RootFile.Get(self.TreeName)
         return self.Tree
