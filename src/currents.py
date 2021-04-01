@@ -25,6 +25,7 @@ class Currents(Analysis):
         # Config
         self.Ana = analysis
         self.IsCollection = hasattr(analysis, 'Runs')
+        self.Type = self.Ana.Type if analysis is not None and self.IsCollection else 'None'
         self.RunSelection = RunSelector(testcampaign=self.TCString)
         self.RunLogs = self.RunSelection.RunInfos
         self.Run = self.RunSelection.Run if analysis is None else self.Ana.FirstAnalysis.Run if self.IsCollection else self.Ana.Run

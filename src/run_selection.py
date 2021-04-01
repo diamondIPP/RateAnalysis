@@ -742,6 +742,3 @@ if __name__ == '__main__':
             z.show_run_plans(diamond=args.diamond)
     if args.master_selection:
         z.master_selection()
-
-    r = RunSelection('test')
-    s = RunPlan(8.2, dut_nr=1)
