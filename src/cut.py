@@ -400,7 +400,7 @@ class CutString:
         return TCut(self.Name, self.Value) if cut is None else TCut(cut)
 
     def __str__(self):
-        return '{:2d}: {} cut'.format(self.Level, self.Name.replace('_', ' '))
+        return f'{self.Level:2d}: Cut {self.Description}'
 
     def __repr__(self):
         return self.__str__()
