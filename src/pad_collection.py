@@ -17,9 +17,6 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region INIT
-    def load_analysis(self, run_number):
-        return PadAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
-
     @staticmethod
     def load_dummy():
         return PadAnalysis
@@ -115,10 +112,10 @@ class PadCollection(AnalysisCollection):
         """draws the pulse height ratio of two runs vs the peak time. """
         def f():
             func = self.Analysis.draw_signal_vs_cft if cft else self.Analysis.draw_ph_peaktime
-            (x0, y0), y1 = get_hist_vecs(func(self.get_ana(i0), show=False)), get_hist_vec(func(self.get_ana(i1), show=False))
+            (x0, y0), y1 = get_hist_vecs(func(self.Analyses[i0], show=False)), get_hist_vec(func(self.Analyses[i1], show=False))
             return x0, y1 / where(y0 == 0, 1e10, y0)  # make ratio of zero entries 0
         x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', int(cft), sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
-        flux0, flux1 = [make_flux_string(self.get_ana(i).get_flux().n) for i in [i0, i1]]
+        flux0, flux1 = [make_flux_string(self.Analyses[i].get_flux().n) for i in [i0, i1]]
         self.Draw.graph(x, y, title='Signal Ratio of {} and {}'.format(flux0, flux1), x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_range=array([-ym, ym]) + 1, gridy=True, show=show)
         return mean_sigma(y[y > .1])[0]
 

@@ -2,7 +2,7 @@
 from ROOT import THStack, TF1, TMath
 from numpy import sort, log, argmin, argmax
 
-from src.analysis import Analysis, glob
+from src.analysis import Analysis
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins
 from src.run_selection import RunPlan
@@ -22,6 +22,7 @@ class AnalysisCollection(Analysis):
         self.DUT = self.RunSelection.SelectedDUT
         self.Type = self.RunSelection.SelectedType
         self.Fluxes = self.RunSelection.get_selected_fluxes()
+        self.MinFluxRun, self.MaxFluxRun = self.get_high_low_rate_runs()
 
         super(AnalysisCollection, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, 'RP{}'.format(self.RunPlan)), verbose=verbose)
         self.print_start(run_plan, prnt=load_tree, dut=self.DUT.Name)
@@ -29,19 +30,14 @@ class AnalysisCollection(Analysis):
 
         # Loading the Trees and Time Vectors in Parallel
         self.LoadTree = load_tree
-        self.Threads = load_root_files(self.RunSelection, load_tree)
-
-        # Make Common Pickles
-        self.MinFluxRun, self.MaxFluxRun = self.get_high_low_rate_runs()
-        self.generate_common_pickles()  # make sure the pickles for the common cuts exist
 
         # Loading the Single Analyses
-        self.Analyses = self.load_analyses()
         self.Analysis = self.load_dummy()  # dummy to get access to the methods
-        self.FirstAnalysis = list(self.Analyses.values())[0]
-        self.LastAnalysis = list(self.Analyses.values())[-1]
+        self.Analyses = self.load_analyses(load_tree)
+        self.FirstAnalysis = self.Analyses[0]
+        self.LastAnalysis = self.Analyses[-1]
         self.Bins = self.FirstAnalysis.Bins if load_tree else None
-        self.StartTime = self.FirstAnalysis.Run.StartTime if self.LoadTree else time_stamp(self.FirstAnalysis.Run.LogStart)
+        self.StartTime = self.FirstAnalysis.Run.StartTime if load_tree else time_stamp(self.FirstAnalysis.Run.LogStart)
 
         # Sub Classes
         self.Currents = Currents(self)
@@ -60,12 +56,6 @@ class AnalysisCollection(Analysis):
     def print_loaded(self):
         print('\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' '))
 
-    def remove_pickles(self):
-        files = glob(join(self.PickleDir, '*', '*{}*_{}*'.format(self.TCString, self.RunPlan)))
-        self.info('Removing {} pickle files for run plan {}'.format(len(files), self.RunPlan))
-        for f in files:
-            remove_file(f)
-
     def make_flux_legend(self, histos, runs=None, x1=.76, y2=.88, draw_style='l'):
         runs = choose(runs, self.Runs)
         legend = self.Draw.make_legend(x1, y2, nentries=len(runs))
@@ -76,66 +66,41 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region INIT
     def print_start_info(self):
-        bias = ['{:+8.0f}'.format(bias) for bias in self.RunSelection.get_selected_biases()]
+        bias = [f'{bias:+8.0f}' for bias in self.RunSelection.get_selected_biases()]
         times = [datetime.fromtimestamp(duration - 3600).strftime('%H:%M').rjust(15) for duration in self.RunSelection.get_selected_durations()]
-        rows = array([self.Runs, ['{:14.1f}'.format(flux.n) for flux in self.Fluxes], bias, self.RunSelection.get_selected_start_times(), times]).T
+        rows = array([self.Runs, [f'{flux.n:14.1f}' for flux in self.Fluxes], bias, self.RunSelection.get_selected_start_times(), times]).T
         print_table(header=['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Start', 'Duration [hh:mm]'], rows=rows, prnt=self.Verbose)
 
     def get_high_low_rate_runs(self):
         return self.Runs[argmin(self.Fluxes)], self.Runs[argmax(self.Fluxes)]
 
-    def generate_common_pickles(self):
-        if self.LoadTree:
-            self.generate_slope_pickle()
-
-    def generate_slope_pickle(self):
-        picklepath = self.make_pickle_path('TrackAngle', 'x', run=self.MinFluxRun)
-        if not file_exists(picklepath):
-            DUTAnalysis(self.MinFluxRun, self.DUT.Number, self.TCString, prnt=False)
-
-    def load_analysis(self, run_number):
-        return DUTAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
-
     @staticmethod
     def load_dummy():
         return DUTAnalysis
 
-    def load_analyses(self):
-        """ Creates and adds Analysis objects with run numbers in runs. """
-        analyses = OrderedDict()
-        for run in self.Runs:
-            analysis = self.load_analysis(run)
-            if self.LoadTree:
-                analysis.Cut.set_low_rate_run(low_run=self.MinFluxRun)
-                analysis.Cut.reload()
-            analyses[run] = analysis
-        self.Threads = None
-        return analyses
-
-    def close_files(self):
-        for ana in list(self.Analyses.values()):
-            ana.Run.tree.Delete()
-            ana.Run.RootFile.Close()
-
-    def delete_trees(self):
-        for ana in list(self.Analyses.values()):
-            ana.Tree.Delete()
+    def load_analyses(self, load_tree=True):
+        with Pool() as pool:
+            res = pool.starmap(self.Analysis, [(run, self.DUT.Number, self.TCString, load_tree, None, self.Verbose, False) for run in self.Runs])
+        for r in res:
+            r.reload_tree_()
+            r.Cut.generate_fiducial()
+        return res
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region BINNING
     def get_binning(self, bin_width=None, rel_time=False):
-        bins = concatenate([ana.Bins.get_raw_time(bin_width, t_from_event=True)[1] for ana in list(self.Analyses.values())])
+        bins = concatenate([ana.Bins.get_raw_time(bin_width, t_from_event=True)[1] for ana in self.Analyses])
         return [bins.size - 1, bins - (self.FirstAnalysis.Run.StartTime if rel_time else 0)]
 
     def get_time_bins(self, bin_width=None, only_edges=False):
-        bins = self.fix_t_arrays([ana.Bins.get_time(bin_width)[1] for ana in list(self.Analyses.values())])
+        bins = self.fix_t_arrays([ana.Bins.get_time(bin_width)[1] for ana in self.Analyses])
         bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
         return [bins.size - 1, bins]
 
     def get_raw_time_bins(self, bin_width=None, only_edges=False, t_from_event=False):
-        bins = self.fix_t_arrays([ana.Bins.get_raw_time(bin_width, t_from_event=t_from_event)[1] for ana in list(self.Analyses.values())])
+        bins = self.fix_t_arrays([ana.Bins.get_raw_time(bin_width, t_from_event=t_from_event)[1] for ana in self.Analyses])
         bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
         return [bins.size - 1, bins]
 
@@ -149,7 +114,7 @@ class AnalysisCollection(Analysis):
 
     def get_break_time(self, ind):
         # because the log stop is not so reliable...
-        return (self.get_ana(ind + 1).Run.LogStart - self.get_ana(ind).Run.LogStart - self.get_ana(ind).Run.Duration).total_seconds()
+        return (self.Analyses[ind + 1].Run.LogStart - self.Analyses[ind].Run.LogStart - self.Analyses[ind].Run.Duration).total_seconds()
     # endregion BINNING
     # ----------------------------------------
 
@@ -158,11 +123,8 @@ class AnalysisCollection(Analysis):
     def get_runs(self):
         return self.Runs
 
-    def get_ana(self, ind):
-        return list(self.Analyses.values())[ind]
-
     def get_analyses(self, runs=None):
-        return list(self.Analyses.values()) if runs is None else [ana for key, ana in list(self.Analyses.items()) if key in runs]
+        return self.Analyses if runs is None else [ana for ana in self.Analyses if ana.Run.Number in runs]
 
     def get_hv_name(self):
         return self.Currents.Name
@@ -215,7 +177,7 @@ class AnalysisCollection(Analysis):
         return self.FirstAnalysis.Currents.Name
 
     def get_currents(self):
-        return [ana.Currents.get_current() for ana in self.get_analyses()]
+        return [ana.Currents.get_current() for ana in self.Analyses]
 
     def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
         runs = choose(runs, self.Runs)
@@ -235,23 +197,15 @@ class AnalysisCollection(Analysis):
     def get_mode(vs_time):
         return 'Time' if vs_time else 'Flux'
 
-    def get_sm_std_devs(self, redo=False):
-        pickle_path = self.make_pickle_path('Uniformity', 'STD', self.RunPlan, self.DUT.Number)
-
-        def f():
-            self.info('Getting STD of Signal Map ... ')
-            return OrderedDict((key, ana.get_sm_std(redo=redo)) for key, ana in list(self.Analyses.items()))
-
-        return do_pickle(pickle_path, f, redo=redo)
+    def get_sm_stds(self, runs=None, redo=False):
+        pickle_path = self.make_simple_pickle_path('Signal', f'AllCuts_{self.FirstAnalysis.Cut.get_chi2()}_None', sub_dir='SignalMaps', run='{}')
+        return self.get_values('SM STD', self.Analysis.get_sm_std, runs, picklepath=pickle_path, redo=redo)
 
     def get_sm_std(self, redo=False, low=False, high=False):
-        pickle_path = self.make_pickle_path('Uniformity', 'SMSTD', self.RunPlan, self.DUT.Number, suf='{}{}'.format(int(low), int(high)))
-        runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
-
         def f():
-            return mean_sigma([v for run, v in list(self.get_sm_std_devs(redo).items()) if run in runs]) if runs else ufloat(0, 0)
-
-        return do_pickle(pickle_path, f, redo=redo)
+            runs = self.get_runs_below_flux(110) if low else self.get_runs_above_flux(2000) if high else self.Runs
+            return mean_sigma(self.get_sm_stds(runs, redo))[0]
+        return do_pickle(self.make_simple_pickle_path('SMSTD', f'{low:d}{high:d}', 'Uniformity'), f, redo=redo)
 
     def get_pulse_heights(self, *args, **kwargs):
         return []
@@ -272,10 +226,10 @@ class AnalysisCollection(Analysis):
         print('Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
 
     def get_runs_below_flux(self, flux):
-        return [key for key, ana in list(self.Analyses.items()) if ana.Run.Flux <= flux]
+        return self.Runs[self.get_fluxes() <= flux]
 
     def get_runs_above_flux(self, flux):
-        return [key for key, ana in list(self.Analyses.items()) if ana.Run.Flux >= flux]
+        return self.Runs[self.get_fluxes() >= flux]
 
     def get_signal_spread(self, peaks=False, redo=False, rel=False):
         groups = split(self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True), self.get_flux_splits(show=False))
@@ -585,7 +539,7 @@ class AnalysisCollection(Analysis):
     # region TELESCOPE
     def draw_beam_current(self, bin_width=60, rel_t=True, show=True):
         h = TH1F('hr1', 'Beam Current of Run Plan {r}'.format(r=self.RunPlan), *self.get_raw_time_bins(bin_width))
-        values = [get_hist_vec(ana.Tel.draw_beam_current(bin_width, show=False, save=False)) for ana in list(self.Analyses.values())]
+        values = [get_hist_vec(ana.Tel.draw_beam_current(bin_width, show=False, save=False)) for ana in self.Analyses]
         values = concatenate([append(run_values, run_values[-1]) for run_values in values])  # add last flux value for time bin between runs
         for i, value in enumerate(values, 1):
             h.SetBinContent(i, value.n)
@@ -596,7 +550,7 @@ class AnalysisCollection(Analysis):
     def draw_flux(self, bin_width=5, rel_time=True, show=True, redo=False):
         def f():
             h1 = TH1F('hff', 'Flux Profile', *self.get_raw_time_bins(bin_width))
-            values = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in list(self.Analyses.values())]
+            values = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
             values = concatenate([append(run_values, ufloat(0, 0)) for run_values in values])  # add extra zero for time bin between runs
             for i, value in enumerate(values, 1):
                 h1.SetBinContent(i, value.n)
@@ -652,7 +606,7 @@ class AnalysisCollection(Analysis):
         self.Draw(g, 'RelativeSpread', lm=.12, logx=not vs_time, show=show)
 
     def draw_sm_std(self, vs_time=False, redo=False, show=True):
-        y_values = list(self.get_sm_std_devs(redo).values())
+        y_values = list(self.get_sm_stds(redo).values())
         x_values = self.get_times() if vs_time else self.get_fluxes()
         g = Draw.make_tgrapherrors(x_values, y_values, title='STD of the Signal Map')
         format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='rel. STD', y_off=1.3, t_ax_off=0 if vs_time else None)
