@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 from scipy.stats import norm
@@ -162,6 +162,12 @@ class Tracks(SubAnalysis):
         y_range = [0, max(g.GetY()[i] for g in mg.GetListOfGraphs() for i in range(g.GetN())) * 1.1]
         format_histo(mg, x_tit='#chi^{2} [quantile]', y_tit='Residual Standard Deviation [#mum]', y_off=1.5, y_range=y_range, draw_first=True)
         self.Draw(mg, 'EventOffsets', show, draw_opt='ap', leg=leg, lm=.13)
+
+    def draw_rel_signal_vs_angle(self, a_max=4):
+        f = Draw.make_tf1('a', lambda x: 1 / cos(deg2rad(x)), -a_max, a_max)
+        format_histo(f, x_tit='Track Angle [deg]', y_tit='Relative Signal', y_off=1.6, y_range=[1, 1.01])
+        self.Draw(f, lm=.121)
+
     # endregion DRAW
     # ----------------------------------------
 
