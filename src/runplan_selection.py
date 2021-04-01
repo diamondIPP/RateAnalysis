@@ -9,7 +9,7 @@ from re import split as splitname
 from ROOT import TMultiGraph
 from src.binning import Bins
 from src.pad_collection import AnalysisCollection, PadCollection
-from src.run_selection import RunPlan
+from src.run_selection import RunSelector
 from src.analysis import *
 from analyse import collection_selector
 from helpers.draw import format_statbox, get_graph_y, scale_graph, ax_range, markers
@@ -31,7 +31,7 @@ class DiaScans(Analysis):
         self.DUTParser = load_parser(join(self.Dir, 'config', 'DiamondAliases.ini'))
 
         # Info
-        self.RS = RunPlan()  # dummy for information
+        self.RS = RunSelector()  # dummy for information
         self.DUTName = self.load_dut_name()
         self.RunPlans = self.load_runplans()
         self.TestCampaigns = self.load_test_campaigns()
@@ -84,7 +84,7 @@ class DiaScans(Analysis):
         for tc, rps in self.Selection.items():
             for rp, dut_nrs in rps.items():
                 for dut_nr in array([dut_nrs]).flatten():
-                    selections.append(SelectionInfo(RunPlan(tc).select_runs_from_runplan(rp, dut_nr, unselect=True)))
+                    selections.append(SelectionInfo(RunSelector(tc).select_runs_from_runplan(rp, dut_nr, unselect=True)))
         return selections
     # endregion INIT
     # ----------------------------------------
@@ -93,7 +93,7 @@ class DiaScans(Analysis):
     # region GET
     @staticmethod
     def get_rp_diamonds(tc, rp):
-        sel = RunPlan(tc).select_runs_from_runplan(rp, unselect=True)
+        sel = RunSelector(tc).select_runs_from_runplan(rp, unselect=True)
         return sel.get_dut_names()
 
     def get_first_run(self, tc, rp):
@@ -119,7 +119,7 @@ class DiaScans(Analysis):
         if file_exists(pickle_path) and not redo:
             return do_pickle(pickle_path, do_nothing())
         self.info('Did not find {}'.format(pickle_path), prnt=pickle_path)
-        ana = collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree)
+        ana = collection_selector(sel.RunSelector, sel.DUTNr, sel.TCString, load_tree)
         if 'redo' in signature(f).parameters:
             pf = partial(f, ana, redo=redo, *args, **kwargs)
             return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
@@ -177,7 +177,7 @@ class DiaScans(Analysis):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUTName]
 
     def get_tc_infos(self, tc):
-        rs = RunPlan(tc)
+        rs = RunSelector(tc)
         return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in range(rs.get_n_duts(run_plan=rp))]
 
     def get_bias_str(self):
@@ -483,7 +483,7 @@ class DiaScans(Analysis):
 
 
 class SelectionInfo:
-    def __init__(self, sel: RunPlan):
+    def __init__(self, sel: RunSelector):
         self.Run = sel.Run
         self.TCString = sel.TCString
         self.RunPlan = sel.SelectedRunplan

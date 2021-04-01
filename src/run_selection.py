@@ -11,18 +11,100 @@ from helpers.utils import *
 from src.run import Run
 
 
-class RunSelection(object):
+def make_runplan_string(nr):
+    return f'{nr:0>2}' if len(str(nr)) <= 2 else f'{nr:0>4}'
+
+
+class Ensemble(object):
+    """ General enseble class for runs. """
+
+    def __init__(self, name, verbose=False):
+        self.Name = name
+        self.Type = 'custom'
+        self.Run = self.init_run(verbose)
+        self.TCString = self.Run.TCString
+        self.Data = self.load_data()
+        self.Runs = self.init_runs()
+        self.DUT = self.init_dut()
+        self.DUTType = self.Runs[0].Type
+
+    def __getitem__(self, item):
+        return self.Runs[item]
+
+    def __str__(self):
+        return self.Name
+
+    def __repr__(self):
+        return f'{self.__class__.__name__} {self.Name} with {len(self.Runs)} runs'
+
+    def init_run(self, verbose):
+        return Run(load_tree=False, verbose=verbose)
+
+    def init_runs(self):
+        return [Run(data[0], data[2], load_tree=False, verbose=False) for data in self.Data]
+
+    def load_data(self):
+        pass
+
+    def init_dut(self):
+        return self.Runs[0].DUTs[self.Data[0][1] - 1]
+
+    def get_runs(self):
+        return array([run.Number for run in self.Runs])
+
+    def get_fluxes(self):
+        return array([run.Flux for run in self.Runs])
+
+    def get_biases(self):
+        return array([run.DUTs[self.DUT.Number - 1].Bias for run in self.Runs])
+
+    def get_durations(self):
+        return array([run.Duration.total_seconds() for run in self.Runs])
+
+    def get_start_times(self):
+        return array([run.LogStart for run in self.Runs])
+
+    def get_name(self):
+        return self.Name
+
+    def get_irradiation(self):
+        return self.DUT.get_irradiation(self.TCString)
+
+    def get_dut_nrs(self):
+        return array([d[1] for d in self.Data])
+
+
+class RunPlan(Ensemble):
+    """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
+
+    def __init__(self, name, testcampaign=None, dut_nr=1, verbose=False):
+        self.TestCampaign = testcampaign
+        self.DUTNr = dut_nr
+        super().__init__(name, verbose)
+
+    def __str__(self):
+        return f'RP{make_runplan_string(self.Name)}'.replace('.', '-')
+
+    def init_run(self, verbose):
+        return Run(testcampaign=self.TestCampaign, load_tree=False, verbose=verbose)
+
+    def load_data(self):
+        data = load_json(join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path')))[self.TCString][make_runplan_string(self.Name)]
+        self.Type = data['type']
+        return [(run, self.DUTNr, self.TCString) for run in data['runs']]
+
+    def get_irradiation(self):
+        return None
+
+
+class RunSelection(Ensemble):
     """ Container for an arbitrary selection of runs. """
 
-    def __init__(self, name):
-        t = time()
-        self.Name = name
-        self.Data = self.load_data()
-        self.Runs = [Run(data[0], data[2], load_tree=False, verbose=False) for data in self.Data]
-        self.Type = self.Runs[0].Type
-        self.Analyses = self.get_analyses()
-        print_elapsed_time(t)
-        self.Is = range(len(self.Runs))
+    def __init__(self, name, verbose=False):
+        super().__init__(name, verbose)
+
+    def __str__(self):
+        return f'RS{self.Name}'
 
     def load_data(self):
         name = self.Name.lower()
@@ -31,37 +113,13 @@ class RunSelection(object):
             critical(f'{self.Name} is not a valid selection name!')
         return [(run, dut, tc) for tc, lst in data[name].items() for run, dut in lst]
 
-    def get_pulse_heights(self, redo=False):
-        from src.pad_analysis import PadAnalysis
-        with Pool() as pool:
-            res = pool.starmap(PadAnalysis.get_pulse_height, [(ana, None, None, redo) for ana in self.Analyses])
-            return res
-
-    def get_analyses(self):
-        if self.Type == 'pad':
-            from src.pad_analysis import PadAnalysis
-            with Pool() as pool:
-                res = pool.starmap(PadAnalysis, [(*self.Data[i], True, None, False) for i in range(len(self.Data))])
-            for r in res:
-                r.reload_tree_()
-                r.Cut.generate_fiducial()
-            return res
-
     def convert(self):
         with Pool() as pool:
             res = pool.starmap(Run, [(r, tc) for r, dut, tc in self.Data])
             return res
 
-    def get_trees(self):
-        return [run.load_rootfile() for run in self.Runs]
 
-    def get_time_vecs(self):
-        with Pool() as pool:
-            res = pool.starmap(get_time_vec, [(None, run) for run in self.Runs])
-            return res
-
-
-class RunPlan(object):
+class RunSelector(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
     def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
@@ -69,7 +127,7 @@ class RunPlan(object):
 
         # Info
         self.TCString = self.Run.TCString
-        self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MAIN', 'run plan path'))
+        self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path'))
         self.RunPlan = self.load_runplan()
         self.RunInfos = self.load_run_infos()
         self.RunNumbers = sort(array(list(self.RunInfos.keys()), int))
@@ -308,21 +366,21 @@ class RunPlan(object):
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
         print_banner('Selection with {} runs:'.format(len(self.get_selected_runs())))
-        r = self.Run(self.get_selected_runs()[0])
-        dia_bias = list(concatenate([['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in range(r.get_n_diamonds())]))
+        r0 = self.Run(self.get_selected_runs()[0])
+        dia_bias = list(concatenate([['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in range(r0.get_n_diamonds())]))
         header = ['Nr.', 'Type'] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'] if not full_comments else [])
         rows = []
         for run in self.get_selected_runs():
-            r.set_run(run, load_tree=False)
-            dia_bias = concatenate([r.load_dut_names(), r.get_bias_strings()])[[0, 2, 1, 3]]
-            row = ['{:3d}'.format(run), r.Info['runtype']] + list(dia_bias) + ['{:14.2f}'.format(r.Flux.n)]
+            r0.set_run(run, load_tree=False)
+            dia_bias = concatenate([r0.load_dut_names(), r0.get_bias_strings()])[[0, 2, 1, 3]]
+            row = ['{:3d}'.format(run), r0.Info['runtype']] + list(dia_bias) + ['{:14.2f}'.format(r0.Flux.n)]
             if not full_comments:
-                row += ['{c}{s}'.format(c=r.Info['comments'][:20].replace('\r\n', ' '), s='*' if len(r.Info['comments']) > 20 else ' ' * 21)]
+                row += ['{c}{s}'.format(c=r0.Info['comments'][:20].replace('\r\n', ' '), s='*' if len(r0.Info['comments']) > 20 else ' ' * 21)]
                 rows.append(row)
             else:
                 rows.append(row)
-                if r.Info['comments']:
-                    rows.append(['Comments: {c}'.format(c=fill(r.Info['comments'], len('   '.join(header))))])
+                if r0.Info['comments']:
+                    rows.append(['Comments: {c}'.format(c=fill(r0.Info['comments'], len('   '.join(header))))])
                     rows.append(['~' * len('   '.join(rows[0]))])
         print_table(rows, header)
     # endregion SELECT
@@ -674,7 +732,7 @@ if __name__ == '__main__':
     p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
     args = p.parse_args()
 
-    z = RunPlan(args.testcampaign, args.runplan, args.dut, args.verbose)
+    z = RunSelector(args.testcampaign, args.runplan, args.dut, args.verbose)
     if args.show:
         if args.runplan is not None:
             print_banner(z.TCString)
@@ -684,3 +742,6 @@ if __name__ == '__main__':
             z.show_run_plans(diamond=args.diamond)
     if args.master_selection:
         z.master_selection()
+
+    r = RunSelection('test')
+    s = RunPlan(8.2, dut_nr=1)

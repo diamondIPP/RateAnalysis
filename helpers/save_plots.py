@@ -57,7 +57,7 @@ class SaveDraw(Draw):
     def load_server_save_dir(ana):
         if not SaveDraw.MountExists or SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
             return
-        run_string = 'RunPlan{}'.format(ana.RunPlan.lstrip('0')) if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
+        run_string = 'RunPlan{}'.format(ana.Ensemble.Name.lstrip('0')) if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
         return join(SaveDraw.ServerMountDir, 'Diamonds', ana.DUT.Name, 'BeamTests', make_tc_str(ana.TCString, long_=False), run_string)
 
     # ----------------------------------------

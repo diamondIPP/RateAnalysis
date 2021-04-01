@@ -5,27 +5,27 @@ from numpy import sort, log, argmin, argmax
 from src.analysis import Analysis
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins
-from src.run_selection import RunPlan
+from src.run_selection import RunPlan, RunSelection
 from helpers.draw import *
 
 
 class AnalysisCollection(Analysis):
     """ Analysis of the various runs of a single runplan. """
 
-    def __init__(self, run_plan, dut_nr, testcampaign=None, load_tree=True, verbose=False):
+    def __init__(self, name, dut_nr, testcampaign=None, load_tree=True, verbose=False):
 
         # RUN SELECTION
-        self.RunSelection = RunPlan(testcampaign, run_plan, dut_nr, verbose)
-        self.Runs = array(self.RunSelection.get_selected_runs())
+        self.Ensemble = RunPlan(name, testcampaign, dut_nr, verbose) if isfloat(name) else RunSelection(name, verbose)
+        self.Runs = array(self.Ensemble.get_runs())
         self.NRuns = self.Runs.size
-        self.RunPlan = self.RunSelection.SelectedRunplan
-        self.DUT = self.RunSelection.SelectedDUT
-        self.Type = self.RunSelection.SelectedType
-        self.Fluxes = self.RunSelection.get_selected_fluxes()
+        self.RunPlan = str(self.Ensemble)
+        self.DUT = self.Ensemble.DUT
+        self.Type = self.Ensemble.Type
+        self.Fluxes = self.Ensemble.get_fluxes()
         self.MinFluxRun, self.MaxFluxRun = self.get_high_low_rate_runs()
 
-        super(AnalysisCollection, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, 'RP{}'.format(self.RunPlan)), verbose=verbose)
-        self.print_start(run_plan, prnt=load_tree, dut=self.DUT.Name)
+        super(AnalysisCollection, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, self.RunPlan), verbose=verbose)
+        self.print_start(name, prnt=load_tree, dut=self.DUT.Name)
         self.print_start_info()
 
         # Loading the Trees and Time Vectors in Parallel
@@ -66,9 +66,9 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region INIT
     def print_start_info(self):
-        bias = [f'{bias:+8.0f}' for bias in self.RunSelection.get_selected_biases()]
-        times = [datetime.fromtimestamp(duration - 3600).strftime('%H:%M').rjust(15) for duration in self.RunSelection.get_selected_durations()]
-        rows = array([self.Runs, [f'{flux.n:14.1f}' for flux in self.Fluxes], bias, self.RunSelection.get_selected_start_times(), times]).T
+        bias = [f'{bias:+8.0f}' for bias in self.Ensemble.get_biases()]
+        times = [datetime.fromtimestamp(duration - 3600).strftime('%H:%M').rjust(15) for duration in self.Ensemble.get_durations()]
+        rows = array([self.Runs, [f'{flux.n:14.1f}' for flux in self.Fluxes], bias, self.Ensemble.get_start_times(), times]).T
         print_table(header=['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Start', 'Duration [hh:mm]'], rows=rows, prnt=self.Verbose)
 
     def get_high_low_rate_runs(self):
@@ -80,7 +80,7 @@ class AnalysisCollection(Analysis):
 
     def load_analyses(self, load_tree=True):
         with Pool() as pool:
-            res = pool.starmap(self.Analysis, [(run, self.DUT.Number, self.TCString, load_tree, self.Verbose, False) for run in self.Runs])
+            res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, load_tree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs())])
         for r in res:
             r.reload_tree_()
             r.Cut.generate_fiducial()
@@ -246,7 +246,7 @@ class AnalysisCollection(Analysis):
 
         def f():
             runs = self.get_runs_below_flux(flux)
-            if not runs:
+            if not runs.size:
                 return 0
             values = self.get_pulse_heights(runs=runs, redo=redo, err=False)
             gr = Draw.make_tgrapherrors(self.get_fluxes(runs=runs), values, title='Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
@@ -336,7 +336,7 @@ class AnalysisCollection(Analysis):
         mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks)
         scale_multigraph(mg, scale, scale_to_low)
         self.Draw(mg, show=show, lm=.14, draw_opt='ap', **self.get_x_draw(vs_time), gridy=True, bm=.18)
-        Draw.irradiation(make_irr_string(self.RunSelection.get_irradiation()))
+        Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
         format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, y_range=choose(y_range, [.95, 1.05]), ndivx=503, center_y=True, **self.get_x_args(vs_time))
         self.Draw.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]

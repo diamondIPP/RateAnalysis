@@ -21,21 +21,21 @@ def analysis_selector(run, dut, tc, tree, verbose=False):
         critical('wrong run type: has to be in [pad, pixel]')
 
 
-def collection_selector(rp, dut, tc, tree, verbose=False):
-    from src.run_selection import RunPlan
-    dummy = RunPlan(tc, rp, dut, verbose=False)
-    if dummy.get_selected_type() == 'pad':
+def collection_selector(name, dut, tc, tree, verbose=False):
+    from src.run_selection import RunPlan, RunSelection
+    dummy = RunPlan(name, tc, dut, verbose) if isfloat(name) else RunSelection(name, verbose)
+    if dummy.DUTType == 'pad':
         from src.pad_collection import PadCollection
-        if 'voltage' in dummy.SelectedType:
+        if 'voltage' in dummy.Type:
             from src.voltage_scan import make_volage_scan
-            return make_volage_scan(PadCollection)(rp, dut, tc, tree, verbose)
-        return PadCollection(rp, dut, tc, tree, verbose)
-    elif dummy.get_selected_type() == 'pixel':
+            return make_volage_scan(PadCollection)(name, dut, tc, tree, verbose)
+        return PadCollection(name, dut, tc, tree, verbose)
+    elif dummy.DUTType == 'pixel':
         from src.pix_collection import PixCollection
-        if 'voltage' in dummy.SelectedType:
+        if 'voltage' in dummy.Type:
             from src.voltage_scan import make_volage_scan
-            return make_volage_scan(PixCollection)(rp, dut, tc, tree, verbose)
-        return PixCollection(rp, dut, tc, tree, verbose)
+            return make_volage_scan(PixCollection)(name, dut, tc, tree, verbose)
+        return PixCollection(name, dut, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
