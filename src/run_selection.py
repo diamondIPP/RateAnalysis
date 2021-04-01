@@ -15,9 +15,14 @@ class RunSelection(object):
     """ Container for an arbitrary selection of runs. """
 
     def __init__(self, name):
+        t = time()
         self.Name = name
         self.Data = self.load_data()
-        self.Type = Run(self.Data[0][0], self.Data[0][2], tree=False, verbose=False).Type
+        self.Runs = [Run(data[0], data[2], tree=False, verbose=False) for data in self.Data]
+        self.Type = self.Runs[0].Type
+        self.Analyses = self.get_analyses()
+        print_elapsed_time(t)
+        self.Is = range(len(self.Runs))
 
     def load_data(self):
         name = self.Name.lower()
@@ -26,16 +31,34 @@ class RunSelection(object):
             critical(f'{self.Name} is not a valid selection name!')
         return [(run, dut, tc) for tc, lst in data[name].items() for run, dut in lst]
 
+    def get_pulse_heights(self):
+        from src.pad_analysis import PadAnalysis
+        with Pool() as pool:
+            res = pool.map(PadAnalysis.get_pulse_height, self.Analyses)
+            return res
+
     def get_analyses(self):
         if self.Type == 'pad':
             from src.pad_analysis import PadAnalysis
-            t = self.get_time_vecs()
-            return [PadAnalysis(*self.Data[i], t_vec=t[i], prnt=False) for i in range(len(self.Data))]
+            trees, times = self.get_trees(), self.get_time_vecs()
+            with Pool() as pool:
+                res = pool.starmap(PadAnalysis, [(*self.Data[i], trees[i], times[i], None, False) for i in range(len(self.Data))])
+            for i in range(len(self.Data)):
+                res[i].set_tree(trees[i])
+                res[i].Cut.generate_fiducial()
+            return res
+
+    def convert(self):
+        with Pool() as pool:
+            res = pool.starmap(Run, [(r, tc) for r, dut, tc in self.Data])
+            return res
+
+    def get_trees(self):
+        return [run.load_rootfile() for run in self.Runs]
 
     def get_time_vecs(self):
-        runs = [Run(data[0], data[2], tree=False, verbose=False) for data in self.Data]
         with Pool() as pool:
-            res = pool.starmap(get_time_vec, [(None, run) for run in runs])
+            res = pool.starmap(get_time_vec, [(None, run) for run in self.Runs])
             return res
 
 
