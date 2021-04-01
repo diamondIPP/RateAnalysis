@@ -18,7 +18,7 @@ class RunSelection(object):
         t = time()
         self.Name = name
         self.Data = self.load_data()
-        self.Runs = [Run(data[0], data[2], tree=False, verbose=False) for data in self.Data]
+        self.Runs = [Run(data[0], data[2], load_tree=False, verbose=False) for data in self.Data]
         self.Type = self.Runs[0].Type
         self.Analyses = self.get_analyses()
         print_elapsed_time(t)
@@ -31,21 +31,20 @@ class RunSelection(object):
             critical(f'{self.Name} is not a valid selection name!')
         return [(run, dut, tc) for tc, lst in data[name].items() for run, dut in lst]
 
-    def get_pulse_heights(self):
+    def get_pulse_heights(self, redo=False):
         from src.pad_analysis import PadAnalysis
         with Pool() as pool:
-            res = pool.map(PadAnalysis.get_pulse_height, self.Analyses)
+            res = pool.starmap(PadAnalysis.get_pulse_height, [(ana, None, None, redo) for ana in self.Analyses])
             return res
 
     def get_analyses(self):
         if self.Type == 'pad':
             from src.pad_analysis import PadAnalysis
-            trees, times = self.get_trees(), self.get_time_vecs()
             with Pool() as pool:
-                res = pool.starmap(PadAnalysis, [(*self.Data[i], trees[i], times[i], None, False) for i in range(len(self.Data))])
-            for i in range(len(self.Data)):
-                res[i].set_tree(trees[i])
-                res[i].Cut.generate_fiducial()
+                res = pool.starmap(PadAnalysis, [(*self.Data[i], True, None, False) for i in range(len(self.Data))])
+            for r in res:
+                r.reload_tree_()
+                r.Cut.generate_fiducial()
             return res
 
     def convert(self):
@@ -66,7 +65,7 @@ class RunPlan(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
     def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
-        self.Run = Run(testcampaign=testcampaign, tree=False, verbose=verbose)
+        self.Run = Run(testcampaign=testcampaign, load_tree=False, verbose=verbose)
 
         # Info
         self.TCString = self.Run.TCString
@@ -314,7 +313,7 @@ class RunPlan(object):
         header = ['Nr.', 'Type'] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'] if not full_comments else [])
         rows = []
         for run in self.get_selected_runs():
-            r.set_run(run, root_tree=False)
+            r.set_run(run, load_tree=False)
             dia_bias = concatenate([r.load_dut_names(), r.get_bias_strings()])[[0, 2, 1, 3]]
             row = ['{:3d}'.format(run), r.Info['runtype']] + list(dia_bias) + ['{:14.2f}'.format(r.Flux.n)]
             if not full_comments:
@@ -631,7 +630,7 @@ class RunPlan(object):
         for run in self.get_runplan_runs():
             if sel and run not in selected_runs:
                 continue
-            self.Run.Converter.set_run(run)
+            self.Run.Converter.set_run(run, )
             self.Run.Converter.remove_final_file()
 
     def copy_raw_files(self, sel=False):
@@ -639,7 +638,7 @@ class RunPlan(object):
         for run in self.get_runplan_runs():
             if sel and run not in selected_runs:
                 continue
-            self.Run.Converter.set_run(run)
+            self.Run.Converter.set_run(run, )
             self.Run.Converter.copy_raw_file()
 
     def copy_final_files(self, server, server_data_dir):

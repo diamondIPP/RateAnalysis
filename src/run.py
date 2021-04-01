@@ -9,12 +9,11 @@ from src.dut import DUT, Plane
 class Run(Analysis):
     """ Run class containing all the information for a single run. """
 
-    def __init__(self, number=None, testcampaign=None, tree=True, t_vec=None, verbose=None):
+    def __init__(self, number=None, testcampaign=None, load_tree=True, verbose=None):
         """
         :param number: if None is provided it creates a dummy run
         :param testcampaign: if None is provided ...
-        :param tree: root_tree object, if None is given it will start the converter
-        :param t_vec: time sequence of the run, if None is provide it will generate a corrected one
+        :param load_tree: load the ROOT TTree
         :param verbose: turn on more output
         """
         # Basics
@@ -51,10 +50,10 @@ class Run(Analysis):
         self.Duration = self.LogEnd - self.LogStart
 
         self.Converter = Converter(self)
-        if self.set_run(number, tree):
+        if self.set_run(number, load_tree):
             # tree info
             self.TimeOffset = None
-            self.Time = self.load_time_vec(t_vec)
+            self.Time = self.load_time_vec()
             self.StartEvent = 0
             self.NEvents = int(self.Tree.GetEntries())
             self.EndEvent = self.NEvents - 1
@@ -72,11 +71,11 @@ class Run(Analysis):
     def __repr__(self):
         return self.__str__()
 
-    def __call__(self, number, root_tree=False):
-        self.set_run(number, root_tree)
+    def __call__(self, number, load_tree=False):
+        self.set_run(number, load_tree)
         return self
 
-    def set_run(self, number, root_tree):
+    def set_run(self, number, load_tree):
         if number is None:
             return False
         if number < 0 and type(number) is not int:
@@ -87,10 +86,7 @@ class Run(Analysis):
         self.Flux = self.calculate_flux()
 
         # check for conversion
-        if root_tree and type(root_tree) is tuple:
-            self.RootFile = root_tree[0]
-            self.Tree = root_tree[1]
-        elif root_tree:
+        if load_tree:
             self.Converter.convert_run()
             self.load_rootfile()
         else:
@@ -200,8 +196,8 @@ class Run(Analysis):
         else:
             return 4
 
-    def load_time_vec(self, t_vec):
-        t = get_time_vec(self.Tree) if t_vec is None else t_vec
+    def load_time_vec(self):
+        t = get_time_vec(self.Tree)
         t0 = datetime.fromtimestamp(t[0] / 1000)
         self.TimeOffset = None if t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
         return t if self.TimeOffset is None else t - self.TimeOffset
@@ -377,4 +373,4 @@ class Run(Analysis):
 if __name__ == '__main__':
 
     args = init_argparser(run=88, tc=None, tree=True)
-    z = Run(args.run, tree=args.tree, testcampaign=args.testcampaign)
+    z = Run(args.run, testcampaign=args.testcampaign, load_tree=args.tree)

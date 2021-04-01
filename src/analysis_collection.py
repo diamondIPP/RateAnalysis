@@ -80,7 +80,7 @@ class AnalysisCollection(Analysis):
 
     def load_analyses(self, load_tree=True):
         with Pool() as pool:
-            res = pool.starmap(self.Analysis, [(run, self.DUT.Number, self.TCString, load_tree, None, self.Verbose, False) for run in self.Runs])
+            res = pool.starmap(self.Analysis, [(run, self.DUT.Number, self.TCString, load_tree, self.Verbose, False) for run in self.Runs])
         for r in res:
             r.reload_tree_()
             r.Cut.generate_fiducial()
@@ -299,7 +299,8 @@ class AnalysisCollection(Analysis):
         return Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l' if i < 2 else 'p' for i in range(len(graphs))], x1=x, y1=.21, w=.2)
 
     def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
-        x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo, corr=corr, err=i, avrg=avrg, peaks=peaks) for i in [False, err]]
+        ph0 = self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg, peaks=peaks)
+        x, ph = self.get_x_var(vs_time, avrg=avrg), self.get_pulse_heights(bin_width, corr=corr, err=err, avrg=avrg, peaks=peaks)
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=1, lw=2)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, lw=2)
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]

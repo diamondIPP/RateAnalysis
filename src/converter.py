@@ -77,7 +77,7 @@ class Converter(object):
         return self.ConverterTree
 
     def set_run(self, run_number):
-        self.Run.set_run(run_number, root_tree=False)
+        self.Run.set_run(run_number, load_tree=False)
         self.RunInfo = self.Run.Info
         self.RunConfig = self.Run.reload_run_config(run_number)
         self.Type = self.Run.get_type()

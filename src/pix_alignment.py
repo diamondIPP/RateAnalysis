@@ -281,5 +281,5 @@ if __name__ == '__main__':
     from src.converter import Converter
 
     args = init_argparser(run=147, tc='201810')
-    zrun = PixelRun(args.run, testcampaign=args.testcampaign, tree=False, verbose=True)
+    zrun = PixelRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PixAlignment(Converter(zrun))

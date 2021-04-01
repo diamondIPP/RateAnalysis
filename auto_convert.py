@@ -16,14 +16,14 @@ class AutoConvert:
 
     def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, verbose=False):
 
-        self.Run = Run(None, testcampaign=test_campaign, tree=False, verbose=verbose)
+        self.Run = Run(None, testcampaign=test_campaign, load_tree=False, verbose=verbose)
         self.RunInfos = OrderedDict((int(key), value) for key, value in self.Run.load_run_info_file().items())
         self.Runs = array(list(self.RunInfos.keys()), 'i2')
 
         self.Multi = multi
         self.FirstRun = self.find_last_converted(first_run)
         self.EndRun = max(self.RunInfos) if end_run is None else int(end_run)
-        self.Run.Converter.set_run(self.FirstRun)
+        self.Run.Converter.set_run(self.FirstRun, )
 
     def find_last_converted(self, run=None):
         last = max([int(remove_letters(basename(name))) for name in glob(join(self.Run.TCDir, 'root', '*', 'TrackedRun*.root'))])
@@ -31,7 +31,7 @@ class AutoConvert:
 
     def convert_run(self, run):
 
-        self.Run.Converter.set_run(run)
+        self.Run.Converter.set_run(run, )
 
         # check if we have to convert the run
         if file_exists(self.Run.RootFilePath) or self.RunInfos[run]['runtype'] in ['test', 'crap', 'schrott']:

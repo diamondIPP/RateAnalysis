@@ -14,9 +14,9 @@ from src.mc_signal import MCSignal
 
 
 class PadAnalysis(DUTAnalysis):
-    def __init__(self, run_number, diamond_nr, test_campaign=None, tree=True, t_vec=None, verbose=False, prnt=True):
+    def __init__(self, run_number, diamond_nr, test_campaign=None, load_tree=True, verbose=False, prnt=True):
 
-        DUTAnalysis.__init__(self, run_number, diamond_nr, test_campaign, tree, t_vec, verbose, prnt)
+        DUTAnalysis.__init__(self, run_number, diamond_nr, test_campaign, load_tree, verbose, prnt)
 
         # MAIN
         self.Channel = self.get_channel()
@@ -84,8 +84,8 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region INIT
     @staticmethod
-    def init_run(run_number, testcampaign, tree, t_vec, verbose):
-        return PadRun(run_number, testcampaign, tree, t_vec, verbose)
+    def init_run(run_number, testcampaign, load_tree, verbose):
+        return PadRun(run_number, testcampaign, load_tree, verbose)
 
     def init_cut(self):
         return PadCut(self)

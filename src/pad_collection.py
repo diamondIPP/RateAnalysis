@@ -57,7 +57,8 @@ class PadCollection(AnalysisCollection):
         error = self.get_repr_error(110, peaks, redo) if err else 0
         picklepath = self.make_simple_pickle_path('Fit', '{}_1_b2_AllCuts'.format(Bins.w(bin_width)), run='{}', sub_dir='Ph_fit')
         pbar = False if peaks else pbar
-        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, sys_err=error, peaks=peaks, flux_sort=flux_sort)
+        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo and not err, corr=corr,
+                               sys_err=error, peaks=peaks, flux_sort=flux_sort)
 
     def get_pedestals(self, runs=None, sigma=False, flux_sort=False, redo=False):
         picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')

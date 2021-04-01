@@ -142,5 +142,5 @@ if __name__ == '__main__':
     from converter import Converter
 
     args = init_argparser(run=23, tc='201908')
-    zrun = PadRun(args.run, testcampaign=args.testcampaign, tree=False, verbose=True)
+    zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))

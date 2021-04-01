@@ -29,9 +29,9 @@ def reload_tree(func):
 
 
 class DUTAnalysis(Analysis):
-    def __init__(self, run_number, diamond_nr=1, testcampaign=None, tree=None, t_vec=None, verbose=False, prnt=True):
+    def __init__(self, run_number, diamond_nr=1, testcampaign=None, load_tree=None, verbose=False, prnt=True):
 
-        self.Run = self.init_run(run_number, testcampaign, tree, t_vec, verbose)
+        self.Run = self.init_run(run_number, testcampaign, load_tree, verbose)
         self.DUT = self.Run.DUTs[diamond_nr - 1]
         super(DUTAnalysis, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, str(self.Run.Number)), verbose=verbose)
 
@@ -67,8 +67,8 @@ class DUTAnalysis(Analysis):
         self.Run.Tree = tree
 
     @staticmethod
-    def init_run(run_number, testcampaign, tree, t_vec, verbose):
-        return Run(run_number, testcampaign, tree, t_vec, verbose)
+    def init_run(run_number, testcampaign, load_tree, verbose):
+        return Run(run_number, testcampaign, load_tree, verbose)
 
     def init_cut(self):
         return Cut(self)

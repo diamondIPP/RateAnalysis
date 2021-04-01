@@ -10,13 +10,13 @@ _ = Bins.Verbose
 
 def analysis_selector(run, dut, tc, tree, verbose=False):
     from src.run import Run
-    dummy = Run(int(run), tc, tree=False)
+    dummy = Run(int(run), tc, load_tree=False)
     if dummy.get_type() == 'pad':
         from src.pad_analysis import PadAnalysis
-        return PadAnalysis(int(run), dut, tc, tree, None, verbose)
+        return PadAnalysis(int(run), dut, tc, tree, verbose)
     elif dummy.get_type() == 'pixel':
         from src.pix_analysis import PixAnalysis
-        return PixAnalysis(int(run), dut, tc, tree, None, verbose)
+        return PixAnalysis(int(run), dut, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
