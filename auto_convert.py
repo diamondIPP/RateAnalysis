@@ -9,6 +9,7 @@ from os import stat
 from os.path import basename
 from helpers.utils import *
 from src.run import Run
+from src.run_selection import RunSelector
 from glob import glob
 
 
@@ -16,18 +17,19 @@ class AutoConvert:
 
     def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, verbose=False):
 
-        self.Run = Run(None, testcampaign=test_campaign, load_tree=False, verbose=verbose)
-        self.RunInfos = OrderedDict((int(key), value) for key, value in self.Run.load_run_info_file().items())
-        self.Runs = array(list(self.RunInfos.keys()), 'i2')
-
         self.Multi = multi
-        self.FirstRun = self.find_last_converted(first_run)
-        self.EndRun = max(self.RunInfos) if end_run is None else int(end_run)
-        self.Run.Converter.set_run(self.FirstRun, )
 
-    def find_last_converted(self, run=None):
-        last = max([int(remove_letters(basename(name))) for name in glob(join(self.Run.TCDir, 'root', '*', 'TrackedRun*.root'))])
-        return self.Runs[self.Runs >= int(run)][0] if run is not None else last
+        self.Selection = RunSelector(testcampaign=test_campaign, verbose=verbose)
+        self.StartAtRun = choose(first_run, self.find_last_converted())
+        self.StopAtRun = 1e9 if not multi or end_run is None else int(end_run)
+        self.Runs = self.load_runs()
+
+    def find_last_converted(self):
+        return max([int(remove_letters(basename(name))) for name in glob(join(self.Selection.Run.TCDir, 'root', '*', 'TrackedRun*.root'))])
+
+    def load_runs(self):
+        runs = array([run for run in self.Selection.get_runplan_runs() if not file_exists(self.Selection.get_final_file_path(run))], 'i2')
+        return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
 
     def convert_run(self, run):
 
@@ -61,22 +63,16 @@ class AutoConvert:
 
     def multi(self):
         """parallel conversion"""
-        n_cpus = cpu_count()
-        self.Run.info('We got {0} CPUs\n'.format(n_cpus))
-        self.Run.info('Creating pool with {0} processes\n'.format(n_cpus))
-        self.Run.info('End conversion at run {}'.format(self.EndRun))
-
-        pool = Pool(n_cpus)
-
-        runs = [run for run in self.Runs if self.FirstRun <= run <= self.EndRun]
-        results = [pool.apply_async(self, [run]) for run in runs]
-        # for res in results:
-        strings = [res.get(timeout=2 * 24 * 60 * 60) for res in results]
-        for s in strings:
-            if s is not None:
-                print(s)
+        self.Selection.Run.info(f'Creating pool with {cpu_count()} processes')
+        with Pool() as pool:
+            runs = pool.starmap(Run, [(run, self.Selection.TCString, True, False) for run in self.Runs])
+        print(runs)
+        for run in runs:
+            print(f'{run} --> {timedelta(seconds=round(run.TInit))}')
 
     def run(self):
+        if not self.Runs.size:
+            return info('There are no runs to convert :-)')
         self.multi() if self.Multi else self.auto_convert()
 
     def __call__(self, run):
@@ -95,12 +91,13 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-m', action='store_true', help='turn parallel processing ON')
     parser.add_argument('-tc', nargs='?', default=None)
-    parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided')
+    parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
     parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
     parser.add_argument('-v', action='store_false', help='turn verbose OFF')
     args = parser.parse_args()
 
     z = AutoConvert(args.m, args.s, args.e, args.tc, args.v)
-    print_banner('Starting {m} Conversion at run {r}'.format(m='Multi' if z.Multi else 'Auto', r=z.FirstRun))
+    if z.Runs.size:
+        print_banner(f'Starting {"multi" if z.Multi else "auto"} Conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
     z.run()
-    print_banner('Finished Conversion!')
+    print_banner('Finished Conversion!', color='green')

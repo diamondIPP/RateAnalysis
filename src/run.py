@@ -65,6 +65,8 @@ class Run(Analysis):
             self.LogEnd = self.LogStart + self.Duration  # overwrite if we know exact duration
             self.NPlanes = self.load_n_planes()
 
+        self.TInit = time() - self.InitTime
+
     def __str__(self):
         return f'{self.__class__.__name__} {self.Number} ({self.TCString})'
 
@@ -120,13 +122,14 @@ class Run(Analysis):
 
     @staticmethod
     def make_root_filename(run):
-        return 'TrackedRun{:03d}.root'.format(run)
+        return f'TrackedRun{run:0>3}.root'
 
     def make_root_subdir(self):
         return join('root', 'pads' if self.get_type() == 'pad' else self.get_type())
 
-    def load_rootfile_path(self):
-        return join(self.RootFileDir, self.make_root_filename(self.Number)) if self.Number is not None else None
+    def load_rootfile_path(self, run=None):
+        run = choose(run, self.Number)
+        return None if run is None else join(self.RootFileDir, self.make_root_filename(run))
 
     def load_rootfile_dirname(self):
         return ensure_dir(join(self.TCDir, self.make_root_subdir())) if self.Number is not None else None

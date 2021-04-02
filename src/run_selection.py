@@ -646,7 +646,7 @@ class RunSelector(object):
     def get_final_file_path(self, run_number):
         self.Run.reload_run_config(run_number)
         root_file_dir = join('root', '{dut}'.format(dut='pads' if self.Run.get_type() == 'pad' else 'pixel'))
-        return join(self.Run.DataDir, self.Run.TCDir, root_file_dir, 'TrackedRun{run:03d}.root'.format(run=run_number))
+        return join(self.Run.DataDir, self.Run.TCDir, root_file_dir, f'TrackedRun{run_number:0>3}.root')
 
     def save_runinfo(self):
         with open(self.Run.InfoFile, 'w') as f:
