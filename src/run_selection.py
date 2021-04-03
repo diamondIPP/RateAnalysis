@@ -4,7 +4,6 @@ from os import system
 from os.path import basename
 from subprocess import check_call
 from textwrap import fill
-from numpy import sort
 
 from src.dut import DUT
 from helpers.utils import *
@@ -130,7 +129,7 @@ class RunSelector(object):
         self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path'))
         self.RunPlan = self.load_runplan()
         self.RunInfos = self.load_run_infos()
-        self.RunNumbers = sort(array(list(self.RunInfos.keys()), int))
+        self.RunNumbers = self.load_runs()
         self.MaxDuts = self.get_max_duts()
 
         # Selection
@@ -150,10 +149,10 @@ class RunSelector(object):
     # ----------------------------------------
     # region INIT
     def load_run_infos(self):
-        dic = OrderedDict()
-        for run, value in sorted(list(self.Run.load_run_info_file().items()), key=lambda item: int(item[0])):
-            dic[int(run)] = OrderedDict(sorted(value.items()))
-        return dic
+        return OrderedDict((int(key), value) for key, value in sorted(self.Run.load_run_info_file().items(), key=lambda item: int(item[0])))
+
+    def load_runs(self):
+        return array(list(self.load_run_infos().keys()), 'i2')
 
     def init_selection(self):
         return {run: False for run in self.RunNumbers}

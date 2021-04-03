@@ -18,7 +18,7 @@ from time import time, sleep
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
 from numpy import histogram, log2, diff, isfinite, pi
-from os import makedirs, _exit, remove, devnull
+from os import makedirs, _exit, remove, devnull, stat
 from os import path as pth
 from os.path import dirname, realpath, join
 from pytz import timezone, utc
@@ -332,6 +332,12 @@ def ensure_dir(path):
         info('Creating directory: {d}'.format(d=path))
         makedirs(path)
     return path
+
+
+def file_is_beeing_written(file_path):
+    file_size = stat(file_path)
+    sleep(4)
+    return file_size != stat(file_path)
 
 
 def make_col_str(col):

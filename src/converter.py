@@ -43,7 +43,7 @@ class Converter(object):
             self.TelescopeID = self.RunConfig.getint('BASIC', 'telescopeID')
 
             # Files
-            self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
+            self.RawFilePath = self.get_raw_file_path()
             self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.Run.Number))
             self.EudaqConfigFile = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
             self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.Run.Number if self.Run.Number is not None else 0))
@@ -81,7 +81,10 @@ class Converter(object):
         self.RunInfo = self.Run.Info
         self.RunConfig = self.Run.reload_run_config(run_number)
         self.Type = self.Run.get_type()
-        self.RawFilePath = join(self.RawFileDir, 'run{run:06d}.raw'.format(run=self.Run.Number))
+        self.RawFilePath = self.get_raw_file_path()
+
+    def get_raw_file_path(self, run=None):
+        return join(self.RawFileDir, f'run{choose(run, self.Run.Number):0>6}.raw')
 
     def get_eudaqfile_path(self):
         file_names = glob(join(self.Run.RootFileDir, '{}*{:03d}.root'.format(self.MainConfig.get('Directories', 'eudaq prefix'), self.Run.Number)))
