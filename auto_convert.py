@@ -90,5 +90,5 @@ if __name__ == '__main__':
     z = AutoConvert(args.m, args.s, args.e, args.tc, args.v)
     if z.Runs.size:
         print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
-    # z.run()
+    z.run()
     print_banner('Finished Conversion!', color='green')
