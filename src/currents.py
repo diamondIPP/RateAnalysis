@@ -160,7 +160,7 @@ class Currents(Analysis):
                     self.PBar.update()
                     continue
                 log_date = self.get_log_date(file_name)
-                data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', 'U10'), ('voltages', 'f2'), ('currents', 'f4')])
+                data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', 'U10'), ('voltages', 'f2'), ('currents', 'f4')], invalid_raise=False)
                 data = data[invert(isnan(data['voltages']))]  # remove text entries
                 data['timestamps'] = array(log_date.strftime('%Y-%m-%d ') + char.array(data['timestamps'])).astype(datetime64) - datetime64('1970-01-01T00:00:00') - log_date.utcoffset().seconds
                 data = data.astype([('timestamps', 'u4'), ('voltages', 'f2'), ('currents', 'f4')])
