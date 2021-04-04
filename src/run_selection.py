@@ -320,7 +320,7 @@ class RunSelector(object):
         return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
 
     def get_dut_name(self, run_number):
-        return self.Run.translate_dia(self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)]) if self.SelectedDUT.Number is not None else None
+        return self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
 
     def get_selected_type(self):
         return self.get_type(self.get_selected_runs()[0])
@@ -547,6 +547,14 @@ class RunSelector(object):
         plan = self.make_runplan_string(plan_nr)
         self.RunPlan.pop(plan)
         self.save_runplan()
+
+    def translate_dia_names(self):
+        for run, dic in self.RunInfos.items():
+            for key, value in dic.items():
+                if key.startswith('dia') and key[-1].isdigit():
+                    self.RunInfos[run][key] = self.Run.translate_dia(value)
+        self.save_runinfo()
+
     # endregion RUN PLAN
     # ----------------------------------------
 
@@ -557,7 +565,7 @@ class RunSelector(object):
 
     def get_diamond_names(self, sel=False, lower=True):
         keys = ['dia{}'.format(i + 1) for i in range(self.MaxDuts)]
-        dias = [self.Run.translate_dia(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
+        dias = [str(dia) for key in keys for dia in self.get_runinfo_values(key, sel)]
         return list(set(dia.lower() if lower else dia for dia in dias if dia is not None))
 
     def show_diamond_names(self, sel=False):
