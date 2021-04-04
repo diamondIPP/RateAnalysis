@@ -85,10 +85,12 @@ if __name__ == '__main__':
     parser.add_argument('s', nargs='?', default=None, help='run number where to start, default [None], = stop if no end is provided', type=int)
     parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
     parser.add_argument('-v', action='store_false', help='turn verbose OFF')
+    parser.add_argument('-t', action='store_true', help='turn test mode ON')
     args = parser.parse_args()
 
     z = AutoConvert(args.m, args.s, args.e, args.tc, args.v)
-    if z.Runs.size:
-        print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
-    z.run()
-    print_banner('Finished Conversion!', color='green')
+    if not args.t:
+        if z.Runs.size:
+            z.run()
+            print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
+            print_banner('Finished Conversion!', color='green')
