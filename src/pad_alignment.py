@@ -59,7 +59,8 @@ class PadAlignment(EventAligment):
     def calc_hit_fraction(self, start, off=0, n_events=None):
         """" get the mean number of hits for a given offset in the pulser event interval [start: start + n] """
         n_events = self.BinSize if n_events is None else n_events
-        return mean(self.NHits[self.PulserEvents[start:start + n_events] + off] > 3)
+        pulser = self.PulserEvents[start:start + n_events] + off
+        return mean(self.NHits[pulser[pulser < self.NEntries]] > 3)
 
     def find_error_offset(self, pulser_event, offset):
         """check if the given event matches a decoding error"""
