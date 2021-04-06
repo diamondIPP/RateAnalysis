@@ -120,7 +120,7 @@ class Converter(object):
         self.add_tracking()
         remove(self.get_eudaqfile_path())
 
-    def convert_raw_to_root(self, tree=None):
+    def convert_raw_to_root(self, tree=None, max_events=None):
         if not file_exists(self.RawFilePath):
             critical('The raw file {} does not exist ...'.format(self.RawFilePath))
         self.remove_pickle_files()
@@ -128,7 +128,7 @@ class Converter(object):
         chdir(self.Run.RootFileDir)  # go to root directory
         # prepare converter command
         cmd_list = [join(self.EudaqDir, 'bin', 'Converter.exe'), '-t', choose(tree, self.ConverterTree), '-c', join(self.EudaqDir, 'conf', self.NewConfigFile), self.RawFilePath]
-        self.set_converter_configfile(tree)
+        self.set_converter_configfile(tree, max_events)
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.Run.Number))
         info('{}\n'.format(' '.join(cmd_list)))
         check_call(cmd_list)
@@ -229,7 +229,7 @@ class Converter(object):
         for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.Run.Number))):
             remove_file(file_name)
 
-    def set_converter_configfile(self, tree=None):
+    def set_converter_configfile(self, tree=None, max_events=None):
         if not file_exists(self.EudaqConfigFile):
             critical('EUDAQ config file: "{}" does not exist!'.format(self.EudaqConfigFile))
         parser = Config(self.EudaqConfigFile)
@@ -246,6 +246,8 @@ class Converter(object):
         # set the new settings
         for key, value in self.RunConfig.items('ROOTFILE_GENERATION'):
             parser.set(section, key, value)
+        if max_events is not None:
+            parser.set(section, 'max_event_number', max_events)
 
         # write changes
         with open(self.NewConfigFile, 'w') as f:
