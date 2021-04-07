@@ -3,138 +3,107 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TProfile
 from numpy import histogram2d, sum
 from src.event_alignment import *
+from src.binning import make_bins
+from helpers.draw import get_hist_vec
 
 
 class PadAlignment(EventAligment):
-    def __init__(self, converter, verbose=True):
+    def __init__(self, converter):
 
         # Info
         self.Threshold = .4
+        self.Pulser = array([])
         self.PulserEvents = array([])
+        self.FirstOffset = None
         self.BinSize = 30
+        self.NMaxHits = 3
 
-        EventAligment.__init__(self, converter, verbose)
-        self.Offsets = sorted(range(-self.MaxOffset, self.MaxOffset + 1), key=abs)
+        EventAligment.__init__(self, converter)
 
         if not self.IsAligned:
             self.PulserRate = self.get_pulser_rate()
-            self.Threshold = .4 if self.PulserRate > 5 else .2
+            self.Threshold = .4 if self.PulserRate > .05 else .2
 
     # ----------------------------------------
     # region INIT
     def print_start(self):
         print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {}'.format(self.Run.Number))
 
-    def update_variables(self):
-        """ get additional vectors"""
+    @staticmethod
+    def init_branches():
+        return EventAligment.init_branches() + [('trigger_phase', zeros(1, 'u1'), 'trigger_phase/b')]
+
+    def load_variables(self):
+        data = super(PadAlignment, self).load_variables()
         t = self.Run.info('Loading pad information from tree ... ', endl=False)
-        self.PulserEvents = get_tree_vec(self.InTree, dtype=int, var='Entry$', cut='pulser')
+        self.Pulser = self.get_pulser()
+        self.PulserEvents = where(self.Pulser)[0]
+        self.FirstOffset = self.find_start_offset()
+        tp = get_tree_vec(self.InTree, 'trigger_phase', dtype='u1')
         self.Run.add_to_info(t)
+        return data + [tp]
 
     def check_alignment_fast(self, bin_size=1000):
         """ just check the zero correlation """
-        x, y = get_tree_vec(self.InTree, dtype='u4', var=['Entry$', '@col.size()'], cut='pulser')
-        bins = histogram2d(x, y > 2, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]
+        x, y = get_tree_vec(self.InTree, dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser')
+        bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)
-        self.Run.info(f'{100 * misaligned / bins.size:.1f}% of the events are misalignment :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
+        self.Run.info(f'{100 * misaligned / bins.shape[0]:.1f}% of the events are misalignment :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
         return misaligned == 0
     # endregion INIT
     # ----------------------------------------
 
+    def fill_branches(self, ev):
+        n = self.NHits[ev]
+        hits = sum(self.NHits[:ev])
+        self.Branches[0][1][0] = n  # n hits
+        for i in range(1, 6):
+            self.Branches[i][1][:n] = self.Variables[i - 1][hits:hits + n]
+        self.Branches[-1][1][0] = self.Variables[-1][ev]  # trigger phase
+
+    def get_pulser(self):
+        return get_tree_vec(self.InTree, 'pulser', dtype='?')
+
     def get_pulser_rate(self):
-        h = TProfile('hprc', 'Pulser Rate', self.NEntries // 500, 0, self.NEntries)
-        self.InTree.Draw('pulser:Entry$>>hprc', '', 'goff')
-        values = [ufloat(h.GetBinContent(i), 1 / h.GetBinError(i)) for i in range(1, h.GetNbinsX() + 1) if h.GetBinContent(i) and h.GetBinError(i)]
-        raw_mean = mean(values)
-        values = [v for v in values if v < raw_mean + .1]
-        m, s = mean_sigma(values)
-        return m
+        x = self.get_pulser()
+        values = get_hist_vec(self.Run.Draw.profile(arange(x.size), x, make_bins(0, x.size, 100), show=False))
+        return mean_sigma(values[values < mean(x) + .2])[0]
+
+    def set_offset(self, pulser_event, offset):
+        errors = self.Converter.DecodingErrors
+        event = errors[(self.PulserEvents[pulser_event - 5] < errors) & (self.PulserEvents[pulser_event + 5] > errors)]
+        self.Offsets[event[0] if event.size else self.PulserEvents[pulser_event]] = offset
 
     # ----------------------------------------
     # region OFFSETS
-    def calc_hit_fraction(self, start, off=0, n_events=None):
-        """" get the mean number of hits for a given offset in the pulser event interval [start: start + n] """
-        n_events = self.BinSize if n_events is None else n_events
-        pulser = self.PulserEvents[start:start + n_events] + off
-        return mean(self.NHits[pulser[pulser < self.NEntries]] > 3)
+    def find_offset(self, off=-5, event=0, n=None):
+        aligned = mean(self.NHits[roll(self.Pulser, off)][event:event + choose(n, self.BinSize)] > self.NMaxHits) < self.Threshold
+        return off if aligned else self.find_offset(off + 1, event, n)
 
-    def find_error_offset(self, pulser_event, offset):
-        """check if the given event matches a decoding error"""
-        for ev in self.Converter.DecodingErrors:
-            if self.PulserEvents[pulser_event - self.BinSize // 2] < ev < self.PulserEvents[pulser_event + self.BinSize]:
-                return ev, self.find_offset(self.find_next_pulser_event(ev), offset)
-        return None, None
-
-    def find_offset(self, start, initial_offset=0, n_events=None):
-        n_events = self.BinSize if n_events is None else n_events
-        for offset in self.Offsets:
-            if self.calc_hit_fraction(start, offset + initial_offset, n_events) < self.Threshold:
-                return offset
-        return 0  # if nothing is found return no offset
-
-    def find_start_offset(self):
-        """return the offset at the beginning of the run"""
-        return self.find_offset(0)
-
-    def find_final_offset(self):
+    def find_final_offset(self, off=-5):
         """return the offset at the end of the run"""
-        off = 0
-        while self.calc_hit_fraction(len(self.PulserEvents) - self.BinSize - 1 - off, off) > self.Threshold:
-            off += 1
-        return off
+        return self.find_offset(off, event=self.PulserEvents.size - self.BinSize)
 
-    def find_next_pulser_event(self, event):
-        return where(self.PulserEvents > event)[0][0]
+    def find_start_offset(self, off=-5):
+        return self.find_offset(off)
 
-    def find_shifting_offsets(self):
-        t = self.Run.info('Scanning for precise offsets ... ', endl=False)
-        n = self.BinSize
-        total_offset = self.find_start_offset()
-        # add first offset
-        offsets = OrderedDict([(0, total_offset)] if total_offset else [])
-        rates = [self.calc_hit_fraction(0)]
-        i = 1
-        while i < len(self.PulserEvents) - abs(total_offset) - n:
-            rate = self.calc_hit_fraction(i, total_offset)
-            if rate > self.Threshold:
-                # first check if the event is in the decoding errors
-                off_event, this_offset = self.find_error_offset(i + n // 2, total_offset)
-                if off_event is None:
-                    # assume that the rate was good n/2 events before
-                    good_rate = rates[-n // 2] if len(rates) > n // 2 else .1
-                    for j, r in enumerate(rates[-n // 2:]):
-                        if r > good_rate + .1:
-                            # i + j - n/2 + n is the first misaligned event
-                            off_event = self.PulserEvents[i + j - 1 + n // 2]
-                            this_offset = self.find_offset(i + j - 1 + n // 2, total_offset)
-                            if this_offset:
-                                i += j - 1 + n // 2
-                                break
-                else:  # if error offset was found jump ahead to the next pulser event
-                    i = self.find_next_pulser_event(off_event) - 1
-                if this_offset:
-                    offsets[off_event] = this_offset
-                    total_offset += this_offset
-            rates.append(rate)
-            i += 1
-            if len(rates) > n:
-                del rates[0]
-        self.Run.add_to_info(t)
-        return offsets
-
-    def find_manual_offsets(self):
-        return self.find_shifting_offsets()
+    def find_offsets(self, off=0):
+        start = self.find_offsets(off - 1) if off > self.FirstOffset else 0
+        if start:
+            self.set_offset(start, off)
+        y = self.NHits[roll(self.Pulser, off)][start:] > self.NMaxHits
+        v = mean(y[:y.size // self.BinSize * self.BinSize].reshape(y.size // self.BinSize, self.BinSize), axis=1)
+        bad = where(v > self.Threshold)[0]
+        if not bad.size:
+            return info('found all offsets :-)')
+        n = bad[0]
+        y0 = y[n * self.BinSize:(n + 1) * self.BinSize]
+        return where(y0 & (roll(y0, -1) == y0) & (roll(y0, -2) == y0))[0][0] + n * self.BinSize + start  # find first event with three misaligned in a row
     # endregion OFFSETS
     # ----------------------------------------
-
-    def fill_branches(self, offset):
-        for i, name in enumerate(self.Branches.keys()):
-            for value in self.Variables[self.AtEntry + offset][i]:
-                self.Branches[name].push_back(int(value))
 
 
 if __name__ == '__main__':
@@ -142,6 +111,6 @@ if __name__ == '__main__':
     from pad_run import PadRun
     from converter import Converter
 
-    args = init_argparser(run=23, tc='201908')
+    args = init_argparser(run=7, tc='201708')
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
