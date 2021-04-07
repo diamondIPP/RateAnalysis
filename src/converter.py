@@ -237,6 +237,7 @@ class Converter(object):
         if self.Type == 'pad':
             parser.set(section, 'polarities', self.load_polarities())
             parser.set(section, 'pulser_polarities', self.load_polarities(pulser=True))
+            parser.set(section, 'save_waveforms', self.RunConfig.get('ROOTFILE_GENERATION', 'active_regions') if self.MainConfig.get_value('SAVE', 'waveforms', bool) else '0')
 
         # remove unset ranges and regions
         new_options = self.RunConfig.options('ROOTFILE_GENERATION')
@@ -245,7 +246,7 @@ class Converter(object):
                 parser.remove_option(section, opt)
         # set the new settings
         for key, value in self.RunConfig.items('ROOTFILE_GENERATION'):
-            parser.set(section, key, value)
+            parser.set('Converter.telescopetree' if 'decoding' in key else section, key, value)
         if max_events is not None:
             parser.set(section, 'max_event_number', max_events)
 

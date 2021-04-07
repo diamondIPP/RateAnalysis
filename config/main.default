@@ -1,6 +1,5 @@
 [MAIN]
 default test campaign = 201908
-run plan path = Runinfos/run_plans.json
 ;hv config file = ''
 ;hv data path = ''
 
@@ -13,6 +12,7 @@ path length = 23.1
 frequency = 50.6
 
 [SAVE]
+waveforms = False
 pickle directory = metadata
 activate title = True
 git hash = True
@@ -21,6 +21,7 @@ save = True
 server mount directory = ~/mounts/psi
 
 [MISC]
+run plan path = Runinfos/run_plans.json
 runplan selection file = Runinfos/selection.json
 irradiation file = Runinfos/irradiation.json
 plane errors = False
