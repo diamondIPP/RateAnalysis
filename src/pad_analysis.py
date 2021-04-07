@@ -125,7 +125,7 @@ class PadAnalysis(DUTAnalysis):
         """ check if the events from telescope and digitiser are aligned"""
         def f():
             from src.pad_alignment import PadAlignment
-            return PadAlignment(self.Run.Converter, verbose=False).IsAligned
+            return PadAlignment(self.Run.Converter).IsAligned
         is_aligned = do_pickle(self.make_simple_pickle_path(sub_dir='Alignment'), f, redo=redo)
         warning('Run {r} is misaligned :-('.format(r=self.Run.Number)) if not is_aligned else do_nothing()
         return is_aligned

@@ -51,7 +51,7 @@ class PadAlignment(EventAligment):
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)
-        self.Run.info(f'{100 * misaligned / bins.shape[0]:.1f}% of the events are misalignment :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
+        self.Run.info(f'{100 * misaligned / bins.shape[0]:.1f}% of the events are misaligned :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
         return misaligned == 0
     # endregion INIT
     # ----------------------------------------
@@ -98,7 +98,7 @@ class PadAlignment(EventAligment):
         v = mean(y[:y.size // self.BinSize * self.BinSize].reshape(y.size // self.BinSize, self.BinSize), axis=1)
         bad = where(v > self.Threshold)[0]
         if not bad.size:
-            return info('found all offsets :-)')
+            return info(f'found all offsets ({len(self.Offsets) + 1}) :-) ')
         n = bad[0]
         y0 = y[n * self.BinSize:(n + 1) * self.BinSize]
         return where(y0 & (roll(y0, -1) == y0) & (roll(y0, -2) == y0))[0][0] + n * self.BinSize + start  # find first event with three misaligned in a row

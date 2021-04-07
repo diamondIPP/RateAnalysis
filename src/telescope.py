@@ -77,6 +77,7 @@ class Telescope(SubAnalysis):
     def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
+        self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)

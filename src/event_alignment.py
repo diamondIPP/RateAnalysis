@@ -6,6 +6,8 @@
 from ROOT import TFile
 from helpers.utils import *
 
+MAX_SIZE = 255
+
 
 class EventAligment(object):
     def __init__(self, converter=None):
@@ -36,9 +38,6 @@ class EventAligment(object):
         # Progress Bar
         self.PBar = PBar()
 
-    def __del__(self):
-        print_elapsed_time(self.StartTime, 'Pad Alignment', show=self.Run.Verbose and not self.IsAligned)
-
     def __call__(self):
         self.run()
 
@@ -51,6 +50,7 @@ class EventAligment(object):
                 self.write_aligned_tree()
                 if file_exists(self.Converter.ErrorFile):
                     remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
+            print_elapsed_time(self.StartTime, 'Pad Alignment')
 
     # ----------------------------------------
     # region INIT
@@ -69,15 +69,16 @@ class EventAligment(object):
 
     @staticmethod
     def init_branches():
-        return [('n', zeros(1, 'u1'), 'n/b'),
-                ('plane', zeros(100, 'u1'), 'plane[n]/b'),
-                ('col', zeros(100, 'u1'), 'col[n]/b'),
-                ('row', zeros(100, 'u1'), 'row[n]/b'),
-                ('adc', zeros(100, 'i2'), 'adc[n]/b'),
-                ('charge', zeros(100, 'float32'), 'charge[n]/F')]
+        return [('n_hits_tot', zeros(1, 'u1'), 'n_hits_tot/b'),
+                ('plane', zeros(MAX_SIZE, 'u1'), 'plane[n_hits_tot]/b'),
+                ('col', zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
+                ('row', zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
+                ('adc', zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
+                ('charge', zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F')]
 
-    def get_hit_var(self):
-        return 'n' if bool(self.InTree.GetBranch('n')) else '@col.size()'
+    @staticmethod
+    def get_hit_var():
+        return 'n_hits_tot'
 
     def load_n_hits(self, n_entries=None, first_entry=0):
         self.InTree.SetEstimate(self.NEntries)
@@ -140,7 +141,7 @@ class EventAligment(object):
     def write_aligned_tree(self):
         set_root_output(False)
         self.find_offsets(self.find_final_offset())
-        for name, o, leaf in self.Branches[1:]:  # remove old branches
+        for name, o, leaf in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
