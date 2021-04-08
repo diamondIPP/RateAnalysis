@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TFile
 from helpers.utils import *
+from numpy import sign
 
 MAX_SIZE = 255
 
@@ -18,6 +19,7 @@ class EventAligment(object):
         # Converter
         self.Converter = converter
         self.Run = converter.Run
+        self.Draw = self.Run.Draw
 
         # ROOT Files and Trees
         self.InFile = self.load_file()
@@ -76,9 +78,8 @@ class EventAligment(object):
                 ('adc', zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
                 ('charge', zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F')]
 
-    @staticmethod
-    def get_hit_var():
-        return 'n_hits_tot'
+    def get_hit_var(self):
+        return 'n_hits_tot' if self.InTree.GetBranch('n_hits_tot') else '@col.size()'
 
     def load_n_hits(self, n_entries=None, first_entry=0):
         self.InTree.SetEstimate(self.NEntries)
@@ -115,7 +116,7 @@ class EventAligment(object):
     def find_manual_offsets(self):
         return {}
 
-    def find_offsets(self, off):
+    def find_offsets(self, off, delta=1):
         use_decoding_errors = (self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_start_offset()) and self.Converter.DecodingErrors.size
         errors = self.load_error_offsets() if use_decoding_errors else self.find_manual_offsets()
         info('Found {n} offsets'.format(n=len(errors)))
@@ -140,7 +141,8 @@ class EventAligment(object):
 
     def write_aligned_tree(self):
         set_root_output(False)
-        self.find_offsets(self.find_final_offset())
+        final_offset = self.find_final_offset()
+        self.find_offsets(final_offset, max(sign(final_offset - self.find_start_offset()), 1, key=abs))
         for name, o, leaf in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
@@ -168,6 +170,7 @@ if __name__ == '__main__':
     from pad_run import PadRun
     from converter import Converter
 
-    args = init_argparser(run=442, tc='201508')
+    # examples: (201508-442, ...)
+    args = init_argparser(run=442)
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = EventAligment(Converter(zrun))

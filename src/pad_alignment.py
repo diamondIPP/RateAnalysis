@@ -6,7 +6,7 @@
 from numpy import histogram2d, sum
 from src.event_alignment import *
 from src.binning import make_bins
-from helpers.draw import get_hist_vec
+from helpers.draw import get_hist_vec, get_hist_vecs, ax_range
 
 
 class PadAlignment(EventAligment):
@@ -24,7 +24,8 @@ class PadAlignment(EventAligment):
 
         if not self.IsAligned:
             self.PulserRate = self.get_pulser_rate()
-            self.Threshold = .4 if self.PulserRate > .05 else .2
+            self.BeamInterruptions = self.get_beam_interruptions()
+            self.reload()
 
     # ----------------------------------------
     # region INIT
@@ -72,26 +73,41 @@ class PadAlignment(EventAligment):
         values = get_hist_vec(self.Run.Draw.profile(arange(x.size), x, make_bins(0, x.size, 100), show=False))
         return mean_sigma(values[values < mean(x) + .2])[0]
 
+    def get_beam_interruptions(self, bin_size=100):
+        x = self.get_pulser()
+        values = array(get_hist_vec(self.Run.Draw.profile(arange(x.size), x, make_bins(0, x.size, bin_size, last=True), show=False)) < mean(x) + .1)
+        high = where(values == 0)[0]
+        values[high[high > 0] - 1] = False  # set bins left and right also to zero
+        values[high[high < high.size - 1] + 1] = False
+        return values.repeat(bin_size)[:self.NEntries]
+
     def set_offset(self, pulser_event, offset):
         errors = self.Converter.DecodingErrors
         event = errors[(self.PulserEvents[pulser_event - 5] < errors) & (self.PulserEvents[pulser_event + 5] > errors)]
         self.Offsets[event[0] if event.size else self.PulserEvents[pulser_event]] = offset
 
+    def get_cut(self, event, n):
+        events = where(self.BeamInterruptions[self.Pulser])[0]
+        return events[event:event + n] if event >= 0 else events[event * n:(event + 1) * n]
+
     # ----------------------------------------
     # region OFFSETS
     def find_offset(self, off=-5, event=0, n=None):
-        aligned = mean(self.NHits[roll(self.Pulser, off)][event:event + choose(n, self.BinSize)] > self.NMaxHits) < self.Threshold
+        aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .1
         return off if aligned else self.find_offset(off + 1, event, n)
 
-    def find_final_offset(self, off=-5):
+    def find_final_offset(self, off=-500, n_bins=-2):
         """return the offset at the end of the run"""
-        return self.find_offset(off, event=self.PulserEvents.size - self.BinSize)
+        try:
+            return self.find_offset(off, event=n_bins)
+        except RecursionError:
+            critical(f'Event alignment seriously fucked up ... remove run {self.Run.Number}')
 
     def find_start_offset(self, off=-5):
         return self.find_offset(off)
 
-    def find_offsets(self, off=0):
-        start = self.find_offsets(off - 1) if off > self.FirstOffset else 0
+    def find_offsets(self, off=0, delta=1):
+        start = self.find_offsets(off - delta, delta) if off != self.FirstOffset else 0
         if start:
             self.set_offset(start, off)
         y = self.NHits[roll(self.Pulser, off)][start:] > self.NMaxHits
@@ -101,9 +117,24 @@ class PadAlignment(EventAligment):
             return info(f'found all offsets ({len(self.Offsets) + 1}) :-) ')
         n = bad[0]
         y0 = y[n * self.BinSize:(n + 1) * self.BinSize]
-        return where(y0 & (roll(y0, -1) == y0) & (roll(y0, -2) == y0))[0][0] + n * self.BinSize + start  # find first event with three misaligned in a row
+        three_consecutive = where(y0 & (roll(y0, -1) == y0) & (roll(y0, -2) == y0))[0]  # find events with three misaligned in a row
+        return start if not three_consecutive.size else three_consecutive[0] + n * self.BinSize + start
     # endregion OFFSETS
     # ----------------------------------------
+
+    def draw_pulser(self, bin_size=1000, cut=..., show=True):
+        x = arange(self.NEntries)[cut]
+        return self.Run.Draw.efficiency(x, self.get_pulser()[cut], make_bins(0, max(x), bin_size), draw_opt='alx', show=show)
+
+    def draw_hits(self, bin_size=1000, cut=..., show=True):
+        x = arange(self.NEntries)[cut]
+        self.Draw(self.Draw.make_graph_from_profile(self.Draw.profile(x, self.NHits[cut], make_bins(0, max(x), bin_size), show=False)), show=show, draw_opt='alx')
+
+    def draw(self, off=0, bin_size=None, show=True):
+        p = roll(self.get_pulser(), off) & self.get_beam_interruptions()
+        x, y = arange(self.NEntries)[p], self.load_n_hits()[p]
+        x, y = get_hist_vecs(self.Run.Draw.profile(x, y, make_bins(0, max(x), int(choose(bin_size, self.BinSize / self.get_pulser_rate().n))), show=0))
+        return self.Draw.graph(x, y, x_tit='Event Number', y_tit='N Hits @ Pulser', w=2, show=show, draw_opt='alx', y_range=ax_range(0, max(max(y).n, 5), .1, .3))
 
 
 if __name__ == '__main__':
@@ -111,6 +142,7 @@ if __name__ == '__main__':
     from pad_run import PadRun
     from converter import Converter
 
-    args = init_argparser(run=7, tc='201708')
+    # examples: 7(201708)
+    args = init_argparser(run=7)
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
