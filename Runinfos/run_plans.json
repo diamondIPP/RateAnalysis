@@ -1448,16 +1448,12 @@
       "attenuators": {
         "dia1": "None",
         "dia2": "None",
-        "pulser": "6DB_1 + 6DB_2"
+        "pulser1": "6dB_1",
+        "pulser2": "6dB_1"
       },
       "runs": [
-        525,
-        526,
         527,
         528,
-        529,
-        530,
-        531,
         534,
         535,
         542,
