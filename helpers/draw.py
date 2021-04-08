@@ -500,7 +500,7 @@ class Draw(object):
         x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
         x = [ufloat(p.GetBinCenter(i), p.GetBinWidth(i) / 2) for i in x_range]
         y = [ufloat(p.GetBinContent(i), p.GetBinError(i)) for i in x_range]
-        return Draw.make_tgrapherrors(x, y)
+        return Draw.make_tgrapherrors(x, y, x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
     def make_legend(x2=.96, y2=.89, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):

@@ -211,8 +211,8 @@ class PadAnalysis(DUTAnalysis):
         xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
         return Bins.make(xmin, xmax, choose(bin_size, default=self.DigitiserBinWidth))
 
-    def get_alignment(self, bin_size=200, thresh=40):
-        x, y = get_hist_vecs(self.Pulser.draw_hit_efficiency(bin_size, show=False), raw=True)
+    def get_alignment(self, bin_size=200, thresh=2):
+        x, y = get_graph_vecs(self.Pulser.draw_hit_efficiency(bin_size, show=False), err=False)
         return x, y > thresh
 
     def print_results(self, prnt=True):

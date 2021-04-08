@@ -774,7 +774,7 @@ def get_buf(buf, n, dtype=None):
 
 def calc_eff(k=0, n=0, values=None):
     values = array(values) if values is not None else None
-    if n == 0 and not values.size:
+    if n == 0 and (values is None or not values.size):
         return zeros(3)
     k = float(k if values is None else count_nonzero(values))
     n = float(n if values is None else values.size)

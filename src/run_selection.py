@@ -349,7 +349,7 @@ class RunSelector(object):
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
         selected = []
-        for run in self.RunNumbers:
+        for run in self.RunNumbers.tolist():
             if self.Selection[run]:
                 selected.append(run)
         if not selected:

@@ -193,9 +193,8 @@ class PulserAnalysis(PadSubAnalysis):
         self.Draw.stack(histos, 'Comparison of Pulser and Signal Pedestal', ['Signal', 'Pulser'], scale=True, show=show, lw=2, rebin=3)
 
     def draw_hit_efficiency(self, bin_size=200, show=True):
-        x, y = self.get_tree_vec(var=['Entry$', '@col.size() > 1'], cut=self.Ana.Cut.get('pulser', invert=True), dtype=['i4', bool])
-        return self.Draw.profile(x, y, make_bins(x[::bin_size]), 'Hit Efficiency at Pulser Events', x_tit='Event Number', y_tit='Hit Efficiency [%]', y_range=[0, 5], draw_opt='hist',
-                                 fill_color=Draw.FillColor, show=show, rm=.06, stats=set_entries())
+        from src.pad_alignment import PadAlignment
+        return PadAlignment(self.Run.Converter).draw(bin_size=bin_size, show=show)
 
     def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):
         return self.Ana.draw_ph_peaktime(x=choose(x, self.Peaks.get_from_tree()), y=choose(y, self.get_values()), xbins=self.get_t_bins(bin_size), show=show)
