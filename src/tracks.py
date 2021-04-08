@@ -76,7 +76,7 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region DRAW
     def draw(self, n=0, angle=None):
-        add = TCut('total_hits == 4') + ('' if angle is None else 'angle_x < {0} + .05 & angle_x > {0} - .05'.format(angle))
+        add = TCut('n_hits_total == 4') + ('' if angle is None else 'angle_x < {0} + .05 & angle_x > {0} - .05'.format(angle))
         cut = self.Cut.generate_custom(include='tracks', add=add, name='t1{}'.format(choose(angle, '')))
         (x, y), z_ = 10 * array(self.get_tree_vec(self.get_vars(), cut, nentries=1, firstentry=self.Ana.get_events(cut)[n])), self.get_z_positions()
         self.Draw.graph(z_, x, y_range=ax_range(min(x), min(x) + .3, .3, .3), y_tit='x').Fit('pol1', 'q')
