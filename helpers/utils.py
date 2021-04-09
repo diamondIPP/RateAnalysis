@@ -927,6 +927,9 @@ class Config(ConfigParser):
         except (NoOptionError, NoSectionError):
             return default
 
+    def get_values(self, section):
+        return [j for i, j in self.items(section)]
+
     def get_list(self, section, option, default=None):
         return self.get_value(section, option, list, choose(default, []))
 
