@@ -227,7 +227,7 @@ class Converter(object):
         remove_file(self.NewConfigFile)
 
     def remove_decodingfile(self):
-        for file_name in glob(join(self.Run.RootFileDir, 'decoding*{:03d}.root'.format(self.Run.Number))):
+        for file_name in glob(join(self.Run.RootFileDir, f'decoding_*{self.Run.Number}.root')):
             remove_file(file_name)
 
     def set_converter_configfile(self, tree=None, max_events=None):
