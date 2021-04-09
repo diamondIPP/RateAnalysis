@@ -54,7 +54,7 @@ class EventAligment(object):
                 if file_exists(self.Converter.ErrorFile):
                     remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
             print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)}', color='green')
-            self.check_alignment_fast()
+            self.check_alignment_fast(self.NewTree)
 
     # ----------------------------------------
     # region INIT
@@ -68,7 +68,7 @@ class EventAligment(object):
     def check_alignment(self):
         return self.IsAligned
 
-    def check_alignment_fast(self):
+    def check_alignment_fast(self, tree=None):
         pass
 
     @staticmethod

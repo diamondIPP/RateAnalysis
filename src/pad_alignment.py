@@ -46,9 +46,9 @@ class PadAlignment(EventAligment):
         self.Run.add_to_info(t)
         return data + [tp]
 
-    def check_alignment_fast(self, bin_size=1000):
+    def check_alignment_fast(self, tree=None, bin_size=1000):
         """ just check the zero correlation """
-        x, y = get_tree_vec(self.InTree, dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser')
+        x, y = get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser')
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         misaligned = count_nonzero(bin_average > self.Threshold)
