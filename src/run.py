@@ -273,7 +273,9 @@ class Run(Analysis):
         if dia is None or dia.lower() in ['unknown', 'none']:
             return
         parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
-        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else critical('Please add {} to confg/DiamondAliases.ini!'.format(dia.encode()))
+        if dia in parser.get_values('ALIASES'):
+            return dia
+        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else critical(f'Please add {dia} to config/DiamondAliases.ini!')
 
     def reload_run_config(self, run_number):
         self.Number = run_number
