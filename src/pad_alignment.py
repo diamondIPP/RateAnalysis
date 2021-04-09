@@ -25,7 +25,7 @@ class PadAlignment(EventAligment):
         if not self.IsAligned:
             self.PulserRate = self.get_pulser_rate()
             self.BeamInterruptions = self.get_beam_interruptions()
-            self.reload()
+            self.NMaxHits = mean(self.load_n_hits()) / (1 - self.PulserRate.n)
 
     # ----------------------------------------
     # region INIT

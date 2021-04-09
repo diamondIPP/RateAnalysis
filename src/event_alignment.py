@@ -52,7 +52,8 @@ class EventAligment(object):
                 self.write_aligned_tree()
                 if file_exists(self.Converter.ErrorFile):
                     remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
-            print_elapsed_time(self.StartTime, 'Pad Alignment')
+            print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)}', color='green')
+            self.check_alignment_fast()
 
     # ----------------------------------------
     # region INIT
