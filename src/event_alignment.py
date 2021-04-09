@@ -29,6 +29,7 @@ class EventAligment(object):
 
         # Info
         self.NEntries = int(self.InTree.GetEntries())
+        self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment_fast()
         self.Offsets = {}
 
