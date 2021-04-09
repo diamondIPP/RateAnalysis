@@ -119,7 +119,7 @@ class Converter(object):
         self.align_run()
         self.add_tracking()
         remove(self.get_eudaqfile_path())
-        print_banner(f'finished {self.__class__.__name__} of run {self.Run.Number} in {get_elapsed_time(self.Run.StartTime)}')
+        print_banner(f'finished {self.__class__.__name__} of run {self.Run.Number} in {get_elapsed_time(self.Run.InitTime)}', color='green')
 
     def convert_raw_to_root(self, tree=None, max_events=None):
         if not file_exists(self.RawFilePath):
@@ -227,8 +227,7 @@ class Converter(object):
         remove_file(self.NewConfigFile)
 
     def remove_decodingfile(self):
-        for file_name in glob(join(self.Run.RootFileDir, f'decoding_*{self.Run.Number}.root')):
-            remove_file(file_name)
+        remove_file(f'decoding_{self.Run.Number}.root')
 
     def set_converter_configfile(self, tree=None, max_events=None):
         if not file_exists(self.EudaqConfigFile):
