@@ -93,7 +93,7 @@ class PadCut(Cut):
 
     def generate_pedestal_bucket(self):
         """exclude events with a peak in bucket -1 (the pre-pedstal bucket)"""
-        return CutString('ped bucket', f'!ped_bucket[{self.Channel}]', 'pedestal bucket events')
+        return CutString('ped bucket', f'!ped_bucket[{self.DUT.Number - 1}]', 'pedestal bucket events')
 
     def generate_pre_bucket(self):
         """select only events when the signal in the signal and consecutive bucket are the same."""
@@ -101,7 +101,7 @@ class PadCut(Cut):
 
     def generate_bucket(self):
         """exclude events with a peak in bucket 2 and no peak in the signal region"""
-        return CutString('bucket', f'!bucket[{self.Channel}]', 'bucket events')
+        return CutString('bucket', f'!bucket[{self.DUT.Number - 1}]', 'bucket events')
 
     def generate_thresh_bucket(self, thresh=None):
         """select bucket events below threshold and then negate it"""
