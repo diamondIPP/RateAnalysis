@@ -88,8 +88,8 @@ if __name__ == '__main__':
     parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
     parser.add_argument('-v', action='store_false', help='turn verbose OFF')
     parser.add_argument('-t', action='store_true', help='turn test mode ON')
-    parser.add_argument('-pad', action='store_true', help='turn test mode ON')
-    parser.add_argument('-pixel', action='store_true', help='turn test mode ON')
+    parser.add_argument('-pad', action='store_true', help='convert only pad runs')
+    parser.add_argument('-pixel', action='store_true', help='convert only pixel runs')
 
     args = parser.parse_args()
 
