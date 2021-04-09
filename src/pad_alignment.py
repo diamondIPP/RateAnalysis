@@ -25,7 +25,7 @@ class PadAlignment(EventAligment):
         if not self.IsAligned:
             self.PulserRate = self.get_pulser_rate()
             self.BeamInterruptions = self.get_beam_interruptions()
-            self.NMaxHits = mean(self.load_n_hits()) / (1 - self.PulserRate.n)
+            self.NMaxHits = mean(self.load_n_hits()) / (1 - self.PulserRate.n) * .8
 
     # ----------------------------------------
     # region INIT
@@ -104,7 +104,7 @@ class PadAlignment(EventAligment):
         try:
             return self.find_offset(off, event=n_bins)
         except RecursionError:
-            critical(f'Event alignment seriously fucked up ... remove run {self.Run.Number}')
+            critical(f'Event alignment is seriously fucked up ... remove run {self.Run.Number}')
 
     def find_start_offset(self, off=-5):
         return self.find_offset(off)
@@ -149,3 +149,5 @@ if __name__ == '__main__':
     args = init_argparser(run=7)
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
+    z.reload()
+
