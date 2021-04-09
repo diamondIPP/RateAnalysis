@@ -3,7 +3,7 @@ from os import getcwd, chdir, rename, system
 from os.path import expanduser, basename
 from re import sub
 from subprocess import check_call
-from numpy import sign, genfromtxt
+from numpy import genfromtxt
 
 from src.pad_alignment import PadAlignment
 from src.pix_alignment import *
@@ -119,6 +119,7 @@ class Converter(object):
         self.align_run()
         self.add_tracking()
         remove(self.get_eudaqfile_path())
+        print_banner(f'finished {self.__class__.__name__} of run {self.Run.Number} in {get_elapsed_time(self.Run.StartTime)}')
 
     def convert_raw_to_root(self, tree=None, max_events=None):
         if not file_exists(self.RawFilePath):
