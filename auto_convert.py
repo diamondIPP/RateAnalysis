@@ -11,7 +11,7 @@ from src.run_selection import RunSelector, Run, basename, glob
 
 class AutoConvert:
 
-    def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, verbose=False):
+    def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, type_=None, verbose=False):
 
         self.Multi = multi
 
@@ -19,15 +19,16 @@ class AutoConvert:
         self.Run = self.Selection.Run
         self.StartAtRun = choose(first_run, self.find_last_converted())
         self.StopAtRun = 1e9 if not multi or end_run is None else int(end_run)
-        self.Runs = self.load_runs()
+        self.Runs = self.load_runs(type_)
 
     def find_last_converted(self):
         converted = [int(remove_letters(basename(name))) for name in glob(join(self.Selection.Run.TCDir, 'root', '*', 'TrackedRun*.root'))]
         return max(converted) if len(converted) else None
 
-    def load_runs(self):
+    def load_runs(self, type_=None):
         all_runs = self.Selection.get_runplan_runs()
-        runs = array([r for r in all_runs if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
+        runs = [r for r in all_runs if self.Selection.get_type(r) == type_] if type_ is not None else all_runs
+        runs = array([r for r in runs if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
         return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
 
     def load_logged_runs(self):
@@ -87,9 +88,12 @@ if __name__ == '__main__':
     parser.add_argument('e', nargs='?', default=None, help='run number where to stop, default [None]')
     parser.add_argument('-v', action='store_false', help='turn verbose OFF')
     parser.add_argument('-t', action='store_true', help='turn test mode ON')
+    parser.add_argument('-pad', action='store_true', help='turn test mode ON')
+    parser.add_argument('-pixel', action='store_true', help='turn test mode ON')
+
     args = parser.parse_args()
 
-    z = AutoConvert(args.m, args.s, args.e, args.tc, args.v)
+    z = AutoConvert(args.m, args.s, args.e, args.tc, 'pad' if args.pad else 'pixel' if args.pixel else None, args.v)
     if not args.t:
         if z.Runs.size:
             print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
