@@ -26,7 +26,8 @@ class AutoConvert:
         return max(converted) if len(converted) else None
 
     def load_runs(self):
-        runs = array([run for run in self.Selection.get_runplan_runs() if not file_exists(self.Selection.get_final_file_path(run))], 'i2')
+        all_runs = self.Selection.get_runplan_runs()
+        runs = array([r for r in all_runs if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
         return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
 
     def load_logged_runs(self):
