@@ -89,10 +89,7 @@ class Telescope(SubAnalysis):
         histos = [self.draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in (range(self.NRocs) if planes is None else planes)]
         c = self.Draw.canvas('Hitmaps', w=1.5, h=1.5, divide=(2, 2), show=show)
         for i, h in enumerate(histos, 1):
-            h.SetStats(0)
-            pad = c.cd(i)
-            pad.SetBottomMargin(.15)
-            h.Draw('colz')
+            self.Draw(h, canvas=c.cd(i), draw_opt='colz', rm=.15)
         self.Draw.save_plots('HitMaps', show=show, prnt=prnt)
 
     def draw_hit_efficiency(self, plane=0, cut=None, y_range=None, show=True):
