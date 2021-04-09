@@ -552,7 +552,10 @@ class RunSelector(object):
         for run, dic in self.RunInfos.items():
             for key, value in dic.items():
                 if key.startswith('dia') and key[-1].isdigit():
-                    self.RunInfos[run][key] = self.Run.translate_dia(value)
+                    new, old = self.Run.translate_dia(value), self.RunInfos[run][key]
+                    if new != old:
+                        warning(f'replacing {key} name "{old}" with {new} for run {run}')
+                        self.RunInfos[run][key] = new
         self.save_runinfo()
 
     # endregion RUN PLAN
