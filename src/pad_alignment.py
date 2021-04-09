@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, sum
+from numpy import histogram2d, sum, invert
 from src.event_alignment import *
 from src.binning import make_bins
 from helpers.draw import get_hist_vec, get_hist_vecs, ax_range
@@ -46,14 +46,17 @@ class PadAlignment(EventAligment):
         self.Run.add_to_info(t)
         return data + [tp]
 
-    def check_alignment_fast(self, tree=None, bin_size=1000):
-        """ just check the zero correlation """
+    def get_aligned(self, tree=None, bin_size=1000):
         x, y = get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser')
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
-        misaligned = count_nonzero(bin_average > self.Threshold)
-        self.Run.info(f'{100 * misaligned / bins.shape[0]:.1f}% of the events are misaligned :-(' if misaligned else f'Run {self.Run.Number} is perfectly aligned :-)')
-        return misaligned == 0
+        return bin_average < self.Threshold
+
+    def check_alignment_fast(self, bin_size=1000):
+        """ just check the zero correlation """
+        align = self.get_aligned(bin_size=bin_size)
+        self.Run.info(f'{calc_eff(values=invert(align))[0]:.1f}% of the events are misaligned :-(' if not all(align) else f'Run {self.Run.Number} is perfectly aligned :-)')
+        return all(align)
     # endregion INIT
     # ----------------------------------------
 
@@ -110,7 +113,7 @@ class PadAlignment(EventAligment):
         start = self.find_offsets(off - delta, delta) if off != self.FirstOffset else 0
         if start:
             self.set_offset(start, off)
-        y = self.NHits[roll(self.Pulser, off)][start:] > self.NMaxHits
+        y = array(self.NHits[roll(self.Pulser, off)][start:] > self.NMaxHits)
         v = mean(y[:y.size // self.BinSize * self.BinSize].reshape(y.size // self.BinSize, self.BinSize), axis=1)
         bad = where(v > self.Threshold)[0]
         if not bad.size:

@@ -53,8 +53,8 @@ class EventAligment(object):
                 self.write_aligned_tree()
                 if file_exists(self.Converter.ErrorFile):
                     remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
-            print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)}', color='green')
-            self.check_alignment_fast(self.NewTree)
+            eff = calc_eff(values=self.get_aligned(self.NewTree))[0]
+            print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)} ({eff:.1f}% aligned)', color='green')
 
     # ----------------------------------------
     # region INIT
@@ -68,7 +68,10 @@ class EventAligment(object):
     def check_alignment(self):
         return self.IsAligned
 
-    def check_alignment_fast(self, tree=None):
+    def check_alignment_fast(self):
+        pass
+
+    def get_aligned(self, tree=None):
         pass
 
     @staticmethod
