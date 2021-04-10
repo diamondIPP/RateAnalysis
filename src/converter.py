@@ -44,7 +44,7 @@ class Converter(object):
 
             # Files
             self.RawFilePath = self.get_raw_file_path()
-            self.NewConfigFile = join(self.EudaqDir, 'conf', '{}.ini'.format(self.Run.Number))
+            self.NewConfigFile = join(self.EudaqDir, 'conf', 'tmp', '{}.ini'.format(self.Run.Number))
             self.EudaqConfigFile = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
             self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.Run.Number if self.Run.Number is not None else 0))
 
