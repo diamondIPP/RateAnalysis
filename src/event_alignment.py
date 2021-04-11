@@ -32,6 +32,8 @@ class EventAligment(object):
         self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment_fast()
         self.Offsets = {}
+        self.FirstOffset = 0
+        self.FinalOffset = 0
 
         # Branches
         self.Branches = self.init_branches()
@@ -107,7 +109,7 @@ class EventAligment(object):
     # ----------------------------------------
     # region OFFSETS
 
-    def find_start_offset(self):
+    def find_first_offset(self):
         return 0
 
     def find_final_offset(self):
@@ -115,14 +117,14 @@ class EventAligment(object):
 
     def load_error_offsets(self):
         self.Run.info('Using decoding errors to get the event alignment offsets')
-        zero_offset = [(0, self.find_start_offset())] if self.find_start_offset() else []
+        zero_offset = [(0, self.find_first_offset())] if self.find_first_offset() else []
         return OrderedDict(zero_offset + [(event_number, 1) for event_number in self.Converter.DecodingErrors])
 
     def find_manual_offsets(self):
         return {}
 
     def find_offsets(self, off, delta=1):
-        use_decoding_errors = (self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_start_offset()) and self.Converter.DecodingErrors.size
+        use_decoding_errors = (self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_first_offset()) and self.Converter.DecodingErrors.size
         errors = self.load_error_offsets() if use_decoding_errors else self.find_manual_offsets()
         info('Found {n} offsets'.format(n=len(errors)))
         return errors
@@ -146,8 +148,7 @@ class EventAligment(object):
 
     def write_aligned_tree(self):
         set_root_output(False)
-        final_offset = self.find_final_offset()
-        self.find_offsets(final_offset, max(sign(final_offset - self.find_start_offset()), 1, key=abs))
+        self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
         for name, o, leaf in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
@@ -155,7 +156,7 @@ class EventAligment(object):
         for name, o, leaf in self.Branches:  # set new branches
             self.NewTree.Branch(name, o, leaf)
         self.PBar.start(self.NEntries)
-        offset = self.find_start_offset()
+        offset = self.FirstOffset
         for ev, t in enumerate(self.InTree):
             self.PBar.update()
             if ev in self.Offsets:

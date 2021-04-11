@@ -117,7 +117,7 @@ class PixAlignment(EventAligment):
             print('anti correlation:', min_anti_corr)
         return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
 
-    def find_start_offset(self):
+    def find_first_offset(self):
         correlation = Correlation(self, bucket_size=200)
         correlation.fill_n(self.TelRow.keys()[:200])
         correlations = correlation.get_all()

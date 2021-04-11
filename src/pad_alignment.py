@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, sum, invert
+from numpy import histogram2d, sum, invert, insert, delete
 from src.event_alignment import *
 from src.binning import make_bins
 from helpers.draw import get_hist_vec, get_hist_vecs, ax_range
@@ -16,7 +16,6 @@ class PadAlignment(EventAligment):
         self.Threshold = .4
         self.Pulser = array([])
         self.PulserEvents = array([])
-        self.FirstOffset = None
         self.BinSize = 30
         self.NMaxHits = 3
 
@@ -41,20 +40,21 @@ class PadAlignment(EventAligment):
         t = self.Run.info('Loading pad information from tree ... ', endl=False)
         self.Pulser = self.get_pulser()
         self.PulserEvents = where(self.Pulser)[0]
-        self.FirstOffset = self.find_start_offset()
+        self.FirstOffset = self.find_first_offset()
+        self.FinalOffset = self.find_final_offset()
         tp = get_tree_vec(self.InTree, 'trigger_phase', dtype='u1')
         self.Run.add_to_info(t)
         return data + [tp]
 
-    def get_aligned(self, tree=None, bin_size=1000):
-        x, y = get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser')
+    def get_aligned(self, tree=None, bin_size=1000, data=None):
+        x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser'))
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         return bin_average < self.Threshold
 
-    def check_alignment_fast(self, bin_size=1000):
+    def check_alignment_fast(self, bin_size=1000, data=None):
         """ just check the zero correlation """
-        align = self.get_aligned(bin_size=bin_size)
+        align = self.get_aligned(bin_size=bin_size, data=data)
         self.Run.info(f'{calc_eff(values=invert(align))[0]:.1f}% of the events are misaligned :-(' if not all(align) else f'Run {self.Run.Number} is perfectly aligned :-)')
         return all(align)
     # endregion INIT
@@ -96,32 +96,51 @@ class PadAlignment(EventAligment):
     # ----------------------------------------
     # region OFFSETS
     def find_offset(self, off=-5, event=0, n=None):
-        aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .1
+        aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .15
+        # self.Run.info(f'Offset: {off}, aligned: {mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits)}')
         return off if aligned else self.find_offset(off + 1, event, n)
 
-    def find_final_offset(self, off=-500, n_bins=-2):
+    def find_final_offset(self, off=-500, n_bins=-3):
         """return the offset at the end of the run"""
         try:
             return self.find_offset(off, event=n_bins)
         except RecursionError:
-            critical(f'Event alignment is seriously fucked up ... remove run {self.Run.Number}')
+            warning(f'could not find last offset for run {self.Run.Number}')
+            return 500
 
-    def find_start_offset(self, off=-5):
-        return self.find_offset(off)
+    def find_first_offset(self, off=-5):
+        for ev in range(0, 51, 10):
+            try:
+                off = self.find_offset(off, ev)
+                return min(off, 0)
+            except RecursionError:
+                pass
+        critical(f'could not determine starting offset of run {self.Run.Number}')
 
     def find_offsets(self, off=0, delta=1):
         start = self.find_offsets(off - delta, delta) if off != self.FirstOffset else 0
-        if start:
+        if start is None:
+            return
+        if start or off != self.FirstOffset:
             self.set_offset(start, off)
-        y = array(self.NHits[roll(self.Pulser, off)][start:] > self.NMaxHits)
-        v = mean(y[:y.size // self.BinSize * self.BinSize].reshape(y.size // self.BinSize, self.BinSize), axis=1)
-        bad = where(v > self.Threshold)[0]
-        if not bad.size:
-            return info(f'found all offsets ({len(self.Offsets) + 1}) :-) ')
-        n = bad[0]
-        y0 = y[n * self.BinSize:(n + 1) * self.BinSize]
-        three_consecutive = where(y0 & (roll(y0, -1) == y0) & (roll(y0, -2) == y0))[0]  # find events with three misaligned in a row
-        return start if not three_consecutive.size else three_consecutive[0] + n * self.BinSize + start
+        # info(f'{off}, {start} ({self.PulserEvents[start]})')
+        bad = array(self.NHits[roll(self.Pulser, off)][start:] >= round(self.NMaxHits))
+        offs = where(bad & roll(bad, -1) & roll(bad, -2) & roll(bad, -3))[0]  # if four consecutive pulser events are above threshold
+        if not offs.size:
+            info(f'found all offsets ({len(self.Offsets) + 1}) :-) ')
+            return
+        return offs[0] + start
+
+    def verify_offets(self):
+        p = self.Pulser
+        last_offset = self.FirstOffset
+        for ev, off in self.Offsets.items():
+            d = off - last_offset
+            for i in range(abs(d)):
+                p = delete(p, ev) if d < 0 else insert(p, ev, False)
+            last_offset = off
+        p = p[:self.NEntries] if p.size > self.NEntries else concatenate([p, zeros(self.NEntries - p.size, '?')])
+        self.check_alignment_fast(data=(where(p)[0], self.NHits[p]))
     # endregion OFFSETS
     # ----------------------------------------
 
@@ -145,9 +164,8 @@ if __name__ == '__main__':
     from pad_run import PadRun
     from converter import Converter
 
-    # examples: 7(201708)
+    # examples: 7(201708), 218(201707)
     args = init_argparser(run=7)
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
     z.reload()
-
