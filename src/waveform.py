@@ -245,6 +245,16 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region SHOW INTEGRATION
+    def draw_avrg(self,c, cut=None, s=None, n=50000, t_off=0):
+        p = self.draw_all_average(ind=cut, n=n, show=0, redo=1)
+        if s is not None:
+            p.Scale(s / p.GetMaximum())
+        x, y = get_hist_vecs(p, err=0)
+        g = self.Draw.make_tgrapherrors(x + t_off, y, color=2)
+        c.cd()
+        self.Draw.legend([g], ['average'], 'l')
+        g.Draw('l')
+
     def draw_signal_integral(self, ind=None):
         w = self.draw_all(ind=ind, n=1)[0]
         self.draw_sig_int(w)
