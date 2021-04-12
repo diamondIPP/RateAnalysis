@@ -6,7 +6,7 @@
 from warnings import simplefilter
 from ROOT import TH1F, TCut, TProfile, THStack, TH2F, TMath
 from ROOT.gRandom import Landau
-from numpy import polyfit, RankWarning, vectorize, size, repeat, argmax, insert, array_split, invert
+from numpy import polyfit, RankWarning, vectorize, size, repeat, argmax, insert, array_split, invert, sum
 from numpy.random import normal, rand
 from scipy.signal import find_peaks, savgol_filter
 from scipy.stats import poisson
@@ -33,7 +33,7 @@ class PeakAnalysis(PadSubAnalysis):
     # region INIT
     def calc_noise_threshold(self):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
-        return abs(self.Ana.Pedestal.get_raw_mean() + 3 * self.Ana.Pedestal.get_raw_noise()).n
+        return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
     def get_start_additional(self, b0=None):
         """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal. Signalbunch = bunch 1 """
@@ -56,7 +56,7 @@ class PeakAnalysis(PadSubAnalysis):
     def get_from_tree(self, redo=False, cut=...):
         return array(do_hdf5(self.make_simple_hdf5_path('Peaks'), self.Run.get_tree_vec, var=self.Ana.PeakName, dtype='f4', redo=redo))[cut]
 
-    def get_cut(self, cut=None):
+    def get_event_cut(self, cut=None):
         return self.WF.get_cut(cut)
 
     def get_signal_values(self, f, ind=None, default=-1, *args, **kwargs):
@@ -95,12 +95,12 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_all(self, cut=None, thresh=None, fit=False, redo=False):
         t, h, n = self.find_all(thresh, fit, redo)
-        cut = self.get_cut(cut)
+        cut = self.get_event_cut(cut)
         lcut = cut.repeat(n)  # make cut for the flat arrays
         return array(t)[lcut], array(h)[lcut], array(n)[cut]
 
     def get(self, flat=False, thresh=None, fit=False, cut=None, i=0):
-        cut = self.get_cut(cut)
+        cut = self.get_event_cut(cut)
         t, h, n = self.get_all(cut, thresh, fit)
         data = [t, h]
         return array(data[i]) if flat else array(split(data[i], cumsum(n)[:-1]), dtype=object)
@@ -108,11 +108,11 @@ class PeakAnalysis(PadSubAnalysis):
     def get_heights(self, flat=False, thresh=None, fit=False, cut=None):
         return self.get(flat, thresh, fit, cut, i=1)
 
-    def get_bunch_height(self, n=1, thresh=80, cut=-1, redo=False):
-        def f():
-            x = self.find_bunch_heights(n, cut=self.make_bunch_cut(n) if cut is None else self.Ana.get_pulser_cut() & (self.get_bunch_cut(n + cut) if isint(cut) else cut))
-            return mean_sigma(x[(x > thresh) & (x < 500)])[0]
-        return f() if is_iter(cut) else do_pickle(self.make_simple_pickle_path('BHeight', '{}_{}_{}'.format(n, thresh, cut)), f, redo=redo)
+    def get_times(self, flat=False, thresh=None, fit=False, cut=None):
+        return self.get(flat, thresh, fit, cut, i=0)
+
+    def get_npeaks(self, thresh=None, fit=False, cut=None):
+        return self.get_all(cut, thresh, fit)[-1]
 
     def get_tbin_cut(self, ibin, bin_size=None, corr=True, fine_corr=False):
         cut_name = self.Ana.Timing.get_peak_var(corr, fine_corr)
@@ -142,17 +142,9 @@ class PeakAnalysis(PadSubAnalysis):
     def get_event(self, i):
         return self.WF.get_all_times()[i], self.WF.get_all()[i], self.get_heights()[i], self.get()[i]
 
-    def get_n_additional(self, start_bunch=None, end_bunch=None, thresh=None):
-        def f():
-            values = self.find_n_additional(start_bunch, end_bunch, thresh)
-            m = mean(values)
-            return ufloat(m, sqrt(m / values.size))
-        suffix = '{}_{}'.format(start_bunch, end_bunch) if start_bunch is not None else ''
-        return do_pickle(self.make_simple_pickle_path('NAdd', '{}{}'.format(suffix, '' if thresh is None else '{:1.0f}'.format(thresh))), f)
-
     def get_corrected_times(self, times, n_peaks=None, events=None, cut=None):
-        signal_peak_times = repeat(self.get_from_tree(cut=self.get_cut(cut)), n_peaks) if events is None else array(self.get_from_tree())[events]
-        return times - (signal_peak_times - self.get_from_tree(cut=self.get_cut())[0])  # subtract the first from the signal events
+        signal_peak_times = repeat(self.get_from_tree(cut=self.get_event_cut(cut)), n_peaks) if events is None else array(self.get_from_tree())[events]
+        return times - (signal_peak_times - self.get_from_tree(cut=self.get_event_cut())[0])  # subtract the first from the signal events
 
     def get_n_times(self, n=2, ret_indices=False):
         """ :returns all times with exactly [n] additional peaks. """
@@ -173,7 +165,7 @@ class PeakAnalysis(PadSubAnalysis):
         return ufloat(lam, sqrt(lam / (cut[cut].size - 1)))
 
     def get_p_extra(self):
-        scale = self.get_n_total(b0=1, b_end=2) / count_nonzero(self.get_cut())  # assume the additional miss as many events as the signal
+        scale = self.get_n_total(b0=1, b_end=2) / count_nonzero(self.get_event_cut())  # assume the additional miss as many events as the signal
         return (1 - poisson.cdf(0, self.get_lambda().n / self.NBunches)) / scale
 
     def get_flux(self, n_peaks=None, lam=None, prnt=True):
@@ -246,12 +238,50 @@ class PeakAnalysis(PadSubAnalysis):
         m, s = mean_sigma(bin_centers, weights)
         return ufloat(m, s / sqrt(values.size)) - self.Ana.Pedestal.get_raw_mean()
 
-    def get_bunch_cut(self, n, cut=...):
-        n_peaks = self.find_n_additional(n, n + 1, cut=cut)
-        return self.Ana.make_event_cut(self.Ana.get_events(cut)[n_peaks > 0])
+    def make_event_cut(self, p_cut, e_cut=None):
+        n = self.get_npeaks(cut=...)
+        e = arange(self.Run.NEvents).repeat(n)[p_cut]
+        return self.Ana.make_event_cut(e) if e_cut is None else self.Ana.make_event_cut(e) & e_cut
+
+    def get_pulser_cut(self):
+        return self.Ana.get_pulser_cut().repeat(self.get_npeaks(cut=...))
+
+    def get_time_cut(self, n=None, end=None, thresh=None):
+        t = self.get_times(True, thresh, cut=...)
+        t0, t1 = self.get_bunch_range(n, n + 1 if end is None and n is not None else end)
+        return (t > t0) & (t < t1)
+
+    def get_n_additional(self, n=None, end=None, thresh=None):
+        cut, n = self.get_time_cut(n, end, thresh), self.get_npeaks(thresh, cut=...)
+        filled = insert(cut, insert(cumsum(n)[:-1], 0, 0).repeat(max(n) - n).astype('i'), False)  # make all events the same length and fill with False
+        return sum(filled.reshape(filled.size // max(n), max(n)), axis=1)
+
+    def get_bunch_cut(self, n):
+        return self.make_event_cut(self.get_time_cut(n))
 
     def make_bunch_cut(self, n=1):
         return self.Ana.get_pulser_cut() & invert(self.get_bunch_cut(n - 1)) & invert(self.get_bunch_cut(n + 1))
+
+    def get_isolated_cut(self, n, thresh=None):
+        # find events with peaks in buckets before and after, invert and repeat cut again
+        t1, t2, np = self.get_time_cut(n - 1, thresh=thresh), self.get_time_cut(n + 1, thresh=thresh), self.get_npeaks(cut=...)
+        return invert(self.make_event_cut(t1)).repeat(np) & invert(self.make_event_cut(t2)).repeat(np) & self.get_pulser_cut() & self.get_time_cut(n, thresh=thresh)
+
+    def get_bunch_values(self, n, thresh=None, excl=.05, cut=None, i=1, isolated=True):
+        pcut = self.get_isolated_cut(n, thresh) if isolated else self.get_pulser_cut() & self.get_time_cut(n, thresh=thresh)
+        values = self.get(True, thresh, cut=..., i=i)[pcut if cut is None else pcut & cut]
+        return values[int(excl * values.size):]
+
+    def get_bunch_heights(self, n, thresh=None, excl=.05, cut=None, isolated=True):
+        return self.get_bunch_values(n, thresh, excl, cut, 1, isolated)
+
+    def get_bunch_height(self, n=1, thresh=80, cut=None):
+        x = self.get_bunch_heights(n, cut=cut).astype('d')
+        return mean_sigma(x[(x > thresh) & (x < 500)])[0]
+
+    def get_bunch_times(self, n, thresh=None, excl=.05, cut=None, isolated=True):
+        return self.get_bunch_values(n, thresh, excl, cut, 0, isolated)
+
     # endregion GET
     # ----------------------------------------
 
@@ -326,7 +356,7 @@ class PeakAnalysis(PadSubAnalysis):
         self.Draw(p, lm=.12, show=show)
 
     def draw_n(self, do_fit=False, show=True):
-        n_peaks = self.find_n_additional()
+        n_peaks = self.get_n_additional()
         h = self.Draw.distribution(n_peaks, make_bins(11), 'Number of Peaks', show=False)
         if do_fit:
             fit_poissoni(h, show=show)
@@ -389,8 +419,12 @@ class PeakAnalysis(PadSubAnalysis):
         return values[peaks[0]]
 
     def draw_bunch_height(self, n=1, bin_width=5, cut=None, show=True):
-        x = self.find_bunch_heights(n, cut=self.make_bunch_cut(n) if cut is None else self.Ana.get_pulser_cut() & cut)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Peak Height B{}'.format(n), x_tit='Peak Height [mV]', show=show)
+        x = self.get_bunch_heights(n, cut=cut)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), f'Peak Height B{n}', x_tit='Peak Height [mV]', show=show)
+
+    def draw_bunch_times(self, n=1, bin_width=.2, cut=None, show=True):
+        x = self.get_bunch_times(n, cut=cut)
+        return self.Draw.distribution(x, make_bins(*ax_range(x), bin_width), f'Peak Times B{n}', x_tit='Peak Time [ns]', show=show)
 
     def compare_bunch_heights(self, n, bin_width=5, fill=None, show=True):
         h = [self.draw_bunch_height(i, bin_width, show=False) for i in make_list(n)]
@@ -411,11 +445,14 @@ class PeakAnalysis(PadSubAnalysis):
         tits = ['single peak', 'single average', 'peak in bunch {}'.format(b), 'B{} average'.format(b)]
         self.Draw.multigraph(g, 'Bunch Peak Heights', tits, w=2, y_range=y_range, gridy=True)
 
-    def draw_height_evolution(self, n=1, bin_size=10000, thresh=60):
-        x = self.find_bunch_heights(n)
-        x = x[(x > thresh) & (x < 500)]
-        x = [mean_sigma(ix)[0] for ix in array_split(x, int(x.size / bin_size))]
-        self.Draw.graph(arange(len(x)), x)
+    def draw_height_evolution(self, n=1, excl=.05, bin_size=20000, thresh=0):
+        x = self.get_tree_vec(self.get_t_var())[self.make_event_cut(self.get_isolated_cut(n))]
+        x, y = x[int(excl * x.size):], self.get_bunch_heights(n, excl=excl).astype('d')
+        x = append(x, zeros(y.size - x.size))
+        cut = (y > thresh) & (y < 500)
+        bins = x[cut][::bin_size].astype('d')
+        p = self.Draw.profile(x[cut], y[cut], [bins.size - 1, bins], x_tit='Time [hh:mm]', y_tit='Pulse Height [mV]', t_ax_off=0)
+        format_histo(p, y_range=ax_range(get_hist_vec(p), fl=.2, fh=.5))
 
     # endregion DRAW
     # ----------------------------------------
@@ -434,21 +471,6 @@ class PeakAnalysis(PadSubAnalysis):
             fit_peaks.append(f.Parameter(1))
         fit_peaks = array(fit_peaks) - (self.BunchSpacing / 2. if not center else 0)
         return concatenate([fit_peaks, [fit_peaks[-1] + self.BunchSpacing]])
-
-    def find_n_additional(self, start_bunch=None, end_bunch=None, thresh=None, cut=None):
-        times = self.get(cut=cut, thresh=thresh)
-        start, end = self.get_bunch_range(start_bunch, end_bunch)
-        for i in range(times.size):
-            times[i] = times[i][(times[i] > start) & (times[i] < end)]
-        return array([lst.size for lst in times], dtype='u2')
-
-    def find_bunch_heights(self, n=1, thresh=None, cut=None, excl=.05):
-        t, h = [self.get(False, thresh, False, cut, i) for i in range(2)]
-        t0 = self.get_start_additional(n) * self.BinWidth
-        for i in range(t.size):
-            h[i] = h[i][(t[i] > t0) & (t[i] < t0 + self.BunchSpacing)]
-        values = concatenate(h).astype('d')
-        return values[int(excl * values.size):]
 
     def find_all(self, thresh=None, fit=False, redo=False):
         suf = '{:1.0f}'.format(self.Threshold) if thresh is None and not fit else '{:1.0f}_{}'.format(thresh, int(fit)) if thresh is not None else int(fit)
