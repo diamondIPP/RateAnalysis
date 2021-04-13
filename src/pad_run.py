@@ -54,9 +54,12 @@ class PadRun(Run):
         return [i for i in range(self.NChannels) if has_bit(binary, i)]
 
     def load_tree_config(self):
-        info = [str(line).strip('\n') for line in self.RootFile.Get('region_information').GetListOfLines()]
-        if not info[0].startswith('['):
-            critical('very old data! rerun conversion!')
+        full = [str(line).strip('\n') for line in self.RootFile.Get('region_information').GetListOfLines()]
+        info = []
+        for i in range(len(full)):
+            short = [word[:6] for word in info]
+            if not (full[i].startswith('[Time ') and '[Time ' in short or full[i].startswith('tcal =') and 'tcal =' in short):
+                info.append(full[i])
         return Config(info)
 
     def load_digitizer_channels(self):
