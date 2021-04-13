@@ -81,9 +81,10 @@ class AnalysisCollection(Analysis):
     def load_analyses(self, load_tree=True):
         with Pool() as pool:
             res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, load_tree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs())])
-        for r in res:
-            r.reload_tree_()
-            r.Cut.generate_fiducial()
+        if load_tree:
+            for r in res:
+                r.reload_tree_()
+                r.Cut.generate_fiducial()
         return res
     # endregion INIT
     # ----------------------------------------
