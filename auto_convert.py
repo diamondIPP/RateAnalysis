@@ -42,7 +42,7 @@ class AutoConvert:
         return None if not runs.size or last == runs[-1] else runs[0] if last is None else next(run for run in runs if run > last)
 
     def print_progress(self):
-        pbar = PBar(self.load_runs().size, counter=True)
+        pbar = PBar(self.load_runs().size, counter=True, t='h')
         while not pbar.is_finished():
             sleep(5)
             pbar.update(pbar.N - self.load_runs().size)

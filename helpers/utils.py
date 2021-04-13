@@ -26,7 +26,7 @@ from termcolor import colored
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from scipy.optimize import curve_fit
 from scipy import constants
@@ -879,9 +879,9 @@ class FitRes(object):
 
 
 class PBar(object):
-    def __init__(self, start=None, counter=False):
+    def __init__(self, start=None, counter=False, t=None):
         self.PBar = None
-        self.Widgets = ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.Widgets = ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed() if t is None else EventSpeed(t)]
         self.Step = 0
         self.N = 0
         self.start(start)
@@ -906,6 +906,20 @@ class PBar(object):
 
     def is_finished(self):
         return self.PBar.currval == self.N
+
+
+class EventSpeed(Widget):
+    """Widget for showing the event speed (useful for slow updates)."""
+
+    def __init__(self, t='s'):
+        self.unit = t
+        self.factor = {'s': 1, 'min': 60, 'h': 60 * 60}[t]
+
+    def update(self, pbar):
+        value = 0
+        if pbar.seconds_elapsed > 2e-6 and pbar.currval > 2e-6:
+            value = pbar.currval / pbar.seconds_elapsed * self.factor
+        return f'{value:4.1f} E/{self.unit}'
 
 
 def load_main_config(config='main', ext='ini'):
