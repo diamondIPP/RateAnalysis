@@ -26,7 +26,7 @@ from termcolor import colored
 from uncertainties import ufloat
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
-from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar
+from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress
 from configparser import ConfigParser, NoSectionError, NoOptionError
 from scipy.optimize import curve_fit
 from scipy import constants
@@ -879,16 +879,18 @@ class FitRes(object):
 
 
 class PBar(object):
-    def __init__(self):
+    def __init__(self, start=None, counter=False):
         self.PBar = None
-        self.Widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
+        self.Widgets = ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
         self.Step = 0
         self.N = 0
+        self.start(start)
 
     def start(self, n):
-        self.Step = 0
-        self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
-        self.N = n
+        if n is not None:
+            self.Step = 0
+            self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+            self.N = n
 
     def update(self, i=None):
         i = self.Step if i is None else i
@@ -901,6 +903,9 @@ class PBar(object):
 
     def finish(self):
         self.PBar.finish()
+
+    def is_finished(self):
+        return self.PBar.currval == self.N
 
 
 def load_main_config(config='main', ext='ini'):

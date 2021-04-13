@@ -14,20 +14,21 @@ class AutoConvert:
     def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, type_=None, verbose=False):
 
         self.Multi = multi
+        self.Type = type_
 
         self.Selection = RunSelector(testcampaign=test_campaign, verbose=verbose)
         self.Run = self.Selection.Run
         self.StartAtRun = choose(first_run, self.find_last_converted())
         self.StopAtRun = 1e9 if not multi or end_run is None else int(end_run)
-        self.Runs = self.load_runs(type_)
+        self.Runs = self.load_runs()
 
     def find_last_converted(self):
         converted = [int(remove_letters(basename(name))) for name in glob(join(self.Selection.Run.TCDir, 'root', '*', 'TrackedRun*.root'))]
         return max(converted) if len(converted) else None
 
-    def load_runs(self, type_=None):
+    def load_runs(self):
         all_runs = self.Selection.get_runplan_runs()
-        runs = [r for r in all_runs if self.Selection.get_type(r) == type_] if type_ is not None else all_runs
+        runs = [r for r in all_runs if self.Selection.get_type(r) == self.Type] if self.Type is not None else all_runs
         runs = array([r for r in runs if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
         return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
 
@@ -39,6 +40,12 @@ class AutoConvert:
         last = self.find_last_converted()
         runs = self.load_logged_runs()
         return None if not runs.size or last == runs[-1] else runs[0] if last is None else next(run for run in runs if run > last)
+
+    def print_progress(self):
+        pbar = PBar(self.load_runs().size, counter=True)
+        while not pbar.is_finished():
+            sleep(5)
+            pbar.update(pbar.N - self.load_runs().size)
 
     def auto_convert(self):
         """Sequential conversion with check if the file is currently written. For usage during beam tests."""
