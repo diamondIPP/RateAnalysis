@@ -88,7 +88,8 @@ class AutoConvert:
             print_small_banner('Summary:')
             for run in runs:
                 delta = timedelta(seconds=round(run.TInit))
-                print(f'{run} --> {delta} ({run.NEvents}, {run.NEvents / delta.total_seconds():1.0f} Events/s)')
+                speed = 'NOT CONVERTED!' if run.RootFile is None else f'{run.NEvents}, {run.NEvents / delta.total_seconds():1.0f} Events/s'
+                print(f'{run} --> {delta} ({speed})')
 
     def run(self):
         if not self.Runs.size:
