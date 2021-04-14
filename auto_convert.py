@@ -9,6 +9,14 @@ from helpers.utils import *
 from src.run_selection import RunSelector, Run, basename, glob
 
 
+def make_run(n, tc):
+    try:
+        return Run(n, tc, True, False)
+    except Exception as err:
+        print_banner(err, color='red')
+        return Run(n, tc, False, False)
+
+
 class AutoConvert:
 
     def __init__(self, multi, first_run=None, end_run=None, test_campaign=None, type_=None, verbose=False):
@@ -45,7 +53,7 @@ class AutoConvert:
         pbar = PBar(self.load_runs().size, counter=True, t='h')
         while not pbar.is_finished():
             sleep(5)
-            pbar.update(pbar.N - self.load_runs().size)
+            pbar.update(pbar.N - self.load_runs().size - 1)
 
     def auto_convert(self):
         """Sequential conversion with check if the file is currently written. For usage during beam tests."""
@@ -72,13 +80,15 @@ class AutoConvert:
 
     def multi(self):
         """parallel conversion"""
-        self.Run.info(f'Creating pool with {cpu_count()} processes')
+        info(f'Creating pool with {cpu_count()} processes')
         with Pool() as pool:
-            runs = pool.starmap(Run, [(run, self.Selection.TCString, True, False) for run in self.Runs])
-        print()
-        print_small_banner('Summary:')
-        for run in runs:
-            print(f'{run} --> {timedelta(seconds=round(run.TInit))}')
+            result = pool.starmap_async(make_run, [(run, self.Selection.TCString) for run in self.Runs])
+            print()
+            runs = result.get()
+            print_small_banner('Summary:')
+            for run in runs:
+                delta = timedelta(seconds=round(run.TInit))
+                print(f'{run} --> {delta} ({run.NEvents}, {run.NEvents / delta.total_seconds():1.0f} Events/s)')
 
     def run(self):
         if not self.Runs.size:
@@ -106,3 +116,5 @@ if __name__ == '__main__':
             print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
             z.run()
             print_banner('Finished Conversion!', color='green')
+        else:
+            info('There is nothing to convert :-)\n', blank_lines=1)

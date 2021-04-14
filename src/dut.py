@@ -15,7 +15,7 @@ class DUT:
         # Info
         self.Number = 1 if number is None else number
         self.Name = run_info['dia{}'.format(self.Number)]
-        self.Bias = run_info['dia{}hv'.format(self.Number)]
+        self.Bias = float(run_info['dia{}hv'.format(self.Number)])
         self.Attenuator = run_info['att_dia{}'.format(self.Number)] if 'att_dia{}'.format(self.Number) in run_info else None
 
         # Specs
