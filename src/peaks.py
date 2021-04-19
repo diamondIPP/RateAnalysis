@@ -197,28 +197,6 @@ class PeakAnalysis(PadSubAnalysis):
             f.Draw('same')
         return f.Integral(0, self.Run.NSamples) / self.BinWidth
 
-    def get_area(self, bcm=False):
-        """ :returns area of the DUT in cm^2"""
-        return self.get_bcm_area() if bcm else self.DUT.ActiveArea * .01
-
-    def get_bcm_area(self):
-        """ return the total area of the BCM' pad sizes """
-        i = int(self.Ana.DUT.Name.split('-')[-1]) - 1
-        base_length = 0.0928125  # [cm]
-        spacing = 0.0025
-        radius = 0.0049568
-        rounded_edge = radius ** 2 * (4 - pi)
-        area = base_length ** 2
-        return 2 ** i * area + self.get_spacings(i, spacing, base_length) - rounded_edge
-
-    def get_spacings(self, i, spacing, length):
-        """ return the additional spacings for the BCM' pad sizes """
-        if i > 0:
-            j = 2 ** (i / 2)
-            return spacing * (j * length + (j - 1) * spacing) + 2 * self.get_spacings(i - 1, spacing, length)
-        else:
-            return 0
-
     def get_mean_sigma(self):
         v = self.get_signal_times()
         return mean_sigma(v[v > 0])

@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi
 
 
 class DUT:
@@ -50,6 +50,27 @@ class DUT:
 
     def set_number(self, value):
         self.Number = value
+
+    def get_area(self, bcm=False):
+        """ :returns: area of the DUT in cm^2"""
+        return self.get_bcm_area() if bcm else self.ActiveArea * .01
+
+    def get_bcm_area(self):
+        """ :returns: total area of the BCM' pad sizes """
+        i = int(self.Name.split('-')[-1]) - 1
+        base_length = 0.0928125  # [cm]
+        spacing = 0.0025
+        radius = 0.0049568
+        rounded_edge = radius ** 2 * (4 - pi)
+        return 2 ** i * base_length ** 2 + get_spacings(i, spacing, base_length) - rounded_edge
+
+
+def get_spacings(i, spacing, length):
+    """ :returns: the additional spacings for the BCM' pad sizes """
+    if not i:
+        return 0
+    j = 2 ** (i / 2)
+    return spacing * (j * length + (j - 1) * spacing) + 2 * get_spacings(i - 1, spacing, length)
 
 
 class Plane(object):
