@@ -242,6 +242,9 @@ class Run(Analysis):
             warning('Could not read mask file... not taking any mask!')
         return mask_data
 
+    def get_mask_dim(self, mm=False):
+        return {plane: array([Plane.PX * (v[2] - v[0] + 1), Plane.PY * (v[3] - v[1] + 1)]) / (1 if mm else 10) for plane, v in self.load_mask().items()}
+
     def get_unmasked_area(self):
         if self.Number is None:
             return
