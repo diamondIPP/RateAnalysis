@@ -116,16 +116,17 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, t_corr=True, grid=True, show=True):
+    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, t_corr=True, grid=True, tm=None, show=True):
         values, times = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n)
         if values.size > self.Run.NSamples:
             h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], 'All Waveforms', show=False)
         else:
             h = Draw.make_tgrapherrors(times if t_corr else arange(self.NSamples) * self.BinWidth, values, title='Single Waveform')
         y_range = ax_range(min(values), max(values), .1, .2) if y_range is None else y_range
+        x_range = choose(x_range, [0, 512])
         format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
         draw_opt = draw_opt if draw_opt is not None else 'col' if values.size > self.Run.NSamples else 'ap'
-        self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.225, w=1.5, h=.5, grid=grid, gridy=True, logz=True)
+        self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.225, tm=tm, w=1.5, h=.5, grid=grid, gridy=True, logz=True)
         return h, n
 
     def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, draw_opt=None, t_corr=True, grid=True, show=True, show_noise=False):
@@ -266,10 +267,15 @@ class Waveform(PadSubAnalysis):
         x, y = self.get_max(h)
         return Draw.vertical_line(x, color=4, w=2)
 
-    def draw_buckets(self, start=0, n=8):
+    def draw_buckets(self, start=0, n=8, tl=.04):
+        c = get_last_canvas()
         x0 = self.Ana.SignalRegion[0] * self.BinWidth - (1 - start) * self.BunchSpacing
         for i in range(n + 1):
-            Draw.vertical_line(x0 + i * self.BunchSpacing, style=3)
+            x = x0 + i * self.BunchSpacing
+            Draw.vertical_line(x, style=3)
+            Draw.vertical_line(x, c.GetUymax() * (1 - tl) + tl * c.GetUymin())
+            Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42)
+        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=.07)
 
     def draw_region(self, region=None, lw=2, show_leg=True, fill=False):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
@@ -349,7 +355,7 @@ class Waveform(PadSubAnalysis):
     def draw_rise_time_map(self, res=None, cut=None, show=True):
         cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)
         rt, x, y = self.get_tree_vec(var=['rise_time[{}]'.format(self.Channel)] + self.Ana.get_track_vars(), cut=cut)
-        p = self.Draw.prof2d(x, y, rt, self.Ana.Bins.get_global(res, mm=True), 'Rise Time Map', show=show, draw_opt='colz')
+        p = self.Draw.prof2d(x, y, rt, self.Ana.Bins.get_global(res), 'Rise Time Map', show=show, draw_opt='colz')
         format_histo(p, x_tit='track x [cm]', y_tit='track y [cm]', z_tit='Rise Time [ns]', ncont=20, ndivy=510, ndivx=510)
         self.Ana.draw_fid_cut()
         self.Draw.save_plots('RiseTimeMap')
