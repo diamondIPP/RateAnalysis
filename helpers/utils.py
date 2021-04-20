@@ -155,6 +155,14 @@ def interpolate_two_points(x1, y1, x2, y2, name=''):
     return f
 
 
+def get_x(x1, x2, y1, y2, y):
+    return (x2 - x1) / (y2 - y1) * (y - y1) + x1
+
+
+def get_y(x1, x2, y1, y2, x):
+    return get_x(y1, y2, x1, x2, x)
+
+
 def interpolate_x(x1, x2, y1, y2, y):
     p1 = get_p1(x1, x2, y1, y2)
     p0 = get_p0(x1, y1, p1)
