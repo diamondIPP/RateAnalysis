@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort
+from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort, invert, any
 from numpy.random import rand
 from uncertainties import umath
 
@@ -124,8 +124,9 @@ class DUTAnalysis(Analysis):
         c[events] = True
         return c
 
-    def get_pulser_cut(self):
-        return self.make_event_cut(self.get_events(self.Cut['pulser']))
+    def get_pulser_cut(self, inv=False):
+        cut = self.make_event_cut(self.get_events(self.Cut['pulser']))
+        return invert(cut) if inv else cut
 
     def get_sub_events(self, cut):
         e = array(self.get_events())
@@ -424,22 +425,6 @@ class DUTAnalysis(Analysis):
         values = split(ph[lexsort((digitize(x, bx), digitize(y, by)))], n)  # bin x and y and sort then ph according to bins
         values = concatenate([lst / mean(lst) * mean(ph) for lst in values if lst.size > 2])  # normalise the values of each bin
         return self.Draw.distribution(values, self.Bins.get_pad_ph(mean_ph=mean(values)), 'Signal Distribution Normalised by area mean', x_tit='Pulse Height [mV]', show=show)
-
-    def draw_beam_profile(self, mode='x', fit=True, fit_range=.8, res=.7, show=True, prnt=True):
-        h = self.draw_hitmap(res, show=False, prnt=prnt)
-        p = h.ProjectionX() if mode.lower() == 'x' else h.ProjectionY()
-        format_histo(p, title='Profile {}'.format(mode.title()), name='pbp{}'.format(self.Run.Number), y_off=1.3, y_tit='Number of Hits', fill_color=Draw.FillColor)
-        self.Draw(p, lm=.13, show=show, stats=set_statbox(all_stat=True))
-        if fit:
-            fit = self.fit_beam_profile(p, fit_range)
-        self.Draw.save_plots('BeamProfile{}'.format(mode.title()), prnt=prnt)
-        return FitRes(fit) if fit else p
-
-    @staticmethod
-    def fit_beam_profile(p, fit_range):
-        x_peak = p.GetBinCenter(p.GetMaximumBin())
-        x_min, x_max = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(0), p.FindLastBinAbove(0)]]
-        return p.Fit('gaus', 'qs', '', x_peak - (x_peak - x_min) * fit_range, x_peak + (x_max - x_peak) * fit_range)
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         x = get_2d_hist_vec(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)

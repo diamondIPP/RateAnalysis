@@ -70,6 +70,10 @@ class Tracks(SubAnalysis):
         x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
         self.add_to_info(t)
         return x, y, self.get_z_positions()
+
+    def get_beam_profile(self):
+        h = self.Ana.draw_hitmap(.7, show=False, prnt=False)
+        return self.fit_beam_profile(h.ProjectionX()), self.fit_beam_profile(h.ProjectionY())
     # endregion GET
     # ----------------------------------------
 
@@ -167,6 +171,19 @@ class Tracks(SubAnalysis):
         f = Draw.make_tf1('a', lambda x: 1 / cos(deg2rad(x)), -a_max, a_max)
         format_histo(f, x_tit='Track Angle [deg]', y_tit='Relative Signal', y_off=1.6, y_range=[1, 1.01])
         self.Draw(f, lm=.121)
+
+    def draw_beam_profile(self, mode='x', fit=True, res=.7, show=True, prnt=True):
+        p = getattr(self.Ana.draw_hitmap(res, show=False, prnt=prnt), f'Projection{mode.title()}')()
+        self.fit_beam_profile(p, show=fit)
+        format_histo(p, title='Profile {}'.format(mode.title()), name=self.Draw.get_name('p'), y_off=1.3, y_tit='Number of Tracks', fill_color=Draw.FillColor)
+        return self.Draw(p, f'BeamProfile{mode.title()}',  lm=.13, show=show, stats=set_statbox(all_stat=True, fit=fit), draw_opt='', prnt=prnt)
+
+    @staticmethod
+    def fit_beam_profile(p, show=True):
+        """fit the beam profile only at the center, because the edges are cut of by the pixel mask"""
+        thresh = .05 * p.GetMaximum()
+        xmin, xmax = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(thresh), p.FindLastBinAbove(thresh)]]
+        return FitRes(p.Fit('gaus', f'qs{"" if show else 0}', '', *ax_range(xmin, xmax, -.2, -.2)))  # fit only inner 60%
 
     # endregion DRAW
     # ----------------------------------------
