@@ -247,8 +247,10 @@ class DUTAnalysis(Analysis):
     def draw_size(self, size=None, color=1, name=''):
         if size is None:
             return warning('The {} size of "{}" was not specified in the dia info'.format(' {}'.format(name) if name else '', self.DUT.Name))
+        c = get_last_canvas()
         cx, cy = self.find_center()
         x, y = size
+        c.cd()
         Draw.box(cx - x / 2, cy - y / 2, cx + x / 2, cy + y / 2, line_color=color, width=3, name=name, fillstyle=4000)
 
     def draw_detector_size(self):
@@ -270,10 +272,10 @@ class DUTAnalysis(Analysis):
 
     def find_center(self, redo=False):
         def f():
-            h = self.draw_signal_map(cut='', show=False)
+            h = self.draw_signal_map(cut='', show=False, prnt=False)
             px, py = h.ProjectionX(), h.ProjectionY()
-            mx = mean([px.GetBinCenter(b) for b in [px.FindFirstBinAbove(px.GetMaximum() / 2), px.FindLastBinAbove(px.GetMaximum() / 2)]])
-            my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() / 2), py.FindLastBinAbove(py.GetMaximum() / 2)]])
+            mx = mean([px.GetBinCenter(b) for b in [px.FindFirstBinAbove(px.GetMaximum() * .5), px.FindLastBinAbove(px.GetMaximum() * .5)]])
+            my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() * .5), py.FindLastBinAbove(py.GetMaximum() * .5)]])
             return array([mx, my])
         return do_pickle(self.make_simple_pickle_path('Center', sub_dir='Center'), f, redo=redo)
     # endregion SIZES
