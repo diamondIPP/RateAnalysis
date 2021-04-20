@@ -862,10 +862,10 @@ class FitRes(object):
         self.vNdf = f.GetNDF() if is_tf1 else f.Ndf()
 
     def __getitem__(self, item):
-        return self.Pars[item]
+        return ufloat(self.Pars[item], self.Errors[item])
 
     def __repr__(self):
-        return str(self.Pars)
+        return f'[{", ".join(f"{par:1.2e}" for par in self.Pars)}]'
 
     def get_pars(self, err=True):
         return array([ufloat(p, e) for p, e in zip(self.Pars, self.Errors)]) if err else self.Pars
