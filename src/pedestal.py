@@ -127,7 +127,7 @@ class PedestalAnalysis(PadSubAnalysis):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
         h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, **kwargs)
         fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
-        f = Draw.make_f('f', 'gaus', -100, 100, pars=fit_pars[...], npx=1000, line_style=2)
+        f = Draw.make_f('f', 'gaus', -100, 100, pars=fit_pars.Pars, npx=1000, line_style=2)
         h.GetFunction('gaus').Draw('same')
         f.Draw('same')
         format_statbox(h, fit=True, all_stat=True)
