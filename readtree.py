@@ -5,7 +5,7 @@ from src.run import Run
 from src.binning import Bins
 from os import chdir, system
 from helpers.draw import *
-from numpy import genfromtxt, polyfit, polyval, quantile
+from numpy import genfromtxt, polyfit, polyval, quantile, delete, all
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
 plot = Draw()
@@ -360,11 +360,17 @@ def get_p_miss(q=.2):
     return p_miss
 
 
-def get_raw_efficiency(roc=0):
-    x = get_tree_vec(t, 'n_clusters[{}]'.format(roc))
-    eff = calc_eff(values=x > 0)
-    print('Efficiency of Plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(roc, *eff))
-    return eff
+def get_raw_efficiency(put=2, tree=None):
+    tree = choose(tree, t)
+    tree.SetEstimate(z.NEvents * z.NPlanes)
+    n_clusters = get_tree_vec(tree, 'n_clusters').reshape(z.NEvents, z.NPlanes)
+    return calc_eff(values=n_clusters[:, put][all(delete(n_clusters, put, axis=1) == 1, axis=1)] > 0)
+
+
+def get_run_effciencies(r1, r2, c=None):
+    for put in [1, 2]:
+        e = [get_raw_efficiency(put, Run(r, c, verbose=False).Tree) for r in [r1, r2]]
+        info(f'Effciency for plane {put}: {mean_sigma([ufloat(ie[0], mean(ie[1:])) for ie in e])[0]:.2f} %')
 
 
 def draw_eff_evo(roc=0, n=50):
