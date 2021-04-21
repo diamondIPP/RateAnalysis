@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TH1F, TCut
 from numpy import arange, concatenate, mean, sqrt, full, ceil
+from scipy.stats import poisson
 from src.binning import Bins
 from helpers.draw import Draw, format_histo, set_statbox, set_entries, format_statbox, get_hist_vec, fill_hist, warning, time_stamp, do_nothing, update_canvas, mean_sigma, ufloat, do_pickle, calc_eff
 from src.sub_analysis import SubAnalysis, choose
@@ -22,6 +23,11 @@ class Telescope(SubAnalysis):
     # region GET
     def get_flux(self, rel_error=0, show=False):
         return self.calculate_flux(prnt=False, show=show) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(rel_error)
+
+    def get_trigger_eff(self, flux, area=None, t=60):
+        """calculate real efficiency of the FAST-OR trigger, t [ns], area [cm²]"""
+        lam = flux * choose(area / 100, mean(list(self.Run.get_unmasked_area().values()))) * t * 1e-9
+        return (1 - poisson.cdf(1, lam)) / poisson.pmf(1, lam)
 
     def get_rate_var(self, plane, flux=False):
         if not self.has_branch('rate'):
