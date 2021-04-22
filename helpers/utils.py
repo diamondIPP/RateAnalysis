@@ -849,6 +849,7 @@ class FitRes(object):
         self.Names = None
         self.vChi2 = None
         self.vNdf = None
+        self.F = f
         if f is None:
             return
         is_tf1 = 'TF1' in f.ClassName()
