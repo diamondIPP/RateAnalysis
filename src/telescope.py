@@ -50,8 +50,8 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    def get_flux(self, corr=True, show=False, full_size=False):
-        flux = self.calculate_flux(corr, show) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(corr)
+    def get_flux(self, plane=1, corr=True, show=False, full_size=False):
+        flux = self.calculate_flux(plane, corr, show) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, corr)
         return flux * self.get_flux_scale(full_size)
 
     def get_flux_ratio(self, dim):   # dim -> [x1, x2, y1, y2] in mm
