@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from ROOT import TFile, TTree
-from numpy import inf
+from numpy import inf, log
 from src.analysis import Analysis
 from src.converter import *
 from src.dut import DUT, Plane
@@ -41,7 +41,7 @@ class Run(Analysis):
         self.TriggerPlanes = self.load_trigger_planes()
 
         # General Information
-        self.Flux = self.calculate_flux()
+        self.Flux = self.get_flux()
         self.Type = self.get_type()
 
         # Times
@@ -85,7 +85,7 @@ class Run(Analysis):
 
         self.Number = number
         self.load_run_info()
-        self.Flux = self.calculate_flux()
+        self.Flux = self.get_flux()
 
         # check for conversion
         if load_tree:
@@ -205,6 +205,9 @@ class Run(Analysis):
         self.TimeOffset = None if t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
         return t if self.TimeOffset is None else t - self.TimeOffset
 
+    def load_plane_efficiency(self, plane):
+        return self.load_plane_efficiencies()[plane - 1]
+
     def load_plane_efficiencies(self):
         return [ufloat(e, .03) for e in self.Config.get_list('BASIC', 'plane efficiencies')]
     # endregion INIT
@@ -310,6 +313,11 @@ class Run(Analysis):
         fluxes = array([self.Info[f'for{i}'] / area / 1000 for i, area in enumerate(self.get_unmasked_area().values(), 1)])  # in kHz/cm^2
         return mean(fluxes / eff) if corr else ufloat(mean(fluxes), mean(fluxes) * .1)
 
+    def calculate_plane_flux(self, plane=1, corr=True):
+        """estimate the flux [kHz/cm²] through a trigger plane based on Poisson statistics."""
+        rate, eff, area = self.Info[f'for{plane}'], self.load_plane_efficiency(plane), self.get_unmasked_area()[plane]
+        return -log(1 - rate / Plane.Frequency) * Plane.Frequency / area / 1000 / (eff if corr else 1)  # count zero hits of Poisson
+
     def find_n_events(self, n, cut, start=0):
         evt_numbers = self.get_tree_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
         return int(evt_numbers[:n][-1] + 1 - start)
@@ -318,8 +326,16 @@ class Run(Analysis):
 
     # ----------------------------------------
     # region GET
-    def get_flux(self, corr=True):
-        return self.calculate_flux(corr)
+    def get_flux(self, plane=1, corr=True):
+        if self.Number is None:
+            return
+        if not self.find_for_in_comment():
+            warning('no plane rates in the data...')
+            return self.Info['measuredflux'] / (ufloat(mean(self.load_plane_efficiencies()), 0.03) if corr else 1)
+        return self.get_mean_flux(corr) if plane is None else self.calculate_plane_flux(plane, corr)
+
+    def get_mean_flux(self, corr=True):
+        return mean([self.get_flux(pl, corr) for pl in [1, 2]])
 
     def get_time(self):
         return ufloat(time_stamp(self.LogStart + self.Duration / 2), self.Duration.seconds / 2)

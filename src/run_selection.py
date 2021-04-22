@@ -307,7 +307,7 @@ class RunSelector(object):
 
     def get_flux(self, run_number):
         self.Run.reload_run_config(run_number)
-        return self.Run.calculate_flux()
+        return self.Run.get_flux()
 
     def get_type(self, run_number):
         self.Run.reload_run_config(run_number)

@@ -163,7 +163,7 @@ def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
     leg = Draw.make_legend(.005, .156, y1=.003, nentries=2, clean=False, scale=1, margin=.05)
     leg.SetTextSize(.05)
-    leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.calculate_flux()), '')
+    leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.Flux), '')
     leg.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
     leg.Draw()
     stuff.append(leg)
