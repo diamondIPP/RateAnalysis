@@ -5,10 +5,11 @@
 # --------------------------------------------------------
 from ROOT import TCut, TF2
 from numpy import delete, all, sort, prod
-from scipy.stats import poisson
+from uncertainties.umath import log as ulog
 from src.binning import Bins
 from helpers.draw import *
 from src.sub_analysis import SubAnalysis, choose
+from src.dut import Plane
 
 
 class Telescope(SubAnalysis):
@@ -51,14 +52,7 @@ class Telescope(SubAnalysis):
     # region FLUX
     def get_flux(self, corr=True, show=False, full_size=False):
         flux = self.calculate_flux(corr, show) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(corr)
-        return flux * (self.get_flux_scale(full_size) / self.get_trigger_eff(flux.n / self.get_trigger_eff(flux.n).n) if corr else 1)
-
-    def get_trigger_eff(self, flux, area=None, t=60, err=10):
-        """calculate real efficiency of the FAST-OR trigger, flux [kHz/cm²] t [ns], area [cm²]"""
-        area = mean(list(self.Run.get_unmasked_area().values())) if area is None else area / 100
-        lam = array([t, t + err]) * flux * area * 1e-6  # ns -> s, kHz -> Hz
-        eff = [(1 - poisson.cdf(1, i)) / poisson.pmf(1, i) for i in lam]
-        return 1 - ufloat(eff[0], eff[1] - eff[0])
+        return flux * self.get_flux_scale(full_size)
 
     def get_flux_ratio(self, dim):   # dim -> [x1, x2, y1, y2] in mm
         tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(list(self.Run.get_mask_dim(mm=True).values()), axis=0) * [1, -1]]
@@ -80,20 +74,23 @@ class Telescope(SubAnalysis):
     def get_flux_scale(self, full_size=False):
         return self.get_pad_flux_ratio() if full_size else self.get_fid_flux_ratio()
 
-    def get_areas(self):
-        values = [self.get_tree_vec(self.get_hit_vars(plane), nentries=50000) for plane in sort(self.Run.TriggerPlanes)[::-1]]  # reverse order of trigger planes
-        return [(max(x) - min(x) + 1) * self.Run.Plane.PixArea * (max(y) - min(y) + 1) / 100 for x, y in values]  # cm²
+    def get_area(self, plane=1):
+        x, y = self.get_tree_vec(self.get_hit_vars(sort(self.Run.TriggerPlanes)[::-1][plane - 1]), nentries=50000)
+        return (max(x) - min(x) + 1) * (max(y) - min(y) + 1) * Plane.PixArea / 100  # cm²
 
-    def calculate_flux(self, corr=True, show=False, redo=False):
+    def get_areas(self):
+        return [self.get_area(pl) for pl in [1, 2]]
+
+    def calculate_flux(self, plane=1, corr=True, show=False, redo=False):
         def f():
-            rates = array(self.get_tree_vec(self.get_rate_vars(), cut=self.Cut['beam stops'] + self.Cut['event range'] + 'beam_current < 1e4')).T
-            rates = rates[all(rates < 1e9, axis=1)]
-            eff = self.Run.load_plane_efficiencies()
-            fluxes = mean(rates / (eff if corr else 1) / self.get_areas() / 1000, axis=1)
-            fit = FitRes(self.Draw.distribution(fluxes, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
-            rel_err = mean(eff).s if corr else .05
-            return ufloat(fit[1].n, fit[1].s + fit[1].n * rel_err) if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else mean_sigma(fluxes)[0]
-        return do_pickle(self.make_simple_pickle_path('Flux', int(corr)), f, redo=redo or show)
+            rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['beam stops'] + self.Cut['event range'] + 'beam_current < 1e4')).T
+            rates = rates[rates < 1e9]
+            fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
+            rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
+            return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .1))
+        if plane is None:
+            return mean([self.calculate_flux(pl, corr, 0, redo) for pl in [1, 2]])
+        return do_pickle(self.make_simple_pickle_path(f'Flux{plane}', int(corr)), f, redo=redo or show)
     # endregion FLUX
     # ----------------------------------------
 
@@ -128,8 +125,8 @@ class Telescope(SubAnalysis):
     def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
-        self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
-        # self.Tree.SetEstimate(sum(self.get_tree_vec('@col.size()', cut, dtype='u1')))
+        # self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
+        self.Tree.SetEstimate(sum(self.get_tree_vec('@col.size()', cut, dtype='u1')))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)

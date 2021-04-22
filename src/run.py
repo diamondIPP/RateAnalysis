@@ -303,16 +303,6 @@ class Run(Analysis):
             remove_file(tfile.GetName())
         return is_valid
 
-    def calculate_flux(self, corr=True):
-        if self.Number is None:
-            return
-        eff = self.load_plane_efficiencies()
-        if not self.find_for_in_comment():
-            warning('no for in data...')
-            return self.Info['measuredflux'] / (ufloat(mean(eff), 0.03) if corr else 1)
-        fluxes = array([self.Info[f'for{i}'] / area / 1000 for i, area in enumerate(self.get_unmasked_area().values(), 1)])  # in kHz/cm^2
-        return mean(fluxes / eff) if corr else ufloat(mean(fluxes), mean(fluxes) * .1)
-
     def calculate_plane_flux(self, plane=1, corr=True):
         """estimate the flux [kHz/cm²] through a trigger plane based on Poisson statistics."""
         rate, eff, area = self.Info[f'for{plane}'], self.load_plane_efficiency(plane), self.get_unmasked_area()[plane]
