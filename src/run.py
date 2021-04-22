@@ -209,7 +209,7 @@ class Run(Analysis):
         return self.load_plane_efficiencies()[plane - 1]
 
     def load_plane_efficiencies(self):
-        return [ufloat(e, .03) for e in self.Config.get_list('BASIC', 'plane efficiencies')]
+        return [ufloat(e, .03) for e in self.Config.get_list('BASIC', 'plane efficiencies', default=[.95, .95])]
     # endregion INIT
     # ----------------------------------------
 
