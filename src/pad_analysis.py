@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, invert
+from numpy import quantile, insert, sum
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -73,11 +73,11 @@ class PadAnalysis(DUTAnalysis):
                 rows.append([str(i).rjust(3), v[1].title(), v[2], str(r), remove_letters(v[3]), str(i), name])
         print_table(rows, ['Nr.', 'Type', 'Region', 'Value [ns]', 'Int', 'Value [ns]', 'Name'])
 
-    def show_information(self, header=True, prnt=True):
-        peak_int = '{} ({})'.format(self.PeakIntegral, remove_letters(self.PeakIntegralName))
-        region = '{} ({})'.format(self.SignalRegion, self.SignalRegionName.split('_')[-1])
-        rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+5.0f}'.format(self.DUT.Bias), region, peak_int]]
-        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+    def show_information(self, header=True, prnt=True, ret_row=False):
+        peak_int = f'{self.PeakIntegral} ({remove_letters(self.PeakIntegralName)})'
+        region = f'{self.SignalRegion} ({self.SignalRegionName.split("_")[-1]})'
+        rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, f'{self.Run.Flux.n:14.1f}', f'{self.DUT.Bias:+5.0f}', region, peak_int]]
+        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
     # endregion INFO
     # ----------------------------------------
 

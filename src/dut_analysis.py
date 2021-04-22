@@ -80,9 +80,9 @@ class DUTAnalysis(Analysis):
     def get_info_header():
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
-    def show_information(self, header=True, prnt=True):
+    def show_information(self, header=True, prnt=True, ret_row=False):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
-        return print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
     # ----------------------------------------
     # region GET

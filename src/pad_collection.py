@@ -65,7 +65,7 @@ class PadCollection(AnalysisCollection):
         return self.get_values('pedestals', self.Analysis.get_pedestal, runs, par=[1, 2][sigma], redo=redo, flux_sort=flux_sort, picklepath=picklepath)
 
     def get_peak_fluxes(self, avrg=False):
-        return self.get_values('peak Flux', f=self.Analysis.get_peak_flux, picklepath=self.make_simple_pickle_path('Flux', '', 'Peaks', '{}'), prnt=False, avrg=avrg)
+        return self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg)
 
     def get_additional_peaks(self, start=None, end=None):
         picklepath = self.make_simple_pickle_path('NAdd', '' if start is None else '{}_{}'.format(start, end), 'Peaks', '{}')
@@ -171,7 +171,7 @@ class PadCollection(AnalysisCollection):
         self.Draw(g, show=show, lm=.12)
 
     def compare_fluxes(self, logy=True, corr=False, avrg=False, y_range=None, show=True):
-        x, y = self.get_fluxes(corr=corr, avrg=avrg, rel_error=-.07), self.get_peak_fluxes(avrg=avrg)
+        x, y = self.get_fluxes(corr=corr, avrg=avrg), self.get_peak_fluxes(avrg=avrg)
         g = self.Draw.graph(x, y, 'FAST-OR Flux vs Peak Flux', **self.get_x_args(), y_range=choose(y_range, Bins.FluxRange), y_tit='Peak Flux [kHz/cm^{2}]', logx=True, logy=logy, show=show)
         g.Fit('pol1', 'qs')
         format_statbox(g, fit=True, center_x=True)

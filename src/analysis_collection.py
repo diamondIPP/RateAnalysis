@@ -51,7 +51,7 @@ class AnalysisCollection(Analysis):
         pass
 
     def show_information(self):
-        print_table(rows=concatenate(self.get_values('', self.Analysis.show_information, pbar=False, prnt=False)), header=self.FirstAnalysis.get_info_header())
+        print_table(rows=self.get_values('', self.Analysis.show_information, pbar=False, prnt=False, ret_row=True), header=self.FirstAnalysis.get_info_header())
 
     def print_loaded(self):
         print('\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' '))
@@ -130,10 +130,10 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, rel_error=0., corr=True, runs=None, avrg=False, pbar=True):
+    def get_fluxes(self, corr=True, runs=None, avrg=False, pbar=True):
         picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
-        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, rel_error=rel_error, corr=corr)
+        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, corr=corr)
 
     def get_flux_strings(self, prec=0, runs=None):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
@@ -523,7 +523,7 @@ class AnalysisCollection(Analysis):
 
     def draw_current_flux(self, c_range=None, fit=True, show=True):
         currents = [ufloat(0, 0) if c is None else c for c in self.get_values('', self.Analysis.get_current, pbar=False)]
-        g = self.Draw.graph(self.get_fluxes(rel_error=.01), currents, title='Leakage Current vs. Flux', show=show, lm=.13, draw_opt='ap', logx=True, logy=True)
+        g = self.Draw.graph(self.get_fluxes(), currents, title='Leakage Current vs. Flux', show=show, lm=.13, draw_opt='ap', logx=True, logy=True)
         format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Current [nA]', y_off=1.3, y_range=choose(c_range, [.1, max(currents).n * 2]), x_range=Bins.FluxRange)
         if fit:
             f = TF1('fcf', 'pol1', .1, 1e5)
