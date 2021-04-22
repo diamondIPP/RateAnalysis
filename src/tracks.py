@@ -4,8 +4,8 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TCut, TF1, TMultiGraph, THStack, TF2
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, prod
+from ROOT import TCut, TF1, TMultiGraph, THStack
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 from scipy.stats import norm
@@ -70,20 +70,6 @@ class Tracks(SubAnalysis):
         x, y = [array(split(vec, arange(self.NRocs, x.size, self.NRocs))).T * 10 for vec in [x, y]]
         self.add_to_info(t)
         return x, y, self.get_z_positions()
-
-    def get_flux_ratio(self, dim):  # dim -> [x1, x2, y1, y2] in mm
-        tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(list(self.Run.get_mask_dim(mm=True).values()), axis=0) * [1, -1]]
-        h = self.Ana.draw_hitmap(.7, show=False, prnt=False)
-        f = TF2('ff', 'xygaus')
-        f.SetParameters(1, *self.fit_beam_profile(h.ProjectionX()), *self.fit_beam_profile(h.ProjectionY()))
-        return (f.Integral(*dim) / prod(diff(dim)[[0, 2]])) / (f.Integral(*tel) / prod(diff(tel)[[0, 2]]))
-
-    def get_fid_flux_ratio(self):
-        return self.get_flux_ratio(self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10)
-
-    def get_pad_flux_ratio(self):
-        return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize.n] * 2) * [1, -1]])
-
     # endregion GET
     # ----------------------------------------
 
@@ -193,8 +179,7 @@ class Tracks(SubAnalysis):
         """fit the beam profile only at the center, because the edges are cut of by the pixel mask"""
         thresh = .05 * p.GetMaximum()
         xmin, xmax = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(thresh), p.FindLastBinAbove(thresh)]]
-        return FitRes(p.Fit('gaus', f'qs{"" if show else 0}', '', *ax_range(xmin, xmax, -.2, -.2))).Pars[1:]  # fit only inner 60%
-
+        return FitRes(p.Fit('gaus', f'qs{"" if show else 0}', '', *ax_range(xmin, xmax, -.2, -.2))).get_pars()[1:]  # fit only inner 60%
     # endregion DRAW
     # ----------------------------------------
 
