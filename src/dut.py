@@ -86,6 +86,7 @@ class Plane(object):
     WX, WY = PX * NCols, PY * NRows
     WMax = max(WX, WY)
     R0 = 2 / sqrt(12)
+    Frequency = conf.getfloat('PLANE', 'clock frequency')
 
     def __str__(self):
         return '{} Plane'.format(Plane.Type.title())

@@ -32,6 +32,7 @@ name = cmspixel
 pitch = [0.15, 0.10]
 # [columns, row]
 pixel = [52, 80]
+clock frequency = 40e6
 
 [Directories]
 data = ...
