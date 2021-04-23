@@ -130,10 +130,10 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, corr=True, runs=None, avrg=False, pbar=True):
-        picklepath = self.make_simple_pickle_path(sub_dir='Flux', run='{}', dut='')
+    def get_fluxes(self, plane=1, corr=True, runs=None, avrg=False, pbar=True):
+        picklepath = self.make_simple_pickle_path(f'Flux{choose(plane, 1)}', int(corr), 'Telescope', run='{}', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
-        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, corr=corr)
+        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr)
 
     def get_flux_strings(self, prec=0, runs=None):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
