@@ -372,6 +372,13 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
         return g
 
+    @staticmethod
+    def mode(m, **kwargs):
+        d = {2: {"w": 1.5, "h": .75, "tit_size": .06, "lab_size": .05, "y_off": .7, "lm": .08, "bm": .2}}[m]
+        for kw, val in kwargs.items():
+            d[kw] = val
+        return d
+
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']

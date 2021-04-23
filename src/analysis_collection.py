@@ -566,7 +566,7 @@ class AnalysisCollection(Analysis):
 
     def draw_flux_ratio(self, show=True):
         r = self.get_fluxes(1, rel=True) / self.get_fluxes(2, rel=True)
-        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw_args=True))
+        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw_args=True), **Draw.mode(2, bm=.23))
     # endregion TELESCOPE
     # ----------------------------------------
 
