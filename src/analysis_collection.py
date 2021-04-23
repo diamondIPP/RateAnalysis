@@ -130,10 +130,11 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
-    def get_fluxes(self, plane=1, corr=True, runs=None, avrg=False, pbar=True):
+    def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=True, rel=False):
         picklepath = self.make_simple_pickle_path(f'Flux{choose(plane, 1)}', int(corr), 'Telescope', run='{}', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
-        return self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr)
+        values = self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr, full_size=full_size)
+        return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
 
     def get_flux_strings(self, prec=0, runs=None):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
@@ -270,7 +271,7 @@ class AnalysisCollection(Analysis):
         return [mean_sigma(values[:, i][where(values[:, i] > 0)[0]]) for i in range(values[0].size)]
 
     @staticmethod
-    def get_x_tit(vs_time):
+    def get_x_tit(vs_time=False):
         return 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
 
     @staticmethod
@@ -562,6 +563,10 @@ class AnalysisCollection(Analysis):
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.get_tax_off(True, rel_time), fill_color=Draw.FillColor, y_range=Bins.FluxRange, stats=0)
         self.Draw(h, 'FluxEvo', w=1.5, h=.75, show=show, logy=True, draw_opt='hist')
         return h
+
+    def draw_flux_ratio(self, show=True):
+        r = self.get_fluxes(1, rel=True) / self.get_fluxes(2, rel=True)
+        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw_args=True))
     # endregion TELESCOPE
     # ----------------------------------------
 

@@ -231,8 +231,8 @@ class PadAnalysis(DUTAnalysis):
     def get_additional_peak_height(self):
         return self.Peaks.draw_additional(show=False)
 
-    def get_peak_flux(self, prnt=True):
-        return self.Peaks.get_flux(prnt=prnt)
+    def get_peak_flux(self, corr=True, prnt=True):
+        return self.Peaks.get_flux(corr=corr, prnt=prnt)
 
     def get_n_peaks(self, start_bunch=None, end_bunch=None):
         return self.Peaks.get_n_additional(start_bunch, end_bunch)
