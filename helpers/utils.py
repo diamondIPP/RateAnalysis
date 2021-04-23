@@ -404,10 +404,9 @@ def tc_to_str(tc, short=True):
     return '{tc}{s}'.format(tc=datetime.strptime(tc_str, '%Y%m').strftime('%b%y' if short else '%B %Y'), s=sub_str)
 
 
-def make_flux_string(rate, prec=1):
-    unit = '{}/cm^{{2}}'.format('MHz' if rate > 1000 else 'kHz')
-    rate /= 1000. if rate > 1000 else 1
-    return '{{: 2.{}f}} {{}}'.format(prec).format(rate, unit)
+def make_flux_string(rate, prec=1, term=False):
+    unit = f'{"MHz" if rate > 1000 else "kHz"}/cm{"²" if term else "^{2}"}'
+    return f'{rate / (1000 if rate > 1000 else 1):2.{prec if rate > 1000 else 0}f} {unit}'
 
 
 def make_bias_str(bias):
