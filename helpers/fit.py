@@ -6,9 +6,10 @@ from helpers.draw import *
 
 class Fit(object):
     """ general class to perform fits on a histgram"""
-    def __init__(self, name='fit', h=None, fit_range=None, npx=1000, invert=False):
+    def __init__(self, name='fit', h=None, fit_range=None, npx=1000, invert=False, par_names=None):
         self.Name = name
         self.Histo = h
+        self.Draw = Draw(join(get_base_dir(), 'config', 'main.ini'))
 
         # Range and Values
         self.XMin, self.XMax = [0, 1000] if fit_range is None else fit_range
@@ -17,7 +18,7 @@ class Fit(object):
             self.X = get_hist_args(h)
 
         # Fit
-        self.ParNames = self.get_par_names()
+        self.ParNames = choose(par_names, self.get_par_names())
         self.NPars = len(self.ParNames)
         self.Invert = invert
         self.clear_old()
@@ -72,12 +73,23 @@ class Fit(object):
         if minuit:
             Math.MinimizerOptions.SetDefaultMinimizer('Minuit2', 'Migrad')
         for _ in range(n):
-            self.Histo.Fit(self.Fit, 'qs0', '', self.XMin, self.XMax)
+            self.Histo.Fit(self.Fit, f'qs{"" if show else 0}', '', self.XMin, self.XMax)
         if show:
             self.Fit.Draw('same')
+            update_canvas()
+        return self
 
     def draw(self, *args, **kwargs):
         pass
+
+
+class PoissonI(Fit):
+    def __init__(self, h=None, fit_range=None, npx=1000, p0=None, p1=None):
+        self.Pars = [choose(p0, h.GetEntries()), choose(p1, 1)]
+        Fit.__init__(self, 'PoissonI', h, fit_range, npx, par_names=['Consant', 'Lambda'])
+
+    def init_fit(self):
+        return self.Draw.make_f(self.Name, '[0] * TMath::PoissonI(x, [1])', 0, 30, self.Pars)
 
 
 class Crystalball(Fit):

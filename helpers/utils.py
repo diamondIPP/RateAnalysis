@@ -561,15 +561,6 @@ def do_hdf5(path, func, redo=False, *args, **kwargs):
         return f['data']
 
 
-def fit_poissoni(h, p0=5000, p1=1, name='f_poiss', show=True):
-    fit = TF1(name, '[0] * TMath::PoissonI(x, [1])', 0, 30)
-    fit.SetParNames('Constant', 'Lambda')
-    fit.SetParameters(p0, p1)
-    h.Fit(fit, 'q{0}'.format('' if show else 0))
-    fit.Draw('same')
-    return fit
-
-
 def find_maxima(h, n=3, sigma=2, sort_x=False):
     s = TSpectrum(n)
     n = s.Search(h, sigma)  # return how many maxima were found
