@@ -369,7 +369,7 @@ class PadAnalysis(DUTAnalysis):
                 return key
 
     def draw_bunch_distribution(self, n=1, region=None, corr=False, bin_width=5, cut=True, show=True):
-        cut = self.get_pulser_cut() & invert(self.Peaks.get_bunch_cut(n - 1)) & invert(self.Peaks.get_bunch_cut(n + 1)) & cut
+        cut = self.get_pulser_cut() & invert(self.Peaks.get_ebunch_cut(n - 1)) & invert(self.Peaks.get_ebunch_cut(n + 1)) & cut
         x = self.get_tree_vec(self.get_signal_var(region=choose(region, self.find_bunch_region(n)), evnt_corr=corr))
         h = self.Draw.distribution(x[cut], self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n), x_tit='Pulse Height [mV]', show=show)
         if h.GetBinCenter(h.GetMaximumBin()) < 10:
