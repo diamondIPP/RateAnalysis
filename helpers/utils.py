@@ -840,6 +840,7 @@ class FitRes(ndarray):
     def __init__(self, f, **kwargs):
         super().__init__(**kwargs)
         is_tf1 = 'TF1' in f.ClassName()
+        self.Fit = f
         self.NPar = f.GetNpar() if is_tf1 else f.NPar()
         self.Pars = array([f.GetParameter(i) for i in range(self.NPar)] if is_tf1 else list(f.Parameters()))
         self.Errors = [f.GetParError(i) for i in range(self.NPar)] if is_tf1 else list(f.Errors())
