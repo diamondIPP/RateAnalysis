@@ -832,31 +832,38 @@ def kramers_kronig(x, y):
     return 1 + 2 / pi * array([discrete_int(x, x * y / (x ** 2 - ix ** 2)) for ix in x])
 
 
-class FitRes(object):
-    def __init__(self, f=None):
-        self.Pars = [None]
-        self.Errors = [None]
-        self.Names = None
-        self.vChi2 = None
-        self.vNdf = None
-        self.F = f
-        if f is None:
-            return
+class FitRes(ndarray):
+
+    def __new__(cls, f):
+        return ndarray.__new__(cls, f.GetNpar() if 'TF1' in f.ClassName() else f.NPar(), object)
+
+    def __init__(self, f, **kwargs):
+        super().__init__(**kwargs)
         is_tf1 = 'TF1' in f.ClassName()
         self.NPar = f.GetNpar() if is_tf1 else f.NPar()
-        if self.NPar < 1:
-            return
         self.Pars = array([f.GetParameter(i) for i in range(self.NPar)] if is_tf1 else list(f.Parameters()))
         self.Errors = [f.GetParError(i) for i in range(self.NPar)] if is_tf1 else list(f.Errors())
         self.Names = [f.GetParName(i) if is_tf1 else f.ParName(i) for i in range(self.NPar)]
         self.vChi2 = f.GetChisquare() if is_tf1 else f.Chi2()
         self.vNdf = f.GetNDF() if is_tf1 else f.Ndf()
+        self.put(arange(self.NPar), self.get_pars())
+
+    def __get__(self, obj, objtype=None):
+        return self.get_pars()
 
     def __getitem__(self, item):
-        return ufloat(self.Pars[item], self.Errors[item])
+        return self.get_pars()[item]
 
     def __repr__(self):
         return f'[{", ".join(f"{par:1.2e}" for par in self.Pars)}]'
+
+    def __reduce__(self):
+        pickled_state = super(FitRes, self).__reduce__()
+        return pickled_state[0], pickled_state[1], pickled_state[2] + (self.Pars, self.Errors, self.Names, self.vChi2, self.vNdf)
+
+    def __setstate__(self, state, *args, **kwargs):
+        self.Pars, self.Errors, self.Names, self.vChi2, self.vNdf = state[-5:]
+        super(FitRes, self).__setstate__(state[0:-5])
 
     def get_pars(self, err=True):
         return array([ufloat(p, e) for p, e in zip(self.Pars, self.Errors)]) if err else self.Pars
