@@ -870,6 +870,7 @@ def update_canvas(c=None):
     if c is not None:
         c.Modified()
         c.Update()
+    return c
 
 
 def show_colors(colors):
