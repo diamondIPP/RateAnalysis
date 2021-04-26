@@ -77,7 +77,7 @@ class Fit(object):
         if show:
             self.Fit.Draw('same')
             update_canvas()
-        return self
+        return FitRes(self.Fit)
 
     def draw(self, *args, **kwargs):
         pass
@@ -90,6 +90,14 @@ class PoissonI(Fit):
 
     def init_fit(self):
         return self.Draw.make_f(self.Name, '[0] * TMath::PoissonI(x, [1])', 0, 30, self.Pars)
+
+
+class Gauss(Fit):
+    def __init__(self, h=None, fit_range=None, npx=100):
+        Fit.__init__(self, 'Gauss', h, fit_range, npx)
+
+    def init_fit(self):
+        return self.Draw.make_f(Draw.get_name('gau'), 'gaus', *ax_range(self.XMin, self.XMax, 3, 3))
 
 
 class Crystalball(Fit):
