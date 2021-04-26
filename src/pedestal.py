@@ -44,8 +44,8 @@ class PedestalAnalysis(PadSubAnalysis):
         return self.get_all_signal_names()[choose(name, self.SignalName)]
 
     def get_par(self, par=1, name=None, cut=None, redo=False):
-        suffix = '{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name))
-        return fit2u(do_pickle(self.make_simple_pickle_path(suf=suffix), partial(self.draw_disto_fit, name=name, cut=self.Cut(cut), show=False, redo=redo), redo=redo), par=par)
+        suffix = f'{self.Cut(cut).GetName()}_{self.get_short_name(name)}'
+        return do_pickle(self.make_simple_pickle_path('', suffix), self.draw_disto_fit, redo=redo, name=name, cut=self.Cut(cut))[par]
 
     def get_mean(self, name=None, cut=None, redo=False, raw=False):
         return self.get_par(1, name, cut, redo) * (self.Polarity if raw else 1)
@@ -126,10 +126,9 @@ class PedestalAnalysis(PadSubAnalysis):
     def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, **kwargs):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
         h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, **kwargs)
-        fit_pars = do_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_fwhm, redo=True, h=h, show=True)
-        f = Draw.make_f('f', 'gaus', -100, 100, pars=fit_pars.Pars, npx=1000, line_style=2)
+        fit = fit_fwhm(h, show=True)
+        Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')
-        f.Draw('same')
         format_statbox(h, fit=True, all_stat=True)
         if draw_cut:
             b = self.__draw_cut(h)
@@ -137,8 +136,8 @@ class PedestalAnalysis(PadSubAnalysis):
             b.Draw('l')
             gPad.RedrawAxis()
         self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save, prnt=prnt, show=show)
-        SaveDraw.server_pickle(self.make_simple_pickle_path(suf='{}_fwhm_{}'.format(cut.GetName(), self.get_short_name(name))), fit_pars)
-        return fit_pars
+        SaveDraw.server_pickle(self.make_simple_pickle_path(suf=f'{cut.GetName()}_fwhm_{self.get_short_name(name)}'), fit)
+        return fit
 
     @staticmethod
     def __draw_cut(h):
