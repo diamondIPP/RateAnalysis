@@ -10,7 +10,7 @@ from functools import wraps
 def update_pbar(func):
     @wraps(func)
     def my_func(*args, **kwargs):
-        if args[0].PBar is not None and args[0].PBar.PBar is not None:
+        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished():
             args[0].PBar.update()
         return func(*args, **kwargs)
     return my_func
