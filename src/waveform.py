@@ -4,7 +4,7 @@
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TMultiGraph
-from numpy import fft, argmax
+from numpy import fft, argmax, array_split
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 from helpers.fit import ErfLand
@@ -34,31 +34,52 @@ class Waveform(PadSubAnalysis):
     def get_binning(self, bin_size=None):
         return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
-    def get_cut(self, cut=None):
-        cut = self.Ana.get_event_cut(self.Cut.to_string(cut)) if type(cut) == TCut or type(cut) == str else cut
-        return array(cut) if is_iter(cut) else self.Ana.make_event_cut(cut) if isint(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
+    def get_cut(self, cut=None, n=None):
+        cut = self.Ana.get_event_cut(self.Cut.to_string(cut)) if type(cut) in [TCut, str] else cut
+        cut = array(cut) if is_iter(cut) else self.Ana.get_event_cut() if cut is None else full(self.Run.NEvents, True)
+        if n is not None and n < count_nonzero(cut):
+            cut[where(cut)[0][n:]] = False
+        return cut
 
     def get_trigger_cells(self, cut=...):
         return self.get_tree_vec('trigger_cell', dtype='i2')[self.get_cut(cut)]
 
+    def get_trigger_cell(self, i):
+        return self.get_tree_vec('trigger_cell', '', 'i2', 1, i)[0]
+
+    def get(self, i):
+        return self.get_all()[i]
+
     def get_all(self, channel=None, redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
         def f():
-            self.info('Saving signal waveforms to hdf5 ...')
-            waveforms = []
-            self.PBar.start(self.Run.NEvents)
-            for ev in range(self.PBar.N):  # fastest found method...
-                waveforms.append(self.Ana.Polarity * self.get_tree_vec('wf{}'.format(choose(channel, self.Channel)), '', 'f2', 1, ev))
-                self.PBar.update()
-            return array(waveforms)
+            with Pool() as pool:
+                self.info('Saving signal waveforms to hdf5 ...')
+                result = pool.starmap(self._get_all, [(i, channel) for i in array_split(arange(self.Run.NEvents), cpu_count())])
+                return concatenate(result)
         return do_hdf5(self.make_simple_hdf5_path(dut=choose(channel, self.Channel)), f, redo=redo)
 
+    def _get_all(self, ind, ch=None):
+        var = f'{"-" if self.Ana.Polarity < 0 else ""}wf{choose(ch, self.Channel)}'
+        tree, pbar = self.Run.load_rootfile(False), PBar(ind.size) if not ind[0] else None
+        return array([self.get_from_tree(tree, ev, var, pbar) for ev in ind])
+
+    @staticmethod
+    def get_from_tree(t, ev, var, pbar=None):
+        if pbar is not None:
+            if ev % 1000:
+                pbar.update(ev)
+        return get_tree_vec(t, var, '', 'f2', 1, ev)
+
     def get_values(self, cut=None, channel=None, n=None):
-        return array(self.get_all(channel))[self.get_cut(cut)][... if n is None else range(n)].flatten()
+        cut = self.get_cut(cut, n)
+        imax = max(where(cut)[0]) + 1
+        return array(self.get_all(channel)[:imax])[cut[:imax]].flatten()
 
     def get_times(self, signal_corr=True, cut=None, n=None):
+        cut = self.get_cut(cut, n)
         t = self.get_all_calibrated_times(cut)
-        return (self.correct_times(t, cut) if signal_corr else t)[... if n is None else range(n)].flatten()
+        return (self.correct_times(t, cut) if signal_corr else t).flatten()
 
     def get_all_calibrated_times(self, cut=None):
         t = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)])
@@ -116,21 +137,20 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, draw_opt=None, t_corr=True, grid=True, tm=None, show=True):
-        values, times = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n)
-        if values.size > self.Run.NSamples:
-            h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], 'All Waveforms', show=False)
-        else:
-            h = Draw.make_tgrapherrors(times if t_corr else arange(self.NSamples) * self.BinWidth, values, title='Single Waveform')
-        y_range = ax_range(min(values), max(values), .1, .2) if y_range is None else y_range
-        x_range = choose(x_range, [0, 512])
-        format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, markersize=.5, x_range=x_range, y_range=y_range)
-        draw_opt = draw_opt if draw_opt is not None else 'col' if values.size > self.Run.NSamples else 'ap'
-        self.Draw(h, show=show, draw_opt=draw_opt, lm=.073, rm=.045, bm=.225, tm=tm, w=1.5, h=.5, grid=grid, gridy=True, logz=True)
+    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, grid=True, **kwargs):
+        n = choose(n, 100000)
+        y, x, bins = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n), self.get_binning() + make_bins(-512, 512.1, .5)
+        rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
+        tit, xtit, ytit = f'{n} Waveforms', 'Time [ns]', 'Signal [mV]'
+        h = self.Draw.histo_2d(x, y, bins, tit, x_tit=xtit, y_tit=ytit, **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=grid, gridy=True, logz=True, draw_opt='col')
         return h, n
 
-    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, draw_opt=None, t_corr=True, grid=True, show=True, show_noise=False):
-        h, n = self.draw(n=1, cut=cut, t_corr=True, show=show, grid=True) if ind is None else self.draw_all(False, 1, x_range, y_range, ind, None, draw_opt, t_corr, grid, show)
+    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, show=True, show_noise=False, draw_opt='ap'):
+        if ind is None:
+            h, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
+        else:
+            x, y = self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
+            h = self.Draw.graph(x, y, 'Single Waveform', x_tit='Time [ns]', y_tit='Signal [mV]', **Draw.mode(3), grid=grid, gridy=True, markersize=.5, draw_opt=draw_opt)
         if show_noise:
             self.__draw_noise()
         return h
@@ -246,7 +266,7 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region SHOW INTEGRATION
-    def draw_avrg(self,c, cut=None, s=None, n=50000, t_off=0):
+    def draw_avrg(self, c, cut=None, s=None, n=50000, t_off=0):
         p = self.draw_all_average(ind=cut, n=n, show=0, redo=1)
         if s is not None:
             p.Scale(s / p.GetMaximum())
