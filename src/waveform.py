@@ -150,7 +150,7 @@ class Waveform(PadSubAnalysis):
             h, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
         else:
             x, y = self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
-            h = self.Draw.graph(x, y, 'Single Waveform', x_tit='Time [ns]', y_tit='Signal [mV]', **Draw.mode(3), grid=grid, gridy=True, markersize=.5, draw_opt=draw_opt)
+            h = self.Draw.graph(x, y, 'Single Waveform', x_tit='Time [ns]', y_tit='Signal [mV]', **Draw.mode(3), grid=grid, gridy=True, markersize=.5, draw_opt=draw_opt, show=show)
         if show_noise:
             self.__draw_noise()
         return h
