@@ -374,8 +374,9 @@ class Draw(object):
 
     @staticmethod
     def mode(m, **kwargs):
-        d = {2: {"w": 1.5, "h": .75, "tit_size": .06, "lab_size": .05, "y_off": .7, "lm": .08, "bm": .2},
-             3: {"w": 1.5, "h": .5, "tit_size": .07, "lab_size": .06, "y_off": .5, "lm": .073, "bm": .225, "rm": .03}}[m]
+        d = {2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
+             3: {'w': 1.5, 'h': .5, 'tit_size': .07, 'lab_size': .06, 'y_off': .5, 'lm': .073, 'bm': .225, 'rm': .03, 'x_tit': 'Time [ns]', 'y_tit': 'Signal [mV]', 'markersize': .5}
+             }[m]
         for kw, val in kwargs.items():
             d[kw] = val
         return d
