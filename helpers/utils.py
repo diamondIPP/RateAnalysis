@@ -896,6 +896,15 @@ class PBar(object):
         self.N = 0
         self.start(start)
 
+    def __reduce__(self):
+        return self.__class__, (None, False, None), (self.Widgets, self.Step, self.N)
+
+    def __setstate__(self, state):
+        self.Widgets, self.Step, self.N = state
+        if self.N:
+            self.PBar = ProgressBar(widgets=self.Widgets, maxval=self.N).start()
+            self.update(self.Step) if self.Step > 0 else do_nothing()
+
     def start(self, n):
         if n is not None:
             self.Step = 0
