@@ -100,6 +100,19 @@ class Gauss(Fit):
         return self.Draw.make_f(Draw.get_name('gau'), 'gaus', *ax_range(self.XMin, self.XMax, 3, 3))
 
 
+class Landau(Fit):
+    def __init__(self, h=None, fit_range=None, npx=100):
+        self.XOff = -.22278
+        Fit.__init__(self, 'Landau', h, fit_range, npx)
+
+    def init_fit(self):
+        return self.Draw.make_f(Draw.get_name('lan'), 'landau', self.XMin, self.XMax)
+
+    def get_mpv(self, show=False):
+        f = self.fit(show=show, minuit=False)
+        return f[1] + self.XOff * f[2]
+
+
 class Crystalball(Fit):
     def __init__(self, h=None, fit_range=None, inv=False, npx=1000):
         """ :parameter:  0 - scale, 1 - alpha, 2 - n, 3 - mean, 4 - sigma, 5 - offset """
