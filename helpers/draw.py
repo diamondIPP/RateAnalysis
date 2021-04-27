@@ -374,7 +374,8 @@ class Draw(object):
 
     @staticmethod
     def mode(m, **kwargs):
-        d = {2: {"w": 1.5, "h": .75, "tit_size": .06, "lab_size": .05, "y_off": .7, "lm": .08, "bm": .2}}[m]
+        d = {2: {"w": 1.5, "h": .75, "tit_size": .06, "lab_size": .05, "y_off": .7, "lm": .08, "bm": .2},
+             3: {"w": 1.5, "h": .5, "tit_size": .07, "lab_size": .06, "y_off": .5, "lm": .073, "bm": .225, "rm": .03}}[m]
         for kw, val in kwargs.items():
             d[kw] = val
         return d
@@ -402,18 +403,19 @@ class Draw(object):
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, **kwargs):
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, bm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
+                 **kwargs):
         kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
         kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
         dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
-        h = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
-        fill_hist(h, x, y)
-        format_histo(h, stats=stats, **kwargs)
+        th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
+        fill_hist(th, x, y)
+        format_histo(th, stats=stats, **kwargs)
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
-        self.histo(h, show=show, lm=lm, rm=rm, draw_opt=draw_opt, logz=logz, grid=grid, stats=choose(stats, True), canvas=canvas)
-        return h
+        self.histo(th, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
+        return th
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
         binning = choose(binning, make_bins, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
@@ -730,7 +732,7 @@ def fix_chi2(g, prec=.01, show=True):
         chi2 = fit.Chi2() / fit.Ndf()
         error += .5 ** it * sign(chi2 - 1)
         it += 1
-    return FitRes(fit) if fit is not None else FitRes()
+    return None if fit is None else FitRes(fit)
 
 
 def make_darray(values):
