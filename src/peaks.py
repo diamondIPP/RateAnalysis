@@ -5,11 +5,12 @@
 # --------------------------------------------------------
 from ROOT import TMath, TGraph
 from ROOT.gRandom import Landau as rLandau
-from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stack, log, any
+from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stack, any
 from numpy.random import normal, rand
 from scipy.signal import find_peaks
 from scipy.stats import poisson
 from uncertainties import ufloat_fromstr
+from uncertainties.umath import log as ulog
 
 from helpers.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
@@ -105,20 +106,19 @@ class PeakAnalysis(PadSubAnalysis):
         times = times[self.p2e2pcut(pcut)]  # select all peaks if the event has a peak in bunch 1
         return times + mean(t1) - t1.repeat(self.get_npeaks(cut=self.p2ecut(pcut)))
 
-    def get_n_total(self, cut=None, b0=None, b_end=None, thresh=None, fit=True):
-        return count_nonzero(self.get_bunch_cut(b0, b_end, thresh, fit) & choose(cut, self.get_pulser_cut()))
+    def get_n_total(self, cut=None, b0=None, b_end=None, thresh=None, fit=True, corr=True):
+        n = count_nonzero(self.get_bunch_cut(b0, b_end, thresh, fit) & choose(cut, self.get_pulser_cut())) * (self.get_pad_gr_ratio(thresh) if corr else 1)
+        return n + ufloat(0, sqrt(n.n if corr else n))
 
-    def get_lambda(self, ecut=None, thresh=None, fit=True):
+    def get_lambda(self, ecut=None, thresh=None, fit=True, corr=True):
         """calculate average number of peaks for single bunch."""
         cut = choose(ecut, self.Ana.get_pulser_cut())
-        n_events, n_peaks = count_nonzero(cut), self.get_n_total(self.e2pcut(cut, thresh), thresh=thresh, fit=fit)
-        lam = -log(1 - n_peaks / n_events / self.NBunches)  # calc lambda based on the number of events with no peak
-        return ufloat(lam, sqrt(lam / (n_events - 1)))
+        n_events, n_peaks = count_nonzero(cut), self.get_n_total(self.e2pcut(cut, thresh), thresh=thresh, fit=fit, corr=corr)
+        return -ulog(1 - n_peaks / n_events / self.NBunches)  # calc lambda based on the number of events with no peak
 
     def get_flux(self, lam=None, n_bunches=None, thresh=None, fit=True, prnt=True, corr=True):
         n_bunches = 1 if lam is None else choose(n_bunches, self.NBunches)
-        flux = choose(lam, self.get_lambda(thresh=thresh, fit=fit)) / (self.Ana.BunchSpacing * n_bunches * self.DUT.get_area()) * 1e6  # ns -> ms (kHz)
-        flux *= self.get_pad_gr_ratio(thresh) if corr else 1
+        flux = choose(lam, self.get_lambda(thresh=thresh, fit=fit, corr=corr)) / (self.Ana.BunchSpacing * n_bunches * self.DUT.get_area()) * 1e6  # ns -> ms (kHz)
         self.info('Estimated flux by number of peaks: {}'.format(make_flux_string(flux, term=True)), prnt=prnt)
         return flux
 
