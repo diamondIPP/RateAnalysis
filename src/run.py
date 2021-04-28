@@ -316,7 +316,7 @@ class Run(Analysis):
 
     # ----------------------------------------
     # region GET
-    def get_flux(self, plane=1, corr=True):
+    def get_flux(self, plane=None, corr=True):
         if self.Number is None:
             return
         if not self.find_for_in_comment():

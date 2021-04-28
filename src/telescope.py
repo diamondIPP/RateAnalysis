@@ -81,7 +81,7 @@ class Telescope(SubAnalysis):
     def get_areas(self):
         return [self.get_area(pl) for pl in [1, 2]]
 
-    def calculate_flux(self, plane=1, corr=True, show=False, redo=False):
+    def calculate_flux(self, plane=None, corr=True, show=False, redo=False):
         def f():
             rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['beam stops'] + self.Cut['event range'] + 'beam_current < 1e4')).T
             rates = rates[rates < 1e9]
