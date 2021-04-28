@@ -177,7 +177,7 @@ class PadCollection(AnalysisCollection):
 
     def draw_flux_ratios(self, show=True):
         peak_flux = self.get_peak_fluxes(rel=True)
-        g = [self.Draw.make_tgrapherrors(arange(1, self.NRuns + 1), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
+        g = [self.Draw.make_tgrapherrors(self.get_fluxes(), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
         self.Draw.multigraph(g, 'Peak/Plane Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], x_tit='Run', y_tit='Flux/Peak Flux', show=show)
 
     def compare_fluxes(self, plane=1, logy=True, corr=True, avrg=False, y_range=None, show=True):
