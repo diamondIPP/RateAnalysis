@@ -178,13 +178,15 @@ class PadCollection(AnalysisCollection):
     def draw_flux_ratios(self, show=True):
         peak_flux = self.get_peak_fluxes(rel=True)
         g = [self.Draw.make_tgrapherrors(self.get_fluxes(), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
-        self.Draw.multigraph(g, 'Peak/Plane Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], y_tit='Flux/Peak Flux', show=show, **self.get_x_args(draw_args=True))
+        mg = self.Draw.multigraph(g, 'Plane/Peak Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], y_tit='Plane/Peak Flux Ratio', show=show, **self.get_x_draw())
+        format_histo(mg, **self.get_x_args(x_tit='Mean Plane Flux [kHz/cm^{2}]'))
 
-    def compare_fluxes(self, plane=1, logy=True, corr=True, avrg=False, y_range=None, show=True):
-        x, y = self.get_fluxes(plane, corr, avrg=avrg), self.get_peak_fluxes(corr, avrg)
-        g = self.Draw.graph(x, y, 'FAST-OR Flux vs Peak Flux', **self.get_x_args(), y_range=choose(y_range, Bins.FluxRange), y_tit='Peak Flux [kHz/cm^{2}]', logx=True, logy=logy, show=show)
+    def compare_fluxes(self, plane=None, logy=True, corr=True, avrg=False, y_range=None, show=True):
+        x, y = self.get_peak_fluxes(corr, avrg, rel=True), self.get_fluxes(plane, corr, full_size=True, avrg=avrg, rel=True)
+        tit, xtit, ytit = 'FAST-OR Flux vs Peak Flux', 'Peak Flux [kHz/cm^{2}]', f'{"Mean Plane" if plane is None else f"Plane {plane}"} Flux [kHz/cm^{{2}}]'
+        g = self.Draw.graph(x, y, tit, **self.get_x_args(x_tit=xtit, draw_args=True), y_range=choose(y_range, Bins.FluxRange), y_tit=ytit, logy=logy, show=show)
         g.Fit('pol1', 'qs')
-        format_statbox(g, fit=True, center_x=True)
+        format_statbox(g, fit=True, center_x=True, form='.2f')
 
     def compare_tu_fluxes(self, logy=True, show=True):
         x, y = self.get_fluxes(), [ana.Run.Flux for ana in self.get_analyses()]
