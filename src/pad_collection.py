@@ -64,8 +64,9 @@ class PadCollection(AnalysisCollection):
         picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')
         return self.get_values('pedestals', self.Analysis.get_pedestal, runs, par=[1, 2][sigma], redo=redo, flux_sort=flux_sort, picklepath=picklepath)
 
-    def get_peak_fluxes(self, corr=True, avrg=False):
-        return self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg, corr=corr)
+    def get_peak_fluxes(self, corr=True, avrg=False, rel=False):
+        values = self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg, corr=corr)
+        return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
 
     def get_additional_peaks(self, start=None, end=None):
         picklepath = self.make_simple_pickle_path('NAdd', '' if start is None else '{}_{}'.format(start, end), 'Peaks', '{}')
@@ -175,8 +176,8 @@ class PadCollection(AnalysisCollection):
         self.Draw.multigraph(g, 'Flux Comparison', ['Plane 1', 'Plane 2', 'Mean 1 & 2', 'Peaks'], x_tit='Run', y_tit=self.get_x_tit(), show=show)
 
     def draw_flux_ratios(self, show=True):
-        peak_flux = self.get_peak_fluxes()
-        g = [self.Draw.make_tgrapherrors(arange(1, self.NRuns + 1), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1) for pl in [1, 2, None]]]
+        peak_flux = self.get_peak_fluxes(rel=True)
+        g = [self.Draw.make_tgrapherrors(arange(1, self.NRuns + 1), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
         self.Draw.multigraph(g, 'Peak/Plane Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], x_tit='Run', y_tit='Flux/Peak Flux', show=show)
 
     def compare_fluxes(self, plane=1, logy=True, corr=True, avrg=False, y_range=None, show=True):
