@@ -134,29 +134,22 @@ class Analysis(object):
         info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in self.get_meta_files(all_subdirs)))))
 
     # TODO: move to higher analysis
-    def calc_time_difference(self, m1, m2, p=None):
-        return t_diff(self.PathLength, self.Momentum if p is None else p, m1, m2) % self.BunchSpacing
-
-    def calc_td(self, p, pars):
-        return t_diff(self.PathLength, p[0], pars[0], pars[1]) % self.BunchSpacing
+    def calc_time_difference(self, p=None, m1=M_MU, m2=M_PI):
+        return t_diff(self.PathLength, choose(p, self.Momentum), m1, m2) % self.BunchSpacing
 
     def get_time_differences(self, p=None):
         t0 = array([self.calc_time_difference(M_PI, m, p) for m in [M_MU, M_E]])
         return round_(sorted(abs(concatenate([t0, t0 - self.BunchSpacing]))), 1)
 
     def draw_time_differences(self):
-        leg = Draw.make_legend(w=.2)
-        for m, n in zip([M_E, M_MU, M_P], ['positron', 'muon', 'proton']):
-            f = TF1('f{}'.format(n), self.calc_td, 200, 300, 2)
-            f.SetParameters(M_PI, m)
-            format_histo(f, title='Time Differences', x_tit='Momentum [MeV/c]', y_tit='Time Difference [ns]', y_off=1.3, color=self.Draw.get_color(3), lw=2, y_range=[3, 18])
-            Draw.histo(f, grid=True, lm=.12, draw_opt='' if m == M_E else 'same', canvas=None if m == M_E else get_last_canvas())
-            t0 = self.calc_time_difference(M_PI, m)
-            Draw.tlatex(self.Momentum * 1.02, t0, text='{:2.1f}'.format(t0), size=.04)
-            leg.AddEntry(f, n, 'l')
-        get_object('fproton').SetNpx(1000)
-        Draw.vertical_line(260, 0, 20, w=2, color=2)
-        leg.Draw()
+        masses = [(M_E, M_PI), (M_PI, M_E), (M_MU, M_PI), (M_PI, M_MU)]
+        fs = [self.Draw.make_tf1(Draw.get_name('f'), self.calc_time_difference, 210, 310, self.Draw.get_color(4), npx=500, w=2, m1=m1, m2=m2) for m1, m2 in masses]
+        for i, f in enumerate(fs):
+            tit, xtit, ytit = 'Time Differences', 'Momentum [MeV/c]', 'Time Difference [ns]'
+            self.Draw.function(f, tit, x_tit=xtit, y_tit=ytit, y_range=[0, round(self.BunchSpacing)], grid=True, c=None if not i else get_last_canvas(), draw_opt='same' if i else '')
+            Draw.tlatex(self.Momentum * 1.02, f(self.Momentum), text=f'{f(self.Momentum):2.1f}', size=.04)
+        self.Draw.legend(fs, ['#pi^{+}-e^{+}', 'e^{+}-#pi^{+}', '#pi^{+}-#mu^{+}', '#mu^{+}-#pi^{+}'], 'l')
+        Draw.vertical_line(self.Momentum, w=2, color=2)
         update_canvas()
 
     def get_decay_ratio(self, p=None, d=None):
