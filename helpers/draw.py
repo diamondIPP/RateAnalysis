@@ -91,9 +91,9 @@ class Draw(object):
     @staticmethod
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         do(c.SetLeftMargin, l_)
-        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 1) != .1 else .03)
-        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 1) != .1 else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
-        do(c.SetTopMargin, None if round(c.GetTopMargin(), 1) != .1 else max((.1 if t is None else t) - (0 if Draw.Title else .07), 0))
+        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 2) != .1 else .03)
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 2) != .1 else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
+        do(c.SetTopMargin, None if round(c.GetTopMargin(), 2) != .1 else max((.1 if t is None else t) - (0 if Draw.Title else .07), 0))
     # endregion SET
     # ----------------------------------------
 
