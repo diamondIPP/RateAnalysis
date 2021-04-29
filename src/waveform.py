@@ -141,8 +141,7 @@ class Waveform(PadSubAnalysis):
         n = choose(n, 100000)
         y, x, bins = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n), self.get_binning() + make_bins(-512, 512.1, .5)
         rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
-        tit, xtit, ytit = f'{n} Waveforms', 'Time [ns]', 'Signal [mV]'
-        h = self.Draw.histo_2d(x, y, bins, tit, x_tit=xtit, y_tit=ytit, **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=grid, gridy=True, logz=True, draw_opt='col')
+        h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=grid, gridy=True, logz=True, draw_opt='col')
         return h, n
 
     def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, show=True, show_noise=False, draw_opt='ap'):
