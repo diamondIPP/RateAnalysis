@@ -9,7 +9,7 @@ momentum = 260
 # [m]
 path length = 23.1
 # [MHz]
-frequency = 50.6
+frequency = 50.63
 
 [SAVE]
 waveforms = False
