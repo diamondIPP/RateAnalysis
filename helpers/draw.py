@@ -375,6 +375,11 @@ class Draw(object):
         self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
         return th
 
+    def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
+        format_histo(f, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4))
+        self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
+        return f
+
     def graph(self, x, y, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
         g = Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor))
@@ -471,15 +476,15 @@ class Draw(object):
         return Draw.add(f)
 
     @staticmethod
-    def make_tf1(name, f, xmin=0, xmax=1, color=None, w=None, style=None, title=None, *args, **kwargs):
+    def make_tf1(name, f, xmin=0, xmax=1, color=None, w=None, style=None, title='', npx=None, *args, **kwargs):
         def tmp(x, pars):
             _ = pars
             return f(x[0], pars, *args, **kwargs) if 'pars' in signature(f).parameters else f(x[0], *args, **kwargs)
 
         Draw.add(tmp)
         f0 = TF1(name, tmp, xmin, xmax)
-        do([f0.SetLineColor, f0.SetLineWidth, f0.SetLineStyle], [color, w, style])
-        do(f0.SetTitle, title)
+        do(f0.SetNpx, npx)
+        format_histo(f0, title, line_color=color, line_style=style, lw=w)
         return Draw.add(f0)
 
     @staticmethod
@@ -600,10 +605,10 @@ def set_entries():
 def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None, c=None):
     c = choose(c, get_last_canvas(warn=False))
     update_canvas(c)
-    f = next((o for o in th.GetListOfFunctions() if 'TF1' in o.ClassName()), None)
+    f = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'TF1' in o.ClassName()), None)
     if 'TGraph' in th.ClassName() and fit and f:
         gStyle.SetOptFit(True)
-    p = next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
+    p = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
     if p is not None:
         r = c.GetWindowHeight() / c.GetWindowWidth()
         x2, y2 = choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
