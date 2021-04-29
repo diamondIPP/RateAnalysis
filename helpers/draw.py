@@ -353,67 +353,59 @@ class Draw(object):
             format_statbox(th, **Draw.Stats if stats else Draw.DefaultStats)
         return Draw.add(c, th, leg)[0]
 
-    def distribution(self, values, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
-        values = make_darray(values)
-        kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
-        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        kwargs['y_tit'] = 'Number of Entries' if 'y_tit' not in kwargs else kwargs['y_tit']
-        th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
-        fill_hist(th, values)
-        format_histo(th, **kwargs)
-        self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
-        return th
-
-    def graph(self, x, y, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
-        g = Draw.make_tgrapherrors(x, y)
-        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
-        format_histo(g, title=title, **kwargs)
-        self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
-        return g
-
     @staticmethod
     def mode(m, **kwargs):
         d = {2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
              3: {'w': 1.5, 'h': .5, 'tit_size': .07, 'lab_size': .06, 'y_off': .5, 'lm': .073, 'bm': .225, 'rm': .03, 'x_tit': 'Time [ns]', 'y_tit': 'Signal [mV]', 'markersize': .5}
              }[m]
-        for kw, val in kwargs.items():
-            d[kw] = val
-        return d
+        return Draw.prepare_kwargs(kwargs, **d)
+
+    @staticmethod
+    def prepare_kwargs(data, **default):
+        for kw, value in default.items():
+            if kw not in data:
+                data[kw] = value
+        return data
+
+    def distribution(self, values, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
+        values = make_darray(values)
+        th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
+        fill_hist(th, values)
+        format_histo(th, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor, y_tit='Number of Entries'))
+        self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
+        return th
+
+    def graph(self, x, y, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
+        g = Draw.make_tgrapherrors(x, y)
+        format_histo(g, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor))
+        self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
+        return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
-        kwargs['fill_color'] = Draw.FillColor if 'fill_color' not in kwargs else kwargs['fill_color']
-        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        kwargs['stats'] = stats
         p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
-        format_histo(p, **kwargs)
+        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor, stats=stats))
         self.histo(p, show=show, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
 
     def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
         x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
-        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
         dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size))
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, zz)
-        format_histo(p, pal=55, **kwargs)
+        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, pal=55))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
     def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, bm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
                  **kwargs):
-        kwargs['y_off'] = 1.4 if 'y_off' not in kwargs else kwargs['y_off']
-        kwargs['z_off'] = 1.2 if 'z_off' not in kwargs else kwargs['z_off']
-        kwargs['z_tit'] = 'Number of Entries' if 'z_tit' not in kwargs else kwargs['z_tit']
         x, y = array(x, dtype='d'), array(y, dtype='d')
         dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
         th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(th, x, y)
-        format_histo(th, stats=stats, **kwargs)
+        format_histo(th, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
         return th
