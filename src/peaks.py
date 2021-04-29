@@ -275,20 +275,22 @@ class PeakAnalysis(PadSubAnalysis):
     @update_pbar
     def draw_spacing(self, n=3, bin_size=None, show=True, redo=False):
         def f():
-            cut = (self.get_npeaks() == 2) & self.p2ecut(self.get_bunch_cut(1, fit=1)) & self.p2ecut(self.get_bunch_cut(n, fit=1))
+            cut = (self.get_npeaks() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=1)) & self.p2ecut(self.get_isolated_cut(n, fit=1))
             t, p = self.get_times(True, fit=True, cut=cut), self.get_heights(True, cut=cut, fit=True)
             x = (t[1::2] - t[::2]) / (n - 1)
-            bs = choose(bin_size, get_y(3, 22, .05, .005, n))
+            bs = choose(bin_size, get_y(3, 22, .02, .002, n))
             h = self.Draw.distribution(x, make_bins(*(array([-3, 3]) + self.BunchSpacing), bs), f'Bunch {n} Spacing', x_tit='Time Delta [ns]', show=show, draw_opt='')
             format_statbox(h, fit=1, all_stat=True)
             return fit_fwhm(h, show=1)
-        return do_pickle(self.make_simple_pickle_path(f'Spacing{n}'), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path(f'Spacing{n}'), f, redo=redo or show)
 
     def draw_all_spacings(self, show=True, redo=False):
         self.PBar.start(self.NBunches) if redo or not file_exists(self.make_simple_pickle_path(f'Spacing{self.NBunches + 3}')) else do_nothing()
         x, y = self.get_bunch_nrs(), [self.draw_spacing(i, show=False, redo=redo)[1] for i in self.get_bunch_nrs()]
-        self.Draw.graph(x, y, 'Bunch Spacings', x_tit='Bunch Number', y_tit='Spacing [ns]', **Draw.mode(2, lm=.11, y_off=.95), show=show)
-        self.Draw.legend([Draw.horizontal_line(mean_sigma(y)[0].n, color=2, w=2), Draw.horizontal_line(self.BunchSpacing, color=4, w=2)], ['fit', 'PSI bunch spacing'], w=.3, scale=1.2)
+        self.Draw.graph(x, y, 'Bunch Spacings', x_tit='Bunch Number', y_tit='Spacing [ns]', **Draw.mode(2, lm=.11, y_off=.95), show=show, y_range=ax_range(y, 0, .5, .2))
+        a, b, x0, c = [mean_sigma(y)[0]] * 2, [1e9 / ufloat(self.BeamFrequency, 1e4)] * 2, [0, self.MaxBunch + 2], get_last_canvas()
+        g = [self.Draw.graph(x0, v, '', c, fill_color=col, color=col, draw_opt='le3', lw=2, opacity=.2) for v, col in [(a, 2), (b, 4)]]
+        self.Draw.legend(g, ['fit', 'PSI bunch spacing'], w=.3, scale=1.2)
         return mean_sigma(y)
 
     def draw_spacings(self, bin_size=.5, show=True):
