@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TFile
 from helpers.utils import *
-from numpy import sign
+from numpy import sign, invert
 
 MAX_SIZE = 255
 
@@ -58,6 +58,9 @@ class EventAligment(object):
             eff = calc_eff(values=self.get_aligned(self.NewTree))[0]
             print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)} ({eff:.1f}% aligned)', color='green')
 
+    def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
+        return get_tree_vec(self.InTree, var, cut, dtype, nentries, firstentry)
+
     # ----------------------------------------
     # region INIT
     def print_start(self):
@@ -70,8 +73,9 @@ class EventAligment(object):
     def check_alignment(self):
         return self.IsAligned
 
-    def check_alignment_fast(self):
-        pass
+    def check_alignment_fast(self, vec=None):
+        self.Run.info(f'{calc_eff(values=invert(vec))[0]:.1f}% of the events are misaligned :-(' if not all(vec) else f'Run {self.Run.Number} is perfectly aligned :-)')
+        return all(vec)
 
     def get_aligned(self, tree=None):
         pass
@@ -177,6 +181,6 @@ if __name__ == '__main__':
     from converter import Converter
 
     # examples: (201508-442, ...)
-    args = init_argparser(run=442)
-    zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
+    pargs = init_argparser(run=442)
+    zrun = PadRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = EventAligment(Converter(zrun))

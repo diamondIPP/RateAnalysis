@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, sum, invert, insert, delete
+from numpy import histogram2d, sum, insert, delete
 from src.event_alignment import *
 from src.binning import make_bins
 from helpers.draw import get_hist_vec, get_hist_vecs, ax_range
@@ -54,9 +54,7 @@ class PadAlignment(EventAligment):
 
     def check_alignment_fast(self, bin_size=1000, data=None):
         """ just check the zero correlation """
-        align = self.get_aligned(bin_size=bin_size, data=data)
-        self.Run.info(f'{calc_eff(values=invert(align))[0]:.1f}% of the events are misaligned :-(' if not all(align) else f'Run {self.Run.Number} is perfectly aligned :-)')
-        return all(align)
+        return super().check_alignment_fast(self.get_aligned(bin_size=bin_size, data=data))
     # endregion INIT
     # ----------------------------------------
 
