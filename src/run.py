@@ -135,8 +135,8 @@ class Run(Analysis):
         return ensure_dir(join(self.TCDir, self.make_root_subdir())) if self.Number is not None else None
 
     def load_trigger_planes(self):
-        default = list(self.get_unmasked_area().keys()) if self.load_mask() else [1, 2]
-        return array(loads(self.Config.get('BASIC', 'trigger planes')) if self.Config.has_option('BASIC', 'trigger planes') else default)
+        default = [1, 2] if self.load_mask() is None else list(self.load_mask().keys())
+        return array(self.Config.get_list('BASIC', 'trigger planes', default if len(default) == 2 else [1, 2]))
 
     def get_n_diamonds(self, run_number=None):
         run_info = self.load_run_info(run_number)
@@ -255,10 +255,7 @@ class Run(Analysis):
         if self.Number is None:
             return
         mask = self.load_mask()
-        if mask is None:
-            return {plane: Plane.Area / 100 for plane in self.TriggerPlanes}
-        # format {plane: [x1, y1, x2, y2]}
-        return {plane: Plane.PixArea / 100 * (v[2] - v[0] + 1) * (v[3] - v[1] + 1) for plane, v in mask.items()}
+        return {plane: Plane.get_area(plane, mask) for plane in self.TriggerPlanes}
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
