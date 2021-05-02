@@ -8,7 +8,6 @@ from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyl
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
 from numpy import sign, linspace, ones, ceil, append, tile, absolute
 from helpers.utils import *
-from inspect import signature
 
 
 def get_color_gradient():

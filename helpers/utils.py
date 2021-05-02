@@ -34,6 +34,7 @@ import h5py
 from functools import partial
 from queue import Queue
 from json import load, loads
+from inspect import signature
 
 OFF = False
 ON = True
@@ -543,7 +544,7 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
                 return pickle.load(f)
     except ImportError:
         pass
-    ret_val = func(*args, **kwargs)
+    ret_val = func(redo=redo, *args, **kwargs) if 'redo' in signature(func).parameters else func(*args, **kwargs)
     with open(path, 'wb') as f:
         pickle.dump(ret_val, f)
     return ret_val
