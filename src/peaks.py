@@ -190,7 +190,7 @@ class PeakAnalysis(PadSubAnalysis):
         landau = Landau(h, ax_range(*[i.n for i in get_fwhm(h, ret_edges=True)], -.2, .2))
         return landau.get_mpv(show) if par is None else landau.fit(show=show, minuit=False)[par]
 
-    def get_bunch_times(self, n, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False, cft=False):
+    def get_bunch_times(self, n=1, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False, cft=False):
         return self.get_bunch_cfts(n, excl, cut) if cft else self.get_bunch_values(n, thresh, excl, cut, 0, fit, isolated, all_)
 
     def get_bunch_time(self, n=1, fit=True, cut=None, show=False, par=1):
@@ -206,6 +206,9 @@ class PeakAnalysis(PadSubAnalysis):
         cut = choose(cut, self.get_spacing_cut(n, ecut))
         t, p = self.get_times(True, fit=True, cut=cut), self.get_heights(True, cut=cut, fit=True)
         return (t[1::2] - t[::2]) / (n - 1)
+
+    def get_spacing(self, redo=False):
+        return do_pickle(self.make_simple_pickle_path('BunchSpacing'), self.draw_all_spacings, redo=redo, show=False)[0]
     # endregion GET
     # ----------------------------------------
 
