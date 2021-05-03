@@ -11,21 +11,6 @@ widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', Fi
 plot = Draw()
 
 
-def load_runinfo():
-    run_info = {}
-    try:
-        fi = open(run.InfoFile, 'r')
-        data = load(fi)
-        fi.close()
-    except NoSectionError as err:
-        warning('{err}\nCould not load default RunInfo! --> Using default'.format(err=err))
-        return None
-
-    if run >= 0:
-        run_info = data.get(str(run))
-    return run_info
-
-
 def draw_hitmap(cut=None, plane=None):
     planes = range(4) if plane is None else [int(plane)]
     cut = TCut('') if cut is None else TCut(cut)
@@ -148,23 +133,12 @@ def get_branch(n, name='IntegralPeaks[13]'):
     print(get_tree_vec(t, name, nentries=1, firstentry=n))
 
 
-def load_diamond_name(ch):
-    p = ConfigParser()
-    p.read('config/DiamondAliases.ini')
-    dia = runinfo['dia{0}'.format(ch)]
-    return p.get('ALIASES', dia)
-
-
-def get_bias(ch):
-    return runinfo['dia{0}hv'.format(ch)]
-
-
 def draw_runinfo_legend(ch):
     testcamp = datetime.strptime(tc, '%Y%m')
     leg = Draw.make_legend(.005, .156, y1=.003, nentries=2, clean=False, scale=1, margin=.05)
     leg.SetTextSize(.05)
     leg.AddEntry(0, 'Test Campaign: {tc}, Run {run} @ {rate:2.1f} kHz/cm^{{2}}'.format(tc=testcamp.strftime('%b %Y'), run=run, rate=run.Flux), '')
-    leg.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=load_diamond_name(ch), bias=get_bias(ch)), '')
+    leg.AddEntry(0, 'Diamond: {diamond} @ {bias:+}V'.format(diamond=run.DUTs[ch].Name, bias=run.DUTs[ch].Bias), '')
     leg.Draw()
     stuff.append(leg)
 
@@ -320,12 +294,6 @@ def get_res_cut(res, n, cut, max_res):
     h = plot.distribution(x, make_bins(-1000, 1000, n=100), show=False)
     m = h.GetMean()
     return array((m - max_res < x) & (x < m + max_res))
-    # f = Draw.make_f('f', 'gaus', -1000, 1000)
-    # h.Fit(f, 'qs', '', *get_fwhm(h, ret_edges=True, err=False))
-    # f.Draw('same')
-    # return f.Integral(-1e5, 1e5) / h.GetBinWidth(1)
-    # m, s = f.Parameter(1), f.Parameter(2)
-    # return (x > m - nsig * s) & (x < m + nsig * s)
 
 
 # noinspection PyTupleAssignmentBalance
@@ -407,7 +375,6 @@ if __name__ == '__main__':
 
         try:
             run = Run(run, testcampaign=args.tc, load_tree=False)
-            runinfo = load_runinfo()
         except ValueError:
             run = Run(2, testcampaign='201807', load_tree=False)
 
@@ -418,6 +385,3 @@ if __name__ == '__main__':
         stuff = []
         count = 0
         save_dir = 'WaveForms/'
-
-        if len(argv) > 2:
-            draw_both_wf(int(argv[2]), show=False)
