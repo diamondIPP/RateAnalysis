@@ -833,6 +833,12 @@ def kramers_kronig(x, y):
     return 1 + 2 / pi * array([discrete_int(x, x * y / (x ** 2 - ix ** 2)) for ix in x])
 
 
+def p2ecut(n, cut):
+    c = zeros(n.size, '?')
+    c[arange(n.size).repeat(n)[cut]] = True
+    return c
+
+
 class FitRes(ndarray):
 
     def __new__(cls, f):
