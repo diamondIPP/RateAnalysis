@@ -64,18 +64,19 @@ class EventAligment(object):
     # ----------------------------------------
     # region INIT
     def print_start(self):
-        pass
+        print_banner(f'STARTING {self.__class__.__name__[:3].title()} EVENT ALIGNMENT OF RUN {self.Run.Number}')
 
     def load_file(self):
         f_name = self.Converter.get_eudaqfile_path()
         return TFile(self.Converter.Run.RootFilePath if not file_exists(f_name) else f_name)
 
-    def check_alignment(self, vec=None):
-        self.Run.info(f'{calc_eff(values=invert(vec))[0]:.1f}% of the events are misaligned :-(' if not all(vec) else f'Run {self.Run.Number} is perfectly aligned :-)')
-        return all(vec)
+    def check_alignment(self, *args, **kwargs):
+        v = self.get_aligned(*args, **kwargs)
+        self.Run.info(f'{calc_eff(values=invert(v))[0]:.1f}% of the events are misaligned :-(' if not all(v) else f'Run {self.Run.Number} is perfectly aligned :-)')
+        return all(v)
 
-    def get_aligned(self, tree=None):
-        pass
+    def get_aligned(self, *args, **kwargs):
+        return array([])
 
     @staticmethod
     def init_branches():

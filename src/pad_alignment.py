@@ -28,9 +28,6 @@ class PadAlignment(EventAligment):
 
     # ----------------------------------------
     # region INIT
-    def print_start(self):
-        print_banner('STARTING PAD EVENT ALIGNMENT OF RUN {}'.format(self.Run.Number))
-
     @staticmethod
     def init_branches():
         return EventAligment.init_branches() + [('trigger_phase', zeros(1, 'u1'), 'trigger_phase/b')]
@@ -51,10 +48,6 @@ class PadAlignment(EventAligment):
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         return bin_average < self.Threshold
-
-    def check_alignment(self, bin_size=1000, data=None):
-        """ just check the zero correlation """
-        return super().check_alignment(self.get_aligned(bin_size=bin_size, data=data))
     # endregion INIT
     # ----------------------------------------
 
