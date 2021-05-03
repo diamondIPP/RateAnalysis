@@ -30,7 +30,7 @@ class EventAligment(object):
         # Info
         self.NEntries = int(self.InTree.GetEntries())
         self.InTree.SetEstimate(self.NEntries)
-        self.IsAligned = self.check_alignment_fast()
+        self.IsAligned = self.check_alignment()
         self.Offsets = {}
         self.FirstOffset = 0
         self.FinalOffset = 0
@@ -70,10 +70,7 @@ class EventAligment(object):
         f_name = self.Converter.get_eudaqfile_path()
         return TFile(self.Converter.Run.RootFilePath if not file_exists(f_name) else f_name)
 
-    def check_alignment(self):
-        return self.IsAligned
-
-    def check_alignment_fast(self, vec=None):
+    def check_alignment(self, vec=None):
         self.Run.info(f'{calc_eff(values=invert(vec))[0]:.1f}% of the events are misaligned :-(' if not all(vec) else f'Run {self.Run.Number} is perfectly aligned :-)')
         return all(vec)
 

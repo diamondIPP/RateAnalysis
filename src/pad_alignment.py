@@ -52,9 +52,9 @@ class PadAlignment(EventAligment):
         bin_average = bins[:, 1] / sum(bins, axis=1)
         return bin_average < self.Threshold
 
-    def check_alignment_fast(self, bin_size=1000, data=None):
+    def check_alignment(self, bin_size=1000, data=None):
         """ just check the zero correlation """
-        return super().check_alignment_fast(self.get_aligned(bin_size=bin_size, data=data))
+        return super().check_alignment(self.get_aligned(bin_size=bin_size, data=data))
     # endregion INIT
     # ----------------------------------------
 
@@ -138,7 +138,7 @@ class PadAlignment(EventAligment):
                 p = delete(p, ev) if d < 0 else insert(p, ev, False)
             last_offset = off
         p = p[:self.NEntries] if p.size > self.NEntries else concatenate([p, zeros(self.NEntries - p.size, '?')])
-        self.check_alignment_fast(data=(where(p)[0], self.NHits[p]))
+        self.check_alignment(data=(where(p)[0], self.NHits[p]))
     # endregion OFFSETS
     # ----------------------------------------
 
