@@ -481,7 +481,7 @@ class Draw(object):
             return f(x[0], pars, *args, **kwargs) if 'pars' in signature(f).parameters else f(x[0], *args, **kwargs)
 
         Draw.add(tmp)
-        f0 = TF1(name, tmp, xmin, xmax)
+        f0 = TF1(choose(name, Draw.get_name('f')), tmp, xmin, xmax)
         do(f0.SetNpx, npx)
         format_histo(f0, title, line_color=color, line_style=style, lw=w)
         return Draw.add(f0)
