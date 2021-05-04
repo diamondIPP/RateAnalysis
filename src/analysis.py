@@ -142,13 +142,13 @@ class Analysis(object):
         return round_(sorted(abs(concatenate([t0, t0 - self.BunchSpacing]))), 1)
 
     def draw_time_differences(self):
-        masses = [(M_E, M_PI), (M_PI, M_E), (M_MU, M_PI), (M_PI, M_MU)]
-        fs = [self.Draw.make_tf1(Draw.get_name('f'), self.calc_time_difference, 210, 310, self.Draw.get_color(4), npx=500, w=2, m1=m1, m2=m2) for m1, m2 in masses]
+        masses = [(M_PI, M_E), (M_PI, M_MU), (M_E, M_PI), (M_MU, M_PI)]
+        fs = [self.Draw.make_tf1(None, self.calc_time_difference, 210, 310, self.Draw.get_color(2), w=2, style=[1, 2][m2 == M_PI], npx=500, m1=m1, m2=m2) for m1, m2 in masses]
         for i, f in enumerate(fs):
             tit, xtit, ytit = 'Time Differences', 'Momentum [MeV/c]', 'Time Difference [ns]'
             self.Draw.function(f, tit, x_tit=xtit, y_tit=ytit, y_range=[0, round(self.BunchSpacing)], grid=True, c=None if not i else get_last_canvas(), draw_opt='same' if i else '')
             Draw.tlatex(self.Momentum * 1.02, f(self.Momentum), text=f'{f(self.Momentum):2.1f}', size=.04)
-        self.Draw.legend(fs, ['#pi^{+}-e^{+}', 'e^{+}-#pi^{+}', '#pi^{+}-#mu^{+}', '#mu^{+}-#pi^{+}'], 'l')
+        self.Draw.legend(fs, ['e^{+}-#pi^{+}', '#mu^{+}-#pi^{+}', '#pi^{+}-e^{+}', '#pi^{+}-#mu^{+}'], 'l')
         Draw.vertical_line(self.Momentum, w=2, color=2)
         update_canvas()
 
