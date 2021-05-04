@@ -572,9 +572,9 @@ def find_maxima(h, n=3, sigma=2, sort_x=False):
 def int_to_roman(integer):
     """ Convert an integer to Roman numerals. """
     if type(integer) != int:
-        raise (TypeError, 'expected integer, got {t}'.format(t=type(integer)))
+        raise TypeError(f'cannot convert {type(integer).__name__} to roman, integer required')
     if not 0 < integer < 4000:
-        raise (ValueError, 'Argument must be between 1 and 3999')
+        raise ValueError('Argument must be between 1 and 3999')
     dic = OrderedDict([(1000, 'M'), (900, 'CM'), (500, 'D'), (400, 'CD'), (100, 'C'), (90, 'XC'), (50, 'L'), (40, 'XL'),
                        (10, 'X'), (9, 'IX'), (5, 'V'), (4, 'IV'), (1, 'I')])
     result = ''
