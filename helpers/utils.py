@@ -474,8 +474,8 @@ def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
     return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
 
 
-def fit_fwhm(h, fitfunc='gaus', show=False):
-    low, high = get_fwhm(h, ret_edges=True)
+def fit_fwhm(h, fitfunc='gaus', show=False, fit_range=.8):
+    low, high = get_fwhm(h, fit_range, ret_edges=True)
     return FitRes(h.Fit(fitfunc, 'qs{}'.format('' if show else 0), '', low.n, high.n))
 
 
@@ -878,6 +878,10 @@ class FitRes(ndarray):
 
     def get_chi2(self):
         return self.vChi2 / self.vNdf
+
+    def get_integral(self, xmin=None, xmax=None):
+        xmin, xmax = choose(xmin, self.Fit.GetXmin()), choose(xmax, self.Fit.GetXmax())
+        return ufloat(self.Fit.Integral(xmin, xmax), self.Fit.IntegralError(xmin, xmax))
 
     def Parameter(self, arg):
         return self.Pars[arg]
