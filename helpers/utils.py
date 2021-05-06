@@ -466,8 +466,7 @@ def get_fw_center(h):
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
     half_max0 = h.GetMaximum() * fit_range
     # fit the top with a gaussian to get better maxvalue
-    fit = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]]))
-    half_max = fit2u(fit, par=0) * .5
+    half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]]))[0] * .5
     blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
     low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
     high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
