@@ -5,12 +5,12 @@
 # --------------------------------------------------------
 from ROOT import TMath, TGraph
 from ROOT.gRandom import Landau as rLandau
-from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stack, any
+from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stack, any, sort
 from numpy.random import normal, rand
 from scipy.signal import find_peaks
 from scipy.stats import poisson
 from uncertainties import ufloat_fromstr
-from uncertainties.umath import log as ulog
+from uncertainties.umath import log as ulog, sqrt as usqrt
 
 from helpers.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
@@ -193,8 +193,10 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_times(self, n=1, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False, cft=False):
         return self.get_bunch_cfts(n, excl, cut) if cft else self.get_bunch_values(n, thresh, excl, cut, 0, fit, isolated, all_)
 
-    def get_bunch_time(self, n=1, fit=True, cut=None, show=False, par=1):
-        return fit_fwhm(self.draw_bunch_times(n, fit=fit, cut=cut, show=show, draw_opt='', bin_width=.1), show=show)[par]
+    def get_bunch_time(self, n=1, fit=True, cut=None, show=False, par=1, redo=False):
+        def f():
+            return fit_fwhm(self.draw_bunch_times(n, fit=fit, cut=cut, show=show, draw_opt='', bin_width=.1), show=show)
+        return do_pickle(self.make_simple_pickle_path(f'BT{n}', int(fit)), f, redo=redo)[par]
 
     def get_bunch_cfts(self, n, excl=0, cut=None):
         return self.get_bunch_values(n, None, excl, cut, 2, fit=True, pars=True)
@@ -289,7 +291,7 @@ class PeakAnalysis(PadSubAnalysis):
             x, bs = self.get_spacings(n, ecut=ecut), choose(bin_size, get_y(3, 22, .02, .002, n))
             h = self.Draw.distribution(x, make_bins(*(array([-3, 3]) + self.BunchSpacing), bs), f'Bunch {n} Spacing', x_tit='Time Delta [ns]', show=show, draw_opt='')
             format_statbox(h, fit=1, all_stat=True)
-            return fit_fwhm(h, show=1)
+            return fit_fwhm(h, show=show, fit_range=.5)
         return do_pickle(self.make_simple_pickle_path(f'Spacing{n}'), f, redo=redo or show)
 
     def draw_spacing_vs_peaktime(self, n=3, bin_size=.2, ecut=True, **kwargs):
@@ -312,6 +314,11 @@ class PeakAnalysis(PadSubAnalysis):
         ecut = (self.get_npeaks() > 1) & (self.get_n_additional(1, fit=1) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
         t = t[c2 & self.e2pcut(ecut)] - t[c1 & self.e2pcut(ecut)].repeat(self.get_n_additional(fit=1)[ecut])
         self.Draw.distribution(t, self.get_binning(bin_size), 'Peak Spacing', x_tit='Peak Spacing [ns]', **Draw.mode(2), show=show, stats=set_statbox(entries=True))
+
+    def draw_overlayed_times(self, bin_size=.1, off=0, cut=True, thresh=None, fit=True, **kwargs):
+        t = self.get_corrected_times(cut, thresh, fit)
+        t = (t[t > self.get_bunch_time(n=1).n + 5] + off) % self.get_spacing().n
+        return self.Draw.distribution(t, make_bins(0, self.BunchSpacing, bin_size), 'Overlayed Times', x_tit='Peak Time [ns]', y_off=1.8, lm=.12, stats=set_statbox(entries=True), **kwargs)
 
     def draw_additional(self, h=None, show=True):
         """draw heights of the additinoal peaks in the peak time distribution"""
@@ -505,6 +512,33 @@ class PeakAnalysis(PadSubAnalysis):
     def find_tot(values, times, thresh):
         i, j = where(values >= thresh)[0][[0, -1]] if any(values > thresh) else None, None
         return (times[-1] if j == times.size - 1 else get_x(*times[j:j + 2], *values[j:j + 2], thresh)) - get_x(*times[i:i + 2], *values[i:i + 2], thresh) if i else -999
+
+    def find_particle_pos(self, h=None, off=0, bin_size=.1):
+        h = self.draw_overlayed_times(bin_size, off, show=False) if h is None else h
+        x0, w0 = fit_fwhm(h)[1:]
+        spec = TSpectrum(6)
+        x = [spec.GetPositionX()[i] for i in range(spec.Search(h, 2, '', .001))][1:]
+        return append(x0, sorted([FitRes(h.Fit('gaus', 'qs0', '', ix - w0.n, ix + w0.n))[1] for ix in x]))
+
+    def find_composition(self, off=0, bin_size=.1):
+        h = self.draw_overlayed_times(bin_size, off, show=False)
+        w = fit_fwhm(h)[2].n
+        ints = array([Gauss(h, [ix.n - w, ix.n + w]).fit(show=1).get_integral(-10, 30) for ix in self.find_particle_pos(h)]) / bin_size
+        ints = array([i + ufloat(0, sqrt(i.n)) for i in ints])
+        n, nb, nc = h.Integral(), ints[1], mean_sigma(ints[3:])[0]
+        na = n - 2 * nb - 2 * nc  # all events but the four additional peaks
+        pa = usqrt(na + usqrt(na ** 2 - 4 * (nb ** 2 + nc ** 2))) / sqrt(2 * n)
+        return pa, nb / n / pa, nc / n / pa
+
+    def find_momentum(self, off=0, bin_size=.1, e_pl=1):
+        h, s = self.draw_overlayed_times(bin_size, off, show=False), self.get_spacing()
+        x, r = self.find_particle_pos(h), self.Momentum + array([-10, 10])
+        x = sort((x[1:] - x[0]) % s)
+        f = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(None, p, s)) ** 2), *r)
+        y0, p0 = f.GetMinimum(), f.GetMinimumX()
+        ey = sum(i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2).s
+        e_sys = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(self.PathLength + e_pl, p, s)) ** 2), *r).GetMinimumX()
+        return p0, abs(f.GetX(y0 + ey) - p0), abs(e_sys - p0)
     # endregion FIND
     # ----------------------------------------
 
