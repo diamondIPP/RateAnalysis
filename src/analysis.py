@@ -1,6 +1,6 @@
 
 from glob import glob
-from numpy import deg2rad, rad2deg, round_
+from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
 from os.path import getsize
@@ -137,9 +137,9 @@ class Analysis(object):
     def calc_time_difference(self, p=None, m1=M_MU, m2=M_PI):
         return t_diff(self.PathLength, choose(p, self.Momentum), m1, m2) % self.BunchSpacing
 
-    def get_time_differences(self, p=None):
-        t0 = array([self.calc_time_difference(M_PI, m, p) for m in [M_MU, M_E]])
-        return round_(sorted(abs(concatenate([t0, t0 - self.BunchSpacing]))), 1)
+    def get_time_differences(self, s=None, p=None, spacing=None):
+        t = array([t_diff(choose(s, self.PathLength), choose(p, self.Momentum), m1, m2) for m1, m2 in [(M_PI, M_E), (M_PI, M_MU), (M_E, M_PI), (M_MU, M_PI)]])
+        return sort(t % choose(spacing, self.BunchSpacing))
 
     def draw_time_differences(self):
         masses = [(M_PI, M_E), (M_PI, M_MU), (M_E, M_PI), (M_MU, M_PI)]
