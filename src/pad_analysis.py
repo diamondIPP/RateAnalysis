@@ -457,6 +457,14 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_snr_right(self):
         self.draw_snr_left(right=True)
+
+    @staticmethod
+    def create_peak_ints(lmin=0, lmax=13, rmin=0, rmax=20, step=1):
+        i = 1
+        for lw in range(lmin, lmax, step):
+            for rw in range(rmin, rmax, step):
+                print(f'PeakIntegral{i}_range = [{lw},{rw}]')
+                i += 1
     # endregion SNR
     # ----------------------------------------
 
