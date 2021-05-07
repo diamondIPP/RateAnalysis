@@ -146,13 +146,13 @@ class Waveform(PadSubAnalysis):
 
     def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, show=True, show_noise=False, draw_opt='ap'):
         if ind is None:
-            h, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
+            g, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
         else:
             x, y = self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
-            h = self.Draw.graph(x, y, 'Single Waveform', x_tit='Time [ns]', y_tit='Signal [mV]', **Draw.mode(3), grid=grid, gridy=True, markersize=.5, draw_opt=draw_opt, show=show)
+            g = self.Draw.graph(x, y, 'Single Waveform', **Draw.mode(3), grid=grid, gridy=True, draw_opt=draw_opt, show=show)
         if show_noise:
             self.__draw_noise()
-        return h
+        return g
 
     def draw_all_single(self, n=1, cut=''):
         activated_wfs = self.get_active()
@@ -275,12 +275,12 @@ class Waveform(PadSubAnalysis):
         self.Draw.legend([g], ['average'], 'l')
         g.Draw('l')
 
-    def draw_signal_integral(self, ind=None):
-        w = self.draw_all(ind=ind, n=1)[0]
+    def draw_signal_integral(self, ind=None, draw_reg=False):
+        w = self.draw_single(ind=ind)
+        r = [self.draw_sig_region(opacity=.1)] if draw_reg else []
         self.draw_sig_int(w)
-        pp = self.draw_peak_pos(w)
-        arrows = self.draw_sig_peakint(w)
-        Draw.legend([pp] + arrows, ['peak position', 'left width', 'right width'], 'l')
+        o = [self.draw_peak_pos(w)] + self.draw_sig_peakint(w) + r
+        Draw.legend(o, ['peak time', 'left width', 'right width'] + (['signal region'] if draw_reg else []), 'l', scale=1.4)
 
     def draw_peak_pos(self, h):
         x, y = self.get_max(h)
@@ -296,19 +296,19 @@ class Waveform(PadSubAnalysis):
             Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42)
         Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=.07)
 
-    def draw_region(self, region=None, lw=2, show_leg=True, fill=False):
+    def draw_region(self, region=None, lw=2, show_leg=True, fill=False, opacity=None):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
         lines = []
         for region in regions:
             x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
             color = self.Draw.get_color(len(regions))
-            lines.append(Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=.2))
+            lines.append(Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=choose(opacity, .2)))
         if show_leg:
             Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
         return lines
 
-    def draw_sig_region(self):
-        return self.draw_region(show_leg=False, fill=True)[0]
+    def draw_sig_region(self, opacity=None):
+        return self.draw_region(show_leg=False, fill=True, opacity=opacity)[0]
 
     def draw_sig_ped(self):
         s, p = self.draw_sig_region(), self.draw_ped_time()
