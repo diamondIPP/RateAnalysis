@@ -98,8 +98,7 @@ class Plane(object):
         return self
 
     @staticmethod
-    def get_area(plane, mask):
-        v = mask[plane] if mask is not None and plane in mask else None
+    def get_area(v=None):
         return Plane.Area / 100 if v is None else Plane.PixArea / 100 * (v[2] - v[0] + 1) * (v[3] - v[1] + 1)
 
     @staticmethod

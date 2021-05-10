@@ -25,9 +25,8 @@ class Telescope(SubAnalysis):
     def get_rate_var(self, plane, flux=False):
         if not self.has_branch('rate'):
             return warning('The "rate" branch does not exist in this tree')
-        area = self.Run.get_unmasked_area()[plane] if plane in self.Run.get_unmasked_area() else self.Run.Plane.Area / 100
         # rate[0] is scintillator --> add + 1 to trigger planes
-        return 'rate[{p}]{a}'.format(p=plane + 1, a='/{}'.format(area) if flux else '')
+        return 'rate[{p}]{a}'.format(p=plane + 1, a='/{}'.format(self.Run.get_unmasked_area(plane)) if flux else '')
 
     def get_rate_vars(self):
         return [self.get_rate_var(p) for p in self.Run.TriggerPlanes]

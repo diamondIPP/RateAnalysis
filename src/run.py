@@ -221,41 +221,25 @@ class Run(Analysis):
             warning('Mask file directory does not exist ({})!'.format(mask_dir))
         return join(mask_dir, basename(self.Info['maskfile']))
 
-    def load_mask(self):
+    def load_mask(self, plane=None):
         mask_file = self.load_mask_file_path()
         if basename(mask_file) in ['no mask', 'none', 'none!', ''] or self.Number is None:
             return
-        mask_data = {}
-        # format: cornBot roc x1 y1
-        #         cornTop roc x2 y2
         try:
-            with open(mask_file) as f:
-                for line in f:
-                    if len(line) > 3 and not line.startswith('#'):
-                        if not line.startswith('corn'):
-                            warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
-                            return
-                        data = line.split()
-                        plane = int(data[1])
-                        if plane not in mask_data:
-                            mask_data[plane] = zeros(4)
-                        if line.startswith('cornBot'):
-                            mask_data[plane][:2] = [int(data[i]) for i in [2, 3]]
-                        if line.startswith('cornTop'):
-                            mask_data[plane][2:] = [int(data[i]) for i in [2, 3]]
+            data = genfromtxt(mask_file, [('id', 'U10'), ('pl', 'i'), ('x', 'i'), ('y', 'i')])
+            if 'cornBot' not in data['id']:
+                warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
+            mask = {pl: [data[where((data['pl'] == pl) & (data['id'] == n))][0][i] for n in ['cornBot', 'cornTop'] for i in [2, 3]] for pl in set(data['pl'])}
+            return mask if plane is None else mask[self.TriggerPlanes[plane - 1]] if plane <= self.TriggerPlanes.size else None
         except Exception as err:
             warning(err)
             warning('Could not read mask file... not taking any mask!')
-        return mask_data
 
     def get_mask_dim(self, mm=False):
         return {plane: array([Plane.PX * (v[2] - v[0] + 1), Plane.PY * (v[3] - v[1] + 1)]) / (1 if mm else 10) for plane, v in self.load_mask().items()}
 
-    def get_unmasked_area(self):
-        if self.Number is None:
-            return
-        mask = self.load_mask()
-        return {plane: Plane.get_area(plane, mask) for plane in self.TriggerPlanes}
+    def get_unmasked_area(self, plane):
+        return None if self.Number is None else Plane.get_area(self.load_mask(plane))
 
     def find_for_in_comment(self):
         for name in ['for1', 'for2']:
@@ -302,7 +286,7 @@ class Run(Analysis):
 
     def calculate_plane_flux(self, plane=1, corr=True):
         """estimate the flux [kHz/cm²] through a trigger plane based on Poisson statistics."""
-        rate, eff, area = self.Info[f'for{plane}'], self.load_plane_efficiency(plane), self.get_unmasked_area()[plane]
+        rate, eff, area = self.Info[f'for{plane}'], self.load_plane_efficiency(plane), self.get_unmasked_area(plane)
         return -log(1 - rate / Plane.Frequency) * Plane.Frequency / area / 1000 / (eff if corr else 1)  # count zero hits of Poisson
 
     def find_n_events(self, n, cut, start=0):
