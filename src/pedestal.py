@@ -45,7 +45,7 @@ class PedestalAnalysis(PadSubAnalysis):
 
     def get_par(self, par=1, name=None, cut=None, redo=False):
         suffix = f'{self.Cut(cut).GetName()}_{self.get_short_name(name)}'
-        return do_pickle(self.make_simple_pickle_path('', suffix), self.draw_disto_fit, redo=redo, name=name, cut=self.Cut(cut), show=False)[par]
+        return do_pickle(self.make_simple_pickle_path('', suffix), self.draw_disto_fit, redo=redo, name=name, cut=self.Cut(cut), show=False, prnt=False)[par]
 
     def get_mean(self, name=None, cut=None, redo=False, raw=False):
         return self.get_par(1, name, cut, redo) * (self.Polarity if raw else 1)
