@@ -4,7 +4,7 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.draw import make_bins, choose, array, append, do_pickle, load_main_config
+from helpers.draw import make_bins, choose, array, append, do_pickle, load_main_config, diff
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
 
@@ -152,9 +152,10 @@ class Bins(SubAnalysis):
     # ----------------------------------------
 
     @staticmethod
-    def make(min_val, max_val=None, bin_width=1, last=False, n=None):
-        return make_bins(min_val, max_val, bin_width, last, n)
+    def make(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
+        return make_bins(min_val, max_val, bin_width, last, n, off)
 
     @staticmethod
-    def make2d(x, y):
-        return Bins.make(x[0], x[-1], x[1] - x[0], last=True) + Bins.make(y[0], y[-1], y[1] - y[0], last=True)
+    def make2d(x, y, bs=None, off=0):
+        bs = max(diff(sorted(x))) if bs is None else bs
+        return Bins.make(min(x), max(x) + bs, bs, last=True, off=off) + Bins.make(min(y), max(y) + bs, bs, last=True, off=off)

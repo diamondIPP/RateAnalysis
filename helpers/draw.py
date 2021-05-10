@@ -397,7 +397,7 @@ class Draw(object):
         dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, uarr2n(zz))
-        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, pal=55))
+        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, pal=55, stats=stats))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
@@ -940,12 +940,12 @@ def normalise_bins(h):
     update_canvas()
 
 
-def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None):
+def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
     bins = array(min_val, 'd')
     if type(min_val) not in [ndarray, list]:
         min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
         bins = append(arange(min_val, max_val, bin_width, dtype='d'), max_val if last else []) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
-    return [bins.size - 1, bins]
+    return [bins.size - 1, bins + off]
 
 
 if __name__ == '__main__':
