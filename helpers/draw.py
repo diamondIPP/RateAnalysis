@@ -394,10 +394,9 @@ class Draw(object):
         return p
 
     def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
-        x, y, zz = array(x, dtype='d'), array(y, dtype='d'), array(zz, dtype='d')
-        dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size))
+        dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
-        fill_hist(p, x, y, zz)
+        fill_hist(p, x, y, uarr2n(zz))
         format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, pal=55))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)

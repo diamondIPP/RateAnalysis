@@ -326,6 +326,10 @@ def make_list(value):
     return array([value]).flatten()
 
 
+def uarr2n(arr):
+    return array([i.n for i in arr]) if is_ufloat(arr[0]) else arr
+
+
 def file_exists(path, warn=False):
     if not pth.isfile(path):
         warning('File "{}" does not exist!'.format(path)) if warn else do_nothing()
