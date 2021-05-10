@@ -11,6 +11,7 @@ from src.pulser import PulserAnalysis
 from src.waveform import Waveform
 from src.correlation import correlate
 from src.mc_signal import MCSignal
+from src.analysis import update_pbar
 
 
 class PadAnalysis(DUTAnalysis):
@@ -184,13 +185,13 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: all pulse height values for a given cut. """
         return self.Run.get_tree_vec(var=self.get_signal_var(name, cut=cut, region=region), cut=self.Cut(cut))
 
-    @reload_tree
+    # @reload_tree
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
-        ph = fit2u(do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo), par=0)
+        ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
         return self.Peaks.get_signal_ph() if peaks else ufloat(ph.n, ph.s + sys_err)
 
     def get_bucket_pulse_heights(self, redo=False):
@@ -433,22 +434,28 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region SNR
+    @update_pbar
     def calc_snr(self, region=None, peak_int=None, redo=False):
         return self.get_pulse_height(sig=self.get_signal_name(region=region, peak_int=peak_int), redo=redo) / self.Pedestal.get_noise(self.Pedestal.get_signal_name(peak_int=peak_int), redo=redo)
 
-    def draw_snrs(self, show=True):
-        peak_integrals = array([ip for ip in self.Run.PeakIntegrals[self.DUT.Number - 1].values()]) / 2
-        values = [self.calc_snr(peak_int=name) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
-        self.Draw.graph(arange(len(values)), values, title='Signal To Noise Ratios', y_tit='SNR', show=show, x_range=ax_range(0, len(values) - 1, .1, .1))
-        for i, ip in enumerate(peak_integrals):
+    def get_snrs(self, region=None, redo=False):
+        peak_ints = self.Run.PeakIntegrals[self.DUT.Number - 1]
+        self.PBar.start(len(peak_ints), counter=True, t='min')
+        values = array([self.calc_snr(region, peak_int=name, redo=redo) for name in peak_ints])
+        return values, array(list(peak_ints.values())) / 2
+
+    def draw_snrs(self, show=True, redo=False):
+        values, peak_ints = self.get_snrs(redo=redo)
+        self.Draw.graph(arange(values.size), values, title='Signal To Noise Ratios', y_tit='SNR', show=show, x_range=ax_range(0, len(values) - 1, .1, .1))
+        for i, ip in enumerate(peak_ints):
             Draw.tlatex(i, values[i].n + (max(values) - min(values)).n * .05, str(ip))
 
-    def draw_2d_snrs(self, show=True, lego=False):
-        x, y = array([ip for ip in self.Run.PeakIntegrals[self.DUT.Number - 1].values()]).T / 2
-        values = [self.calc_snr(peak_int=name).n for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
+    def draw_2d_snrs(self, show=True, redo=False):
+        values, peak_ints = self.get_snrs(redo=redo)
+        x, y = peak_ints.T
         gStyle.SetPaintTextFormat('5.4g')
-        return self.Draw.prof2d(x, y, values, Bins.make(min(x), max(x) + 2, .5) + Bins.make(min(y), max(y) + 2, .5), 'Signal to Noise Ratios', x_tit='Left Length [ns]', y_tit='Right Length [ns]',
-                                draw_opt='lego2' if lego else 'coltext', x_off=1.45, y_off=1.6, bm=.2, rm=.1, lm=.13, phi=-30, theta=40, show=show, z_range=ax_range(values, fl=.1, fh=.1))
+        return self.Draw.prof2d(x, y, values, Bins.make2d(x, y, off=-.25), 'Signal to Noise Ratios', x_tit='Left Width [ns]', y_tit='Right Width [ns]', draw_opt='coltext',
+                                show=show, z_range=ax_range(values, fl=-.5, fh=.1), stats=False, rm=.03)
 
     def draw_snr_left(self, right=False):
         p = getattr(self.draw_2d_snrs(show=False), 'Profile{}'.format('Y' if right else 'X'))('{} Length'.format('Right' if right else 'Left'))
