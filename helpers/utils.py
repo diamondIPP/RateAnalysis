@@ -35,6 +35,7 @@ from functools import partial
 from queue import Queue
 from json import load, loads
 from inspect import signature
+from types import FunctionType, MethodType
 
 OFF = False
 ON = True
@@ -543,7 +544,7 @@ def do_pickle(path, func, value=None, redo=False, *args, **kwargs):
                 return pickle.load(f)
     except ImportError:
         pass
-    ret_val = func(redo=redo, *args, **kwargs) if 'redo' in signature(func).parameters else func(*args, **kwargs)
+    ret_val = func(redo=redo, *args, **kwargs) if type(func) in [MethodType, FunctionType] and 'redo' in signature(func).parameters else func(*args, **kwargs)
     with open(path, 'wb') as f:
         pickle.dump(ret_val, f)
     return ret_val
@@ -901,7 +902,7 @@ class FitRes(ndarray):
 class PBar(object):
     def __init__(self, start=None, counter=False, t=None):
         self.PBar = None
-        self.Widgets = ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed() if t is None else EventSpeed(t)]
+        self.Widgets = self.init_widgets(counter, t)
         self.Step = 0
         self.N = 0
         self.start(start)
@@ -915,10 +916,14 @@ class PBar(object):
             self.PBar = ProgressBar(widgets=self.Widgets, maxval=self.N).start()
             self.update(self.Step) if self.Step > 0 else do_nothing()
 
-    def start(self, n):
+    @staticmethod
+    def init_widgets(counter, t):
+        return ['Progress: ', SimpleProgress('/') if counter else Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed() if t is None else EventSpeed(t)]
+
+    def start(self, n, counter=None, t=None):
         if n is not None:
             self.Step = 0
-            self.PBar = ProgressBar(widgets=self.Widgets, maxval=n).start()
+            self.PBar = ProgressBar(widgets=self.Widgets if t is None and counter is None else self.init_widgets(counter, t), maxval=n).start()
             self.N = n
 
     def update(self, i=None):
