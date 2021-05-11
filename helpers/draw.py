@@ -91,7 +91,7 @@ class Draw(object):
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         do(c.SetLeftMargin, l_)
         do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 2) != .1 else .03)
-        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 2) != .1 else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
+        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 2) != .1 and b is None else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
         do(c.SetTopMargin, None if round(c.GetTopMargin(), 2) != .1 else max((.1 if t is None else t) - (0 if Draw.Title else .07), 0))
     # endregion SET
     # ----------------------------------------
@@ -379,8 +379,8 @@ class Draw(object):
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
 
-    def graph(self, x, y, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
-        g = Draw.make_tgrapherrors(x, y)
+    def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
+        g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor))
         self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
         return g
