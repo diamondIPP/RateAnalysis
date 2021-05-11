@@ -57,7 +57,7 @@ class Currents(Analysis):
         data_file = join(self.DataDir, 'data.hdf5')
         if not file_exists(data_file):
             self.convert_data()
-        data = h5py.File(data_file, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+        data = h5py.File(data_file, 'r')[f'{self.Name}_CH{self.Channel}']
         data = data[(data['timestamps'] >= time_stamp(self.Begin)) & (data['timestamps'] <= time_stamp(self.End))]
         if not data.size:
             return None
