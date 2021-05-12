@@ -96,6 +96,9 @@ class PeakAnalysis(PadSubAnalysis):
     def get_binning(self, bin_size=None, n=None):
         return self.WF.get_binning(bin_size) if n is None else make_bins(*self.get_bunch_range(n, n + 1), choose(bin_size, self.BinWidth), last=True)
 
+    def get_n_events(self):
+        return count_nonzero(self.Ana.get_pulser_cut())
+
     def get_bunch_nrs(self, start=None):
         return arange(choose(start, 3), self.MaxBunch + 1)
 
@@ -136,14 +139,22 @@ class PeakAnalysis(PadSubAnalysis):
         hall.Fit(fit, 'qsb', '', hall.GetBinCenter(hall.GetMaximumBin() + 3), hi)
         return (hall.Integral(0, hall.FindBin(hi)) - ufloat(fit.Integral(0, hi), fit.IntegralError(0, hi) * 10) / hall.GetBinWidth(1)) / hall.Integral()
 
+    def get_p(self, corr=False):
+        return self.get_n_total(corr=corr) / self.get_n_events() / self.NBunches
+
+    def get_eff_b0(self):
+        return (self.get_n_total(b0=0, corr=False) - self.get_n_consecutive(corr=False, n_peaks=True)) / (self.get_p() * self.get_n_events())
+
     def get_p_extra(self):
-        scale = self.get_n_total(b0=1) / count_nonzero(self.get_event_cut())  # assume the additional miss as many events as the signal
+        scale = self.get_n_total(b0=1) / self.get_n_events()  # assume the additional miss as many events as the signal
         return (1 - poisson.cdf(0, self.get_lambda().n)) / scale
 
-    def get_n_consecutive(self, n=2):
-        lam = self.get_lambda().n  # lambda for a single bunch
+    def get_n_consecutive(self, n=2, corr=True, n_peaks=False):
+        if n_peaks:  # just calculate the number of observed peak
+            return self.get_p(corr) ** n * self.get_n_events()
+        lam = self.get_lambda(corr=corr).n  # lambda for a single bunch
         p = 1 - poisson.cdf(0, lam)  # probability to have at least one peak in a single bunch
-        return sum(p ** (n - 1) * poisson.pmf(i, lam) * i for i in range(50)) * count_nonzero(self.Ana.get_pulser_cut())
+        return sum(p ** (n - 1) * poisson.pmf(i, lam) * i for i in range(50)) * self.get_n_events()
 
     def get_peak_fac(self, redo=False):
         def f():
