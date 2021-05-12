@@ -92,7 +92,7 @@ class PadCollection(AnalysisCollection):
     def draw_pedestals(self, vs_time=False, sigma=False, redo=False, show=True):
         x, y = self.get_x_var(vs_time), self.get_pedestals(redo=redo, sigma=sigma)
         y_tit = ['Pedestal', 'Noise'][sigma]
-        return self.Draw.graph(x, y, title=y_tit, y_tit='{} [mV]'.format(y_tit), **self.get_x_args(vs_time, draw_args=True), color=810, show=show)
+        return self.Draw.graph(x, y, title=y_tit, y_tit='{} [mV]'.format(y_tit), **self.get_x_args(vs_time, draw=True), color=810, show=show)
 
     def draw_noise(self, vs_time=False, redo=False, show=True):
         return self.draw_pedestals(vs_time, True, redo, show)
@@ -134,7 +134,7 @@ class PadCollection(AnalysisCollection):
     # region CUTS
     def draw_bucket_ratio(self, show=True):
         x, y = self.get_fluxes(), self.get_values('bucket events', self.Analysis.get_bucket_ratio, picklepath=self.FirstAnalysis.make_simple_pickle_path('BucketRatio', run='{}'))
-        self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw_args=1), show=show)
+        self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw=True), show=show)
 
     def draw_bucket_ph(self, show=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Fit', '{}_1_b2_nobucket'.format(Bins.Size), 'Ph_fit', '{}')
@@ -184,7 +184,7 @@ class PadCollection(AnalysisCollection):
     def compare_fluxes(self, plane=None, logy=True, corr=True, avrg=False, y_range=None, show=True):
         x, y = self.get_peak_fluxes(corr, avrg, rel=True), self.get_fluxes(plane, corr, full_size=True, avrg=avrg, rel=True)
         tit, xtit, ytit = 'FAST-OR Flux vs Peak Flux', 'Peak Flux [kHz/cm^{2}]', f'{"Mean Plane" if plane is None else f"Plane {plane}"} Flux [kHz/cm^{{2}}]'
-        g = self.Draw.graph(x, y, tit, **self.get_x_args(x_tit=xtit, draw_args=True), y_range=choose(y_range, Bins.FluxRange), y_tit=ytit, logy=logy, show=show)
+        g = self.Draw.graph(x, y, tit, **self.get_x_args(x_tit=xtit, draw=True), y_range=choose(y_range, Bins.FluxRange), y_tit=ytit, logy=logy, show=show)
         g.Fit('pol1', 'qs')
         format_statbox(g, fit=True, center_x=True, form='.2f')
 
