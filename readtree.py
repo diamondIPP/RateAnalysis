@@ -296,25 +296,48 @@ def get_res_cut(res, n, cut, max_res):
     return array((m - max_res < x) & (x < m + max_res))
 
 
+def get_track_cut(put=1, ecut=None):
+    return choose(ecut, TCut(f'n_clusters[0] == 1 & n_clusters[3] == 1 & n_clusters[{2 if put == 1 else 1}] == 1'))
+
+
 # noinspection PyTupleAssignmentBalance
-def get_inner_efficiency(roc=1, q=.2):
-    i_pl = 2 if roc == 1 else 1
-    cut = TCut('n_clusters[0] == 1 & n_clusters[3] == 1 & n_clusters[{}] == 1'.format(i_pl))  # select only events with exactly one cluster in the other three planes
-    n_tracks = t.GetEntries(cut.GetTitle())
-    info('Found {} tracks'.format(n_tracks))
-    cut += 'n_clusters[{}] > 0'.format(roc)
+def fit_tracks(put=1, ecut=None, r=None):
+    i_pl = 2 if put == 1 else 1
+    cut = get_track_cut(put, ecut)
     z_ = get_z_positions()
-    x0, y0 = z.get_tree_vec(get_track_vars(roc=0), cut=cut)
-    xi, yi = z.get_tree_vec(get_track_vars(roc=i_pl), cut=cut)
-    x3, y3 = z.get_tree_vec(get_track_vars(roc=3), cut=cut)
-    (x, y), n = z.get_tree_vec(get_track_vars(roc=roc), cut=cut), z.get_tree_vec('n_clusters[{}]'.format(roc), cut, dtype='i2')
+    r = z if r is None else r
+    x0, y0 = r.get_tree_vec(get_track_vars(roc=0), cut=cut)
+    xi, yi = r.get_tree_vec(get_track_vars(roc=i_pl), cut=cut)
+    x3, y3 = r.get_tree_vec(get_track_vars(roc=3), cut=cut)
     xfits, chi_x, _, _, _ = polyfit(z_[[0, i_pl, 3]], [x0, xi, x3], deg=1, full=True)
     yfits, chi_y, _, _, _ = polyfit(z_[[0, i_pl, 3]], [y0, yi, y3], deg=1, full=True)
+    return xfits, chi_x, yfits, chi_y
+
+
+def get_track_efficiency(put=1, q=.2, r=None):
+    xfits, chi_x, yfits, chi_y = fit_tracks(put, r=r)
+    chi_cut = (chi_x < quantile(chi_x, q)) & (chi_y < quantile(chi_y, q))
+    r = z if r is None else r
+    n = r.get_tree_vec(f'n_clusters[{put}]', get_track_cut(put), dtype='i2')
+    eff = calc_eff(count_nonzero(n[chi_cut] > 0), count_nonzero(chi_cut))
+    info('Efficiency for plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(put, *eff))
+    return eff
+
+
+def get_inner_efficiency(roc=1, q=.2):
+    i_pl = 2 if roc == 1 else 1
+    cut = TCut(f'n_clusters[0] == 1 & n_clusters[3] == 1 & n_clusters[{i_pl}] == 1')  # select only events with exactly one cluster in the other three planes
+    n_tracks = t.GetEntries(cut.GetTitle())
+    info(f'Found {n_tracks} tracks')
+    cut += f'n_clusters[{roc}] > 0'
+    xfits, chi_x, yfits, chi_y = fit_tracks(roc, cut)
+    z_ = get_z_positions()
+    (x, y), n = z.get_tree_vec(get_track_vars(roc=roc), cut=cut), z.get_tree_vec(f'n_clusters[{roc}]', cut, dtype='i2')
     chi_cut = (chi_x < quantile(chi_x, q)) & (chi_y < quantile(chi_y, q))
     dx, dy = array([polyval(xfits.repeat(n, axis=1), z_[roc]) - x, polyval(yfits.repeat(n, axis=1), z_[roc]) - y]) * 10000  # to um
     rcut = get_res_cut(dx, n, chi_cut, 2 * z.Plane.PX * 1000) & get_res_cut(dy, n, chi_cut, 2 * z.Plane.PY * 1000)
     # n_good = round(mean([get_res_cut(dx, n, chi_cut), get_res_cut(dy, n, chi_cut)]))
-    n_max = chi_cut[chi_cut].size
+    n_max = count_nonzero(chi_cut)  #TODO fix wrong number of events
     n_good = rcut[rcut].size
     eff = calc_eff(n_good, n_max)
     info('Efficiency for plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(roc, *eff))
@@ -322,9 +345,20 @@ def get_inner_efficiency(roc=1, q=.2):
 
 
 def get_p_miss(q=.2):
-    e1, e2 = (get_inner_efficiency(i, q) for i in [1, 2])
+    e1, e2 = (get_track_efficiency(i, q) for i in [1, 2])
     p_miss = (100 - ufloat(e1[0], mean(e1[1:]))) * (100 - ufloat(e2[0], mean(e2[1:]))) / 100
     info('p-miss: {:1.3f}%'.format(p_miss))
+    return p_miss
+
+
+def get_avrg_p_miss(runs, q=.2, c=None):
+    runs = [Run(r, c, verbose=False) for r in runs]
+    e1, e2 = [[get_track_efficiency(i, q, r) for r in runs] for i in [1, 2]]
+    e1, e2 = [mean_sigma([ufloat(e[0], mean(e[1:])) for e in le])[0] for le in [e1, e2]]
+    print(e1)
+    print(e2)
+    p_miss = (100 - e1) * (100 - e2) / 100
+    info('average p-miss: {:1.3f} %'.format(p_miss))
     return p_miss
 
 
@@ -335,7 +369,7 @@ def get_raw_efficiency(put=2, tree=None):
     return calc_eff(values=n_clusters[:, put][all(delete(n_clusters, put, axis=1) == 1, axis=1)] > 0)
 
 
-def get_run_effciencies(r1, r2, c=None):
+def get_run_efficiencies(r1, r2, c=None):
     for put in [1, 2]:
         e = [get_raw_efficiency(put, Run(r, c, verbose=False).Tree) for r in [r1, r2]]
         info(f'Effciency for plane {put}: {mean_sigma([ufloat(ie[0], mean(ie[1:])) for ie in e])[0]:.2f} %')
