@@ -262,10 +262,10 @@ class Currents(Analysis):
     def curr_args(y):
         return {'y_tit': 'Current [nA]', 'yax_col': Currents.CCol, 'color': Currents.CCol, 'y_range': ax_range(y, rnd=True), 'l_off_x': 1}
 
-    def draw_ph(self, **kwargs):
+    def draw_ph(self, ph_range=None, **kwargs):
         x, y = self.Data['timestamps'], self.Data['currents']
         xargs = {'x_range': ax_range(x, fl=.05, fh=.05), 't_ax_off': 0, 'center_x': True}
-        self.Draw.graph(Draw.make_graph_from_profile(self.Ana.draw_pulse_height(rel_t=False, show=False)[0]), **Draw.mode(2, rm=.08), **xargs, y_tit='Pulse Height [au]')
+        self.Draw.graph(Draw.make_graph_from_profile(self.Ana.draw_pulse_height(rel_t=False, show=False)[0]), **Draw.mode(2, rm=.08), **xargs, y_tit='Pulse Height [au]', y_range=ph_range)
         g = self.Draw.graph(x, y, 'g', Draw.tpad('pc', transparent=True), **self.curr_args(y), **kwargs, **Draw.mode(2, rm=.08), draw_opt='aly+')
         format_histo(g, **xargs, yax_col=Currents.CCol)
     # endregion PLOTTING
