@@ -346,6 +346,10 @@ class RunSelector(object):
     def get_end_time(self, run_number=None):
         return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
 
+    def get_shadow_runs(self):
+        """ :return: list of runs for diamond shadow. """
+        return [run for run, dic in self.RunInfos.items() if 'shadow' in dic['runtype']]
+
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
         selected = []
