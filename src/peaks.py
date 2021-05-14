@@ -183,17 +183,18 @@ class PeakAnalysis(PadSubAnalysis):
             npeaks[invert(self.p2ecut(pcut))] = 0
         return npeaks
 
-    def get_bunch_values(self, n, thresh=None, excl=0, cut=None, i=1, fit=False, isolated=True, all_=False, pars=False):
+    def get_bunch_values(self, n, thresh=None, excl=0, cut=None, i=1, fit=False, isolated=True, all_=False, pars=False, peak_cut=False):
         pcut = self.get_isolated_cut(n, thresh, fit, all_) if isolated else self.get_pulser_cut() & self.get_bunch_cut(n, thresh=thresh)
-        values = (self.get_pars(i) if pars else self.get(True, thresh, fit, cut=..., i=i))[pcut if cut is None else pcut & cut]
+        peak_cut = True if not peak_cut else self.get_time_cut(*[i.n for i in self.get_peak_range(n, fit=fit)], thresh, fit)
+        values = (self.get_pars(i) if pars else self.get(True, thresh, fit, cut=..., i=i))[pcut & (True if cut is None else cut) & peak_cut]
         return values[int(excl * values.size):]
 
     @update_pbar
-    def get_bunch_heights(self, n, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False):
-        return self.get_bunch_values(n, thresh, excl, cut, 1, fit, isolated, all_)
+    def get_bunch_heights(self, n, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False, peak_cut=False):
+        return self.get_bunch_values(n, thresh, excl, cut, 1, fit, isolated, all_, peak_cut=peak_cut)
 
-    def get_bunch_height(self, n=1, thresh=80, fit=False, cut=None, all_=False, isolated=True):
-        x = self.get_bunch_heights(n, cut=cut, fit=fit, isolated=isolated, all_=all_).astype('d')
+    def get_bunch_height(self, n=1, thresh=80, fit=False, cut=None, all_=False, isolated=True, peak_cut=False):
+        x = self.get_bunch_heights(n, cut=cut, fit=fit, isolated=isolated, all_=all_, peak_cut=peak_cut).astype('d')
         return mean_sigma(x[(x > thresh) & (x < 500)])[0]
 
     def get_bunch_mpv(self, n=1, fit=True, cut=None, all_=False, show=False, par=None):
@@ -222,6 +223,12 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_spacing(self, redo=False):
         return do_pickle(self.make_simple_pickle_path('BunchSpacing'), self.draw_all_spacings, redo=redo, show=False)[0]
+
+    def get_peak_range(self, n, nsigma=3, fit=True, redo=False):
+        def f():
+            m, s = fit_fwhm(self.draw_bunch_times(n, show=False, fit=fit))[1:]
+            return [m - s * nsigma,  m + s * nsigma]
+        return do_pickle(self.make_simple_pickle_path('Range', f'{n}_{nsigma}_{int(fit)}'), f, redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -253,12 +260,10 @@ class PeakAnalysis(PadSubAnalysis):
         return self.e2pcut(self.Ana.get_pulser_cut(), thresh)
 
     def get_bunch_cut(self, n=None, end=None, thresh=None, fit=False):
-        t = self.get_times(True, thresh, fit, cut=...)
-        t0, t1 = self.get_bunch_range(n, n + 1 if end is None and n is not None else end)
-        return (t > t0) & (t < t1)
+        return self.get_time_cut(*self.get_bunch_range(n, n + 1 if end is None and n is not None else end), thresh, fit)
 
-    def get_time_cut(self, t0, t1, fit=True):
-        t = self.get_times(True, None, fit, cut=...)
+    def get_time_cut(self, t0, t1, thresh=None, fit=True):
+        t = self.get_times(True, thresh, fit, cut=...)
         return (t > t0) & (t < t1)
 
     def get_isolated_cut(self, n, thresh=None, fit=False, all_=False):
@@ -266,11 +271,12 @@ class PeakAnalysis(PadSubAnalysis):
         if all_:
             return self.get_all_isolated(thresh, fit)
         t1, t2, np = self.get_bunch_cut(n - 1, fit=fit, thresh=thresh), self.get_bunch_cut(n + 1, fit=fit, thresh=thresh), self.get_npeaks(thresh=thresh)
+        t1 = self.get_time_cut(*self.get_bunch_range(n - 1, n) + [0, 1 / 3 * self.BunchSpacing], thresh, fit) if n == 2 else t1
         return invert(self.p2ecut(t1, thresh)).repeat(np) & invert(self.p2ecut(t2, thresh)).repeat(np) & self.get_pulser_cut(thresh) & self.get_bunch_cut(n, fit=fit, thresh=thresh)
 
     def get_all_isolated(self, thresh=None, fit=False):
         def f():
-            return any([self.get_isolated_cut(i, thresh, fit) for i in arange(3, self.NBunches + 4)], axis=0)
+            return any([self.get_isolated_cut(i, thresh, fit) for i in self.get_bunch_nrs()], axis=0)
         return do_pickle(self.make_simple_pickle_path('AllIso', f'{thresh}{int(fit)}'), f)
 
     def get_spacing_cut(self, n, ecut=True):
@@ -346,9 +352,9 @@ class PeakAnalysis(PadSubAnalysis):
         n = [count_nonzero(self.get_bunch_cut(i, thresh=thresh, fit=fit) & self.get_pulser_cut(thresh)) for i in self.get_bunch_nrs()]
         self.Draw.graph(self.get_bunch_nrs(), [ufloat(v, sqrt(v)) for v in n], 'Peaks per Bunch', x_tit='Bunch Number', y_tit='Number of Peaks', **Draw.mode(2), show=show)
 
-    def draw_bunch_height(self, n=1, bin_width=5, cut=None, thresh=None, fit=False, all_=False, **kwargs):
-        x = self.get_bunch_heights(n, cut=cut, fit=fit, thresh=thresh, all_=all_)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), f'Peak Height B{n}', x_tit='Peak Height [mV]', **kwargs)
+    def draw_bunch_height(self, n=1, bin_width=5, cut=None, thresh=None, fit=False, all_=False, peak_cut=False, **kwargs):
+        x = self.get_bunch_heights(n, cut=cut, fit=fit, thresh=thresh, all_=all_, peak_cut=peak_cut)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), f'Peak Height B{n}', x_tit='Peak Height [mV]', lm=.12, y_off=1.8, **kwargs)
 
     def draw_bunch_times(self, n=1, bin_width=.2, cut=None, fit=False, **kwargs):
         x, bins = self.get_bunch_times(n, cut=cut, fit=fit), self.get_binning(bin_width, n)
@@ -370,13 +376,13 @@ class PeakAnalysis(PadSubAnalysis):
         cut = n > max(n) / 1000
         return self.Draw.graph(x[cut], y[cut], y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', **kwargs)
 
-    def compare_bunch_heights(self, n, bin_width=5, fit=True, thresh=None, fill=None, show=True):
-        h = [self.draw_bunch_height(i, bin_width, thresh=thresh, fit=fit, show=False, all_=i < 0) for i in make_list(n)]
-        self.Draw.stack(h, 'Peak Height Comparison', [f'B-{i if i > 0 else "All"}' for i in make_list(n)], scale=True, show=show, fill=fill, opacity=.3)
+    def compare_bunch_heights(self, n, bin_width=5, fit=True, thresh=None, fill=None, peak_cut=False, show=True):
+        h = [self.draw_bunch_height(i, bin_width, thresh=thresh, fit=fit, show=False, all_=i < 0, peak_cut=peak_cut) for i in make_list(n)]
+        self.Draw.stack(h, 'Peak Height Comparison', [f'bucket {i if i > 0 else f"3~{self.MaxBunch}"}' for i in make_list(n)], scale=True, show=show, fill=fill, opacity=.3)
 
     def compare_times(self, t1, t2, n=1, fill=None, show=True):
         """draw two distributions with different time cuts."""
-        h = [self.draw_bunch_height(n, cut=self.get_time_cut(*t, n), show=False) for t in [t1, t2]]
+        h = [self.draw_bunch_height(n, cut=self.get_time_cut(*t), show=False) for t in [t1, t2]]
         self.Draw.stack(h, 'Peak Height Comparison', [f'{t[0]}ns - {t[1]}ns' for t in [t1, t2]], scale=True, show=show, fill=fill, opacity=.3)
 
     def draw_map(self, i=0, fit=True, res=None, cut=None, show=True, hitmap=False):
@@ -398,17 +404,18 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_height_map(self, fit=True, res=None, show=True):
         return self.draw_map(1, fit, res, show)
 
-    def draw_bunch_heights(self, thresh=150, fit=True, cut=None, show=True):
+    def draw_bunch_heights(self, thresh=150, fit=True, cut=None, peak_cut=False, show=True):
         self.PBar.start(self.MaxBunch)
-        x, heights = self.get_bunch_nrs(1), [self.get_bunch_height(i, thresh=thresh, cut=self.get_pre_bunch_cut(i, cut), fit=fit, isolated=cut is None) for i in self.get_bunch_nrs(1)]
-        g = Draw.make_tgrapherrors(x, heights, x_tit='Bunch', y_tit='Peak Height [mV]')
-        ga = Draw.make_tgrapherrors([ufloat(mean(x[3:]), (x[-1] - x[3]) / 2)], [mean_sigma(heights[3:])[0]], color=2)
-        return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], w=2, show=show, color=False, gridy=True)
+        x = self.get_bunch_nrs(1)
+        y = [self.get_bunch_height(i, thresh=thresh, peak_cut=peak_cut, cut=self.get_pre_bunch_cut(i, cut), fit=fit, isolated=cut is None) for i in x]
+        g = Draw.make_tgrapherrors(x, y, x_tit='Bucket Number', y_tit='Peak Height [mV]')
+        ga = Draw.make_tgrapherrors([ufloat(mean(x[2:]), (x[-1] - x[2]) / 2)], [mean_sigma(y[2:])[0]], color=2)
+        return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], show=show, color=False, gridy=True)
 
     def draw_pre_bunch_heights(self, b=-1, thresh=150, y_range=None):
         g = [ig for cut in [None, b] for ig in self.draw_bunch_heights(thresh=thresh, show=False, cut=cut).GetListOfGraphs()]
-        tits = ['single peak', 'single average', 'peak in bunch {}'.format(b), 'B{} average'.format(b)]
-        self.Draw.multigraph(g, 'Bunch Peak Heights', tits, w=2, y_range=y_range, gridy=True)
+        tits = ['isolated peak', 'isolated average', f'peak in bucket {b}', f'bucket {b} average']
+        self.Draw.multigraph(g, 'Bunch Peak Heights', tits, y_range=y_range, gridy=True)
 
     def draw_height_evolution(self, n=1, excl=0, bin_size=20000, thresh=0):
         x = self.get_tree_vec(self.get_t_var())[self.p2ecut(self.get_isolated_cut(n))]
