@@ -41,7 +41,7 @@ class EventAligment(object):
         self.Variables = None
 
         # Progress Bar
-        self.PBar = PBar()
+        self.PBar = PBar(counter=True, t='s')
 
     def __call__(self):
         self.run()
