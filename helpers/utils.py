@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2, diff, isfinite, pi
+from numpy import histogram, log2, diff, isfinite, pi, corrcoef
 from os import makedirs, _exit, remove, devnull, stat
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -843,6 +843,11 @@ def p2ecut(n, cut):
     return c
 
 
+def correlate(l1, l2):
+    return corrcoef(l1, l2)[0][1]
+
+# ----------------------------------------
+# region CLASSES
 class FitRes(ndarray):
 
     def __new__(cls, f):
@@ -996,17 +1001,11 @@ class Config(ConfigParser):
             for option in section:
                 print('{} = {}'.format(option, self.get(key, option)))
             print()
+# endregion CLASSES
+# ----------------------------------------
 
-
-def gauss(x, scale, mean_, sigma, off=0):
-    return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
-
-
-def fit_data(f, y, x=None, p=None):
-    x = arange(y.shape[0]) if x is None else x
-    return curve_fit(f, x, y, p0=p)
-
-
+# ----------------------------------------
+# region RELATIVITY
 def calc_speed(p, m):
     return 1 / sqrt(1 + m * m / (p * p))
 
@@ -1064,6 +1063,18 @@ def decay_angle(theta, p, m, m1, m2=0):
     p1 = decay_momentum(m, m1, m2)
     v = calc_speed(p, m)
     return arctan(p1 * sin(theta) / (lorentz_factor(v) * (p1 * cos(theta) + v * decay_energy(m, m1, m2))))
+
+# endregion RELATIVITY
+# ----------------------------------------
+
+
+def gauss(x, scale, mean_, sigma, off=0):
+    return scale * exp(-.5 * ((x - mean_) / sigma) ** 2) + off
+
+
+def fit_data(f, y, x=None, p=None):
+    x = arange(y.shape[0]) if x is None else x
+    return curve_fit(f, x, y, p0=p)
 
 
 def multi_threading(lst, timeout=60 * 60 * 2):
