@@ -73,6 +73,13 @@ class PeakAnalysis(PadSubAnalysis):
     def get_times(self, flat=False, thresh=None, fit=False, cut=None, corr=False):
         return self.get_corrected_times(True, thresh, fit) if corr else self.get(flat, thresh, fit, cut, i=0)
 
+    def get_corrected_times(self, pcut=True, thresh=None, fit=False):
+        pcut = self.get_bunch_cut(n=1) & pcut
+        times = self.get_times(True, thresh, fit, cut=...)
+        t1 = times[pcut]
+        times = times[self.p2e2pcut(pcut)]  # select all peaks if the event has a peak in bunch 1
+        return times + mean(t1) - t1.repeat(self.get_npeaks(cut=self.p2ecut(pcut)))
+
     def get_npeaks(self, thresh=None, cut=...):
         hdf5_path = self.make_simple_hdf5_path(suf=f'{choose(thresh, self.Threshold):.1f}_1', dut=self.Channel)
         return self.get_all(..., thresh, fit=file_exists(hdf5_path))[-1][cut]
@@ -101,13 +108,6 @@ class PeakAnalysis(PadSubAnalysis):
 
     def get_bunch_nrs(self, start=None):
         return arange(choose(start, 3), self.MaxBunch + 1)
-
-    def get_corrected_times(self, pcut=True, thresh=None, fit=False):
-        pcut = self.get_bunch_cut(n=1) & pcut
-        times = self.get_times(True, thresh, fit, cut=...)
-        t1 = times[pcut]
-        times = times[self.p2e2pcut(pcut)]  # select all peaks if the event has a peak in bunch 1
-        return times + mean(t1) - t1.repeat(self.get_npeaks(cut=self.p2ecut(pcut)))
 
     def get_n_total(self, cut=None, b0=None, b_end=None, thresh=None, fit=True, corr=True):
         n = count_nonzero(self.get_bunch_cut(b0, b_end, thresh, fit) & choose(cut, self.get_pulser_cut())) * (self.get_pad_gr_ratio(thresh) if corr else 1)
