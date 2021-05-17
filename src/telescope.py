@@ -26,10 +26,11 @@ class Telescope(SubAnalysis):
         if not self.has_branch('rate'):
             return warning('The "rate" branch does not exist in this tree')
         # rate[0] is scintillator --> add + 1 to trigger planes
-        return 'rate[{p}]{a}'.format(p=plane + 1, a='/{}'.format(self.Run.get_unmasked_area(plane)) if flux else '')
+        trigger_plane = self.Run.TriggerPlanes[plane - 1]
+        return f'rate[{trigger_plane + 1}]{f" / {self.Run.get_unmasked_area(plane)}" if flux else ""}'
 
     def get_rate_vars(self):
-        return [self.get_rate_var(p) for p in self.Run.TriggerPlanes]
+        return [self.get_rate_var(p) for p in [1, 2]]
 
     def get_flux_var(self, plane):
         return self.get_rate_var(plane, flux=True)
@@ -197,11 +198,11 @@ class Telescope(SubAnalysis):
     def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
         if self.has_branch('rate'):
-            flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in self.Run.TriggerPlanes] + [self.get_t_var()], cut=cut)
+            flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in [1, 2]] + [self.get_t_var()], cut=cut)
             flux = mean([flux1, flux2], axis=0)[1:] / 1000
         else:
             t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
-        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', fill_color=Draw.FillColor, draw_opt='hist', lm=.08, w=1.5, h=.75, show=show)
+        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', draw_opt='hist', **Draw.mode(2), show=show)
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_time else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
         self.Draw.save_plots('FluxProfile', prnt=prnt, show=show)
         return p
