@@ -166,8 +166,8 @@ class AnalysisCollection(Analysis):
     def get_n_events(self, redo=False):
         return array([e.size for e in self.get_events(redo)])
 
-    def get_x_var(self, vs_time=False, rel_error=0., avrg=False):
-        return self.get_times() if vs_time else array(self.get_fluxes(rel_error, avrg=avrg))
+    def get_x_var(self, vs_time=False, rel_error=False, avrg=False):
+        return self.get_times() if vs_time else array(self.get_fluxes(avrg=avrg, rel=rel_error))
 
     def get_irradiation(self):
         return self.FirstAnalysis.get_irradiation()
@@ -285,11 +285,11 @@ class AnalysisCollection(Analysis):
     def get_range(vs_time, x_range=None):
         return x_range if vs_time else Bins.FluxRange
 
-    def get_x_args(self, vs_time=False, rel_time=False, draw_args=False, **kwargs):
+    def get_x_args(self, vs_time=False, rel_time=False, draw=False, **kwargs):
         hist_kwargs = {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_range(vs_time), 'x_off': None if vs_time else 1.2}
         for kw, val in kwargs.items():
             hist_kwargs[kw] = val
-        return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw_args else hist_kwargs
+        return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw else hist_kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
         return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
@@ -320,19 +320,19 @@ class AnalysisCollection(Analysis):
     def draw_low_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= y[argmin(x)].n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y).n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mid_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y[1:-1]).n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw_args=True), lm=.12)
+        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False, peaks=False):
@@ -449,7 +449,7 @@ class AnalysisCollection(Analysis):
 
     def draw_ph_slope(self, vs_time=False, show=True):
         y = [fit2u(ana.draw_pulse_height(show=False)[0].Fit('pol1', 'qs0'), par=1) * 60 for ana in self.get_analyses()]
-        self.Draw.graph(self.get_x_var(vs_time), y, 'Pulse Height Slope', **self.get_x_args(vs_time, draw_args=True), y_tit='Slope [mV/min]', show=show)
+        self.Draw.graph(self.get_x_var(vs_time), y, 'Pulse Height Slope', **self.get_x_args(vs_time, draw=True), y_tit='Slope [mV/min]', show=show)
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
@@ -524,17 +524,13 @@ class AnalysisCollection(Analysis):
         g = self.Currents.draw_iv(show=False)
         self.Draw(g, 'IV', draw_opt='ap', logy=True, lm=.12, show=show)
 
-    def draw_current_flux(self, c_range=None, fit=True, show=True):
-        currents = [ufloat(0, 0) if c is None else c for c in self.get_values('', self.Analysis.get_current, pbar=False)]
-        g = self.Draw.graph(self.get_fluxes(), currents, title='Leakage Current vs. Flux', show=show, lm=.13, draw_opt='ap', logx=True, logy=True)
-        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Current [nA]', y_off=1.3, y_range=choose(c_range, [.1, max(currents).n * 2]), x_range=Bins.FluxRange)
-        if fit:
-            f = TF1('fcf', 'pol1', .1, 1e5)
-            f.SetParLimits(0, .1, 5)
-            f.SetParLimits(1, 1e-5, 5e-3)
-            g.Fit('fcf', 'q')
+    def draw_current_flux(self, c_range=None, fit=True, avrg=False, show=True):
+        x, y = self.get_fluxes(avrg=avrg), [ufloat(0, 0) if c is None else c for c in self.get_values('', self.Analysis.get_current, pbar=False, avrg=avrg)]
+        g = self.Draw.graph(x, y, title='Current vs. Flux', show=show, **self.get_x_args(draw=True))
+        format_histo(g, y_tit='Current [nA]', y_range=choose(c_range, [0, max(y).n * 1.5]))
+        g.Fit(Draw.make_f('fcf', 'pol1', .1, 5e5, pars=[.2, 1e-3], limits=[[.1, 5], [1e-6, 5e-3]]), f'q{"" if fit else "0"}')
         Draw.irradiation(make_irr_string(self.get_irradiation()))
-        format_statbox(g, fit=fit, all_stat=True, w=.22)
+        format_statbox(g, fit=fit, w=.3, form='.1e')
         self.Draw.save_plots('FluxCurrent', show=show)
         return g
     # endregion CURRENT
@@ -568,7 +564,7 @@ class AnalysisCollection(Analysis):
 
     def draw_flux_ratio(self, show=True):
         r = self.get_fluxes(1, rel=True) / self.get_fluxes(2, rel=True)
-        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw_args=True), **Draw.mode(2, bm=.23))
+        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw=True), **Draw.mode(2, bm=.23))
     # endregion TELESCOPE
     # ----------------------------------------
 
@@ -733,7 +729,7 @@ class AnalysisCollection(Analysis):
 
     def draw_efficiencies(self, vs_time=False, show=True):
         x, y = self.get_x_var(vs_time), self.get_efficiencies()
-        self.Draw.graph(x, y, 'Efficiencies', **self.get_x_args(vs_time, draw_args=True), y_tit='Effciency [%]', show=show, lm=.12, y_off=1.8)
+        self.Draw.graph(x, y, 'Efficiencies', **self.get_x_args(vs_time, draw=True), y_tit='Effciency [%]', show=show, lm=.12, y_off=1.8)
 
 
 if __name__ == '__main__':

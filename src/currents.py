@@ -57,7 +57,7 @@ class Currents(Analysis):
         data_file = join(self.DataDir, 'data.hdf5')
         if not file_exists(data_file):
             self.convert_data()
-        data = h5py.File(data_file, 'r')['{}_CH{}'.format(self.Name, self.Channel)]
+        data = h5py.File(data_file, 'r')[f'{self.Name}_CH{self.Channel}']
         data = data[(data['timestamps'] >= time_stamp(self.Begin)) & (data['timestamps'] <= time_stamp(self.End))]
         if not data.size:
             return None
@@ -260,13 +260,14 @@ class Currents(Analysis):
 
     @staticmethod
     def curr_args(y):
-        return {'y_tit': 'Current [nA]', 'yax_col': Currents.CCol, 'color': Currents.CCol, 'y_range': ax_range(y, rnd=True), 'l_off_x': 1, 'draw_opt': 'aly+'}
+        return {'y_tit': 'Current [nA]', 'yax_col': Currents.CCol, 'color': Currents.CCol, 'y_range': ax_range(y, rnd=True), 'l_off_x': 1}
 
-    def draw_ph(self, **kwargs):
+    def draw_ph(self, ph_range=None, **kwargs):
         x, y = self.Data['timestamps'], self.Data['currents']
-        xargs = {'x_range': ax_range(x, fl=.05, fh=.05), 't_ax_off': 0}
-        self.Draw.graph(Draw.make_graph_from_profile(self.Ana.draw_pulse_height(rel_t=False, show=False)[0]), **Draw.mode(2, rm=.08), **xargs)
-        self.Draw.graph(x, y, 'g', Draw.tpad('pc', transparent=True), **self.curr_args(y), **kwargs, **xargs, **Draw.mode(2, rm=.08))
+        xargs = {'x_range': ax_range(x, fl=.05, fh=.05), 't_ax_off': 0, 'center_x': True}
+        self.Draw.graph(Draw.make_graph_from_profile(self.Ana.draw_pulse_height(rel_t=False, show=False)[0]), **Draw.mode(2, rm=.08), **xargs, y_tit='Pulse Height [au]', y_range=ph_range)
+        g = self.Draw.graph(x, y, 'g', Draw.tpad('pc', transparent=True), **self.curr_args(y), **kwargs, **Draw.mode(2, rm=.08), draw_opt='aly+')
+        format_histo(g, **xargs, yax_col=Currents.CCol)
     # endregion PLOTTING
     # ----------------------------------------
 
