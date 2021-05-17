@@ -18,7 +18,7 @@ class PulserCollection(SubCollection):
     # ----------------------------------------
     # region GET
     def get_analyses(self, runs=None):
-        return [ana.Pulser for run, ana in self.Analyses.items() if run in choose(runs, self.Ana.Runs)]
+        return [ana.Pulser for ana in self.Analyses if ana.Run.Number in choose(runs, self.Ana.Runs)]
 
     def get_pulse_heights(self, corr=True, beam_on=True, sigma=False, redo=False):
         pickle_path = self.Analysis.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))), run='{}')
@@ -97,12 +97,12 @@ class PulserCollection(SubCollection):
         self.Draw.profile(x, y, self.Ana.get_raw_time_bins(bin_size), 'Pulser Rate', **self.get_x_args(True, rel_t), y_tit='Pulser Rate [%]', w=2, show=show, stats=0,  y_range=ax_range(y, 0, .3, .3))
 
     def draw_rates(self, vs_time=False, redo=False, show=True):
-        x, y = self.get_x(vs_time), self.get_values('pulser rates', PulserAnalysis.get_rate, prnt=False, redo=redo, picklepath=self.Analysis.make_simple_pickle_path('Rate', run='{}'))
-        self.Draw.graph(x, y, 'Pulser Rates', y_tit='Pulser Rate [%]', **self.get_x_args(vs_time, draw_args=True), show=show)
+        x, y = self.get_x(vs_time), self.get_values('pulser rates', PulserAnalysis.get_rate, prnt=False, redo=redo, picklepath=self.get_pickle_path('Rate'))
+        self.Draw.graph(x, y, 'Pulser Rates', y_tit='Pulser Rate [%]', **self.get_x_args(vs_time, draw=True), show=show, y_range=[0, y.max() * 1.2], **Draw.mode(2))
 
     def draw_fractions(self, vs_time=False, show=True):
         x, y = self.get_x(vs_time), self.get_values('', PulserAnalysis.get_real_fraction, pbar=False)
-        self.Draw.graph(x, y, 'Real Pulser Fraction', y_tit='Pulser Fraction [%]', **self.get_x_args(vs_time, draw_args=True), show=show)
+        self.Draw.graph(x, y, 'Real Pulser Fraction', y_tit='Pulser Fraction [%]', **self.get_x_args(vs_time, draw=True), show=show, **Draw.mode(2))
 
     def make_rate_plots(self):
         self.get_values('pulser rates', PulserAnalysis.draw_rate, show=False, prnt=False)
