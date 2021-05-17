@@ -9,7 +9,6 @@ from src.pad_run import PadRun
 from src.peaks import PeakAnalysis
 from src.pulser import PulserAnalysis
 from src.waveform import Waveform
-from src.correlation import correlate
 from src.mc_signal import MCSignal
 from src.analysis import update_pbar
 

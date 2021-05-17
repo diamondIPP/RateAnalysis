@@ -137,9 +137,9 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, ind=None, channel=None, grid=True, **kwargs):
+    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, cut=None, channel=None, grid=True, **kwargs):
         n = choose(n, 100000)
-        y, x, bins = self.get_values(ind, channel, n), self.get_times(signal_corr, ind, n), self.get_binning() + make_bins(-512, 512.1, .5)
+        y, x, bins = self.get_values(cut, channel, n), self.get_times(signal_corr, cut, n), self.get_binning() + make_bins(-512, 512.1, .5)
         rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
         h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=grid, gridy=True, logz=True, draw_opt='col')
         return h, n
