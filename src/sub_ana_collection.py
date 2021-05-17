@@ -13,6 +13,7 @@ class SubCollection(Analysis):
 
         self.Ana = ana_collection
         self.Analyses = ana_collection.Analyses
+        self.Analysis = self.Analyses[0]
         self.Runs = ana_collection.Runs
         self.DUT = ana_collection.DUT
         self.Ensemble = ana_collection.Ensemble
@@ -29,11 +30,11 @@ class SubCollection(Analysis):
     def get_fluxes(self, pbar=False):
         return self.Ana.get_fluxes(pbar=pbar)
 
-    def get_x(self, vs_time=False, rel_time=False, rel_error=0., avrg=False):
-        return self.Ana.get_x_var(vs_time, rel_time, rel_error, avrg)
+    def get_x(self, vs_time=False, avrg=False):
+        return self.Ana.get_x_var(vs_time, avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, x_range=None, draw_args=False):
-        return self.Ana.get_x_args(vs_time, rel_time, x_range, draw_args)
+    def get_x_args(self, vs_time=False, rel_time=False, draw=False, **kwargs):
+        return self.Ana.get_x_args(vs_time, rel_time, draw, **kwargs)
 
     def get_x_draw(self, vs_time=False):
         return self.Ana.get_x_draw(vs_time)
@@ -57,3 +58,6 @@ class SubCollection(Analysis):
 
     def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
         return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, *args, **kwargs)
+
+    def get_pickle_path(self, name='', suf='', sub_dir=None, dut=None, camp=None):
+        return self.Analysis.make_simple_pickle_path(name, suf, sub_dir, run='{}', dut=dut, camp=camp)

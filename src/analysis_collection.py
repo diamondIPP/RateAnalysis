@@ -166,8 +166,8 @@ class AnalysisCollection(Analysis):
     def get_n_events(self, redo=False):
         return array([e.size for e in self.get_events(redo)])
 
-    def get_x_var(self, vs_time=False, rel_error=False, avrg=False):
-        return self.get_times() if vs_time else array(self.get_fluxes(avrg=avrg, rel=rel_error))
+    def get_x_var(self, vs_time=False, avrg=False):
+        return self.get_times() if vs_time else self.get_fluxes(avrg=avrg)
 
     def get_irradiation(self):
         return self.FirstAnalysis.get_irradiation()
@@ -293,6 +293,9 @@ class AnalysisCollection(Analysis):
 
     def get_cmd_strings(self, cmd, kwargs):
         return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
+
+    def get_pickle_path(self, name='', suf='', sub_dir=None, dut=None, camp=None):
+        return self.FirstAnalysis.make_simple_pickle_path(name, suf, sub_dir, run='{}', dut=dut, camp=camp)
     # endregion GET
     # ----------------------------------------
 
