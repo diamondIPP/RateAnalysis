@@ -72,7 +72,7 @@ class Telescope(SubAnalysis):
         return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize] * 2) * [1, -1]])
 
     def get_flux_scale(self, full_size=False, redo=False):
-        return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size)), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size), dut=self.Ana.DUT.Number), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
 
     def get_area(self, plane=1):
         x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
