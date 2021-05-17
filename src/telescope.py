@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF2
-from numpy import delete, all, sort, prod
+from numpy import delete, all, prod
 from uncertainties.umath import log as ulog
 from src.binning import Bins
 from helpers.draw import *
@@ -54,7 +54,7 @@ class Telescope(SubAnalysis):
         return flux * self.get_flux_scale(full_size)
 
     def get_flux_ratio(self, dim):   # dim -> [x1, x2, y1, y2] in mm
-        tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(list(self.Run.get_mask_dim(mm=True).values()), axis=0) * [1, -1]]
+        tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(self.Run.get_mask_dims(mm=True), axis=0) * [1, -1]]
         h = self.Ana.draw_hitmap(.7, show=False, prnt=False)
         f = TF2('ff', 'xygaus')
         fx, fy = self.Ana.Tracks.fit_beam_profile(h.ProjectionX()), self.Ana.Tracks.fit_beam_profile(h.ProjectionY())
@@ -74,7 +74,7 @@ class Telescope(SubAnalysis):
         return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size)), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
 
     def get_area(self, plane=1):
-        x, y = self.get_tree_vec(self.get_hit_vars(sort(self.Run.TriggerPlanes)[::-1][plane - 1]), nentries=50000)
+        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
         return (max(x) - min(x) + 1) * (max(y) - min(y) + 1) * Plane.PixArea / 100  # cm²
 
     def get_areas(self):
@@ -124,8 +124,7 @@ class Telescope(SubAnalysis):
     def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
         name = 'ROC {i}'.format(i=plane) if name is None else name
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
-        # self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
-        self.Tree.SetEstimate(sum(self.get_tree_vec('@col.size()', cut, dtype='u1')))
+        self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)
