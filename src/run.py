@@ -135,8 +135,7 @@ class Run(Analysis):
         return ensure_dir(join(self.TCDir, self.make_root_subdir())) if self.Number is not None else None
 
     def load_trigger_planes(self):
-        default = [1, 2] if self.load_mask() is None else list(self.load_mask().keys())
-        return array(self.Config.get_list('BASIC', 'trigger planes', default if len(default) == 2 else [1, 2]))
+        return array(self.Config.get_list('BASIC', 'trigger planes', [1, 2]))
 
     def get_n_diamonds(self, run_number=None):
         run_info = self.load_run_info(run_number)
@@ -229,14 +228,17 @@ class Run(Analysis):
             data = genfromtxt(mask_file, [('id', 'U10'), ('pl', 'i'), ('x', 'i'), ('y', 'i')])
             if 'cornBot' not in data['id']:
                 warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
-            mask = {pl: [data[where((data['pl'] == pl) & (data['id'] == n))][0][i] for n in ['cornBot', 'cornTop'] for i in [2, 3]] for pl in set(data['pl'])}
-            return mask if plane is None else mask[self.TriggerPlanes[plane - 1]] if plane <= self.TriggerPlanes.size else None
+            mask = [[data[where((data['pl'] == pl) & (data['id'] == n))][0][i] for n in ['cornBot', 'cornTop'] for i in [2, 3]] for pl in sorted(set(data['pl']))]
+            return mask if plane is None else mask[plane - 1]
         except Exception as err:
             warning(err)
             warning('Could not read mask file... not taking any mask!')
 
-    def get_mask_dim(self, mm=False):
-        return {plane: array([Plane.PX * (v[2] - v[0] + 1), Plane.PY * (v[3] - v[1] + 1)]) / (1 if mm else 10) for plane, v in self.load_mask().items()}
+    def get_mask_dim(self, plane=1, mm=True):
+        return Plane.get_mask_dim(self.load_mask(plane), mm)
+
+    def get_mask_dims(self, mm=True):
+        return array([self.get_mask_dim(pl, mm) for pl in [1, 2]])
 
     def get_unmasked_area(self, plane):
         return None if self.Number is None else Plane.get_area(self.load_mask(plane))

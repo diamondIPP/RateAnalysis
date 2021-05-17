@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array
 
 
 class DUT:
@@ -100,6 +100,10 @@ class Plane(object):
     @staticmethod
     def get_area(v=None):
         return Plane.Area / 100 if v is None else Plane.PixArea / 100 * (v[2] - v[0] + 1) * (v[3] - v[1] + 1)
+
+    @staticmethod
+    def get_mask_dim(v=None, mm=True):
+        return array([Plane.WX, Plane.WY] if v is None else [Plane.PX * (v[2] - v[0] + 1), Plane.PY * (v[3] - v[1] + 1)]) / (1 if mm else 10)
 
     @staticmethod
     def get_xpix(aspect_ratio=False):
