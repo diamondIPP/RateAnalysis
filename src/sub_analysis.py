@@ -47,6 +47,9 @@ class SubAnalysis(Analysis):
     def get_irradiation(self):
         return self.Ana.get_irradiation()
 
+    def make_event_cut(self, events):
+        return self.Ana.make_event_cut(events)
+
 
 class PadSubAnalysis(SubAnalysis):
 
