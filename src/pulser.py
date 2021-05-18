@@ -4,7 +4,6 @@
 # --------------------------------------------------------
 from ROOT import gROOT
 
-from src.peaks import PeakAnalysis
 from src.waveform import Waveform
 from src.sub_analysis import PadSubAnalysis
 from helpers.save_plots import *
@@ -26,8 +25,7 @@ class PulserAnalysis(PadSubAnalysis):
         self.Waveform = Waveform(self)
         self.Pedestal = self.Ana.Pedestal
         self.PeakName = self.Ana.get_peak_name(type_='pulser')
-        self.Peaks = PeakAnalysis(self)
-        self.Peaks.Threshold = 14
+        self.Peaks = self.Ana.Peaks
 
     # ----------------------------------------
     # region INIT
@@ -39,8 +37,19 @@ class PulserAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_events(self, cut=None):  # for Waveform
-        return self.Ana.get_events(cut)
+    def get_events(self, cut=None, redo=False):  # for Waveform
+        return self.Ana.get_events(self.Cut(cut), redo)
+
+    def get_event_cut(self, cut=None, redo=False):
+        cut = self.make_event_cut(self.get_events(cut, redo))
+        return cut & (self.Peaks.get_npeaks() == (1 if self.Type == 'extern' else 2))
+
+    def get_signal_range(self, lfac=0, rfac=0, t_corr=True):
+        return ax_range(self.SignalRegion / (1 if t_corr else self.DigitiserBinWidth), None, lfac, rfac)
+
+    def get_combined_cut(self, n=1000):
+        """returns: cut of [n] pulser and [n] signal events."""
+        return self.Ana.make_event_cut(concatenate([self.get_events()[:n], self.Ana.get_events()[:n]]))
 
     def get_signal_indices(self):  # for Waveform
         """ :returns: indices that are smaller then the smallest signals """
@@ -52,11 +61,13 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_rate(self, prnt=True, redo=False):
         def f():
-            values = self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops'))
-            rate = calc_eff(values=values)
-            self.info('pulser rate: {:1.1f} ({:1.1f}) %'.format(rate.n, rate.s), prnt=prnt)
-            return rate
-        return do_pickle(self.make_simple_pickle_path('Rate'), f, redo=redo)
+            return calc_eff(values=self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops')))
+        r = do_pickle(self.make_simple_pickle_path('Rate'), f, redo=redo)
+        self.info(f'pulser rate: {r[0]:.2f}+({r[1]:.2f})-({r[2]:.2f}) %', prnt=prnt)
+        return r
+
+    def get_rate_stability(self, bin_size=10, bins=None, show=False):
+        return self.Draw.pull(self.draw_rate(bin_size, show=False, cut=self.Ana.Cut['beam stops']), bins, show=show)
 
     def get_t_bins(self, bin_size=None):
         return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
@@ -89,10 +100,12 @@ class PulserAnalysis(PadSubAnalysis):
         cft = array([[t for t in lst if tmin <= t <= tmax] for lst in cft])
         return array([lst[0] if len(lst) else 0 for lst in cft])
 
-    def get_peak_time(self, sigma=False, redo=False):
-        def f():
-            return mean_sigma(array(self.Peaks.get_from_tree())[self.get_signal_indices()])
-        return do_pickle(self.make_simple_pickle_path('PeakTime'), f, redo=redo)[sigma]
+    def get_peak_times(self, cut=None):
+        t = self.Peaks.get_times(flat=True, fit=True, cut=choose(cut, self.get_event_cut()))
+        return t if self.Type == 'extern' else t[::2]
+
+    def get_peak_time(self, sigma=False):
+        return mean_sigma(self.get_peak_times())[sigma]
 
     def get_mean_sigma(self, cut=None, redo=False):
         def f():
