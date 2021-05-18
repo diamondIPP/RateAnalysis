@@ -188,7 +188,7 @@ class Waveform(PadSubAnalysis):
         def f():
             t, v = self.get_times(corr, cut, n), self.get_values(cut, n=n)
             return Draw.make_graph_from_profile(self.Draw.profile(t, v, self.get_binning(), 'Averaged Waveform', show=False))
-        g = do_pickle(self.make_simple_pickle_path('AWF', f'{self.get_cut(cut).nonzero()}'), f, redo=redo)
+        g = do_pickle(self.make_simple_pickle_path('AWF', f'{count_nonzero(self.get_cut(cut))}'), f, redo=redo)
         x_range = ax_range(self.Ana.get_signal_range(), fl=.5, fh=1) if x_range is None else x_range
         format_histo(g, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, lw=2, stats=0, markersize=.4, x_range=x_range, y_range=y_range)
         self.Draw(g, show=show, draw_opt=draw_opt, gridy=True)
