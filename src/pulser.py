@@ -131,7 +131,7 @@ class PulserAnalysis(PadSubAnalysis):
         return self.get_all_signal_names()[choose(signal, self.SignalName)]
 
     def get_signal_var(self, name=None, event_corr=False, off_corr=True, cut=None):
-        return self.Ana.get_signal_var(choose(name, self.SignalName), evnt_corr=event_corr, off_corr=off_corr, cut=self.Cut(cut))
+        return self.Ana.get_signal_var(choose(name, self.SignalName), event_corr, off_corr, self.Cut(cut), sig_type='pulser')
     # endregion GET
     # ----------------------------------------
 
