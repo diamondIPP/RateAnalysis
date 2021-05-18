@@ -119,7 +119,7 @@ class DiaScans(Analysis):
         if file_exists(pickle_path) and not redo:
             return do_pickle(pickle_path, do_nothing())
         self.info('Did not find {}'.format(pickle_path), prnt=pickle_path)
-        ana = collection_selector(sel.RunSelector, sel.DUTNr, sel.TCString, load_tree)
+        ana = collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree)
         if 'redo' in signature(f).parameters:
             pf = partial(f, ana, redo=redo, *args, **kwargs)
             return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
@@ -131,7 +131,10 @@ class DiaScans(Analysis):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
     def get_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '{}'.format(int(avrg))), redo=redo, avrg=avrg)
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', f'{avrg:d}'), redo=redo, avrg=avrg)
+
+    def get_pulser_pulse_heights(self, avrg=False, redo=False):
+        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('Pulser', 'PH', f'{avrg:d}'), redo=redo, avrg=avrg)
 
     def get_rate_dependcies(self, redo=False):
         return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
@@ -338,7 +341,7 @@ class DiaScans(Analysis):
         if Draw.Title:
             biases = list(set(self.get_bias_voltages()))
             bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(biases) == 1 else ''
-            Draw.tpad('p0', 'p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
+            Draw.tpad('p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
             Draw.tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
@@ -350,14 +353,14 @@ class DiaScans(Analysis):
         c = Draw.canvas(w=c_width, h=c_height, transp=True, logx=True, gridy=True)
         lm, rm, x0, size = .07, .02, .08, .22
         self.draw_title_pad(title_height, x0, lm, c_height)
-        Draw.tpad('p1', 'p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
+        Draw.tpad('p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
         Draw.tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
         c.cd()
 
         for i, (ph, flux, color) in enumerate(data):
             c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
-            p = Draw.tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
+            p = Draw.tpad('p{i}'.format(i=i + 3), pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
             g = Draw.make_tgrapherrors(flux, ph, title=' ', color=color, marker=markers(i), markersize=1.5)
             scale_graph(g, val=scale) if scale else do_nothing()
             format_histo(g, x_range=Bins.FluxRange, y_range=[1 - y_range, 1 + y_range], lab_size=size, ndivy=505, x_ticks=.15)
@@ -479,6 +482,14 @@ class DiaScans(Analysis):
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region PULSER
+    def draw_pulser_pulse_heights(self):
+        pass
+
+    # endregion PULSER
     # ----------------------------------------
 
 

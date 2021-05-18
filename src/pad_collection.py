@@ -71,6 +71,9 @@ class PadCollection(AnalysisCollection):
     def get_additional_peaks(self, start=None, end=None):
         picklepath = self.make_simple_pickle_path('NAdd', '' if start is None else '{}_{}'.format(start, end), 'Peaks', '{}')
         return self.get_values('number of additional peaks', f=self.Analysis.get_n_peaks, picklepath=picklepath, start_bunch=start, end_bunch=end)
+
+    def get_pulser_pulse_heights(self, avrg=False, redo=False):
+        return self.Pulser.get_pulse_heights(avrg=avrg, redo=redo)
     # endregion GET
     # ----------------------------------------
 

@@ -20,9 +20,9 @@ class PulserCollection(SubCollection):
     def get_analyses(self, runs=None):
         return [ana.Pulser for ana in self.Analyses if ana.Run.Number in choose(runs, self.Ana.Runs)]
 
-    def get_pulse_heights(self, corr=True, beam_on=True, sigma=False, redo=False):
+    def get_pulse_heights(self, corr=True, beam_on=True, sigma=False, avrg=False, redo=False):
         pickle_path = self.Analysis.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))), run='{}')
-        return self.get_values('pulser pulse heights', PulserAnalysis.get_pulse_height, corr=corr, beam_on=beam_on, redo=redo, par=[1, 2][sigma], picklepath=pickle_path)
+        return self.get_values('pulser pulse heights', PulserAnalysis.get_pulse_height, avrg=avrg, corr=corr, beam_on=beam_on, redo=redo, par=[1, 2][sigma], picklepath=pickle_path)
 
     def get_sigmas(self, corr=True, beam_on=True, redo=False):
         return self.get_pulse_heights(corr, beam_on, sigma=True, redo=redo)
