@@ -2,8 +2,6 @@
 #       PULSER ANALYSIS
 # created on June 16th 2016 by M. Reichmann
 # --------------------------------------------------------
-from ROOT import gROOT
-
 from src.waveform import Waveform
 from src.sub_analysis import PadSubAnalysis
 from helpers.save_plots import *
@@ -109,10 +107,7 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_mean_sigma(self, cut=None, redo=False):
         def f():
-            values = array(self.get_values(cut))
-            h = self.Draw.distribution(values, self.Ana.Bins.get_pad_ph(bin_width=.5), '', show=False)
-            fit = fit_fwhm(h)
-            return fit2u(fit, par=1), fit2u(fit, par=2)
+            return fit_fwhm(self.Draw.distribution(self.get_values(cut), self.Ana.Bins.get_pad_ph(bin_width=.5), '', show=False))[1:]
         return do_pickle(self.make_simple_pickle_path('MeanSigma', self.Cut(cut).GetName()), f, redo=redo)
 
     def get_fraction(self, show=False, prnt=True):
@@ -133,6 +128,9 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_all_signal_names(self):
         return self.Ana.get_all_signal_names('pulser')
+
+    def get_short_regint(self, signal=None):
+        return self.get_all_signal_names()[choose(signal, self.SignalName)]
 
     def get_signal_var(self, name=None, event_corr=False, off_corr=True, cut=None):
         return self.Ana.get_signal_var(choose(name, self.SignalName), evnt_corr=event_corr, off_corr=off_corr, cut=self.Cut(cut))
@@ -162,36 +160,32 @@ class PulserAnalysis(PadSubAnalysis):
         self.Draw(p, 'PulserPulserHeight', show, gridy=True, lm=.14, stats=set_statbox(fit=True, entries=True), prnt=prnt)
         return p, FitRes(fit)
 
-    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, show=True, save=True):
+    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):
         """ Shows the distribution of the pulser integrals. """
         def f():
             cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
             x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
             m, s = mean_sigma(x[x < mean(x) + 10], err=False)
-            s = max(s, .1)
             return self.Draw.distribution(x, make_bins(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
-        h = do_pickle(self.make_simple_pickle_path('Disto', '{}{}{}'.format(int(corr), int(beam_on), self.get_all_signal_names()[choose(name, self.SignalName)])), f, redo=redo)
-        self.Draw(h, 'PulserDistribution', show=show, lm=.12, save=save)
-        return h
+        h = do_pickle(self.make_simple_pickle_path('Disto', f'{int(corr)}{int(beam_on)}{self.get_short_regint(name)}'), f, redo=redo)
+        return self.Draw.distribution(h, file_name='PulserDistribution', lm=.12, **kwargs, y_off=1.8)
 
-    def draw_distribution_fit(self, show=True, redo=False, corr=True, beam_on=True, bin_width=.2, prnt=True):
-        pickle_path = self.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))))
-        h = self.draw_distribution(show=show, corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo)
+    def get_fit_range(self, h, lsig=3, rsig=.5):
+        f0, same_polarity = fit_fwhm(h), self.Polarity == self.Ana.Polarity
+        return uarr2n([f0[1] + i * f0[2] for i in ([-lsig, rsig] if same_polarity else [-rsig, lsig])])  # fit left tail if same pol and right tail otherwise
 
+    def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, redo=False, show=True, prnt=True, **kwargs):
         def f():
-            xmax = h.GetBinCenter(h.GetMaximumBin())
-            full_fit = h.Fit('gaus', 'qs0', '', xmax - 5, xmax + 5)
-            xmin, xmax = [full_fit.Parameter(1) + i * full_fit.Parameter(2) for i in ([-2, .5] if self.Polarity == self.Ana.Polarity else [-.5, 2])]
-            fit_func = h.Fit('gaus', 'qs{0}'.format('' if show else '0'), '', xmin, xmax)
-            return FitRes(fit_func)
-
+            h0 = self.draw_distribution(show=False, corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo, **kwargs)
+            return FitRes(h0.Fit('gaus', 'qs0', '', *self.get_fit_range(h0)))
+        pickle_path = self.make_simple_pickle_path('HistoFit', f'{corr:d}_{beam_on:d}_{"normalise" in kwargs:d}')
         fit = do_pickle(pickle_path, f, redo=redo)
-        f2 = deepcopy(gROOT.GetFunction('gaus'))
-        f2.SetLineStyle(7)
-        f2.SetRange(0, 500)
-        h.GetListOfFunctions().Add(f2)
-        format_statbox(h, fit=True)
-        self.Draw.save_plots('PulserDistributionFit', show=show, prnt=prnt)
+        if show:
+            h = self.draw_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo, show=show, **kwargs)
+            self.Draw.make_f('gp0', 'gaus', 0, 500, pars=fit.Pars, npx=100, line_style=7).Draw('same')
+            self.Draw.make_f('gp1', 'gaus', *self.get_fit_range(h), pars=fit.Pars, npx=100).Draw('same')
+            format_statbox(h, fit=True, entries=True, form='.2f')
+            self.Draw.save_plots('PulserDistributionFit', show=show, prnt=prnt)
         SaveDraw.server_pickle(pickle_path, fit)
         return fit
 
