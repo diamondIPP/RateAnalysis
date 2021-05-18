@@ -420,6 +420,11 @@ class Draw(object):
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
         return self.graph(x, y, title, lm=lm, show=show, y_tit='Efficiency [%]', **kwargs)
 
+    def pull(self, h, binning=None, **kwargs):
+        x = get_hist_vec(h)
+        self.distribution(x, choose(binning, find_bins, values=x[x != 0], lfac=.2, rfac=.2, n=2), x_tit=h.GetYaxis().GetTitle(), **kwargs)
+        return mean_sigma(x[x != 0])
+
     def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, fill=None, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)
         leg = Draw.make_legend(nentries=len(histos), w=w)
@@ -706,13 +711,13 @@ def adapt_z_range(h, n_sigma=2):
     format_histo(h, z_range=z_range)
 
 
-def find_bins(values, thresh=.02):
-    binning = linspace(*(find_range(values, thresh=thresh) + [int(sqrt(values.size))]))
+def find_bins(values, thresh=.02, lfac=.2, rfac=.2, n=1):
+    binning = linspace(*find_range(values, lfac, rfac, thresh), int(n * sqrt(values.size)))
     return [binning.size - 1, binning]
 
 
 def find_range(values, lfac=.2, rfac=.2, thresh=.02):
-    v = array(sorted(values))
+    v = array(sorted(uarr2n(values)))
     xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
     return ax_range(xmin, xmax, lfac, rfac)
 
@@ -833,16 +838,6 @@ def scale_graph(gr, scale=None, val=1, to_low_flux=False):
         gr.SetPoint(i, gr.GetX()[i], gr.GetY()[i] * scale)
         gr.SetPointError(i, gr.GetErrorX(i), gr.GetErrorY(i) * scale) if 'Error' in gr.ClassName() else do_nothing()
     return scale
-
-
-def get_pull(h, name, binning, fit=True):
-    set_root_output(False)
-    h_out = TH1F('hp{}'.format(name[:3]), name, *binning)
-    values = array([h.GetBinContent(ibin + 1) for ibin in range(h.GetNbinsX())], 'd')
-    h_out.FillN(values.size, values, full(values.size, 1, 'd'))
-    h_out.Fit('gaus', 'q') if fit else do_nothing()
-    format_histo(h_out, x_range=ax_range(values.min(), values.max(), .1, .3))
-    return h_out
 
 
 def get_quantile(h, q):
