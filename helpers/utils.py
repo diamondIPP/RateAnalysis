@@ -846,6 +846,7 @@ def p2ecut(n, cut):
 def correlate(l1, l2):
     return corrcoef(l1, l2)[0][1]
 
+
 # ----------------------------------------
 # region CLASSES
 class FitRes(ndarray):

@@ -367,9 +367,11 @@ class Draw(object):
         return data
 
     def distribution(self, values, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
-        values = make_darray(values)
-        th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
-        fill_hist(th, values)
+        if type(values) == TH1F:
+            th = values
+        else:
+            th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
+            fill_hist(th, values)
         format_histo(th, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor, y_tit='Number of Entries'))
         self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
         return th
@@ -471,12 +473,12 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_f(name, function, xmin=0, xmax=1, pars=None, limits=None, npx=None, *args, **kwargs):
-        f = TF1(name, function, xmin, xmax)
+    def make_f(name, function, xmin=0, xmax=1, pars=None, limits=None, npx=None, **kwargs):
+        f = TF1(choose(name, Draw.get_name('f')), function, xmin, xmax)
         f.SetParameters(*pars) if pars is not None else do_nothing()
         [f.SetParLimits(i, *lim) for i, lim in enumerate(limits)] if limits else do_nothing()
         do(f.SetNpx, npx)
-        format_histo(f, *args, **kwargs)
+        format_histo(f, **kwargs)
         return Draw.add(f)
 
     @staticmethod
