@@ -41,9 +41,9 @@ class PadAnalysis(DUTAnalysis):
             # cuts
             self.Timing = TimingAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
-            self.Pulser = PulserAnalysis(self)
             self.Waveform = Waveform(self)
             self.Peaks = PeakAnalysis(self)
+            self.Pulser = PulserAnalysis(self)
             self.MC = MCSignal(self)
 
             # alignment
@@ -242,6 +242,9 @@ class PadAnalysis(DUTAnalysis):
 
     def get_peak_timing(self, par=1, redo=False):
         return self.Timing.get(par, redo)
+
+    def get_peak_times(self, cut=None):
+        return self.Peaks.get_from_tree(cut=cut)
 
     def draw_timing(self):
         self.Timing.draw_all()
