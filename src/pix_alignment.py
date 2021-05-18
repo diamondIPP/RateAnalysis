@@ -3,262 +3,135 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from ROOT import TH1F
-from numpy import linspace
-from src.correlation import Correlation
+from numpy import append, column_stack, polyfit, argmax
 from src.event_alignment import *
+from helpers.draw import Draw
+from src.analysis import update_pbar
 
 
 class PixAlignment(EventAligment):
     def __init__(self, converter=None):
 
         # Info
-        self.Threshold = .4
+        self.Threshold = .35
         self.NDutPlanes = 4
         self.TelPlane = 2
         self.DUTPlane = 4
+        self.MaxOffset = 1000
+
+        self.Y1, self.Y2 = array([]), array([])  # row arrays
+        self.X1, self.X2 = array([]), array([])  # row arrays
+        self.C1, self.C2 = array([]), array([])  # cut arrays
+        self.BinSize = None
 
         EventAligment.__init__(self, converter)
 
-        self.TelRow = {}
-        self.DUTRow = {}
-        self.BinSize = None
-
-    def print_start(self):
-        print_banner('STARTING PIXEL EVENT ALIGNMENT OF RUN {}'.format(self.Converter.RunNumber))
-
-    def update_variables(self):
-        """Find all events with have both hits in the two checked planes"""
+    # ----------------------------------------
+    # region INIT
+    def load_variables(self):
+        data = super().load_variables()
         t = self.Run.info('Loading pixel information from tree ... ', endl=False)
-        for i, ev in enumerate(self.Variables):
-            plane, row = ev[0], ev[2]
-            if count_nonzero(plane == self.TelPlane) == 1:
-                self.TelRow[i] = row[where(plane == self.TelPlane)][0]
-            if count_nonzero(plane == self.DUTPlane) == 1:
-                self.DUTRow[i] = row[where(plane == self.DUTPlane)][0]
-        self.BinSize = self.find_bucket_size(show=False)
+        self.init_data()
+        self.FinalOffset = self.find_final_offset()
         self.Run.add_to_info(t)
-
-    def check_alignment_fast(self):
-        """ only check alignment for subsets of 10k events """
-        t = self.Run.info('Fast check for event alignment ... ', endl=False)
-        corrs = []
-        for start_event in linspace(0, self.NEntries, 10, endpoint=False, dtype='i4'):
-            correlation = Correlation(self, bucket_size=10000)
-            n = self.InTree.Draw('plane:row', '', 'goff', 10000, start_event)
-            planes, rows = get_tree_vec(self.InTree, n, 2, dtype='u1')
-            n_hits = self.load_n_hits(10000, start_event)
-            for i, (plane, row) in enumerate(split(array([planes, rows]), cumsum(n_hits), axis=1)):
-                if count_nonzero(plane == self.TelPlane) == 1 and count_nonzero(plane == self.DUTPlane) == 1:  # if both planes have exactly one hit
-                    correlation.fill(i, tel_row=row[where(plane == self.TelPlane)][0], dia_row=row[where(plane == self.DUTPlane)][0])
-            corrs.append(correlation(debug=False))
-        is_aligned = all(corr > self.Threshold for corr in corrs)
-        self.Run.add_to_info(t)
-        self.Run.info('Run {} is perfectly aligned :-)'.format(self.Run.RunNumber) if is_aligned else 'Fast check found misalignment :-(')
-        return is_aligned
-
-    def check_alignment(self):
-        t = self.Run.info('Checking aligment ... ', endl=False)
-        correlation = Correlation(self)
-        for ev, row in self.TelRow.items():
-            correlation.fill(ev)
-        correlations = correlation.get_all_zero()
-        h = TH1F('h_ee', 'Event Alignment', int(sqrt(len(correlations))), 0, 1)
-        for cor in correlations:
-            h.Fill(cor)
-        set_root_output(0)
-        fit = h.Fit('gaus', 'qs', '', .6, 1)
-        # self.Run.format_histo(h, x_tit='Correlation Factor', y_tit='Number of Entries', y_off=1.4, stats=0)
-        # self.Run.save_histo(h, 'EventAlignmentControl', show=False, lm=.13, prnt=False)
-        mean_, sigma = fit.Parameter(1), fit.Parameter(2)
-        if mean_ - 5 * sigma < .2:
-            self.Run.add_to_info(t)
-            info('run is very badly misaligned...')
-            return False
-        low_events = [cor for cor in correlations if cor < mean_ - 5 * sigma]
-        misalignments = len(low_events) / float(len(correlations))
-        self.Run.add_to_info(t)
-        if misalignments > .02:
-            info('found {v:5.2f} % misalignet events'.format(v=misalignments * 100))
-            return False
-        low_events = [cor for cor in correlations if cor < .3]
-        misalignments = len(low_events) / float(len(correlations))
-        if misalignments > .05:
-            info('found {v:5.2f} % misalignet events'.format(v=misalignments * 100))
-        else:
-            self.Run.info('Everything is nicely aligned =)')
-        return misalignments < .05
-
-    def find_lose_corr_event(self, correlation, last_off_event, debug=False):
-        # if all correlations are below threshold return the very first event
-        if all(corr < self.Threshold for corr in correlation.get_all_zero()):
-            return correlation.Events[0][0]
-        correlations = correlation.get_sliding()
-        if debug:
-            self.draw_sliding(correlation)
-        # find maximum and take mean around it
-        start_index = next(correlations.keys().index(ev) + 20 for ev in correlations.keys() if ev > last_off_event) if last_off_event + 1000 > correlations.keys()[0] else 0
-        max_index = correlations.values().index(max(correlations.values()[start_index:]))
-        mean_ = self.get_mean(max_index, correlations.values())
-        try:
-            off_event = correlations.keys()[correlations.values().index(next(m for m in correlations.values()[max_index:] if m < mean_ - .1)) - 1]
-        except StopIteration:
-            off_event = correlations.keys()[max_index]
-        if debug:
-            print(mean_, off_event, next(m for m in correlations.values()[max_index:] if m < mean_ - .1))
-        return off_event
-
-    def find_offset(self, correlation, debug=False):
-        inter_correlations = correlation.get_inter_sliding()
-        if inter_correlations is None:
-            return None
-        min_anti_corr = min(inter_correlations.keys())
-        if debug:
-            print('anti correlation:', min_anti_corr)
-        return inter_correlations[min_anti_corr] if min_anti_corr < -self.Threshold else None
-
-    def find_first_offset(self):
-        correlation = Correlation(self, bucket_size=200)
-        correlation.fill_n(self.TelRow.keys()[:200])
-        correlations = correlation.get_all()
-        return max(correlations, key=correlations.get) if any(array(correlations.values()) > self.Threshold) else 0
-
-    def find_final_offset(self):
-        correlation = Correlation(self, bucket_size=400, n_offsets=200)
-        correlation.fill_n(self.TelRow.keys()[-400:])
-        correlations = correlation.get_all()
-        return max(correlations, key=correlations.get)
-
-    def draw_sliding(self, correlation):
-        correlations = correlation.get_all_sliding()
-        for off, corrs in correlations.items():
-            self.Run.set_root_output(False)
-            g = self.Run.make_tgrapherrors('g{o}'.format(o=off), 'Sliding correlation for offset {o}'.format(o=off), x=corrs.keys(), y=corrs.values())
-            self.Run.histo(g, draw_opt='alp')
-
-    def find_jump(self, correlation, debug=False):
-        correlations = correlation.get_sliding()
-        if debug:
-            self.draw_sliding(correlation)
-        # first find the minimum: it has to be in the central region since it has a maximum to each of his sides
-        min_index = self.find_min_index(correlations.values(), start_index=len(correlations) / 3)
-        # look left for a maximum
-        l_max_index = self.get_max_index(correlations.values(), min_index)
-        l_mean = self.get_mean(l_max_index, correlations.values())
-        l_off_event = self.find_falling_event(correlations, l_max_index, l_mean)
-        # now find the offset by checking the inter correlations and look when that correlation falls off again
-        offset = self.find_offset(correlation, debug=debug)
-        if offset is None:
-            return None, None, None
-        correlations = correlation.get_sliding(offset=offset)
-        o_max_ind = self.get_max_index(correlations.values())
-        o_mean = self.get_mean(o_max_ind, correlations.values())
-        o_off_event = self.find_falling_event(correlations, o_max_ind, o_mean)
-        if o_off_event is None:
-            return None, None, None
-        if debug:
-            print(l_mean, l_off_event)
-            print(o_off_event)
-            print(offset)
-        return l_off_event, o_off_event, offset
+        return data
 
     @staticmethod
-    def find_min_index(values, start_index=0):
-        return values.index(min(values[start_index:]))
+    def get_e_cut(plane, plane_vec, n):
+        """find all events with one hit in [plane]."""
+        events = arange(n.size).repeat(n)[plane_vec == plane]  # events with hits in the plan
+        dif = append(diff(events).astype('?'), True)
+        dif[where(invert(dif))[0] + 1] = False  # select only events with a single hit
+        cut = zeros(n.size, '?')
+        cut[events[dif]] = True
+        return cut
 
-    @staticmethod
-    def get_max_index(values, end_index=None):
-        e = end_index if end_index is not None else len(values)
-        return values.index(max(values[:e]))
+    def init_data(self):
+        if not self.Y1.size:
+            self.X1, self.X2, self.Y1, self.Y2, self.C1, self.C2 = self.load_data()
 
-    @staticmethod
-    def get_mean(ind, values, window=5):
-        s = ind - window if ind >= window else 0
-        e = ind + window
-        return mean(values[s:e])
+    def load_data(self, firstentry=0, nentries=None):
+        n = self.get_tree_vec('n_hits_tot', dtype='u1', nentries=nentries, firstentry=firstentry)
+        self.InTree.SetEstimate(sum(n))
+        pl, col, row = self.get_tree_vec(['plane', 'col', 'row'], dtype='u1', firstentry=firstentry, nentries=nentries)
+        c1, c2 = self.get_e_cut(self.TelPlane, pl, n), self.get_e_cut(self.DUTPlane, pl, n)
+        cut1, cut2 = c1.repeat(n) & (pl == self.TelPlane), c2.repeat(n) & (pl == self.DUTPlane)
+        return col[cut1], col[cut2], row[cut1], row[cut2], c1, c2
 
-    @staticmethod
-    def find_falling_event(correlations, ind, mean_):
-        try:
-            return correlations.keys()[correlations.values().index(next(m for m in correlations.values()[ind:] if m < mean_ - .1)) - 1]
-        # if the maximum is at the end we won't see the falloff
-        except StopIteration:
+    def get_aligned(self, n=100):
+        self.init_data()
+        x, y = self.correlate_all(n=n)
+        return (x > self.Threshold) & (y > self.Threshold)
+    # endregion INIT
+    # ----------------------------------------
+
+    def get_data(self, offset=0, start=0):
+        e1, e2 = where(self.C1)[0] >= start, where(self.C2)[0] >= start
+        x1, x2, y1, y2, c1, c2 = self.X1[e1], self.X2[e2], self.Y1[e1], self.Y2[e2], self.C1[start:], self.C2[start:]
+        co1, co2 = self.find_events(offset, c1, c2)
+        return column_stack([x1[co1], x2[co2]]), column_stack([y1[co1], y2[co2]]), where(c1)[0][co1] + start
+
+    def find_events(self, offset=0, c1=None, c2=None):
+        """ find events (with offsets) which have both exactly one hit. """
+        c1, c2 = choose(c1, self.C1), choose(c2, self.C2)
+        o1, o2 = (0, offset) if offset < 0 else (-offset, 0)
+        c = roll(c1, o1) & roll(c2, o2)
+        if offset:
+            c[-abs(offset):] = False
+        return roll(c, -o1)[c1], roll(c, -o2)[c2]
+
+    @update_pbar
+    def find_next(self, x, y, n):
+        s = x.shape[0] // n
+        xs, ys = x[:s * n].reshape(s, n, 2), y[:s * n].reshape(s, n, 2)
+        i_s = next((i for i in range(xs.shape[0]) if correlate(*xs[i].T) < self.Threshold or correlate(*ys[i].T) < self.Threshold), None)  # first bucket below
+        if i_s is None:  # all buckets uncorrelated
+            return -.5
+        i = next(i for i in range(max(0, (i_s - 1) * n), x.shape[0]) if correlate(*x[i:n + i].T) < self.Threshold and correlate(*y[i:n + i].T) < self.Threshold)  # first index
+        if not i:  # very short jump
+            c = [correlate(*x[i:n + i].T) < self.Threshold and correlate(*y[i:n + i].T) < self.Threshold for i in range(10)]
+            if all(c):
+                return 0
+            i_min = argmax(invert(c))
+            i = next(i for i in range(i_min, x.shape[0]) if correlate(*x[i:n + i].T) < self.Threshold or correlate(*y[i:n + i].T) < self.Threshold)
+        return i
+
+    def correlate(self, x, y, n):
+        return [correlate(*x[i:n + i].T) < self.Threshold and correlate(*y[i:n + i].T) < self.Threshold for i in range(n)]
+
+    def find_final_offset(self, n=100):
+        start = where(self.C1)[0][-6 * n]
+        for off in range(self.MaxOffset):
+            if not all(self.correlate(*self.get_data(off, start)[:2], n)):
+                return off
+
+    def find_offsets(self, off=None, n=50, start=None):
+        off = choose(off, self.FinalOffset)
+        if off == self.FinalOffset:
+            self.PBar.start(off)
+        start = start if start is not None else self.find_offsets(off - 1, n) if off > 0 else 0
+        if start > 0:
+            self.Offsets[start] = off
+        if off == self.FinalOffset:
+            info(f'found all offsets ({len(self.Offsets) + 1}) :-) ')
             return
+        x, y, e = self.get_data(off, start)
+        i = self.find_next(x, y, n)
+        if i <= 0:
+            return start - int(n * i)
+        r1, r2 = max(0, int(i - n // 3)), int(i + n // 3)
+        xi, (c1, c2) = arange(r1, r2), array([[correlate(*x[i:i + n].T), correlate(*y[i:i + n].T)] for i in range(r1, r2)]).T
+        f1, f2 = polyfit(xi, c1, deg=1), polyfit(xi, c2, deg=1)
+        return e[int(round(mean([-f[1] / f[0] for f in [f1, f2]])))]
 
-    def find_rising_event(self, correlations, ind):
-        return correlations.keys()[correlations.values().index(next(c for c in correlations.values()[ind:] if c > self.Threshold)) - 3]
+    def correlate_all(self, offset=0, n=None, start=0):
+        x, y, e = self.get_data(offset, start)
+        s = x.shape[0] // n
+        return array([correlate(*i.T) for i in x[:s * n].reshape(s, n, 2)]), array([correlate(*i.T) for i in y[:s * n].reshape(s, n, 2)])
 
-    def find_manual_offsets(self, debug=False):
-        t = self.Run.info('Scanning for precise offsets ... ', endl=False)
-
-        n = self.BinSize
-        correlation = Correlation(self, n_offsets=2, bucket_size=n)
-
-        offsets = OrderedDict()
-        offset = 0
-        for ev in self.TelRow.keys():
-            # fill the correlation vectors
-            correlation.fill(ev, offset)
-            if correlation.start():
-                # check zero offset correlation
-                if correlation.get_zero(start_bucket=-2, debug=debug) < self.Threshold:
-                    # there is a jump if the last bucket is already aligned again
-                    if correlation.get_zero(start_bucket=-1, debug=debug) > self.Threshold:
-                        # get the events when it starts losing correlation and when the offset correlation falls back into zero offset
-                        l_off_event, o_off_event, off = self.find_jump(correlation, debug=debug)
-                        if off is not None and o_off_event > l_off_event:
-                            offsets[l_off_event] = off
-                            offsets[o_off_event] = -off
-                            if debug:
-                                info('Found a jump of {v} between events {e1} and {e2}'.format(v=off, e1=l_off_event, e2=o_off_event))
-                            # only keep the last two buckets since at least the last is correlated
-                            correlation.reset_except_last(2)
-                    # now we have lost correlation for at least three buckets
-                    else:
-                        last_off_event = list(offsets.keys())[-1] if offsets else 0
-                        off_event = self.find_lose_corr_event(correlation, last_off_event, debug=debug)
-                        off = self.find_offset(correlation)
-                        if off is not None:
-                            offset += off
-                            offsets[off_event] = off
-                            if debug:
-                                info('Found an offset of {v} at event {e}'.format(v=off, e=off_event))
-                            # delete the first two buckets and use the offset values for zero correlation
-                            correlation.reshuffle(off)
-                    if off is None and debug:
-                        info('Could not find any offset!')
-                # reset old lists for speed improvements
-                correlation.reset()
-        self.Run.add_to_info(t)
-        return offsets
-
-    def find_bucket_size(self, show=True):
-        """ take first 10000 events and find a suitable bucket size to build the correlation """
-        correlation = Correlation(self, bucket_size=10)
-        max_ev = 10000
-        for ev in self.TelRow.keys():
-            if ev > max_ev:
-                break
-            correlation.fill(ev)
-        sigmas = OrderedDict()
-        size = 50
-        while True:
-            if correlation.get_events() < 700:
-                break
-            try:
-                for i, n in enumerate(range(10, 100)):
-                    correlation.set_bucket_size(n)
-                    corrs = correlation.get_all_zero()
-                    mean_, sigma = mean_sigma(corrs)
-                    sigmas[sigma] = n
-                # if show:
-                #     g = self.Run.make_tgrapherrors('g_bs', 'Sigma of the Bucket Sizes', x=sigmas.values(), y=sigmas.keys())
-                #     self.Run.draw_histo(g, draw_opt='alp')
-                size = next(n for sig, n in sigmas.items() if sig < .09)
-                break
-            except StopIteration:
-                correlation.delete_events(len(correlation.TelRow[0]) / 2, max_ev)
-        return round_up_to(size, 5)
+    def find_all(self, offset=0, n=None, start=0):
+        x, y = self.correlate_all(offset, n, start)
+        return (x < self.Threshold) | (y < self.Threshold)
 
     def fill_branches(self, offset):
         if not offset:
@@ -274,12 +147,18 @@ class PixAlignment(EventAligment):
             for value in event[i]:
                 self.Branches[name].push_back(value)
 
+    def draw(self, off=0, bin_size=50):
+        y = invert(self.find_all(off, bin_size))
+        x = mean(where(self.C1)[0][self.find_events(off)[0]][:y.size * bin_size].reshape(y.size, bin_size), axis=1)
+        self.Draw.graph(x, y, f'{off} Alignment', x_tit='Event Number', y_tit='Aligned', draw_opt='al', **Draw.mode(2))
+
 
 if __name__ == '__main__':
 
     from src.pix_run import PixelRun
     from src.converter import Converter
 
-    args = init_argparser(run=147, tc='201810')
-    zrun = PixelRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
+    pargs = init_argparser(run=147, tc='201810')
+    # pargs = init_argparser(run=138)
+    zrun = PixelRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = PixAlignment(Converter(zrun))
