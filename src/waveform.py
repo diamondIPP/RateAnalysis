@@ -85,9 +85,12 @@ class Waveform(PadSubAnalysis):
         t = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)])
         return t[self.get_trigger_cells(cut)]
 
+    def get_peak_times(self, cut=None):
+        return self.Ana.get_peak_times(self.get_cut(cut))
+
     def correct_times(self, t, cut=None):
-        peaks = self.Ana.Peaks.get_from_tree(cut=self.get_cut(cut))
-        return t - (peaks - peaks[0]).reshape(peaks.size, 1)
+        pt = self.get_peak_times(cut)
+        return t - (pt - mean(pt)).reshape(pt.size, 1)
 
     def get_calibrated_times(self, trigger_cell):
         return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
@@ -181,23 +184,21 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region AVERAGE
-    def draw_all_average(self, corr=True, n=100000, ind=None, prof=True, x_range=None, y_range=None, show=True, show_noise=False, redo=False):
+    def draw_all_average(self, corr=True, n=100000, cut=None, x_range=None, y_range=None, show=True, show_noise=False, redo=False, draw_opt='ap'):
         def f():
-            t, v = self.get_times(corr, ind, n), self.get_values(ind, n=n)
-            bins = self.get_binning() + ([] if prof else self.Ana.Bins.get_pad_ph(4))
-            return (self.Draw.profile if prof else self.Draw.histo_2d)(t, v, bins, '{} Waveform'.format('Averaged' if prof else 'Overlayed'), show=False)
-        suf = '{}{}'.format('{}{}_'.format(ind.nonzero()[0].size if ind.dtype == bool else len(ind), ind[0]) if ind is not None else '', int(prof))
-        p = do_pickle(self.make_simple_pickle_path('AWF', suf), f, redo=redo)
+            t, v = self.get_times(corr, cut, n), self.get_values(cut, n=n)
+            return Draw.make_graph_from_profile(self.Draw.profile(t, v, self.get_binning(), 'Averaged Waveform', show=False))
+        g = do_pickle(self.make_simple_pickle_path('AWF', f'{self.get_cut(cut).nonzero()}'), f, redo=redo)
         x_range = ax_range(self.Ana.get_signal_range(), fl=.5, fh=1) if x_range is None else x_range
-        format_histo(p, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, stats=0, markersize=.5, x_range=x_range, y_range=y_range)
-        self.Draw(p, show=show, draw_opt='' if prof else 'col')
+        format_histo(g, x_tit='Time [ns]', y_tit='Pulse Height [mV]', y_off=1.2, lw=2, stats=0, markersize=.4, x_range=x_range, y_range=y_range)
+        self.Draw(g, show=show, draw_opt=draw_opt, gridy=True)
         if show_noise:
             self.__draw_noise(pol=False)
-        return p
+        return g
 
     def fit_average(self, fit_range=None, n=3, ind=None, show=True):
         max_x = self.Ana.Timing.draw_peaks(show=0).GetListOfFunctions()[1].GetParameter(1)
-        h = self.draw_all_average(show=show, ind=ind)
+        h = self.draw_all_average(show=show, cut=ind)
         fit_range = [max_x - 15, max_x + 4] if fit_range is None else fit_range
         c = ErfLand(h, fit_range=fit_range)
         c.fit(n, show)
@@ -227,7 +228,7 @@ class Waveform(PadSubAnalysis):
         return do_hdf5(self.make_simple_hdf5_path('LFits'), f)
 
     def draw_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=True):
-        h = self.draw_all_average(show=show, ind=ind, x_range=x_range, y_range=y_range)
+        h = self.draw_all_average(show=show, cut=ind, x_range=x_range, y_range=y_range)
         maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
         bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
         coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
@@ -245,7 +246,7 @@ class Waveform(PadSubAnalysis):
         n = cut.size // 2
         ind1, ind2 = choose(ind1, concatenate([cut[:n], zeros(cut.size - n, dtype=bool)])), choose(ind2, concatenate([zeros(cut.size - n, dtype=bool), cut[n:]]))
         leg = Draw.make_legend(nentries=2, w=.25)
-        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, ind=ind, n=None)) for ind in [ind1, ind2]]
+        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, cut=ind, n=None)) for ind in [ind1, ind2]]
         for i, g in enumerate(graphs):
             scale_graph(g, 1 / max(get_graph_y(g)).n) if normalise else do_nothing()
             x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
@@ -266,7 +267,7 @@ class Waveform(PadSubAnalysis):
     # ----------------------------------------
     # region SHOW INTEGRATION
     def draw_avrg(self, c, cut=None, s=None, n=50000, t_off=0):
-        p = self.draw_all_average(ind=cut, n=n, show=0, redo=1)
+        p = self.draw_all_average(cut=cut, n=n, show=0, redo=1)
         if s is not None:
             p.Scale(s / p.GetMaximum())
         x, y = get_hist_vecs(p, err=0)
