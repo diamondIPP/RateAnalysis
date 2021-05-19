@@ -285,11 +285,13 @@ class AnalysisCollection(Analysis):
     def get_range(vs_time, x_range=None):
         return x_range if vs_time else Bins.FluxRange
 
-    def get_x_args(self, vs_time=False, rel_time=False, draw=False, **kwargs):
-        hist_kwargs = {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_range': self.get_range(vs_time), 'x_off': None if vs_time else 1.2}
+    @staticmethod
+    def get_x_args(vs_time=False, rel_time=False, draw=False, **kwargs):
+        hist_kwargs = {'x_tit': AnalysisCollection.get_x_tit(vs_time), 't_ax_off': AnalysisCollection.get_tax_off(vs_time, rel_time),
+                       'x_range': AnalysisCollection.get_range(vs_time), 'x_off': None if vs_time else 1.2}
         for kw, val in kwargs.items():
             hist_kwargs[kw] = val
-        return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw else hist_kwargs
+        return {**hist_kwargs, **AnalysisCollection.get_x_draw(vs_time)} if draw else hist_kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
         return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
