@@ -443,10 +443,10 @@ class Draw(object):
         return s
 
     def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='p', gridy=None, lm=None, bm=None, show=True, logx=None, logy=None, color=True, c=None,
-                   y_range=None, w=1, grid=None, *args, **kwargs):
+                   y_range=None, w=1, grid=None, wleg=.2, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
-        leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=.2)
+        leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=wleg)
         for i, g in enumerate(graphs):
             m.Add(g, draw_opt)
             leg.AddEntry(g, leg_titles[i], 'p') if leg_titles is not None else do_nothing()
