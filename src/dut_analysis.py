@@ -170,8 +170,8 @@ class DUTAnalysis(Analysis):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
-    def get_flux(self, plane=1, corr=True, full_size=False, show=False):
-        return self.Tel.get_flux(plane, corr, show, full_size)
+    def get_flux(self, plane=1, corr=True, full_size=False, show=False, redo=False):
+        return self.Tel.get_flux(plane, corr, True, show, full_size, redo)
 
     def get_ph_values(self, *args, **kwargs):
         """ :returns: all pulse height values for a given cut. [numpy.ndarray] """
