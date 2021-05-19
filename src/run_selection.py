@@ -137,6 +137,7 @@ class RunSelector(object):
         self.SelectedRunplan = None
         self.SelectedType = None
         self.SelectedDUT = None
+        self.PulserType = None
 
         self.select_runs_from_runplan(runplan, dut_nr)
         self.PBar = PBar()
@@ -164,6 +165,10 @@ class RunSelector(object):
                 warning('No runplan for {tc} available yet, creating an empty one!'.format(tc=self.TCString))
                 run_plans = self.create_new_runplan()
             return run_plans[self.TCString]
+
+    def load_pulser_type(self):
+        data = self.RunInfos[self.get_selected_runs()[0]]
+        return data['pulser'] if 'pulser' in data else '?'
     # endregion INIT
     # ----------------------------------------
 
@@ -524,6 +529,7 @@ class RunSelector(object):
         self.select_runs(runs, dut=dut)
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
+        self.PulserType = self.load_pulser_type()
         return self
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
