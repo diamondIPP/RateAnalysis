@@ -21,7 +21,7 @@ class PulserCollection(SubCollection):
         return [ana.Pulser for ana in self.Analyses if ana.Run.Number in choose(runs, self.Ana.Runs)]
 
     def get_pulse_heights(self, corr=True, beam_on=True, sigma=False, avrg=False, redo=False):
-        pickle_path = self.Analysis.make_simple_pickle_path('HistoFit', '{}_{}'.format(int(corr), 'Beam{}'.format(int(beam_on))), run='{}')
+        pickle_path = self.get_pickle_path('HistoFit', f'{corr:d}_{beam_on:d}_0')
         return self.get_values('pulser pulse heights', PulserAnalysis.get_pulse_height, avrg=avrg, corr=corr, beam_on=beam_on, redo=redo, par=[1, 2][sigma], picklepath=pickle_path)
 
     def get_sigmas(self, corr=True, beam_on=True, redo=False):
@@ -45,20 +45,21 @@ class PulserCollection(SubCollection):
         self.Draw.profile(x, y, self.get_time_bins(bin_size), 'Pulser Pulse Height Trend', **self.get_x_args(True, rel_t), y_tit='Pulser Pulse Height [mV]', w=2, show=show, stats=0,
                           y_range=ax_range(y, 0, .3, .3))
 
-    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, show=True):
+    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, fl=True, redo=False, show=True):
         x, y = self.get_x(vs_time), self.get_pulse_heights(corr, beam_on, sigma, redo)
         y /= mean(y) if scaled else 1
         marker, colors, ms = [20, 22, 23], [self.Draw.get_color(10, 6)] + [int(Draw.Colors[0])] * 2, [1, 2, 2]
-        graphs = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
-        mg = self.Draw.multigraph(graphs[:(1 if vs_time else 3)], 'Pulser Pulse Height', ['data', 'first', 'last'] if legend else None, **self.get_x_draw(vs_time), color=False, show=show, lm=.12)
+        g = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
+        g = g[:(1 if vs_time or not fl else 3)]
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **self.get_x_draw(vs_time), color=False, show=show, lm=.12)
         format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit='Pulser Pulse Height [mV]')
         Draw.info(f'{self.Type}al pulser')
         if vs_time and show_flux:
             for ix, iy, flux in zip(x, y, self.get_fluxes()):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iy.n + iy.s * 1.2, '{:1.0f}'.format(flux.n), color=1, align=21, size=.02))
         if fit:
-            graphs[0].Fit('pol0', 'q')
-            format_statbox(graphs[0], fit=True, x2=.41)
+            g[0].Fit('pol0', 'q')
+            format_statbox(g[0], fit=True, x2=.41)
         return mg
 
     def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, show=True):
