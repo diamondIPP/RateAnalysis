@@ -133,9 +133,6 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
-    def get_pulser_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('Pulser', 'PH', f'{avrg:d}'), redo=redo, avrg=avrg)
-
     def get_rate_dependcies(self, redo=False):
         return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
 
@@ -169,8 +166,8 @@ class DiaScans(Analysis):
     def get_currents(self):
         return self.get_values(AnalysisCollection.get_currents, PickleInfo('Currents', 'Vals'))
 
-    def get_fluxes(self, avrg=False):
-        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals', suf='{}'.format(int(avrg)) if avrg else ''), avrg=avrg)
+    def get_fluxes(self, avrg=False, redo=False):
+        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals', suf='{}'.format(int(avrg)) if avrg else ''), avrg=avrg, redo=redo)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -486,9 +483,21 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region PULSER
-    def draw_pulser_pulse_heights(self):
-        pass
+    def get_pulser_pulse_heights(self, avrg=False, redo=False):
+        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('Pulser', 'PH', f'{avrg:d}'), redo=redo, avrg=avrg)
 
+    def get_pulser_stability(self):
+        """ returns: relative standard deviation of the pulser """
+        d = [s / m * 100 for m, s in [mean_sigma(v) for v in self.get_pulser_pulse_heights()]]
+        for i, v in enumerate(d):
+            print(f'Pulser stability for {self.Info[i]}: {v:.3f}')
+        return d
+
+    def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01):
+        data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg))
+        g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **AnalysisCollection.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **AnalysisCollection.get_x_args(), y_range=1 + array([-ym, ym]))
     # endregion PULSER
     # ----------------------------------------
 
@@ -506,6 +515,7 @@ class SelectionInfo:
         self.Irradiation = self.DUT.get_irradiation(self.TCString)
         self.Type = sel.SelectedType.lower()
         self.Runs = sel.get_selected_runs()
+        self.PulserType = sel.PulserType
 
     def __str__(self):
         return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUTName)
