@@ -289,7 +289,7 @@ class Run(Analysis):
     def calculate_plane_flux(self, plane=1, corr=True):
         """estimate the flux [kHz/cm²] through a trigger plane based on Poisson statistics."""
         rate, eff, area = self.Info[f'for{plane}'], self.load_plane_efficiency(plane), self.get_unmasked_area(plane)
-        return -log(1 - rate / Plane.Frequency) * Plane.Frequency / area / 1000 / (eff if corr else 1)  # count zero hits of Poisson
+        return -log(1 - rate / Plane.Frequency) * Plane.Frequency / area / 1000 / (eff if corr else ufloat(1, .05))  # count zero hits of Poisson
 
     def find_n_events(self, n, cut, start=0):
         evt_numbers = self.get_tree_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
