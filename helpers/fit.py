@@ -122,7 +122,7 @@ class Erf(Fit):
         return self.Draw.make_f(Draw.get_name('erf'), '[0] + [1] * TMath::Erf((x - [2]) / [3])', self.XMin, self.XMax)
 
     def get_par_names(self):
-        return ['mean', 'spread', 'inflexion', 'scale']
+        return ['mean', 'spread', 'inflexion', 'width']
 
     def set_start_values(self):
         x, y = get_graph_vecs(self.Histo, err=False)
