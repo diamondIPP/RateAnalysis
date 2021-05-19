@@ -19,6 +19,13 @@ class Telescope(SubAnalysis):
         super().__init__(analysis, sub_dir=analysis.Run.Number, pickle_dir='Telescope', dut=False)
 
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
+        self.verify_mask()
+
+    def verify_mask(self):
+        """ verify that the mask file is in the right order. """
+        run_mask, pl_mask = self.Run.load_mask(), [self.find_mask(i) for i in [1, 2]]
+        warning(f'mask file of run {self.Run.Number} does not agree with found mask!! {run_mask} != {pl_mask}', prnt=run_mask != pl_mask)
+        return run_mask == pl_mask
 
     # ----------------------------------------
     # region GET
@@ -50,13 +57,13 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    def get_flux(self, plane=1, corr=True, show=False, full_size=False):
-        flux = self.calculate_flux(plane, corr, show) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, corr)
-        return flux * self.get_flux_scale(full_size)
+    def get_flux(self, plane=None, corr=True, use_eff=True, show=False, full_size=False, redo=False):
+        flux = self.calculate_flux(plane, use_eff, show, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+        return flux * (self.get_flux_scale(full_size) if corr else 1)
 
-    def get_flux_ratio(self, dim):   # dim -> [x1, x2, y1, y2] in mm
+    def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
         tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(self.Run.get_mask_dims(mm=True), axis=0) * [1, -1]]
-        h = self.Ana.draw_hitmap(.7, show=False, prnt=False)
+        h = self.Ana.draw_hitmap(.7, show=show, prnt=False)
         f = TF2('ff', 'xygaus')
         fx, fy = self.Ana.Tracks.fit_beam_profile(h.ProjectionX()), self.Ana.Tracks.fit_beam_profile(h.ProjectionY())
         f.SetParameters(1, *[i.n for i in fx], *[i.n for i in fy])
@@ -65,8 +72,8 @@ class Telescope(SubAnalysis):
         int_dim, int_tel = ufloat(int_dim, abs(int_dim - f.Integral(*[d.n for d in dim]))), ufloat(int_tel, abs(int_tel - f.Integral(*tel)))
         return (int_dim / prod(diff(dim)[[0, 2]])) / (int_tel / prod(diff(tel)[[0, 2]]))
 
-    def get_fid_flux_ratio(self):
-        return self.get_flux_ratio([ufloat(i, 0) for i in self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10]) if self.Cut.HasFid else 1
+    def get_fid_flux_ratio(self, show=False):
+        return self.get_flux_ratio([ufloat(i, 0) for i in self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10], show) if self.Cut.HasFid else 1
 
     def get_pad_flux_ratio(self):
         return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize] * 2) * [1, -1]])
@@ -74,9 +81,18 @@ class Telescope(SubAnalysis):
     def get_flux_scale(self, full_size=False, redo=False):
         return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size), dut=self.Ana.DUT.Number), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
 
+    def find_mask(self, plane=None, redo=False):
+        def f():
+            x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
+            histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
+            return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
+        if plane is None:
+            return [self.find_mask(pl, redo) for pl in [1, 2]]
+        return do_pickle(self.make_simple_pickle_path('Mask', plane), f, redo=redo)
+
     def get_area(self, plane=1):
-        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
-        return (max(x) - min(x) + 1) * (max(y) - min(y) + 1) * Plane.PixArea / 100  # cm²
+        x0, y0, x1, y1 = self.find_mask(plane)
+        return (x1 - x0 + 1) * (y1 - y0 + 1) * Plane.PixArea / 100  # cm²
 
     def get_areas(self):
         return [self.get_area(pl) for pl in [1, 2]]
@@ -87,7 +103,7 @@ class Telescope(SubAnalysis):
             rates = rates[rates < 1e9]
             fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
             rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
-            return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .1))
+            return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
         if plane is None:
             return mean([self.calculate_flux(pl, corr, 0, redo) for pl in [1, 2]])
         return do_pickle(self.make_simple_pickle_path(f'Flux{plane}', int(corr)), f, redo=redo or show)
