@@ -15,7 +15,7 @@ class Fit(object):
         self.XMin, self.XMax = [0, 1000] if fit_range is None else fit_range
         if h is not None:
             self.Values = get_h_values(h)
-            self.X = get_hist_args(h)
+            self.X = get_graph_x(h) if 'TGraph' in h.ClassName() else get_hist_args(h)
 
         # Fit
         self.ParNames = choose(par_names, self.get_par_names())
@@ -111,6 +111,22 @@ class Landau(Fit):
     def get_mpv(self, show=False):
         f = self.fit(show=show, minuit=False)
         return f[1] + self.XOff * f[2]
+
+
+class Erf(Fit):
+    def __init__(self, h=None, fit_range=None, npx=100):
+        self.XOff = -.22278
+        Fit.__init__(self, 'Error Function', h, fit_range, npx)
+
+    def init_fit(self):
+        return self.Draw.make_f(Draw.get_name('erf'), '[0] + [1] * TMath::Erf((x - [2]) / [3])', self.XMin, self.XMax)
+
+    def get_par_names(self):
+        return ['mean', 'spread', 'inflexion', 'scale']
+
+    def set_start_values(self):
+        x, y = get_graph_vecs(self.Histo, err=False)
+        self.Fit.SetParameters(mean(y), sign(y[-1] - y[0]) * (max(y) - min(y)) / 2, mean(x), (x[-1] - x[0]) / 5)
 
 
 class Crystalball(Fit):
