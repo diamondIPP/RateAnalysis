@@ -83,7 +83,7 @@ class Telescope(SubAnalysis):
 
     def calculate_flux(self, plane=None, corr=True, show=False, redo=False):
         def f():
-            rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut['beam stops'] + 'beam_current < 1e4')).T
+            rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
             rates = rates[rates < 1e9]
             fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
             rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))

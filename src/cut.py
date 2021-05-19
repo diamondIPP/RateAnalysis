@@ -456,7 +456,7 @@ class CutStrings(object):
         if self.has_cut(name):
             return self.Strings[name].invert() if invert else self.Strings[name]()
         warning('There is no cut with the name "{name}"!'.format(name=name), prnt=warn)
-        return ''
+        return TCut('')
 
     def get_strings(self, with_raw=False):
         return ([CutString('raw', '', 'raw values')] if with_raw else []) + list(self.Strings.values())
