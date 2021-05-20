@@ -123,7 +123,7 @@ class PedestalAnalysis(PadSubAnalysis):
         return h
 
     def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, **kwargs):
-        cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut else self.Cut(cut)
+        cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut and cut is None else self.Cut(cut)
         h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, **kwargs)
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
