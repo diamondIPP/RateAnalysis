@@ -52,7 +52,7 @@ class PulserCollection(SubCollection):
         g = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
         g = g[:(1 if vs_time or not fl else 3)]
         mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **self.get_x_draw(vs_time), color=False, show=show, lm=.12)
-        format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit='Pulser Pulse Height [mV]')
+        format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit=f'{"Relative " if scaled else ""}Pulser Pulse Height {"" if scaled else "[mV]"}')
         Draw.info(f'{self.Type}al pulser')
         if vs_time and show_flux:
             for ix, iy, flux in zip(x, y, self.get_fluxes()):
