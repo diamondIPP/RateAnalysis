@@ -46,6 +46,9 @@ class PadCut(Cut):
 
     def get_timing(self):
         return CutString('timing', self.generate_custom(exclude='timing', prnt=False), 'All cuts expect timing.')
+
+    def get_ped_sigma(self, sigma=None):
+        return choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
     # endregion GET
     # ----------------------------------------
 
@@ -82,7 +85,7 @@ class PadCut(Cut):
         return CutString('pulser', '!pulser', 'exclude {:.1f}% pulser events'.format(100. * self.find_n_pulser('pulser') / self.Run.NEvents))
 
     def generate_pedestal_sigma(self, sigma=None):
-        sigma = choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
+        sigma = self.get_ped_sigma(sigma)
         ped_range = self.calc_pedestal(sigma)
         description = 'sigma <= {} -> [{:1.1f}mV, {:1.1f}mV]'.format(sigma, *ped_range)
         return CutString('ped sigma', '{ped} > {} && {ped} < {}'.format(ped=self.Ana.get_pedestal_name(), *ped_range), description)
