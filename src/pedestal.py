@@ -4,7 +4,6 @@
 # created on May 23rd 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import gPad
 from numpy import log
 
 from src.sub_analysis import PadSubAnalysis
@@ -129,25 +128,17 @@ class PedestalAnalysis(PadSubAnalysis):
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')
-        format_statbox(h, fit=True, all_stat=True)
-        if draw_cut:
-            b = self.__draw_cut(h)
-            h.Draw('same')
-            b.Draw('l')
-            gPad.RedrawAxis()
+        self.__draw_cut(fit, draw_cut)
+        format_statbox(h, fit=True, all_stat=True, form='.2f')
         self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save, prnt=prnt, show=show)
         SaveDraw.server_pickle(self.make_simple_pickle_path(suf=f'{cut.GetName()}_fwhm_{self.get_short_name(name)}'), fit)
         return fit
 
-    @staticmethod
-    def __draw_cut(h):
-        fit = h.GetListOfFunctions()[2]
-        xmin, xmax = fit.GetParameter(1) - 3 * fit.GetParameter(2), fit.GetParameter(1) + 3 * fit.GetParameter(2)
-        b = Draw.box(xmin, -10, xmax, 1e7, line_color=2, width=2, fillstyle=3001, name='ped', style=7)
-        legend = Draw.make_legend(.65, y2=.64, nentries=1, margin=.45, scale=1)
-        legend.AddEntry(b, 'cut (3 sigma)', 'lf')
-        legend.Draw()
-        return b
+    def __draw_cut(self, fit, show=True):
+        if show:
+            xmin, xmax = fit[1] + fit[2] * self.Cut.get_ped_sigma() * array([-1, 1])
+            b = Draw.box(xmin.n, -10, xmax.n, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            self.Draw.legend([b], [f'cut ({self.Cut.get_ped_sigma()} sigma)'], 'lf', y2=.54, margin=.45, w=.3)
 
     def draw_pulse_height(self, name=None, rel_t=False, show=True):
         x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(name)], cut=self.Cut())
