@@ -54,6 +54,7 @@ if __name__ == "__main__":
         z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
         try:
             p = z.Peaks if pargs.tree else None
+            pul = z.Pulser if pargs.tree else None
             w = z.Waveform if pargs.tree else None
             tr = z.Tracks if pargs.tree else None
             t = z.Tel if pargs.tree else None
