@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, quantile
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 from scipy.stats import norm
@@ -87,25 +87,20 @@ class Tracks(SubAnalysis):
                               t_ax_off=0, fill_color=Draw.FillColor, show=False)
         self.Draw(p, 'NTracksTime', draw_opt='hist', show=show, stats=set_statbox(all_stat=True, center_y=True))
 
-    def draw_chi2(self, mode=None, fit=False, x_range=None, cut='', normalise=None, show=True, save=True, prnt=True, show_cut=False):
-        mode = 'tracks' if mode is None else mode
-        h = Draw.make_histo('Chisquare {}'.format(mode.title()), [500, 0, 100])
-        self.Tree.Draw('chi2_{}>>{}'.format(mode, h.GetName()), TCut('n_tracks > 0') + TCut(cut), 'goff')
-        y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
-        format_histo(h, x_tit='#chi^{2}', y_tit=y_tit, y_off=2, x_range=choose(x_range, [0, get_quantile(h, .99)]), normalise=normalise, fill_color=Draw.FillColor)
+    def draw_chi2(self, mode=None, bin_size=None, fit=False, cut='', x_range=None, show_cut=False, **kwargs):
+        x, m = self.get_tree_vec(f'chi2_{choose(mode, "tracks").lower()}', self.Cut(cut)), choose(mode, "tracks").title()
+        x_range = choose(x_range, [0, quantile(x[(x > -900) & (x < 100)], .99)])
+        h = self.Draw.distribution(x[x > -900], self.Bins.get_chi2(bin_size), f'Chisquare {m}', x_tit='#chi^{2}', x_range=x_range, **kwargs, lm=.12, y_off=1.8)
         fit_chi2(h, mode, show=fit)
-        self.Draw(h, show=show, prnt=prnt, lm=.13, stats=set_statbox(entries=True, fit=fit))
         self.draw_chi2_cut(mode, show=show_cut)
-        self.Draw.save_plots('Chi2{0}'.format(mode.title()), show=show, save=save, prnt=prnt)
+        format_statbox(h, entries=True, fit=fit)
+        self.Draw.save_plots(f'Chi2{m}', **kwargs)
         return h
 
     def draw_chi2_cut(self, mode, show=True):
         if show:
-            chi2 = self.Cut.calc_chi2(mode)
-            line = Draw.vertical_line(chi2, -100, 1e6, style=7, w=2, color=2)
-            legend = Draw.make_legend(.75, y2=.83, nentries=1, margin=.35)
-            legend.AddEntry(line, 'cut ({}%)'.format(self.Cut.get_chi2(mode)), 'l')
-            legend.Draw()
+            b = Draw.box(0, -10, self.Cut.calc_chi2(mode), 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            self.Draw.legend([b], [f'cut ({self.Cut.get_chi2(mode):d}#kern[.3]{{%}} qu.)'], 'lf', y2=.817, margin=.45, w=.3)
 
     def draw_chi2s(self, show=True, prnt=True):
         self.draw_chi2(fit=True, show=show, prnt=prnt)
@@ -113,25 +108,20 @@ class Tracks(SubAnalysis):
         self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
         self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
-    def draw_angle(self, mode='x', cut=None, show_cut=False, normalise=None, show=True, prnt=True):
+    def draw_angle(self, mode='x', bin_size=.05, cut='', show_cut=False, prnt=True, **kwargs):
         """ Shows the angle distribution of the tracks. """
-        h = Draw.make_histo('Track Angle Distribution in {}'.format(mode.title()), self.Bins.get_angle())
-        self.Tree.Draw('angle_{}>>{}'.format(mode, h.GetName()), self.Cut('angle_{}>-900'.format(mode) if cut is None else cut), 'goff')
-        y_tit = '{} of Entries'.format('Number' if normalise is None else 'Percentage')
-        format_histo(h, x_tit='Track Angle {} [deg]'.format(mode.title()), y_tit=y_tit, y_off=2, normalise=normalise, fill_color=Draw.FillColor)
-        self.Draw(h, show=show, lm=.14, prnt=prnt, stats=None)
+        x, m = self.get_tree_vec(f'angle_{mode.lower()}', self.Cut(cut)), mode.title()
+        h = self.Draw.distribution(x[x > -900], self.Bins.get_angle(bin_size), f'Track Angle in {m}', x_tit=f'Track Angle {m} [deg]', **kwargs, lm=.12, y_off=1.8)
         self.draw_angle_cut(show=show_cut)
-        self.Draw.save_plots('TrackAngle{mod}'.format(mod=mode.upper()), prnt=prnt)
+        format_statbox(h, all_stat=True, form='.2f')
+        self.Draw.save_plots(f'TrackAngle{m}', prnt=prnt)
         return h
 
     def draw_angle_cut(self, show=True):
         if show:
-            xmax = -self.Cut.get_track_angle()
-            line = Draw.vertical_line(-xmax, -100, 1e6, style=7, w=2, color=2)
-            Draw.vertical_line(xmax, -100, 1e6, style=7, w=2, color=2)
-            legend = Draw.make_legend(.65, y2=.73, nentries=1, margin=.35, scale=1.3)
-            legend.AddEntry(line, 'cut ({} deg)'.format(xmax), 'l')
-            legend.Draw()
+            x = self.Cut.get_track_angle()
+            b = Draw.box(-x, -10, x, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            self.Draw.legend([b], [f'cut ({x} deg)'], 'lf', y2=.773, margin=.45, w=.3)
 
     def draw_angles(self, show=True, prnt=True):
         histos = [self.draw_angle(mode, show=False, prnt=False) for mode in ['x', 'y']]
