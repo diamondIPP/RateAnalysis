@@ -324,7 +324,7 @@ class Draw(object):
         return Draw.tpavetext('Irradiation: {}'.format(irr), x1, x2, 1 - height - c.GetTopMargin(), 1 - c.GetTopMargin(), font=42, align=12, margin=0.04)
 
     @staticmethod
-    def legend(histos, titles, styles=None, x2=.96, y2=.89, *args, **kwargs):
+    def legend(histos, titles, styles=None, x2=None, y2=None, *args, **kwargs):
         leg = Draw.make_legend(x2, y2, nentries=len(histos), *args, **kwargs)
         for i in range(len(histos)):
             leg.AddEntry(histos[i], titles[i], 'lpf' if styles is None else styles[i] if type(styles) is list else styles)
@@ -516,7 +516,8 @@ class Draw(object):
         return Draw.make_tgrapherrors(x, y, x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
-    def make_legend(x2=.96, y2=.89, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+    def make_legend(x2=None, y2=None, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+        x2, y2 = get_stat_margins(x2=x2, y2=y2)
         x1 = choose(x1, x2 - w)
         h = nentries * .05 * scale
         y1 = choose(y1, y2 - h)
@@ -608,6 +609,12 @@ def set_entries():
     return True
 
 
+def get_stat_margins(c=None, x2=None, y2=None):
+    c = choose(c, get_last_canvas(warn=False))
+    r = c.GetWindowHeight() / c.GetWindowWidth()
+    return choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
+
+
 def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None, c=None):
     c = choose(c, get_last_canvas(warn=False))
     update_canvas(c)
@@ -617,7 +624,7 @@ def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, r
     p = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
     if p is not None:
         r = c.GetWindowHeight() / c.GetWindowWidth()
-        x2, y2 = choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
+        x2, y2 = get_stat_margins(c, x2, y2)
         cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
         stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
         fit_pars = f.GetNpar() + 1 if fit and f is not None else 0
