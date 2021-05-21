@@ -74,21 +74,23 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return th
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True):
+    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
-        if not save or not SaveDraw.Save or savename is None:
+        kwargs = self.prepare_kwargs(kwargs, save=save, prnt=prnt, show=show)
+        if not kwargs['save'] or not SaveDraw.Save or savename is None:
             return
         canvas = get_last_canvas() if canvas is None else canvas
         update_canvas(canvas)
         try:
-            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, prnt=prnt, show=show)
+            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, **kwargs)
             return Draw.add(canvas)
         except Exception as inst:
             warning('Error saving plots ...:\n  {}'.format(inst))
 
-    def __save_canvas(self, canvas, file_name, res_dir=None, sub_dir=None, ftype=None, prnt=True, show=True):
+    def __save_canvas(self, canvas, file_name, res_dir=None, sub_dir=None, ftype=None, prnt=True, show=True, **kwargs):
         """should not be used in analysis methods..."""
+        _ = kwargs
         file_path = join(choose(res_dir, self.ResultsDir), choose(sub_dir, self.SubDir), file_name)
         ensure_dir(dirname(file_path))
         info('saving plot: {}'.format(file_name), prnt=prnt and SaveDraw.Verbose)
