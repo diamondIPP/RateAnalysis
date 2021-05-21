@@ -117,6 +117,10 @@ class Bins(SubAnalysis):
     @staticmethod
     def get_angle(bin_size=.1, max_angle=4):
         return Bins.make(-max_angle, max_angle, bin_size)
+
+    @staticmethod
+    def get_chi2(bin_size=.1, chi_max=100):
+        return Bins.make(0, chi_max, bin_size)
     # endregion TELESCOPE
     # ----------------------------------------
 
