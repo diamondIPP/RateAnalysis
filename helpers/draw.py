@@ -630,6 +630,7 @@ def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, r
         p.SetOptFit(int(fit))
         p.SetStatFormat(choose(form, '1.1f'))
         p.SetFitFormat(form) if form is not None else do_nothing()
+        p.Draw()
         update_canvas(c)
 
 
