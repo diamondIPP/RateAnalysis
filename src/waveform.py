@@ -4,10 +4,11 @@
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TMultiGraph
-from numpy import fft, argmax, array_split
+from numpy import fft, argmax, array_split, sum
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 from helpers.fit import ErfLand
+from src.analysis import update_pbar
 
 
 class Waveform(PadSubAnalysis):
@@ -76,8 +77,10 @@ class Waveform(PadSubAnalysis):
         imax = max(where(cut)[0]) + 1
         return array(self.get_all(channel)[:imax])[cut[:imax]].flatten()
 
-    def get_times(self, signal_corr=True, cut=None, n=None):
+    def get_times(self, signal_corr=True, cut=None, n=None, raw=False):
         cut = self.get_cut(cut, n)
+        if raw:
+            return tile(arange(self.NSamples) * self.BinWidth, count_nonzero(cut))
         t = self.get_all_calibrated_times(cut)
         return (self.correct_times(t, cut) if signal_corr else t).flatten()
 
@@ -140,18 +143,18 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, signal_corr=False, n=None, x_range=None, y_range=None, cut=None, channel=None, grid=True, **kwargs):
+    def draw_all(self, signal_corr=False, raw=False, n=None, x_range=None, y_range=None, cut=None, channel=None, grid=True, **kwargs):
         n = choose(n, 100000)
-        y, x, bins = self.get_values(cut, channel, n), self.get_times(signal_corr, cut, n), self.get_binning() + make_bins(-512, 512.1, .5)
+        y, x, bins = self.get_values(cut, channel, n), self.get_times(signal_corr, cut, n, raw), self.get_binning() + make_bins(-512, 512.1, .5)
         rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
         h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=grid, gridy=True, logz=True, draw_opt='col')
         return h, n
 
-    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, show=True, show_noise=False, draw_opt='ap'):
+    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, raw=False, show=True, show_noise=False, draw_opt='ap'):
         if ind is None:
             g, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
         else:
-            x, y = self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
+            x, y = arange(self.NSamples) if raw else self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
             g = self.Draw.graph(x, y, 'Single Waveform', **Draw.mode(3), grid=grid, gridy=True, draw_opt=draw_opt, show=show)
         if show_noise:
             self.__draw_noise()
@@ -287,15 +290,15 @@ class Waveform(PadSubAnalysis):
         x, y = self.get_max(h)
         return Draw.vertical_line(x, color=4, w=2)
 
-    def draw_buckets(self, start=0, n=8, tl=.04):
+    def draw_buckets(self, start=0, n=8, tl=.04, ts=.05):
         c = get_last_canvas()
-        x0 = self.Ana.SignalRegion[0] * self.BinWidth - (1 - start) * self.BunchSpacing
+        x0 = self.Ana.Peaks.get_bunch_range(start)[0]
         for i in range(n + 1):
             x = x0 + i * self.BunchSpacing
             Draw.vertical_line(x, style=3)
             Draw.vertical_line(x, c.GetUymax() * (1 - tl) + tl * c.GetUymin())
-            Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42)
-        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=.07)
+            Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42, size=ts)
+        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=ts)
 
     def draw_region(self, region=None, lw=2, show_leg=True, fill=False, opacity=None):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
@@ -354,6 +357,33 @@ class Waveform(PadSubAnalysis):
         self.draw_integral(h, xmin, xmax, color=4)
     # endregion SHOW INTEGRATION
     # ----------------------------------------
+
+    def integrate(self, i, r1=None, r2=None, t1=4, t2=6):
+        t, v = self.get_calibrated_times(self.get_trigger_cell(i)), self[i] * self.Polarity
+        r1, r2 = (r1, r2) if r1 is not None else self.Ana.SignalRegion * self.BinWidth
+        return self._integrate(t, v, r1, r2, t1, t2)
+
+    @update_pbar
+    def _integrate(self, t, v, r1, r2, t1, t2):
+        ir = where((t > r1) & (t < r2))[0]
+        tmax = t[argmax(abs(v)[ir]) + ir[0]]
+        i = where((t >= tmax - t1) & (t <= tmax + t2))[0]
+        i = arange(i[0] - 1, i[-1] + 2)  # include values left and right
+        t, v = t[i], v[i]
+        v = concatenate([[get_y(t[0], t[1], v[0], v[1], tmax - t1)], v[1:-1], [get_y(t[-2], t[-1], v[-2], v[-1], tmax + t2)]])
+        t = concatenate([[tmax - t1], t[1:-1], [tmax + t2]])
+        print(t[2:-1] - t[1:-2])
+        print(v[2:-1] + v[1:-2])
+        print((t[1]-t[0])*(v[1] + v[0]), (t[-1]-t[-2])*(v[-1] + v[-2]), sum((t[2:-1] - t[1:-2]) * (v[1:-2] + v[2:-1])))
+        return sum((t[1:] - t[:-1]) * (v[:-1] + v[1:])) / 2 / (t1 + t2)
+
+    def get_integrals(self, sig_region=None, peak_int=None, redo=False):
+        def f():
+            t, v, tc = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)]), array(self.get_all()), self.get_trigger_cells()
+            (r1, r2), (t1, t2) = choose(sig_region, self.Ana.SignalRegion * self.BinWidth), choose(peak_int, array(self.Ana.PeakIntegral) * self.BinWidth)
+            self.PBar.start(tc.size)
+            return array([self._integrate(t[tc[i]], v[i], r1, r2, t1, t2) for i in range(tc.size)]).astype('f4')
+        return array(do_hdf5(self.make_simple_hdf5_path('Int', f'{sig_region}_{peak_int}'), f, redo=redo))
 
     def __draw_noise(self, pol=True):
         c = get_last_canvas()
