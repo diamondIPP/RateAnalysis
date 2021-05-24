@@ -67,8 +67,14 @@ class TimingAnalysis(PadSubAnalysis):
     # --------------------------
     # region RAW
     def draw_raw_peaks(self, xmin=100, xmax=400, bin_width=1., ch=None, corr=False, cut='', show=True):
-        x = self.get_tree_vec(var=self.get_raw_var(corr, ch), cut=self.Cut(cut))
+        x = self.get_tree_vec(self.get_raw_var(corr, ch), self.Cut(cut))
         return self.Draw.distribution(x, make_bins(xmin, xmax, bin_width), x_tit='Time [ns]' if corr else 'Digitiser Bin', show=show, x_range=ax_range(x[(x > xmin) & (x < xmax)], thresh=4))
+
+    def get_raw(self, cut=None, redo=False):
+        def f():
+            x = self.get_tree_vec(self.get_raw_var(corr=True), self.Cut(cut))
+            return fit_fwhm(self.Draw.distribution(x, make_bins(*self.Ana.SignalRegion * self.DigitiserBinWidth, self.DigitiserBinWidth / 2), show=False))[1]
+        return do_pickle(self.make_simple_pickle_path('RawMean', self.Cut(cut).GetName()), f, redo=redo)
 
     def draw_max_peaks(self, cut=None):
         h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=True, show=False, cut=self.TimingCut(cut))
@@ -78,9 +84,7 @@ class TimingAnalysis(PadSubAnalysis):
     def create_run_config(self, ch=None, off=0):
         h0, h1 = [self.draw_raw_peaks(max(5, xmin - off), xmax - off, ch=ch, show=False) for xmin, xmax in [(50, 450), (400, 900)]]
         m, bw = int(round(h0.GetMean())), int(round(self.BunchSpacing / self.DigitiserBinWidth))
-        print('signal_a_region = [{0}, {0}]'.format(m))
         print('signal_b_region = [{}, {}]'.format(m - bw // 2, m + bw // 2))
-        print('signal_e_region = [{}, {}]'.format(m - 3 * bw // 2, m + 3 * bw // 2))
         print('pedestal_ab_region = [{0}, {0}]'.format(m - bw))
         pmin, pmax = array(ax_range(h=h1, thresh=.1 * h1.GetMaximum(), fl=.3, fh=.3)).round().astype('i')
         print('pulser_region = [{}, {}]'.format(pmin, pmax))
