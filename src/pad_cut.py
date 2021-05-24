@@ -316,11 +316,6 @@ class PadCut(Cut):
         h = self.Ana.draw_hitmap(cut=self.get_pre_bucket() if pre else self.get_bucket(), show=show, res=res)
         format_histo(h, title='Bucket Hit Map', **{n: v for n, v in zip(['x_range', 'y_range'], ax_range(1, 1, .1, .1, h))})
 
-    def draw_bucket_pedestal(self, show=True, corr=True, additional_cut=''):
-        xbins = Bins.make(*array(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_e']) * self.Ana.DigitiserBinWidth, bin_width=.5)
-        cut_string = self.generate_custom(exclude='bucket') + TCut(additional_cut)
-        self.Ana.draw_ph_peaktime(region='e', cut=cut_string, fine_corr=corr, prof=False, show=show, xbins=xbins, logz=True)
-
     def draw_bucket_distributions(self):
         cuts = [self.generate_custom(exclude='bucket', name='nobucket'), self.generate_custom(exclude='bucket', name='prebucket') + self.generate_pre_bucket()(), None]
         histos = [self.Ana.draw_signal_distribution(cut=cut, show=False) for cut in cuts]

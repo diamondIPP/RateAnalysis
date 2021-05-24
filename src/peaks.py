@@ -29,10 +29,10 @@ class PeakAnalysis(PadSubAnalysis):
         self.NoiseThreshold = self.calc_noise_threshold()
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
         self.BinWidth = self.DigitiserBinWidth
-        self.StartAdditional = self.get_start_additional()
-        self.NBunches = self.calc_n_bunches()
-        self.MaxBunch = self.NBunches + 3
         self.BunchSpacing = self.Ana.BunchSpacing
+        self.StartAdditional = self.get_bunch_centre() + 1.5 * self.BunchSpacing
+        self.NBunches = self.calc_n_bunches()
+        self.MaxBunch = self.NBunches + 2
         self.Fit = TF1('lan', 'landau', 0, 512)
 
     # ----------------------------------------
@@ -41,16 +41,15 @@ class PeakAnalysis(PadSubAnalysis):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
         return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
-    def get_start_additional(self, b0=None):
-        """Set the start of the additional peaks 2.5 bunches after the signal peak to avoid the biased bunches after the signal. Signalbunch = bunch 1 """
-        return int(self.Run.IntegralRegions[self.DUT.Number - 1]['signal_a'][0] + self.Ana.BunchSpacing * (choose(b0, 4) - 1.5) / self.BinWidth)
+    def get_bunch_centre(self, b=None):
+        return self.Ana.Timing.get_raw().n + (choose(b, 1) - 1) * self.BunchSpacing
 
     def get_bunch_range(self, b0=None, b_end=None, bins=False):
-        rng = array([self.get_start_additional(b0), self.get_start_additional(choose(b_end, self.NBunches + 4))])
-        return rng.tolist() if bins else rng * self.BinWidth
+        rng = array([self.get_bunch_centre(b0), self.get_bunch_centre(choose(b_end, self.MaxBunch + 1))]) - self.BunchSpacing / 2
+        return (rng / self.BinWidth).round().astype('i').tolist() if bins else rng
 
     def calc_n_bunches(self):
-        return int((self.Run.NSamples - self.StartAdditional) * self.BinWidth / self.BunchSpacing)
+        return int((self.Run.NSamples * self.BinWidth - self.StartAdditional) / self.BunchSpacing)
     # endregion INIT
     # ----------------------------------------
 
@@ -100,8 +99,8 @@ class PeakAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_binning(self, bin_size=None, n=None):
-        return self.WF.get_binning(bin_size) if n is None else make_bins(*self.get_bunch_range(n, n + 1), choose(bin_size, self.BinWidth), last=True)
+    def get_binning(self, bin_size=None, n1=None, n2=None):
+        return self.WF.get_binning(bin_size) if n1 is None else make_bins(*self.get_bunch_range(n1, choose(n2, n1 + 1)), choose(bin_size, self.BinWidth), last=True)
 
     def get_n_events(self):
         return count_nonzero(self.Ana.get_pulser_cut())
@@ -314,7 +313,7 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_spacing_vs_peaktime(self, n=3, bin_size=.2, ecut=True, **kwargs):
         cut = self.get_spacing_cut(n, ecut)
         y, t = self.get_spacings(n, cut), self.get_times(flat=True, cut=cut)[::2]
-        self.Draw.profile(t, y, self.get_binning(bin_size, n=1), x_tit='Signal Peak Time [ns]', y_tit='Bunch Spacing [ns]', **kwargs)
+        self.Draw.profile(t, y, self.get_binning(bin_size, n1=1), x_tit='Signal Peak Time [ns]', y_tit='Bunch Spacing [ns]', **kwargs)
 
     def draw_all_spacings(self, show=True, ecut=True, redo=False):
         self.PBar.start(self.NBunches) if redo or not file_exists(self.make_simple_pickle_path(f'Spacing{self.NBunches + 3}')) else do_nothing()
@@ -339,9 +338,9 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_additional(self, h=None, show=True):
         """draw heights of the additinoal peaks in the peak time distribution"""
-        h = choose(h, self.draw(show=False, bin_size=.2, fit=True))
-        y = get_hist_vec(h, err=False)[int(self.StartAdditional * 2.5):]
-        peaks = find_peaks(y, height=max(y) / 2, distance=self.BunchSpacing * 2.5)[0] + int(self.StartAdditional * 2.5)
+        h = choose(h, self.draw(show=False, bin_size=.2, fit=True, cut=self.get_pulser_cut()))
+        y = get_hist_vec(h, err=False)[h.FindBin(self.StartAdditional):]
+        peaks = find_peaks(y, height=max(y) / 2, distance=self.BunchSpacing * 2.5)[0] + h.FindBin(self.StartAdditional)
         fits = array([FitRes(h.Fit('gaus', 'qs0', '', h.GetBinCenter(i - 10), h.GetBinCenter(i + 10))) for i in peaks.tolist()])
         g = self.Draw.graph(fits[:, 1], fits[:, 0], title='Additional Peak Heights', show=show, gridy=True, **Draw.mode(2))
         g.Fit('pol0', 'qs')
@@ -368,6 +367,11 @@ class PeakAnalysis(PadSubAnalysis):
             Draw.tpad(transparent=True, lm=.12, rm=.12, c=c)
             g.Draw('apy+')
             return update_canvas(c)
+
+    def draw_bucket_pedestal(self, n1=0, n2=5, npeaks=1, i=None, **kwargs):
+        cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial'], name='buc')) & (self.get_npeaks() == npeaks)
+        x, y = self.get_times(flat=True, cut=cut, fit=True)[::npeaks], choose(i, self.Ana.get_ph_values, cut='')[cut]
+        self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]', gridy=True, logz=True, **kwargs)
 
     def draw_bunch_height_vs_time(self, n=1, bin_width=.2, cut=None, fit=False, cft=False, **kwargs):
         x, y = self.get_bunch_times(n, cut=cut, fit=fit, cft=cft), self.get_bunch_heights(n, cut=cut, fit=True if cft else fit)
@@ -435,10 +439,10 @@ class PeakAnalysis(PadSubAnalysis):
     # ----------------------------------------
     # region FIND
     def find_bunches(self, center=False, bin_size=.5, show=False):
-        h = self.draw(corr=False, show=show, bin_size=bin_size)
-        values = get_hist_vec(self.draw(corr=False, show=False, bin_size=bin_size))[self.StartAdditional:]
+        h = self.draw(corr=False, show=show, bin_size=bin_size, cut=self.get_pulser_cut())
+        values = get_hist_vec(h)[h.FindBin(self.StartAdditional):]
         peaks, d = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.BunchSpacing)
-        peaks += self.StartAdditional
+        peaks += h.FindBin(self.StartAdditional)
         fit_peaks = []
         for p, ph in zip(peaks, d['peak_heights']):
             low, hi = int(p - 4 / bin_size), int(p + 4 / bin_size)
@@ -625,7 +629,7 @@ class PeakAnalysis(PadSubAnalysis):
         pt, ph, noise = self.get_bunch_time().n, self.get_bunch_height().n, self.Ana.Pedestal.get_raw_noise().n
         self.PBar.start(int(n))
         times = array([self._get_peak_time(i, model, ph, pt, noise=noise, *args, **kwargs) for i in range(self.PBar.N)])
-        return self.Draw.distribution(times, self.get_binning(n=1), 'Raw Model Peak Times', x_tit='Signal Peak Time [ns]', stats=set_statbox(entries=True, w=.2))
+        return self.Draw.distribution(times, self.get_binning(n1=1), 'Raw Model Peak Times', x_tit='Signal Peak Time [ns]', stats=set_statbox(entries=True, w=.2))
 
     def _get_model_data(self, i, model, cft, *args, **kwargs):
         x, y = self.get_signal(model, *args, **kwargs)
@@ -660,7 +664,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_model(self, n=1e5, bin_width=.2, cft=False, redo=False, **kwargs):
         x, y = self.model1(n, cft=cft, redo=redo)
-        return self.Draw.profile(x, y, self.get_binning(bin_width, n=1), y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', **kwargs)
+        return self.Draw.profile(x, y, self.get_binning(bin_width, n1=1), y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', **kwargs)
     # endregion MODEL
     # ----------------------------------------
 
