@@ -30,7 +30,8 @@ class PeakAnalysis(PadSubAnalysis):
         self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
         self.BinWidth = self.DigitiserBinWidth
         self.BunchSpacing = self.Ana.BunchSpacing
-        self.StartAdditional = self.get_bunch_centre() + 1.5 * self.BunchSpacing
+        self.NAdd = 3
+        self.StartAdditional = self.get_bunch_centre() + (self.NAdd - 1 - .5) * self.BunchSpacing  # half bunch before the centre of NAdd
         self.NBunches = self.calc_n_bunches()
         self.MaxBunch = self.NBunches + 2
         self.Fit = TF1('lan', 'landau', 0, 512)
@@ -115,12 +116,12 @@ class PeakAnalysis(PadSubAnalysis):
     def get_lambda(self, ecut=None, thresh=None, fit=True, corr=True):
         """calculate average number of peaks for single bunch."""
         cut = choose(ecut, self.Ana.get_pulser_cut())
-        n_events, n_peaks = count_nonzero(cut), self.get_n_total(self.e2pcut(cut, thresh), thresh=thresh, fit=fit, corr=corr)
+        n_events, n_peaks = count_nonzero(cut), self.get_n_total(self.e2pcut(cut, thresh), self.NAdd, self.MaxBunch + 1, thresh=thresh, fit=fit, corr=corr)
         return -ulog(1 - n_peaks / n_events / self.NBunches)  # calc lambda based on the number of events with no peak
 
     def get_flux(self, lam=None, n_bunches=None, thresh=None, fit=True, prnt=True, corr=True):
         n_bunches = 1 if lam is None else choose(n_bunches, self.NBunches)
-        flux = choose(lam, self.get_lambda(thresh=thresh, fit=fit, corr=corr)) / (self.Ana.BunchSpacing * n_bunches * self.DUT.get_area()) * 1e6  # ns -> ms (kHz)
+        flux = choose(lam, self.get_lambda(thresh=thresh, fit=fit, corr=corr)) / (self.BunchSpacing * n_bunches * self.DUT.get_area()) * 1e6  # ns -> ms (kHz)
         self.info('Estimated flux by number of peaks: {}'.format(make_flux_string(flux, term=True)), prnt=prnt)
         return flux
 
@@ -144,9 +145,9 @@ class PeakAnalysis(PadSubAnalysis):
     def get_eff_b0(self):
         return (self.get_n_total(b0=0, corr=False) - self.get_n_consecutive(corr=False, n_peaks=True)) / (self.get_p() * self.get_n_events())
 
-    def get_p_extra(self):
-        scale = self.get_n_total(b0=1) / self.get_n_events()  # assume the additional miss as many events as the signal
-        return (1 - poisson.cdf(0, self.get_lambda().n)) / scale
+    def get_p_extra(self, scale=True):
+        s = self.get_n_total(b0=1) / self.get_n_events()  # assume the additional miss as many events as the signal
+        return (1 - poisson.cdf(0, self.get_lambda().n)) / (s.n if scale else 1)
 
     def get_n_consecutive(self, n=2, corr=True, n_peaks=False):
         if n_peaks:  # just calculate the number of observed peak
