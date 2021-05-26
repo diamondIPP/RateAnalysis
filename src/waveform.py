@@ -366,15 +366,12 @@ class Waveform(PadSubAnalysis):
     @update_pbar
     def _integrate(self, t, v, r1, r2, t1, t2):
         ir = where((t > r1) & (t < r2))[0]
-        tmax = t[argmax(abs(v)[ir]) + ir[0]]
+        tmax = t[argmax(v[ir]) + ir[0]]
         i = where((t >= tmax - t1) & (t <= tmax + t2))[0]
         i = arange(i[0] - 1, i[-1] + 2)  # include values left and right
         t, v = t[i], v[i]
         v = concatenate([[get_y(t[0], t[1], v[0], v[1], tmax - t1)], v[1:-1], [get_y(t[-2], t[-1], v[-2], v[-1], tmax + t2)]])
         t = concatenate([[tmax - t1], t[1:-1], [tmax + t2]])
-        print(t[2:-1] - t[1:-2])
-        print(v[2:-1] + v[1:-2])
-        print((t[1]-t[0])*(v[1] + v[0]), (t[-1]-t[-2])*(v[-1] + v[-2]), sum((t[2:-1] - t[1:-2]) * (v[1:-2] + v[2:-1])))
         return sum((t[1:] - t[:-1]) * (v[:-1] + v[1:])) / 2 / (t1 + t2)
 
     def get_integrals(self, sig_region=None, peak_int=None, redo=False):
