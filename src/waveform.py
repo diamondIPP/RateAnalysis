@@ -378,6 +378,7 @@ class Waveform(PadSubAnalysis):
         def f():
             t, v, tc = array([self.get_calibrated_times(tc) for tc in range(self.NSamples)]), array(self.get_all()), self.get_trigger_cells()
             (r1, r2), (t1, t2) = choose(sig_region, self.Ana.SignalRegion * self.BinWidth), choose(peak_int, array(self.Ana.PeakIntegral) * self.BinWidth)
+            self.info(f'averaging waveforms around peak in region [{r1:.1f}, {r2:.1f}] with a range of [{t1:.0f}, {t2:.0f}]')
             self.PBar.start(tc.size)
             return array([self._integrate(t[tc[i]], v[i], r1, r2, t1, t2) for i in range(tc.size)]).astype('f4')
         return array(do_hdf5(self.make_simple_hdf5_path('Int', f'{sig_region}_{peak_int}'), f, redo=redo))
