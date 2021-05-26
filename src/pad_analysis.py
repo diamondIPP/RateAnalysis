@@ -180,9 +180,9 @@ class PadAnalysis(DUTAnalysis):
             :param cut: applies all cuts if None is provided."""
         return self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut(cut))
 
-    def get_ph_values(self, region=None, name=None, cut=None):
+    def get_ph_values(self, region=None, name=None, evnt_corr=True, cut=None):
         """ :returns: all pulse height values for a given cut. """
-        return self.Run.get_tree_vec(var=self.get_signal_var(name, cut=cut, region=region), cut=self.Cut(cut))
+        return self.Run.get_tree_vec(var=self.get_signal_var(name, evnt_corr, cut=cut, region=region), cut=self.Cut(cut))
 
     # @reload_tree
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
@@ -191,7 +191,7 @@ class PadAnalysis(DUTAnalysis):
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
-        return self.Peaks.get_signal_ph() if peaks else ufloat(ph.n, ph.s + sys_err)
+        return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
 
     def get_bucket_pulse_heights(self, redo=False):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
@@ -395,7 +395,7 @@ class PadAnalysis(DUTAnalysis):
         return h
 
     def draw_signal_vs_tot(self, bin_size=.5, show=True):
-        x, y = self.Peaks.get_all_tot(), self.Run.get_tree_vec(var=self.get_signal_var(), cut=self.Cut())
+        x, y = self.Peaks.get_tot(), self.Run.get_tree_vec(var=self.get_signal_var(), cut=self.Cut())
         cut = (x > 0) & (x < 3 * mean(x))
         m, s = mean_sigma(x[cut], err=False)
         return self.Draw.histo_2d(x[cut], y[cut], Bins.make(m - 4 * s, m + 4 * s, bin_size) + self.Bins.get_pad_ph(1), 'Pulse Height vs. ToT', y_tit='Pulse Height [mV]', x_tit='ToT [ns]', show=show)
@@ -406,17 +406,17 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(h, show=show)
 
     def draw_tot_vs_peaktime(self, corr=True, fine_corr=False, bin_size=None, show=True):
-        x, y = self.Run.get_tree_vec(var=self.Timing.get_peak_var(corr, fine_corr), cut=self.Cut()), self.Peaks.get_all_tot()
+        x, y = self.Run.get_tree_vec(var=self.Timing.get_peak_var(corr, fine_corr), cut=self.Cut()), self.Peaks.get_tot()
         cut = (y > 0) & (y < 3 * mean(y))
         self.Draw.profile(x[cut], y[cut], self.get_t_bins(bin_size), 'ToT vs. Peaktime', x_tit='Signal Peak Position [ns]', y_tit='ToT [ns]', stats=0, show=show)
 
-    def draw_signal_vs_cft(self, bin_size=None, thresh=.5, x=None, y=None, show=True):
-        x, y = choose(x, self.Peaks.get_all_cft(thresh)), choose(y, self.get_ph_values())
-        title = 'Signal vs {:.0f}% Constant Fraction Time'.format(thresh * 100)
+    def draw_signal_vs_cft(self, bin_size=None, x=None, y=None, show=True):
+        x, y = choose(x, self.Peaks.get_cft()), choose(y, self.get_ph_values())
+        title = 'Signal vs {:.0f}% Constant Fraction Time'
         return self.Draw.profile(x, y, self.get_t_bins(bin_size), title, x_tit='Constant Fraction Time [ns]', y_tit='Pulse Height [mV]', show=show)
 
     def draw_signal_vs_times(self, bin_size=.2, show=True):
-        x, y, zz = array(self.Peaks.get_from_tree()), self.Peaks.get_all_cft(), self.get_ph_values()
+        x, y, zz = array(self.Peaks.get_from_tree()), self.Peaks.get_cft(), self.get_ph_values()
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_triggercell(self, bin_width=10, t_corr=True, cut=None, show=True):
@@ -431,6 +431,12 @@ class PadAnalysis(DUTAnalysis):
         x = sum(array([ip for ip in self.Run.PeakIntegrals[self.DUT.Number - 1].values()]) / 2, axis=1)
         y = [self.get_pulse_height(sig=self.get_signal_name(peak_int=name)) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
+
+    def draw_bucket_ph(self, cut=None, bin_width=2, logz=True, redo=False, **kwargs):
+        cut = choose(cut, self.get_pulser_cut())
+        x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.SignalRegion * self.DigitiserBinWidth + self.BunchSpacing]]
+        self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
