@@ -67,11 +67,11 @@ class PadCut(Cut):
         # self.CutStrings.register(self.generate_timing(), 35)
         # self.CutStrings.register(self.generate_cft(), 36)
 
+        # --BUCKET --
+        self.CutStrings.register(self.generate_bucket(), 80)
+
         # -- FIDUCIAL --
         self.CutStrings.register(self.generate_fiducial(), 90)
-
-        # --BUCKET --
-        self.CutStrings.register(self.generate_bucket(), 36)
 
         # --SIGNAL DROPS--
         self.update('event range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
