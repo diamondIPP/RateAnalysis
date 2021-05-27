@@ -170,7 +170,7 @@ class DUTAnalysis(Analysis):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
-    def get_flux(self, plane=1, corr=True, full_size=False, show=False, redo=False):
+    def get_flux(self, plane=None, corr=True, full_size=False, show=False, redo=False):
         return self.Tel.get_flux(plane, corr, True, show, full_size, redo)
 
     def get_ph_values(self, *args, **kwargs):
@@ -307,7 +307,7 @@ class DUTAnalysis(Analysis):
 
     def _draw_ph_pull(self, evts_per_bin=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
         p = self.draw_pulse_height(evts_per_bin, show=False, save=False)[0]
-        h = get_pull(p, 'Signal Bin{0} Distribution'.format(Bins.get_size(evts_per_bin)), binning=Bins.get_pad_ph(bin_width) if binning is None else binning, fit=fit)
+        h = Draw.pull(p, choose(binning, Bins.get_pad_ph(bin_width)), title=f'Signal Bin{Bins.get_size(evts_per_bin)} Distribution')
         format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
         set_statbox(all_stat=True, fit=fit)
         self.Draw(h, 'SignalBin{0}Disto'.format(Bins.get_size(evts_per_bin)), save=save, lm=.12, show=show, stats=True)
