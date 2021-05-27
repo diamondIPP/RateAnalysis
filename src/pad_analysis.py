@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum
+from numpy import quantile, insert, sum, argmax
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -197,17 +197,32 @@ class PadAnalysis(DUTAnalysis):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
-    def get_bucket_ratio(self, fid=False, redo=False):
+    def get_bucket_ratio(self, all_cuts=False, redo=False):
         def f():
-            cut = self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial' if fid else []]), prnt=False)
+            cut = self.Cut.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
             return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
-        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(fid)), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(all_cuts)), f, redo=redo)
 
-    def get_bucket_tp_ratio(self, fid=False, show=False, redo=False):
+    def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
         def f():
-            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(fid), show=show))
+            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
             return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
-        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(fid)), f, redo=redo or show)
+        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(all_cuts)), f, redo=redo or show)
+
+    def get_bucket_tp(self):
+        return argmax(get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(), show=False)))
+
+    def estimate_bucket_ratio(self):
+        # bucket ratio = .02, tp_buckets = .8
+        # return ufloat(.02, .005) * (1 - ufloat(.8, .05))
+        br = self.get_bucket_ratio(all_cuts=True)
+        tpr = self.get_bucket_tp_ratio(all_cuts=True)
+        return br * (1 - tpr)
+
+    def correct_ph(self, ph=None):
+        ph = choose(ph, self.get_pulse_height(cut=self.Cut.generate_custom(exclude='bucket', add=f'trigger_phase != {self.get_bucket_tp()}', name='buctmp')))
+        r = self.estimate_bucket_ratio()
+        return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
 
     def get_min_signal(self, name=None):
         h = self.draw_signal_distribution(show=False, save=False, sig=name)

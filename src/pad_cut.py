@@ -33,9 +33,9 @@ class PadCut(Cut):
     def get_pre_bucket(self):
         return CutString('!pre bucket', self.generate_custom(include=['pulser', 'fiducial', 'event range'], prnt=False) + self.generate_pre_bucket().invert())()
 
-    def get_bucket(self, fid=False):
-        fid = ['fiducial'] if fid else []
-        return self.generate_custom(include=['pulser', 'ped sigma', 'event range'] + fid, prnt=False, add=self.get('bucket', invert=True), name='!bucket')
+    def get_bucket(self, all_cuts=False):
+        cut = self.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
+        return CutString('!bucket', cut + self.get('bucket', invert=True))()
 
     def get_bad_bucket(self):
         return self.generate_custom(exclude='bucket') + self.generate_pre_bucket().invert() + TCut('{} > {}'.format(self.Ana.get_raw_signal_var(), self.get_bucket_threshold()))
