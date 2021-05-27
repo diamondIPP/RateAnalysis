@@ -323,7 +323,7 @@ def make_dia_str(dia):
 
 
 def make_list(value):
-    return array([value]).flatten()
+    return array([value], dtype=object).flatten()
 
 
 def uarr2n(arr):
