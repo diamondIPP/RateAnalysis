@@ -343,16 +343,9 @@ class PadCut(Cut):
         set_bin_labels(g, choose(names, self.get_consecutive(short).keys()))
         update_canvas()
 
-    def draw_signal_vs_signale(self, show=True):
-        x, y = self.get_tree_vec(var=[self.Ana.get_signal_var(), self.Ana.get_signal_var(region='e')], cut=self.generate_custom(exclude='bucket'))
-        names = self.Ana.SignalRegionName.title().replace('_', ' '), 'Signal E'
-        self.Draw.histo_2d(x, y, self.Bins.get_pad_ph(mean_ph=mean(x)) * 2, '{} vs. {}'.format(*names), x_tit='{} [mV]'.format(names[0]), y_tit='{} [mV]'.format(names[1]), pal=53, stats=0,
-                           show=show,
-                           z_off=1.4, logz=True)
-
     def draw_cut_vars(self, normalise=False, consecutive=False):
         values = [self.Ana.get_ph_values(cut=(self.generate_threshold() + cut).Value) for cut in (self.get_consecutive().values() if consecutive else self.get_strings(with_raw=True))]
-        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, self.Bins.get_pad_ph(mean_ph=mean(lst)), show=False))] for lst in values])
+        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, Bins.get_pad_ph(mean_ph=mean(lst)), show=False))] for lst in values])
         if normalise:
             v = v / mean(v, axis=0) + arange(3) / 100
         names = self.get_names(with_raw=True)
