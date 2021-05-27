@@ -432,10 +432,15 @@ class PadAnalysis(DUTAnalysis):
         y = [self.get_pulse_height(sig=self.get_signal_name(peak_int=name)) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
 
-    def draw_bucket_ph(self, cut=None, bin_width=2, logz=True, redo=False, **kwargs):
+    def draw_bucket_ph(self, cut=None, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
         cut = choose(cut, self.get_pulser_cut())
         x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.SignalRegion * self.DigitiserBinWidth + self.BunchSpacing]]
         self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+        if draw_cut:
+            m, s = self.Pedestal.get_under_signal()
+            v = m.n + 3 * s.n
+            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
+            Draw.legend([b], ['excluded'], y2=.822)
 
     # endregion PULSE HEIGHT
     # ----------------------------------------
