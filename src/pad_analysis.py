@@ -444,7 +444,7 @@ class PadAnalysis(DUTAnalysis):
 
     def get_bucket_tp_ratio(self, redo=False):
         def f():
-            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=f'bucket[{self.DUT.Number - 1}]', show=False))
+            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut['pulser'] + f'bucket[{self.DUT.Number - 1}]', show=False))
             return max(x) / sum(x)
         return do_pickle(self.make_simple_pickle_path('BuckTPRatio'), f, redo=redo)
 
