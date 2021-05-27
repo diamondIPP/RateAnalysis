@@ -446,7 +446,7 @@ class PadAnalysis(DUTAnalysis):
         def f():
             x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut['pulser'] + TCut(f'bucket[{self.DUT.Number - 1}]'), show=False))
             return max(x) / sum(x)
-        return do_pickle(self.make_simple_pickle_path('BuckTPRatio'), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('BucketTPRatio'), f, redo=redo)
 
     # endregion PULSE HEIGHT
     # ----------------------------------------

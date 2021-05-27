@@ -147,7 +147,7 @@ class PadCollection(AnalysisCollection):
         format_histo(mg, **self.get_x_args(), y_range=ax_range(concatenate(y), 0, .3, .3))
 
     def draw_bucket_tp_ratio(self, redo=False, **kwargs):
-        x, y = self.get_fluxes(), self.get_values('bucket tp ratios', self.Analysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('BuckeTPRatio'), redo=redo)
+        x, y = self.get_fluxes(), self.get_values('bucket tp ratios', self.Analysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('BucketTPRatio'), redo=redo)
         self.Draw.graph(x, y * 100, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
 
     # endregion CUTS

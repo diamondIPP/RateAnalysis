@@ -186,7 +186,7 @@ class AnalysisCollection(Analysis):
     def get_value(self, f, ana, **kwargs):
         return f(ana, **kwargs)
 
-    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
+    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
         pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
         self.info(f'Generating {what} ...', prnt=pbar)
@@ -194,8 +194,8 @@ class AnalysisCollection(Analysis):
         values = [self.get_value(f, ana, **kwargs) for ana in self.get_analyses(runs)]
         return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
 
-    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
-        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, *args, **kwargs)
+    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, **kwargs):
+        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, **kwargs)
 
     @staticmethod
     def get_mode(vs_time):
