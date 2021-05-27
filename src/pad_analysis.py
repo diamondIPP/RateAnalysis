@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum
+from numpy import quantile, insert, sum, argmax
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -441,6 +441,12 @@ class PadAnalysis(DUTAnalysis):
             v = m.n + 3 * s.n
             lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
             Draw.legend([b], ['excluded'], y2=.822)
+
+    def get_bucket_tp_ratio(self, redo=False):
+        def f():
+            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=f'bucket[{self.DUT.Number - 1}]', show=False))
+            return max(x) / sum(x)
+        return do_pickle(self.make_simple_pickle_path('BuckTPRatio'), f, redo=redo)
 
     # endregion PULSE HEIGHT
     # ----------------------------------------
