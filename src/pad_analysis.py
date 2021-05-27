@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, argmax
+from numpy import quantile, insert, sum
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
