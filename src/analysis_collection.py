@@ -7,6 +7,7 @@ from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins
 from src.run_selection import RunPlan, RunSelection
 from helpers.draw import *
+from src.analysis import update_pbar
 
 
 class AnalysisCollection(Analysis):
@@ -181,15 +182,16 @@ class AnalysisCollection(Analysis):
     def get_currents(self):
         return [ana.Currents.get_current() for ana in self.Analyses]
 
-    def get_values(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
+    @update_pbar
+    def get_value(self, f, ana, **kwargs):
+        return f(ana, **kwargs)
+
+    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, *args, **kwargs):
         runs = choose(runs, self.Runs)
         pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
-        self.info('Generating {} ...'.format(string), prnt=pbar)
-        self.PBar.start(len(runs)) if pbar else do_nothing()
-        values = []
-        for ana in self.get_analyses(runs):
-            values.append(f(ana, *args, **kwargs))
-            self.PBar.update() if pbar else do_nothing()
+        self.info(f'Generating {what} ...', prnt=pbar)
+        self.PBar.start(len(runs), counter=True) if pbar else do_nothing()
+        values = [self.get_value(f, ana, **kwargs) for ana in self.get_analyses(runs)]
         return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
 
     def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, *args, **kwargs):
