@@ -197,11 +197,17 @@ class PadAnalysis(DUTAnalysis):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
-    def get_bucket_ratio(self, redo=False):
+    def get_bucket_ratio(self, fid=False, redo=False):
         def f():
-            cut = self.Cut['pulser'] + self.Cut['ped sigma']
+            cut = self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial' if fid else []]), prnt=False)
             return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
-        return do_pickle(self.make_simple_pickle_path('BucketRatio'), f, redo=redo)
+        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(fid)), f, redo=redo)
+
+    def get_bucket_tp_ratio(self, fid=False, show=False, redo=False):
+        def f():
+            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(fid), show=show))
+            return max(x) / sum(x)
+        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(fid)), f, redo=redo or show)
 
     def get_min_signal(self, name=None):
         h = self.draw_signal_distribution(show=False, save=False, sig=name)
@@ -432,8 +438,8 @@ class PadAnalysis(DUTAnalysis):
         y = [self.get_pulse_height(sig=self.get_signal_name(peak_int=name)) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
 
-    def draw_bucket_ph(self, cut=None, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
-        cut = choose(cut, self.get_pulser_cut())
+    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
+        cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
         x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.SignalRegion * self.DigitiserBinWidth + self.BunchSpacing]]
         self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
         if draw_cut:
@@ -441,13 +447,6 @@ class PadAnalysis(DUTAnalysis):
             v = m.n + 3 * s.n
             lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
             Draw.legend([b], ['excluded'], y2=.822)
-
-    def get_bucket_tp_ratio(self, redo=False):
-        def f():
-            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut['pulser'] + TCut(f'bucket[{self.DUT.Number - 1}]'), show=False))
-            return max(x) / sum(x)
-        return do_pickle(self.make_simple_pickle_path('BucketTPRatio'), f, redo=redo)
-
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
