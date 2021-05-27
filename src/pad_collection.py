@@ -136,7 +136,7 @@ class PadCollection(AnalysisCollection):
     # ----------------------------------------
     # region CUTS
     def draw_bucket_ratio(self, show=True, redo=False):
-        x, y = self.get_fluxes(), self.get_values('bucket events', self.Analysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 1), fid=True, redo=redo)
+        x, y = self.get_fluxes(), self.get_values('bucket events', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 1), fid=True, redo=redo)
         self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw=True), show=show)
 
     def draw_bucket_ph(self, show=True, redo=False):
@@ -146,8 +146,8 @@ class PadCollection(AnalysisCollection):
         mg = self.Draw.multigraph(graphs, 'Bucket Pulse Heights', ['no bucket', 'w/o thresh', 'with thresh'], y_tit='Pulse Height [mV]', show=show, logx=True)
         format_histo(mg, **self.get_x_args(), y_range=ax_range(concatenate(y), 0, .3, .3))
 
-    def draw_bucket_tp_ratio(self, redo=False, **kwargs):
-        x, y = self.get_fluxes(), self.get_values('bucket tp ratios', self.Analysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('BucketTPRatio', 1), redo=redo, fid=True)
+    def draw_bucket_tp_ratio(self, fid=True, redo=False, **kwargs):
+        x, y = self.get_fluxes(), self.get_values('bucket tp ratios', PadAnalysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('BucketTPRatio', int(fid)), redo=redo, fid=fid)
         self.Draw.graph(x, y * 100, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
 
     # endregion CUTS

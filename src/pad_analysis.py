@@ -206,7 +206,7 @@ class PadAnalysis(DUTAnalysis):
     def get_bucket_tp_ratio(self, fid=False, show=False, redo=False):
         def f():
             x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(fid), show=show))
-            return max(x) / sum(x)
+            return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
         return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(fid)), f, redo=redo or show)
 
     def get_min_signal(self, name=None):
