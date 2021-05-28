@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, argmax
+from numpy import quantile, insert, sum, argmax, round
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -192,6 +192,10 @@ class PadAnalysis(DUTAnalysis):
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
         return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
+
+    def get_bucket_region(self, w=.5):
+        """ width [w] in bunch spacings"""
+        return round(self.Peaks.get_bunch_centre(2) + self.BunchSpacing * array([-w / 2, w / 2]), 2)
 
     def get_bucket_pulse_heights(self, redo=False):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
@@ -455,13 +459,22 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
         cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
-        x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.SignalRegion * self.DigitiserBinWidth + self.BunchSpacing]]
+        x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
         self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
         if draw_cut:
             m, s = self.Pedestal.get_under_signal()
             v = m.n + 3 * s.n
             lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
             Draw.legend([b], ['excluded'], y2=.822)
+
+    def draw_bucket_pedestal(self, cut=None, bin_width=2, redo=False, **kwargs):
+        x = self.Waveform.get_integrals(self.get_bucket_region(), redo=redo)[self.get_event_cut(cut)]
+        self.Draw.distribution(x, Bins.get_pad_ph(bin_width), x_tit='Pulser Height [mV]', **kwargs)
+
+    def draw_bucket_profile(self, cut=None, bin_width=2, logz=True, redo=False, **kwargs):
+        x, y = [self.Waveform.get_integrals(r, redo=redo)[self.get_event_cut(cut)] for r in [None, self.get_bucket_region()]]
+        self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
