@@ -40,9 +40,9 @@ class MCSignal(object):
     def gen_noise(self, n=None):
         return normal(self.Pedestal, self.Noise, choose(n, self.N))
 
-    def gen_signal(self, n=None, w0=20, w1=20, m0=70, m1=85, p=.6):
+    def gen_signal(self, n=None, w0=20, w1=20, m0=70, m1=85, p=.6, cons=False):
         if self.Ana is not None:
-            return MCSignal.gen_sig_from_dist(self.Ana.draw_signal_distribution(show=False, prnt=False, evnt_corr=False), n=n)
+            return MCSignal.gen_sig_from_dist(self.Ana.draw_signal_distribution(show=False, prnt=False, evnt_corr=False), n=n) * (1.025 if cons else 1)
         g = concatenate([normal(choose(m, 80), choose(w, 20), round(choose(n, self.N) * ip)) for w, ip, m in [(w0, p, m0), (w1, 1 - p, m1)]])
         return [gRandom.Landau(ig, ig / 8) for ig in g]  # assuming R=FWHM/MPV=.5, FWHM=4*width
 
@@ -58,10 +58,10 @@ class MCSignal(object):
         xp = append((p - fits[1]) / fits[0] + (x[ip] - x[0] + (x[1] - x[0]) / 2), max(x))
         return xp[randint(0, p.size, size=n)]
 
-    def draw_signal_distribution(self, cut=...):
-        x = self.get_data()[0][cut]
+    def draw_signal_distribution(self, data=None, cut=...):
+        x = choose(data, self.get_data()[0])[cut]
         bins = self.Ana.Bins.get_pad_ph(2) if self.HasAna else None
-        self.Draw.distribution(x, bins, x_range=[-50, 400], x_tit='Pulse Height [mV]', lm=.15, y_off=2, w=1.2)
+        self.Draw.distribution(x, bins, x_range=[-50, 400], x_tit='Pulse Height [mV]', lm=.15, y_off=2)
 
     def get_data(self):
         b, s = self.get_bucket(), self.get_signal()
@@ -72,9 +72,9 @@ class MCSignal(object):
 
     def get_signal(self):
         n_sig = self.N - self.NBuc
-        p_cons = 0.025 if self.HasAna is None else self.Ana.Peaks.get_p_extra()
+        p_cons = 0.025 if self.HasAna is None else self.Ana.Peaks.get_p_extra(scale=False)
         self.NCons = round(n_sig * p_cons)
-        return self.gen_signal(n_sig), concatenate([self.gen_signal(self.NCons), self.gen_noise(n_sig - self.NCons)])
+        return self.gen_signal(n_sig), concatenate([self.gen_signal(self.NCons, cons=True), self.gen_noise(n_sig - self.NCons)])
 
     def get_thresh(self, s):
         return self.Pedestal + s * self.Noise
