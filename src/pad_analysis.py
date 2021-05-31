@@ -147,6 +147,9 @@ class PadAnalysis(DUTAnalysis):
             return '{} * {}'.format(pol, sig_name)
         return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name())
 
+    def get_b2_var(self):
+        return f'b2_integral[{self.DUT.Number - 1}]'
+
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
 
@@ -192,6 +195,9 @@ class PadAnalysis(DUTAnalysis):
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
         return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
+
+    def get_bucket_ph(self, cut=None):
+        return self.get_tree_vec(self.get_b2_var(), cut=self.Cut(cut))
 
     def get_bucket_region(self, w=.5):
         """ width [w] in bunch spacings"""
@@ -458,23 +464,30 @@ class PadAnalysis(DUTAnalysis):
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
 
     def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
-        cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
-        x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
+        cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
+        x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
+        # cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
+        # x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
         self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
         if draw_cut:
             m, s = self.Pedestal.get_under_signal()
             v = m.n + 3 * s.n
-            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
+            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2, show=False)
+            self.draw_b2_fit()
             Draw.legend([b], ['excluded'], y2=.822)
 
-    def draw_bucket_pedestal(self, cut=None, bin_width=2, redo=False, **kwargs):
-        x = self.Waveform.get_integrals(self.get_bucket_region(), redo=redo)[self.get_event_cut(cut)]
-        self.Draw.distribution(x, Bins.get_pad_ph(bin_width), x_tit='Pulser Height [mV]', **kwargs)
+    def draw_b2_fit(self, draw_opt='same', **kwargs):
+        fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
+        self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x +  {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500), draw_opt=draw_opt, **kwargs)
+        return self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x +  {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500)
 
-    def draw_bucket_profile(self, cut=None, bin_width=2, logz=True, redo=False, **kwargs):
-        x, y = [self.Waveform.get_integrals(r, redo=redo)[self.get_event_cut(cut)] for r in [None, self.get_bucket_region()]]
-        self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+    def draw_bucket_pedestal(self, bin_width=1, cut=None, **kwargs):
+        self.Draw.distribution(self.get_bucket_ph(cut), Bins.get_pad_ph(bin_width), x_tit='Pulse Height [mV]', **kwargs)
 
+    def draw_bucket_profile(self, cut=None, bin_width=2, logz=True, **kwargs):
+        cut = self.get_event_cut(Cut.to_string(self.Cut() if cut is None else cut))
+        x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
+        return self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
