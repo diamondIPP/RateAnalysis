@@ -218,6 +218,11 @@ class Draw(object):
         return Draw.polygon(*make_box_args(x1, y1, x2, y2), line_color, width, style, name, fillstyle, fillcolor, opacity, show)
 
     @staticmethod
+    def fypolygon(f, x1, x2, y, name=None, n=100, **kwargs):
+        x, y = array([(x, f(x)) for x in linspace(x1, x2, n)] + [(x2, y), (x1, y)]).T
+        Draw.polygon(x, y, name=name, **kwargs)
+
+    @staticmethod
     def tlatex(x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
         tlatex = TLatex(x, y, text)
         format_text(tlatex, name, align, color, size, angle, ndc, font)
