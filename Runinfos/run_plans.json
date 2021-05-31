@@ -2262,10 +2262,10 @@
     },
     "06.1": {
       "attenuators": {
-        "dia1": "None",
-        "dia2": "None",
-        "pulser1": "6DB_1",
-        "pulser2": "10DB_1"
+        "dia1": "?",
+        "dia2": "?",
+        "pulser1": "?",
+        "pulser2": "?"
       },
       "runs": [
         130,
@@ -2275,7 +2275,7 @@
         134,
         135
       ],
-      "type": "up_scan"
+      "type": "up scan"
     },
     "07": {
       "attenuators": {
