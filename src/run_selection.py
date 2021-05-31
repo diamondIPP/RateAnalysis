@@ -612,11 +612,14 @@ class RunSelector(object):
                 dic[int(run)] = data
         return dic
 
-    def get_high_rate_run(self, run):
+    def get_high_rate_run(self, run, high=True):
         runplans = [dic for dic in self.RunPlan.values() if run in dic['runs']]
         runs = array(next((dic['runs'] for dic in runplans if dic['type'] == 'up scan'), runplans[0]['runs']))
         fluxes = array([self.get_flux(run) for run in runs])
-        return runs[fluxes.argmax()]
+        return runs[fluxes.argmax() if high else fluxes.argmin()]
+
+    def get_low_rate_run(self, run):
+        return self.get_high_rate_run(run, high=False)
 
     def change_runinfo_key(self):
         keys = list(self.RunInfos[self.RunNumbers[0]].keys())
