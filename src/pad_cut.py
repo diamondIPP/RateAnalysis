@@ -166,7 +166,7 @@ class PadCut(Cut):
                 from src.pad_analysis import PadAnalysis
                 return PadAnalysis(self.Run.get_low_rate_run(), self.DUT.Number, self.TCString, prnt=False).Cut.get_b2_fit(redo)
             t = self.info(f'generating bucket cut for {self.Run} and {self.DUT}', endl=False)
-            h = self.Ana.draw_bucket_profile(self(), show=1)
+            h = self.Ana.draw_bucket_profile(self(), show=False)
             xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
             fit, ped = FitRes(h.Fit('pol2', 'qs', '', 10, xmax)), self.calc_pedestal(1)
             fit.Pars[0] -= self.Ana.get_polarity() * sum(ped) / 2  # subtract baseline
