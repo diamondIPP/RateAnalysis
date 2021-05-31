@@ -147,9 +147,6 @@ class PadAnalysis(DUTAnalysis):
             return '{} * {}'.format(pol, sig_name)
         return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name())
 
-    def get_b2_var(self):
-        return f'b2_integral[{self.DUT.Number - 1}]'
-
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
 
@@ -195,39 +192,6 @@ class PadAnalysis(DUTAnalysis):
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
         return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
-
-    def get_bucket_ph(self, cut=None):
-        return self.get_tree_vec(self.get_b2_var(), cut=self.Cut(cut))
-
-    def get_bucket_region(self, w=.5):
-        """ width [w] in bunch spacings"""
-        return round(self.Peaks.get_bunch_centre(2) + self.BunchSpacing * array([-w / 2, w / 2]), 2)
-
-    def get_bucket_pulse_heights(self, redo=False):
-        cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
-        return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
-
-    def get_bucket_ratio(self, all_cuts=False, redo=False):
-        def f():
-            cut = self.Cut.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
-            return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
-        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(all_cuts)), f, redo=redo)
-
-    def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
-        def f():
-            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
-            return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
-        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(all_cuts)), f, redo=redo or show)
-
-    def get_bucket_tp(self):
-        return argmax(get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(), show=False)))
-
-    def estimate_bucket_ratio(self):
-        # bucket ratio = .02, tp_buckets = .8
-        # return ufloat(.02, .005) * (1 - ufloat(.8, .05))
-        br = self.get_bucket_ratio(all_cuts=True)
-        tpr = self.get_bucket_tp_ratio(all_cuts=True)
-        return br * (1 - tpr)
 
     def correct_ph(self, ph=None):
         ph = choose(ph, self.get_pulse_height(cut=self.Cut.generate_custom(exclude='bucket', add=f'trigger_phase != {self.get_bucket_tp()}', name='buctmp')))
@@ -462,24 +426,65 @@ class PadAnalysis(DUTAnalysis):
         x = sum(array([ip for ip in self.Run.PeakIntegrals[self.DUT.Number - 1].values()]) / 2, axis=1)
         y = [self.get_pulse_height(sig=self.get_signal_name(peak_int=name)) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
+    # endregion PULSE HEIGHT
+    # ----------------------------------------
 
-    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, redo=False, **kwargs):
-        cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
-        x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
-        # cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
-        # x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
-        self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+    # ----------------------------------------
+    # region BUCKET
+    def get_b2_var(self):
+        return f'b2_integral[{self.DUT.Number - 1}]'
+
+    def get_bucket_ph(self, cut=None):
+        return self.get_tree_vec(self.get_b2_var(), cut=self.Cut(cut))
+
+    def get_bucket_region(self, w=.5):
+        """ width [w] in bunch spacings"""
+        return round(self.Peaks.get_bunch_centre(2) + self.BunchSpacing * array([-w / 2, w / 2]), 2)
+
+    def get_bucket_pulse_heights(self, redo=False):
+        cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
+        return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
+
+    def get_bucket_ratio(self, all_cuts=False, redo=False):
+        def f():
+            cut = self.Cut.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
+            return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
+        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(all_cuts)), f, redo=redo)
+
+    def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
+        def f():
+            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
+            return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
+        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(all_cuts)), f, redo=redo or show)
+
+    def get_bucket_tp(self):
+        return argmax(get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(), show=False)))
+
+    def estimate_bucket_ratio(self):
+        br = self.get_bucket_ratio(all_cuts=True)  # ratio of bucket events
+        tpr = self.get_bucket_tp_ratio(all_cuts=True)  # ratio of the bucket trigger phase
+        return br * (1 - tpr)
+
+    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, use_wf_int=False, redo=False, **kwargs):
+        if use_wf_int:
+            cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
+            x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
+        else:
+            cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
+            x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
+        h = self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
         if draw_cut:
             m, s = self.Pedestal.get_under_signal()
             v = m.n + 3 * s.n
-            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2, show=False)
-            self.draw_b2_fit()
-            Draw.legend([b], ['excluded'], y2=.822)
+            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
+            f = self.draw_b2_fit(color=1)
+            Draw.fypolygon(f, -100, 600, 1000, fill_color=2, opacity=.2, line_color=1)
+            Draw.legend([b, f], ['excluded', 'pedestal fit'], ['lf', 'l'], y2=.822)
+            format_statbox(h, entries=True, w=.2)  # draw above cut
 
     def draw_b2_fit(self, draw_opt='same', **kwargs):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
-        self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x +  {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500), draw_opt=draw_opt, **kwargs)
-        return self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x +  {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500)
+        return self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500, **kwargs), draw_opt=draw_opt)
 
     def draw_bucket_pedestal(self, bin_width=1, cut=None, **kwargs):
         self.Draw.distribution(self.get_bucket_ph(cut), Bins.get_pad_ph(bin_width), x_tit='Pulse Height [mV]', **kwargs)
