@@ -101,7 +101,7 @@ class PadCut(Cut):
     def generate_b2(self, n_sigma):
         fit, b1, b2, noise = self.get_b2_fit(), self.Ana.get_raw_signal_var(), self.Ana.get_b2_var(), self.calc_pedestal(n_sigma)[1]
         string = f'{b2} < {fit[0].n} + {fit[1].n} * {b1} +  {fit[2].n} * pow({b1}, 2) + {noise}'
-        descr = f'signals above 3 sigma in bucket 2 with pedestal shape {fit[0].n:.2f} + {fit[1].n:.2f} * x +  {fit[2].n:.2f} * x²'
+        descr = f'signals above 3 sigma in bucket 2 with pedestal shape {fit[0].n:.2f} + {fit[1].n:.2f} * x + {fit[2].n:.4f} * x²'
         return CutString('bucket2', string, descr)
 
     def generate_cft(self, n_sigma=3):
