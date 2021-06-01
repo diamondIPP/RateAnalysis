@@ -484,7 +484,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_b2_fit(self, draw_opt='same', **kwargs):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
-        return self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 3 * s}', -50, 500, **kwargs), draw_opt=draw_opt)
+        return self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 4 * s}', -50, 500, **kwargs), draw_opt=draw_opt)
 
     def draw_bucket_pedestal(self, bin_width=1, cut=None, **kwargs):
         self.Draw.distribution(self.get_bucket_ph(cut), Bins.get_pad_ph(bin_width), x_tit='Pulse Height [mV]', **kwargs)
