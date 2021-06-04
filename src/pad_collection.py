@@ -136,7 +136,7 @@ class PadCollection(AnalysisCollection):
     # ----------------------------------------
     # region CUTS
     def draw_bucket_ratio(self, show=True, redo=False):
-        x, y = self.get_fluxes(), self.get_values('bucket events', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 1), fid=True, redo=redo)
+        x, y = self.get_fluxes(), self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 'A1'), all_cuts=True, redo=redo)
         self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw=True), show=show)
 
     def draw_bucket_ph(self, show=True, redo=False):
