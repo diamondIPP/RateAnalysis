@@ -387,6 +387,10 @@ class Cut(SubAnalysis):
     def to_string(cut):
         return cut.GetTitle() if type(cut) is TCut else choose(cut, '')
 
+    @staticmethod
+    def make(name, cut):
+        return TCut(name, Cut.to_string(cut))
+
 
 class CutString:
 
