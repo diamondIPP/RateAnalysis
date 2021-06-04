@@ -387,10 +387,12 @@ class Draw(object):
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
 
-    def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None, **kwargs):
+    def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None,
+              bin_labels=None, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor))
-        self.histo(g, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
+        set_bin_labels(g, bin_labels)
+        self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
         return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
