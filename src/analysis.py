@@ -61,8 +61,9 @@ class Analysis(object):
             print('\nTESTCAMPAIGN: {}{}'.format(out, subset))
         return out
 
-    def get_test_campaigns(self):
-        return [basename(path).replace('_', '').strip('psi') for path in glob(join(self.DataDir, 'psi*'))]
+    @staticmethod
+    def get_test_campaigns():
+        return [basename(path).replace('_', '').strip('psi') for path in glob(join(Analysis.DataDir, 'psi*'))]
 
     def load_tc_directory(self, data_dir=None):
         return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
