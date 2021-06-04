@@ -40,7 +40,7 @@ def collection_selector(name, dut, tc, tree, verbose=False):
         critical('wrong run type: has to be in [pad, pixel]')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     aparser = init_argparser(run=392, tc=None, dut=1, tree=True, has_verbose=True, has_collection=True, return_parser=True)
 
@@ -50,8 +50,12 @@ if __name__ == "__main__":
     aparser.add_argument('-kw', '--kwargs', nargs='?', help='key word arguments as dict {"show": 1}', default='{}')
     pargs = aparser.parse_args()
 
-    if not pargs.collection:
-        z = analysis_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
+    from src.analysis import Analysis
+    from os import getcwd
+    tc = next((tc for tc in Analysis.get_test_campaigns() if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), pargs.testcampaign)
+
+    if not pargs.collection and isint(pargs.runplan):
+        z = analysis_selector(pargs.runplan, pargs.dut, tc, pargs.tree, pargs.verbose)
         try:
             p = z.Peaks if pargs.tree else None
             pul = z.Pulser if pargs.tree else None
@@ -64,7 +68,10 @@ if __name__ == "__main__":
             pass
         if pargs.draw:
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    else:
-        z = collection_selector(pargs.runplan, pargs.dut, pargs.testcampaign, pargs.tree, pargs.verbose)
+    elif isfloat(pargs.runplan):
+        z = collection_selector(pargs.runplan, pargs.dut, tc, pargs.tree, pargs.verbose)
         if pargs.draw:
             z.draw_all(redo=pargs.redo)
+    else:
+        from src.runplan_selection import DiaScans
+        z = DiaScans(pargs.runplan, pargs.verbose)
