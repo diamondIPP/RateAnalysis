@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, argmax, round
+from numpy import quantile, insert, sum, round
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -10,7 +10,6 @@ from src.peaks import PeakAnalysis
 from src.pulser import PulserAnalysis
 from src.waveform import Waveform
 from src.mc_signal import MCSignal
-from src.analysis import update_pbar
 
 
 class PadAnalysis(DUTAnalysis):
@@ -445,20 +444,19 @@ class PadAnalysis(DUTAnalysis):
         cuts = [self.Cut.generate_custom(exclude='bucket', name='nobucket', prnt=0), self.Cut.generate_custom(exclude='bucket', name='prebucket', prnt=0) + self.Cut.generate_pre_bucket()(), None]
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
-    def get_bucket_ratio(self, all_cuts=False, redo=False):
+    @update_pbar
+    def get_bucket_ratio(self, cut=None, all_cuts=False, redo=False):
+        """ return fraction of bucket events with no signal in the signal region. """
         def f():
-            cut = self.Cut.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
-            return 1 - self.get_n_entries(cut + self.Cut['bucket']) / self.get_n_entries(cut)
-        return do_pickle(self.make_simple_pickle_path('BucketRatio', int(all_cuts)), f, redo=redo)
+            c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.Cut.ConsecutiveCuts['beam stops'])
+            return 1 - self.get_n_entries(c + self.Cut['bucket']) / self.get_n_entries(c)
+        return do_pickle(self.make_simple_pickle_path('BucketRatio', f'A{int(all_cuts)}' if cut is None else self.Cut(cut).GetName()), f, redo=redo)
 
     def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
         def f():
             x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
             return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
         return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(all_cuts)), f, redo=redo or show)
-
-    def get_bucket_tp(self):
-        return argmax(get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(), show=False)))
 
     def estimate_bucket_ratio(self):
         br = self.get_bucket_ratio(all_cuts=True)  # ratio of bucket events
@@ -493,6 +491,17 @@ class PadAnalysis(DUTAnalysis):
         cut = self.get_event_cut(Cut.to_string(self.Cut() if cut is None else cut))
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
         return self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+
+    def draw_bucket_fraction(self, redo=False, **kwargs):
+        cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
+        cuts['trigger phase'] = Cut.make(f'{len(cuts) + 1}', list(cuts.values())[-1] + self.Cut.generate_trigger_phase()())
+        self.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('BucketRatio', len(cuts) - 1)) else do_nothing()
+        y = array([self.get_bucket_ratio(cut, redo=redo) for cut in cuts.values()])
+        self.Draw.graph(arange(y.size), y * 100, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), **kwargs, y_range=[0, max(y) * 110])
+
+    def draw_bucket_map(self, **kwargs):
+        cut = self.Cut.get('bucket', invert=True) + self.Cut.generate_custom(exclude=['bucket', 'bucket2', 'fiducial'])
+        self.draw_hitmap(cut=cut, **kwargs)
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
