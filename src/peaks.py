@@ -15,7 +15,6 @@ from uncertainties.umath import log as ulog, sqrt as usqrt
 from helpers.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
-from src.analysis import update_pbar
 
 
 class PeakAnalysis(PadSubAnalysis):

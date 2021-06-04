@@ -8,7 +8,6 @@ from numpy import fft, argmax, array_split, sum
 from src.sub_analysis import PadSubAnalysis
 from helpers.draw import *
 from helpers.fit import ErfLand
-from src.analysis import update_pbar
 
 
 class Waveform(PadSubAnalysis):

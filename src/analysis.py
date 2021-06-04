@@ -4,16 +4,6 @@ from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
 from os.path import getsize
-from functools import wraps
-
-
-def update_pbar(func):
-    @wraps(func)
-    def my_func(*args, **kwargs):
-        if args[0].PBar is not None and args[0].PBar.PBar is not None and not args[0].PBar.is_finished():
-            args[0].PBar.update()
-        return func(*args, **kwargs)
-    return my_func
 
 
 class Analysis(object):

@@ -6,7 +6,6 @@
 from numpy import append, column_stack, polyfit, argmax
 from src.event_alignment import *
 from helpers.draw import Draw
-from src.analysis import update_pbar
 
 
 class PixAlignment(EventAligment):

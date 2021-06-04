@@ -7,7 +7,6 @@ from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins
 from src.run_selection import RunPlan, RunSelection
 from helpers.draw import *
-from src.analysis import update_pbar
 
 
 class AnalysisCollection(Analysis):
