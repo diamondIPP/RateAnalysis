@@ -52,10 +52,10 @@ if __name__ == '__main__':
 
     from src.analysis import Analysis
     from os import getcwd
-    tc = next((tc for tc in Analysis.get_test_campaigns() if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), pargs.testcampaign)
+    this_tc = next((tc for tc in Analysis.get_test_campaigns() if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), pargs.testcampaign)
 
     if not pargs.collection and isint(pargs.runplan):
-        z = analysis_selector(pargs.runplan, pargs.dut, tc, pargs.tree, pargs.verbose)
+        z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             p = z.Peaks if pargs.tree else None
             pul = z.Pulser if pargs.tree else None
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         if pargs.draw:
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
     elif isfloat(pargs.runplan):
-        z = collection_selector(pargs.runplan, pargs.dut, tc, pargs.tree, pargs.verbose)
+        z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         if pargs.draw:
             z.draw_all(redo=pargs.redo)
     else:
