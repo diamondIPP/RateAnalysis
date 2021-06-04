@@ -104,6 +104,10 @@ class PadCut(Cut):
         descr = f'signals above 3 sigma in bucket 2 with pedestal shape {fit[0].n:.2f} + {fit[1].n:.2f} * x + {fit[2].n:.4f} * x²'
         return CutString('bucket2', string, descr)
 
+    def generate_trigger_phase(self):
+        tps = (arange(3) - 1 + self.get_trigger_phase()) % 10  # also exclude the two tps around the most probable
+        return CutString('trigger phase', ' && '.join(f'trigger_phase != {i}' for i in tps), f'trigger phase != {tps}')
+
     def generate_cft(self, n_sigma=3):
         fit = self.calc_cft()
         m, s = fit.Parameter(1), fit.Parameter(2)
@@ -173,6 +177,14 @@ class PadCut(Cut):
             self.add_to_info(t)
             return fit
         return do_pickle(self.make_simple_pickle_path('B2Fit', run=self.Run.get_low_rate_run()), f, redo=redo)
+
+    def get_trigger_phase(self, show=False, redo=False):
+        def f():
+            if not self.Run.get_high_rate_run() == self.Run.Number:
+                from src.pad_analysis import PadAnalysis
+                return PadAnalysis(self.Run.get_high_rate_run(), self.DUT.Number, self.TCString, prnt=False).Cut.get_trigger_phase(show, redo)
+            return argmax(get_hist_vec(self.Ana.Tel.draw_trigger_phase(cut=self.get_bucket() + self.generate_fiducial()(), show=show)))
+        return do_pickle(self.make_simple_pickle_path('TP', run=self.Run.get_high_rate_run()), f, redo=redo or show)
 
     def calc_pedestal(self, n_sigma):
         def f():
