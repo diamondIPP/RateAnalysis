@@ -449,7 +449,9 @@ class PadAnalysis(DUTAnalysis):
         """ return fraction of bucket events with no signal in the signal region. """
         def f():
             c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.Cut.ConsecutiveCuts['beam stops'])
-            return 1 - self.get_n_entries(c + self.Cut['bucket']) / self.get_n_entries(c)
+            n = self.get_n_entries(c)
+            n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
+            return ufloat(n_bucket, sqrt(n_bucket)) / n
         return do_pickle(self.make_simple_pickle_path('BucketRatio', f'A{int(all_cuts)}' if cut is None else self.Cut(cut).GetName()), f, redo=redo)
 
     def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
