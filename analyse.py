@@ -51,8 +51,7 @@ if __name__ == '__main__':
     pargs = aparser.parse_args()
 
     from src.analysis import Analysis
-    from os import getcwd
-    this_tc = next((tc for tc in Analysis.get_test_campaigns() if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), pargs.testcampaign)
+    this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
     if not pargs.collection and isint(pargs.runplan):
         z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)

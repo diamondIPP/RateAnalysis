@@ -4,6 +4,7 @@ from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
 from os.path import getsize
+from os import getcwd
 
 
 class Analysis(object):
@@ -64,6 +65,10 @@ class Analysis(object):
     @staticmethod
     def get_test_campaigns():
         return [basename(path).replace('_', '').strip('psi') for path in glob(join(Analysis.DataDir, 'psi*'))]
+
+    @staticmethod
+    def find_testcampaign(default=None):
+        return next((tc for tc in Analysis.get_test_campaigns() if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), default)
 
     def load_tc_directory(self, data_dir=None):
         return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))

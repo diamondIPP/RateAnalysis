@@ -755,7 +755,9 @@ if __name__ == '__main__':
     p.add_argument('-d', '--diamond', nargs='?', default=None, help='diamond for show runplans')
     args = p.parse_args()
 
-    z = RunSelector(args.testcampaign, args.runplan, args.dut, args.verbose)
+    from src.analysis import Analysis
+    z = RunSelector(Analysis.find_testcampaign(args.testcampaign), args.runplan, args.dut, args.verbose)
+
     if args.show:
         if args.runplan is not None:
             print_banner(z.TCString)
