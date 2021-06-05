@@ -134,7 +134,7 @@ class PadCut(Cut):
     def find_n_saturated(self, cut, redo=False):
         return do_pickle(self.make_simple_pickle_path('NSaturated'), self.Tree.GetEntries, None, redo, self(cut).GetTitle())
 
-    def find_fid_cut(self, thresh=.93, show=True):
+    def find_fiducial(self, thresh=.93, show=True):
         h = self.Ana.draw_signal_map(show=show)
         px, py = h.ProjectionX(), h.ProjectionY()
 

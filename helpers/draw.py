@@ -362,14 +362,7 @@ class Draw(object):
         d = {2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
              3: {'w': 1.5, 'h': .5, 'tit_size': .07, 'lab_size': .06, 'y_off': .5, 'lm': .073, 'bm': .225, 'rm': .03, 'x_tit': 'Time [ns]', 'y_tit': 'Signal [mV]', 'markersize': .5}
              }[m]
-        return Draw.prepare_kwargs(kwargs, **d)
-
-    @staticmethod
-    def prepare_kwargs(data, **default):
-        for kw, value in default.items():
-            if kw not in data:
-                data[kw] = value
-        return data
+        return prep_kw(kwargs, **d)
 
     def distribution(self, values, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
         if type(values) == TH1F:
@@ -377,12 +370,12 @@ class Draw(object):
         else:
             th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
             fill_hist(th, values)
-        format_histo(th, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor, y_tit='Number of Entries'))
+        format_histo(th, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor, y_tit='Number of Entries'))
         self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
         return th
 
     def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
-        format_histo(f, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4))
+        format_histo(f, title=title, **prep_kw(kwargs, y_off=1.4))
         c = get_last_canvas() if draw_opt and 'same' in draw_opt and c is None else c
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
@@ -390,7 +383,7 @@ class Draw(object):
     def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None,
               bin_labels=None, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
-        format_histo(g, title=title, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor))
+        format_histo(g, title=title, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
         self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
         return g
@@ -399,7 +392,7 @@ class Draw(object):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
-        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, fill_color=Draw.FillColor, stats=stats))
+        format_histo(p, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor, stats=stats))
         self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
 
@@ -407,7 +400,7 @@ class Draw(object):
         dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
         p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
         fill_hist(p, x, y, uarr2n(zz))
-        format_histo(p, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, pal=55, stats=stats))
+        format_histo(p, **prep_kw(kwargs, y_off=1.4, z_off=1.2, pal=55, stats=stats))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
@@ -418,7 +411,7 @@ class Draw(object):
         dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
         th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
         fill_hist(th, x, y)
-        format_histo(th, **Draw.prepare_kwargs(kwargs, y_off=1.4, z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
+        format_histo(th, **prep_kw(kwargs, y_off=1.4, z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
         set_statbox(entries=True, w=.2) if stats is None else do_nothing()
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
         return th
@@ -454,16 +447,14 @@ class Draw(object):
                    y_range=None, w=1, grid=None, wleg=.2, *args, **kwargs):
         g0 = graphs[0]
         m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
-        leg = None if leg_titles is None else Draw.make_legend(nentries=len(graphs), w=wleg)
-        for i, g in enumerate(graphs):
-            m.Add(g, draw_opt)
-            leg.AddEntry(g, leg_titles[i], 'p') if leg_titles is not None else do_nothing()
-            format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=0, *args, **kwargs)
         y_range = choose(y_range, ax_range(get_graph_y(graphs, err=False), 0, .3, .6))
         format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels), y_range=y_range)
         set_bin_labels(m, bin_labels)
-        m.GetListOfFunctions().Add(leg) if leg_titles is not None else do_nothing()
-        self.histo(m, draw_opt='ap', leg=leg, lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy, w=w, grid=grid)
+        for i, g in enumerate(graphs):
+            m.Add(g, draw_opt)
+            format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=False, *args, **kwargs)
+        self.histo(m, draw_opt='ap', lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy, w=w, grid=grid)
+        self.legend(graphs, leg_titles, 'p', w=wleg) if leg_titles else do_nothing()
         return m
 
     @staticmethod
@@ -525,12 +516,14 @@ class Draw(object):
 
     @staticmethod
     def make_legend(x2=None, y2=None, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+        use_margins = y2 is None
         x2, y2 = get_stat_margins(x2=x2, y2=y2)
         x1 = choose(x1, x2 - w)
         h = nentries * .05 * scale
         y1 = choose(y1, y2 - h)
-        y1 += .07 if not Draw.Title and y1 + h > .8 and not fix else 0
-        y1 -= .07 if not Draw.Legend and y1 < .3 and not fix else 0
+        if not use_margins:
+            y1 += .07 if not Draw.Title and y1 + h > .8 and not fix else 0
+            y1 -= .07 if not Draw.Legend and y1 < .3 and not fix else 0
         leg = TLegend(x1, max(y1, 0), x1 + w, min(y1 + h, 1))
         leg.SetName(Draw.get_name('l'))
         leg.SetTextFont(Draw.Font)

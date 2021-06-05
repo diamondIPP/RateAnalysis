@@ -850,6 +850,13 @@ def correlate(l1, l2):
     return corrcoef(l1, l2)[0][1]
 
 
+def prep_kw(dic, **default):
+    for kw, value in default.items():
+        if kw not in dic:
+            dic[kw] = value
+    return dic
+
+
 # ----------------------------------------
 # region CLASSES
 class FitRes(ndarray):
@@ -1016,6 +1023,7 @@ class Config(ConfigParser):
             print()
 # endregion CLASSES
 # ----------------------------------------
+
 
 # ----------------------------------------
 # region RELATIVITY
