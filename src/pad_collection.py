@@ -135,9 +135,13 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region CUTS
-    def draw_bucket_ratio(self, show=True, redo=False):
-        x, y = self.get_fluxes(), self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 'A1'), all_cuts=True, redo=redo)
-        self.Draw.graph(x, y * 100, 'Bucket Ratio', y_tit='Percentage of Bucket Events', **self.get_x_args(draw=True), show=show)
+    def draw_bucket_ratio(self, fit=True, avrg=False, redo=False, **kwargs):
+        x, y = self.get_fluxes(), 100 * self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 'A1'), all_cuts=True, redo=redo, avrg=avrg)
+        g = self.Draw.graph(x, y, 'Bucket Ratio', y_tit='Fraction of Bucket Events [%]', **prep_kw(kwargs, y_range=[0, max(y).n * 1.5], markersize=.7, **self.get_x_args(draw=True)))
+        if fit:
+            g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 1e-3]), 'qs')
+            format_statbox(g, fit=True and 'stats' not in kwargs, form='.2e')
+        return g
 
     def draw_bucket_ph(self, show=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Fit', '{}_1_b2_nobucket'.format(Bins.Size), 'Ph_fit', '{}')
