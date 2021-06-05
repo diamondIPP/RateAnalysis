@@ -409,7 +409,7 @@ class DiaScans(Analysis):
 
     def get_titles(self, irr=False):
         if len(set(self.get_dut_names())) > 1:
-            return self.get_dut_names()
+            return [f'{dut}{" - " if irr else ""}{irr}' for dut, irr in zip(self.get_dut_names(), self.get_irradiations() if irr else [''] * self.NPlans)]
         tits = self.get_irradiations() if irr else [make_tc_str(tc) for tc in self.TestCampaigns]
         if any(['rand' in word for word in self.get_run_types()]):
             for i, sel in enumerate(self.Info):
@@ -500,6 +500,11 @@ class DiaScans(Analysis):
         format_histo(mg, **AnalysisCollection.get_x_args(), y_range=1 + array([-ym, ym]))
     # endregion PULSER
     # ----------------------------------------
+
+    def draw_bucket_ratios(self, avrg=False, redo=False, **kwargs):
+        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('Bucket', 'Ratio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
+        mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **AnalysisCollection.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **prep_kw(kwargs, **AnalysisCollection.get_x_args()))
 
 
 class SelectionInfo:
