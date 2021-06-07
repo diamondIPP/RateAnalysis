@@ -210,9 +210,9 @@ class Converter(object):
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in range(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
-    def copy_raw_file(self, redo=False):
+    def copy_raw_file(self, redo=False, raw_dir='raw'):
         if not file_exists(self.RawFilePath) or redo:
-            main_data_path = join('isg:', 'home', 'ipp', basename(self.TCDir), 'raw', basename(self.RawFilePath))
+            main_data_path = join('isg:', 'home', 'ipp', basename(self.TCDir), raw_dir, basename(self.RawFilePath))
             self.Run.info('Trying to copy {}'.format(basename(self.RawFilePath)))
             system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
 
