@@ -857,6 +857,37 @@ def prep_kw(dic, **default):
     return dic
 
 
+def save_pickle(*pargs, print_dur=False, **pkwargs):
+    def inner(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            pickle_path = args[0].make_simple_pickle_path(*pargs, **pkwargs)
+            redo = kwargs['_redo'] if '_redo' in kwargs else False
+            if file_exists(pickle_path) and not redo:
+                with open(pickle_path, 'rb') as f:
+                    return pickle.load(f)
+            prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
+            t = (args[0].info if hasattr(args[0], 'info') else info)(f'{func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
+            value = func(*args, **kwargs)
+            with open(pickle_path, 'wb') as f:
+                pickle.dump(value, f)
+            (args[0].add_to_info if hasattr(args[0], 'add_to_info') else add_to_info)(t, prnt=prnt)
+            return value
+        return wrapper
+    return inner
+
+
+def print_duration(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        prnt = (kwargs['prnt'] if 'prnt' in kwargs else True)
+        t = (args[0].info if hasattr(args[0], 'info') else info)(f'{func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
+        value = func(*args, **kwargs)
+        (args[0].add_to_info if hasattr(args[0], 'add_to_info') else add_to_info)(t, prnt=prnt)
+        return value
+    return wrapper
+
+
 # ----------------------------------------
 # region CLASSES
 class FitRes(ndarray):
