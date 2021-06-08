@@ -28,6 +28,7 @@ class EventAligment(object):
         self.NewTree = None
 
         # Info
+        self.HitVar = 'n_hits_tot'
         self.NEntries = int(self.InTree.GetEntries())
         self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment()
@@ -80,19 +81,20 @@ class EventAligment(object):
 
     @staticmethod
     def init_branches():
-        return [('n_hits_tot', zeros(1, 'u1'), 'n_hits_tot/b'),
-                ('plane', zeros(MAX_SIZE, 'u1'), 'plane[n_hits_tot]/b'),
-                ('col', zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
-                ('row', zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
-                ('adc', zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
-                ('charge', zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F')]
+        return {'n_hits_tot': (zeros(1, 'u1'), 'n_hits_tot/b'),
+                'plane': (zeros(MAX_SIZE, 'u1'), 'plane[n_hits_tot]/b'),
+                'col': (zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
+                'row': (zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
+                'adc': (zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
+                'charge': (zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F')}
 
-    def get_hit_var(self):
-        return 'n_hits_tot' if self.InTree.GetBranch('n_hits_tot') else '@col.size()'
+    @staticmethod
+    def get_tel_branches():
+        return ['plane', 'col', 'row', 'adc', 'charge']
 
     def load_n_hits(self, n_entries=None, first_entry=0):
         self.InTree.SetEstimate(self.NEntries)
-        return get_tree_vec(self.InTree, self.get_hit_var(), '', 'u1', choose(n_entries, self.NEntries), first_entry)
+        return get_tree_vec(self.InTree, self.HitVar, '', 'u1', choose(n_entries, self.NEntries), first_entry)
 
     def load_variables(self):
         """ get all the telescope branches in vectors"""
@@ -122,14 +124,8 @@ class EventAligment(object):
         zero_offset = [(0, self.find_first_offset())] if self.find_first_offset() else []
         return OrderedDict(zero_offset + [(event_number, 1) for event_number in self.Converter.DecodingErrors])
 
-    def find_manual_offsets(self):
-        return {}
-
     def find_offsets(self, off, delta=1):
-        use_decoding_errors = (self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_first_offset()) and self.Converter.DecodingErrors.size
-        errors = self.load_error_offsets() if use_decoding_errors else self.find_manual_offsets()
-        info('Found {n} offsets'.format(n=len(errors)))
-        return errors
+        return
 
     # endregion OFFSETS
     # ----------------------------------------
@@ -151,13 +147,13 @@ class EventAligment(object):
     def write_aligned_tree(self):
         set_root_output(False)
         self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
-        for name, o, leaf in self.Branches:  # remove old branches
+        for name in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
-        for name, o, leaf in self.Branches:  # set new branches
-            self.NewTree.Branch(name, o, leaf)
-        self.PBar.start(self.NEntries)
+        for name, (br, leaf) in self.Branches.items():  # set new branches
+            self.NewTree.Branch(name, br, leaf)
+        self.PBar.start(self.NEntries, counter=False)
         offset = self.FirstOffset
         for ev, t in enumerate(self.InTree):
             self.PBar.update()

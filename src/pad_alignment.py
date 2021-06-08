@@ -30,7 +30,9 @@ class PadAlignment(EventAligment):
     # region INIT
     @staticmethod
     def init_branches():
-        return EventAligment.init_branches() + [('trigger_phase', zeros(1, 'u1'), 'trigger_phase/b')]
+        dic = EventAligment.init_branches()
+        dic['trigger_phase'] = (zeros(1, 'u1'), 'trigger_phase/b')
+        return dic
 
     def load_variables(self):
         data = super(PadAlignment, self).load_variables()
@@ -44,7 +46,7 @@ class PadAlignment(EventAligment):
         return data + [tp]
 
     def get_aligned(self, tree=None, bin_size=1000, data=None):
-        x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.get_hit_var()], cut='pulser'))
+        x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.HitVar], cut='pulser'))
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.NEntries // bin_size, [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
         bin_average = bins[:, 1] / sum(bins, axis=1)
         return bin_average < self.Threshold
@@ -54,10 +56,10 @@ class PadAlignment(EventAligment):
     def fill_branches(self, ev):
         n = self.NHits[ev]
         hits = sum(self.NHits[:ev])
-        self.Branches[0][1][0] = n  # n hits
-        for i in range(1, 6):
-            self.Branches[i][1][:n] = self.Variables[i - 1][hits:hits + n]
-        self.Branches[-1][1][0] = self.Variables[-1][ev]  # trigger phase
+        self.Branches['n_hits_tot'][0][0] = n  # n hits
+        for i, br in enumerate(self.get_tel_branches()):
+            self.Branches[br][0][:n] = self.Variables[i][hits:hits + n]
+        self.Branches['trigger_phase'][0][0] = self.Variables[-1][ev]
 
     def get_pulser(self):
         return get_tree_vec(self.InTree, 'pulser', dtype='?')
@@ -156,7 +158,7 @@ if __name__ == '__main__':
     from converter import Converter
 
     # examples: 7(201708), 218(201707)
-    args = init_argparser(run=7)
+    args = init_argparser(run=504, tc='201608')
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
     z.reload()
