@@ -200,8 +200,8 @@ class Run(Analysis):
 
     def load_time_vec(self):
         t = get_time_vec(self.Tree)
-        t0 = datetime.fromtimestamp(t[0] / 1000)
-        self.TimeOffset = None if t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
+        t0 = datetime.fromtimestamp(t[0] / 1000) if t[0] < 1e12 else None
+        self.TimeOffset = None if t0 is None or t0.year > 2000 and t0.day == self.LogStart.day else t[0] - time_stamp(self.LogStart) * 1000
         return t if self.TimeOffset is None else t - self.TimeOffset
 
     def load_plane_efficiency(self, plane):
@@ -353,10 +353,10 @@ class Run(Analysis):
 
     # ----------------------------------------
     # region SHOW
-    def show_run_info(self):
-        print('Run information for run', self.Number)
+    def show_info(self):
+        print('Run information for', self)
         for key, value in sorted(self.Info.items()):
-            print('{k}: {v}'.format(k=key.ljust(13), v=value))
+            print(f'{key:<13}: {value}')
 
     def has_branch(self, name):
         return bool(self.Tree.GetBranch(name))
