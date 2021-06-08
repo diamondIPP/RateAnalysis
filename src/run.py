@@ -364,8 +364,8 @@ class Run(Analysis):
     def info(self, msg, endl=True, blank_lines=0, prnt=True):
         return info(msg, endl, prnt=self.Verbose and prnt, blank_lines=blank_lines)
 
-    def add_to_info(self, t, txt='Done'):
-        return add_to_info(t, txt, prnt=self.Verbose)
+    def add_to_info(self, t, txt='Done', prnt=True):
+        return add_to_info(t, txt, prnt=self.Verbose and prnt)
     # endregion SHOW
     # ----------------------------------------
 

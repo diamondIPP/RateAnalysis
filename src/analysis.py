@@ -76,8 +76,8 @@ class Analysis(object):
     def info(self, msg, endl=True, prnt=True):
         return info(msg, endl, prnt=self.Verbose and prnt)
 
-    def add_to_info(self, t, txt='Done'):
-        return add_to_info(t, txt, prnt=self.Verbose)
+    def add_to_info(self, t, txt='Done', prnt=True):
+        return add_to_info(t, txt, prnt=self.Verbose and prnt)
 
     def print_start(self, run=None, prnt=True, tc=True, dut=None):
         if prnt:
