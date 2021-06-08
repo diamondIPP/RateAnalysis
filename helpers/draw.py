@@ -472,10 +472,11 @@ class Draw(object):
         return Draw.add(h)
 
     @staticmethod
-    def make_f(name, function, xmin=0, xmax=1, pars=None, limits=None, npx=None, **kwargs):
+    def make_f(name, function, xmin=0, xmax=1, pars=None, limits=None, fix=None, npx=None, **kwargs):
         f = TF1(choose(name, Draw.get_name('f')), function, xmin, xmax)
         f.SetParameters(*pars) if pars is not None else do_nothing()
         [f.SetParLimits(i, *lim) for i, lim in enumerate(limits)] if limits else do_nothing()
+        [f.FixParameter(i, value) for i, value in enumerate(make_list(fix))] if fix is not None else do_nothing()
         do(f.SetNpx, npx)
         format_histo(f, **kwargs)
         return Draw.add(f)
