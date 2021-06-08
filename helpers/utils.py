@@ -851,19 +851,24 @@ def correlate(l1, l2):
 
 
 def prep_kw(dic, **default):
+    d = deepcopy(dic)
     for kw, value in default.items():
-        if kw not in dic:
-            dic[kw] = value
-    return dic
+        if kw not in d:
+            d[kw] = value
+    return d
 
 
-def save_pickle(*pargs, print_dur=False, low_rate=False, **pkwargs):
+def save_pickle(*pargs, print_dur=False, low_rate=False, suf_args='[]', **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             run = None if not low_rate else args[0].Run.get_low_rate_run()
-            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run))
-            redo = kwargs['_redo'] if '_redo' in kwargs else False
+            def_pars = signature(func).parameters
+            names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
+            suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
+            suf = '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
+            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=suf))
+            redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 with open(pickle_path, 'rb') as f:
                     return pickle.load(f)
