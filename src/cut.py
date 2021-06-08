@@ -450,6 +450,11 @@ class CutStrings(object):
             self.Strings[cut.Name] = cut.set_level(level)
             self.sort()
 
+    def remove(self, name):
+        if name not in self.Strings:
+            return warning(f'there is no cut with name {name}')
+        self.Strings.pop(name)
+
     def sort(self):
         self.Strings = OrderedDict(sorted(self.Strings.items(), key=lambda x: x[1].Level))
 
@@ -502,3 +507,14 @@ class CutStrings(object):
                 continue
             cut_string += cut() if cut.Name not in make_list(invert) else cut.invert()
         return cut_string
+
+
+def low_rate(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        ana, low_run = args[0], args[0].Run.get_low_rate_run()
+        if low_run != ana.Run.Number:
+            from src.pad_analysis import PadAnalysis
+            return getattr(PadAnalysis(low_run, ana.DUT.Number, ana.TCString, prnt=False).Cut, func.__name__)(*args, **kwargs)
+        return func(*args, **kwargs)
+    return wrapper

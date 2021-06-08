@@ -857,11 +857,12 @@ def prep_kw(dic, **default):
     return dic
 
 
-def save_pickle(*pargs, print_dur=False, **pkwargs):
+def save_pickle(*pargs, print_dur=False, low_rate=False, **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            pickle_path = args[0].make_simple_pickle_path(*pargs, **pkwargs)
+            run = None if not low_rate else args[0].Run.get_low_rate_run()
+            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run))
             redo = kwargs['_redo'] if '_redo' in kwargs else False
             if file_exists(pickle_path) and not redo:
                 with open(pickle_path, 'rb') as f:

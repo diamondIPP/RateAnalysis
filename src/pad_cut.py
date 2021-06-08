@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF1
-from src.cut import Cut, CutString, Bins
+from src.cut import Cut, CutString, Bins, low_rate
 from helpers.draw import *
 from numpy import quantile, histogram2d, argmax
 
@@ -27,7 +27,9 @@ class PadCut(Cut):
     def get_raw_noise(self, redo=False):
         return self.get_raw_pedestal(sigma=True, redo=redo)
 
-    def get_raw_snr(self):
+    @save_pickle('SNR', print_dur=True, low_rate=True)
+    @low_rate
+    def get_raw_snr(self, _redo=False):
         return self.get_raw_pulse_height() / self.get_raw_noise()
 
     def get_bucket(self, all_cuts=False):
@@ -66,8 +68,11 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_fiducial(), 90)
 
         # --BUCKET --
-        self.CutStrings.register(self.generate_bucket(), 91)
-        self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+        if self.get_raw_snr() > 5:
+            self.CutStrings.register(self.generate_bucket(), 91)
+            self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+        else:
+            self.CutStrings.register(self.generate_trigger_phase(), 91)
 
         # --SIGNAL DROPS--
         self.update('event range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
