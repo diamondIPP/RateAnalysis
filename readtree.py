@@ -11,24 +11,6 @@ widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', Fi
 plot = Draw()
 
 
-def draw_hitmap(cut=None, plane=None):
-    planes = range(4) if plane is None else [int(plane)]
-    cut = TCut('') if cut is None else TCut(cut)
-    histos = [TH2F('h_hm{0}'.format(i_pl), 'Hitmap Plane {0}'.format(i_pl), 52, 0, 52, 80, 0, 80) for i_pl in planes]
-    for plane in planes:
-        cut_string = cut + TCut('plane == {0}'.format(plane))
-        t.Draw('row:col>>h_hm{0}'.format(plane), cut_string, 'goff')
-        format_histo(histos[plane], x_tit='col', y_tit='row')
-    c = TCanvas('c_hm', 'Hitmaps', 2000, 2000)
-    c.Divide(2, 2)
-    for i, h in enumerate(histos, 1):
-        h.SetStats(0)
-        pad = c.cd(i)
-        pad.SetBottomMargin(.15)
-        h.Draw('colz')
-    stuff.append([histos, c])
-
-
 def get_track_vars(roc=0, local=False):
     return ['cluster_{}pos_{}[{}]'.format(n, 'local' if local else 'tel', roc) for n in ['x', 'y']]
 
@@ -38,6 +20,11 @@ def draw_occupancies():
     for i in range(z.NPlanes):
         x, y = z.get_tree_vec(['cluster_col[{}]'.format(i), 'cluster_row[{}]'.format(i)])
         plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0, canvas=c.cd(i + 1))
+
+
+def draw_hitmap(dut=1, res=None):
+    x, y = get_tree_vec(t, [f'dia_track_{i}_local[{dut - 1}]' for i in ['x', 'y']])
+    plot.histo_2d(x * 10, y * 10, Bins.get_global(res), 'HitMap', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]')
 
 
 def trig_edges(nwf=None):
@@ -391,8 +378,10 @@ if __name__ == '__main__':
     parser.add_argument('-tc', nargs='?', default=None)
     args = parser.parse_args()
 
+    from src.analysis import Analysis
+
     if isint(args.run):
-        z = Run(int(args.run), args.tc)
+        z = Run(int(args.run), Analysis.find_testcampaign(args.tc))
         t = z.Tree
     else:
         rootfile = TFile(args.run)
