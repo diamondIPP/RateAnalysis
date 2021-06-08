@@ -59,7 +59,7 @@ class Telescope(SubAnalysis):
     # region FLUX
     def get_flux(self, plane=None, corr=True, use_eff=True, show=False, full_size=False, redo=False):
         flux = self.calculate_flux(plane, use_eff, show, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
-        return flux * (self.get_flux_scale(full_size, redo=redo) if corr else 1)
+        return flux * (self.get_flux_scale(full_size, redo=redo) if corr else ufloat(1, .1))
 
     def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
         tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(self.Run.get_mask_dims(mm=True), axis=0) * [1, -1]]
@@ -70,7 +70,8 @@ class Telescope(SubAnalysis):
         int_dim, int_tel = f.Integral(*[d.n for d in dim]), f.Integral(*tel)
         f.SetParameters(1, *[i.n + i.s for i in fx], *[i.n + i.s for i in fy])
         int_dim, int_tel = ufloat(int_dim, abs(int_dim - f.Integral(*[d.n for d in dim]))), ufloat(int_tel, abs(int_tel - f.Integral(*tel)))
-        return (int_dim / prod(diff(dim)[[0, 2]])) / (int_tel / prod(diff(tel)[[0, 2]]))
+        ratio = (int_dim / prod(diff(dim)[[0, 2]])) / (int_tel / prod(diff(tel)[[0, 2]]))
+        return ufloat(ratio.n, ratio.s + .05 * ratio.n)  # add 5% systematic uncertainty
 
     def get_fid_flux_ratio(self, show=False):
         return self.get_flux_ratio([ufloat(i, 0) for i in self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10], show) if self.Cut.HasFid else 1
@@ -105,7 +106,7 @@ class Telescope(SubAnalysis):
             rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
             return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
         if plane is None:
-            return mean([self.calculate_flux(pl, corr, 0, redo) for pl in [1, 2]])
+            return mean([self.calculate_flux(pl, corr, show, redo) for pl in [1, 2]])
         return do_pickle(self.make_simple_pickle_path(f'Flux{plane}', int(corr)), f, redo=redo or show)
     # endregion FLUX
     # ----------------------------------------
