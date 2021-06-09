@@ -190,11 +190,13 @@ class PadAnalysis(DUTAnalysis):
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
+        if not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp':
+            ph = self.correct_ph(ph)
         return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
 
     def correct_ph(self, ph=None):
-        ph = choose(ph, self.get_pulse_height(cut=self.Cut.generate_custom(exclude='bucket', add=f'trigger_phase != {self.get_bucket_tp()}', name='buctmp')))
-        r = self.estimate_bucket_ratio()
+        ph = choose(ph, self.get_pulse_height, cut=self.Cut.get_tp())
+        r = self.estimate_bucket_ratio() / 100  # % -> value
         return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
 
     def get_min_signal(self, name=None):
@@ -445,25 +447,34 @@ class PadAnalysis(DUTAnalysis):
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
     @update_pbar
-    def get_bucket_ratio(self, cut=None, all_cuts=False, redo=False):
+    @save_pickle('Ratio', suf_args='[0, 1]', sub_dir='Bucket')
+    def get_bucket_ratio(self, cut=None, all_cuts=False, _redo=False):
         """ return fraction of bucket events with no signal in the signal region. """
-        def f():
-            c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.Cut.ConsecutiveCuts['beam stops'])
-            n = self.get_n_entries(c)
-            n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
-            return ufloat(n_bucket, sqrt(n_bucket)) / n
-        return do_pickle(self.make_simple_pickle_path('BucketRatio', f'A{int(all_cuts)}' if cut is None else self.Cut(cut).GetName()), f, redo=redo)
+        c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.Cut.ConsecutiveCuts['beam stops'])
+        n = self.get_n_entries(c)
+        n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
+        return ufloat(n_bucket, sqrt(n_bucket)) / n
 
-    def get_bucket_tp_ratio(self, all_cuts=False, show=False, redo=False):
-        def f():
-            x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
-            return max(x) / sum(x) if sum(x) else ufloat(.5, .5)
-        return do_pickle(self.make_simple_pickle_path('BucketTPRatio', int(all_cuts)), f, redo=redo or show)
+    @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
+    def get_bucket_tp_ratio(self, all_cuts=False, show=False, _redo=False):
+        """ :returns the ratio of correctly identified bucket events with the trigger phase cut """
+        x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
+        tps = (arange(3) - 1 + self.Cut.get_trigger_phase()) % 10  # select also the two trigger phases around the MPV
+        return sum(x[tps]) / sum(x) if sum(x) else ufloat(.5, .5)
 
-    def estimate_bucket_ratio(self):
+    def get_tp_ratio(self, redo=False):
+        """ :returns the ratio of bucket events after the trigger phase cut. """
+        return self.get_bucket_ratio(cut=self.Cut.get_tp(), _redo=redo)
+
+    def calc_bucket_ratio(self):
         br = self.get_bucket_ratio(all_cuts=True)  # ratio of bucket events
         tpr = self.get_bucket_tp_ratio(all_cuts=True)  # ratio of the bucket trigger phase
         return br * (1 - tpr)
+
+    def estimate_bucket_ratio(self):
+        if not self.Run.Config.has_option('BASIC', 'bucket scale') and not self.Run.Config.has_option('BASIC', 'bucket tpr'):
+            critical('bucket parameters not defined!')
+        return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
 
     def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, use_wf_int=False, redo=False, **kwargs):
         if use_wf_int:
@@ -498,8 +509,8 @@ class PadAnalysis(DUTAnalysis):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
         cuts['trigger phase'] = Cut.make(f'{len(cuts) + 1}', list(cuts.values())[-1] + self.Cut.generate_trigger_phase()())
         self.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('BucketRatio', len(cuts) - 1)) else do_nothing()
-        y = array([self.get_bucket_ratio(cut, redo=redo) for cut in cuts.values()])
-        self.Draw.graph(arange(y.size), y * 100, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), **kwargs, y_range=[0, max(y) * 110])
+        y = array([self.get_bucket_ratio(cut, _redo=redo) for cut in cuts.values()])
+        self.Draw.graph(arange(y.size), y * 100, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), **kwargs, y_range=[0, max(y).n * 110])
 
     def draw_bucket_map(self, **kwargs):
         cut = self.Cut.get('bucket', invert=True) + self.Cut.generate_custom(exclude=['bucket', 'bucket2', 'fiducial'])

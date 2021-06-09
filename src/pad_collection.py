@@ -136,10 +136,10 @@ class PadCollection(AnalysisCollection):
     # ----------------------------------------
     # region CUTS
     def draw_bucket_ratio(self, fit=True, avrg=False, redo=False, **kwargs):
-        x, y = self.get_fluxes(), 100 * self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('BucketRatio', 'A1'), all_cuts=True, redo=redo, avrg=avrg)
+        x, y = self.get_fluxes(), 100 * self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('Ratio', '1', 'Bucket'), all_cuts=True, _redo=redo, avrg=avrg)
         g = self.Draw.graph(x, y, 'Bucket Ratio', y_tit='Fraction of Bucket Events [%]', **prep_kw(kwargs, y_range=[0, max(y).n * 1.5], markersize=.7, **self.get_x_args(draw=True)))
         if fit:
-            g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 1e-3]), 'qs')
+            g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 1e-3], fix=0), 'qs')
             format_statbox(g, fit=True and 'stats' not in kwargs, form='.2e')
         return g
 
@@ -150,10 +150,19 @@ class PadCollection(AnalysisCollection):
         mg = self.Draw.multigraph(graphs, 'Bucket Pulse Heights', ['no bucket', 'w/o thresh', 'with thresh'], y_tit='Pulse Height [mV]', show=show, logx=True)
         format_histo(mg, **self.get_x_args(), y_range=ax_range(concatenate(y), 0, .3, .3))
 
-    def draw_bucket_tp_ratio(self, fid=True, redo=False, **kwargs):
-        x, y = self.get_fluxes(), self.get_values('bucket tp ratios', PadAnalysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('BucketTPRatio', int(fid)), redo=redo, fid=fid)
-        self.Draw.graph(x, y * 100, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
+    def get_bucket_tp_ratios(self, avrg=False, redo=False):
+        return self.get_values('bucket tp ratios', PadAnalysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('TPRatio', '1', 'Bucket'), _redo=redo, all_cuts=True, avrg=avrg)
 
+    def draw_bucket_tp_ratio(self, avrg=False, redo=False, **kwargs):
+        x, y = self.get_fluxes(), self.get_bucket_tp_ratios(avrg, redo)
+        return self.Draw.graph(x, y * 100, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
+
+    def get_bucket_tpr(self, redo=False):
+        return mean_sigma(self.get_values('bucket tp ratios', PadAnalysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('TPRatio', '1', 'Bucket'), _redo=redo, all_cuts=True))[0]
+
+    def create_bucket_estimate(self):
+        print(f'bucket scale = {FitRes(self.draw_bucket_ratio(show=False).GetListOfFunctions()[0])[1]:.2e}')
+        print(f'bucket tpr = {mean_sigma(self.get_bucket_tp_ratios())[0]:.4f}')
     # endregion CUTS
     # ----------------------------------------
 
