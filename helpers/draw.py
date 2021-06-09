@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
-from ROOT import TProfile2D, TH2F, THStack, TMultiGraph
+from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie
 from numpy import sign, linspace, ones, ceil, append, tile, absolute
 from helpers.utils import *
 
@@ -456,6 +456,17 @@ class Draw(object):
         self.histo(m, draw_opt='ap', lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy, w=w, grid=grid)
         self.legend(graphs, leg_titles, 'p', w=wleg) if leg_titles else do_nothing()
         return m
+
+    def pie(self, labels, values=None, colors=None, title='', offset=0, show=True, flat=False, draw_opt=None, **kwargs):
+        labels, (values, colors) = (labels.keys(), array(list(labels.values())).T) if values is None else (labels, values, colors)
+        pie = TPie(self.get_name('pie'), title, len(labels), array(values, 'f'), array(colors, 'i'))
+        for i, label in enumerate(labels):
+            pie.SetEntryRadiusOffset(i, offset)
+            pie.SetEntryLabel(i, label)
+        format_pie(pie, **kwargs)
+        draw_opt = choose(draw_opt, f'{"" if flat else "3d"}rsc')
+        self.histo(pie, draw_opt=draw_opt, show=show)
+        return pie
 
     @staticmethod
     def info(txt, c=None, size=.04):
