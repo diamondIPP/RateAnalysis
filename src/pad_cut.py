@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF1
-from src.cut import Cut, CutString, Bins, low_rate
+from src.cut import Cut, CutString, Bins, low_rate, high_rate
 from helpers.draw import *
 from numpy import quantile, histogram2d, argmax
 
@@ -33,8 +33,11 @@ class PadCut(Cut):
         return self.get_raw_pulse_height() / self.get_raw_noise()
 
     def get_bucket(self, all_cuts=False):
-        cut = self.generate_custom(exclude='bucket', prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
+        cut = self.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
         return CutString('!bucket', cut + self.get('bucket', invert=True))()
+
+    def get_tp(self):
+        return self.generate_custom(exclude=['bucket', 'bucket2'], add=self.generate_trigger_phase(), prnt=False, name='tp')
 
     def get_pulser(self, beam_on=True):
         cut = self.generate_custom(include=['ped sigma', 'event range'], prnt=False) + Cut.invert(self.get('pulser'))
@@ -183,13 +186,10 @@ class PadCut(Cut):
             return fit
         return do_pickle(self.make_simple_pickle_path('B2Fit', run=self.Run.get_low_rate_run()), f, redo=redo)
 
-    def get_trigger_phase(self, show=False, redo=False):
-        def f():
-            if not self.Run.get_high_rate_run() == self.Run.Number:
-                from src.pad_analysis import PadAnalysis
-                return PadAnalysis(self.Run.get_high_rate_run(), self.DUT.Number, self.TCString, prnt=False).Cut.get_trigger_phase(show, redo)
-            return argmax(get_hist_vec(self.Ana.Tel.draw_trigger_phase(cut=self.get_bucket() + self.generate_fiducial()(), show=show)))
-        return do_pickle(self.make_simple_pickle_path('TP', run=self.Run.get_high_rate_run()), f, redo=redo or show)
+    @save_pickle('TP', print_dur=True, high_rate=True)
+    @high_rate
+    def get_trigger_phase(self, show=False, _redo=False):
+        return argmax(get_hist_vec(self.Ana.Tel.draw_trigger_phase(cut=self.get_bucket() + self.generate_fiducial()(), show=show)))
 
     def calc_pedestal(self, n_sigma):
         def f():
