@@ -509,12 +509,16 @@ class CutStrings(object):
         return cut_string
 
 
-def low_rate(func):
+def low_rate(func, high=False):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        ana, low_run = args[0], args[0].Run.get_low_rate_run()
-        if low_run != ana.Run.Number:
+        ana, run = args[0], args[0].Run.get_high_rate_run(high)
+        if run != ana.Run.Number:
             from src.pad_analysis import PadAnalysis
-            return getattr(PadAnalysis(low_run, ana.DUT.Number, ana.TCString, prnt=False).Cut, func.__name__)(*args, **kwargs)
+            return getattr(PadAnalysis(run, ana.DUT.Number, ana.TCString, prnt=False).Cut, func.__name__)(*args, **kwargs)
         return func(*args, **kwargs)
     return wrapper
+
+
+def high_rate(func):
+    return low_rate(func, high=True)
