@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy import quantile
-from ROOT import TCut, TPie
+from ROOT import TCut
 from helpers.draw import *
 from src.binning import Bins
 from src.sub_analysis import SubAnalysis
@@ -79,9 +79,9 @@ class Cut(SubAnalysis):
     def get_names(self, with_raw=False):
         return self.CutStrings.get_names(with_raw)
 
-    def get_consecutive(self, short=False):
+    def get_consecutive(self, short=False, raw=True):
         cuts = self.CutStrings.consecutive()
-        return {key: cut for key, cut in cuts.items() if key in self.get_short()} if short else cuts
+        return {key: cut for key, cut in cuts.items() if key in self.get_short()} if short else {k: v for k, v in cuts.items() if raw or 'raw' not in k}
 
     def get_size(self, name, excluded=True):
         n = self.Ana.get_n_entries(self.get(name) if name in self.get_names() else name)
@@ -350,28 +350,30 @@ class Cut(SubAnalysis):
         rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.CutStrings.get_strings()]
         print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Description'])
 
-    def draw_contributions(self, flat=False, short=False, show=True):
-        set_root_output(show)
-        contr = OrderedDict()
-        n, n_events = len(self.get_consecutive()), self.Run.NEvents
-        cut_events = 0
-        for i, (key, cut) in enumerate(self.get_consecutive().items()):
-            if key == 'raw':
-                continue
-            events = n_events - int(self.Ana.Tree.Draw('1', cut, 'goff'))
-            print(key.rjust(18), '{0:5d} {1:04.1f}%'.format(events - cut_events, (1. - float(events) / n_events) * 100.))
-            contr[key.title().replace('_', ' ')] = (events - cut_events, self.Draw.get_color(n))
-            cut_events = events
-        contr['Good Events'] = (n_events - cut_events, self.Draw.get_color(n))
-        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * n_events if short else 0)).items(), key=lambda x: x[1]))  # sort by size
-        sorted_contr.update({'Other': (n_events - sum(v[0] for v in sorted_contr.values()), self.Draw.get_color(n))} if short else {})
+    @update_pbar
+    def get_contribution(self, cut, n_previous=0):
+        return self.Run.NEvents - self.Ana.get_n_entries(cut) - n_previous
+
+    @save_pickle('Contribution')
+    def get_contributions(self, _redo=False):
+        cuts = self.get_consecutive(raw=False)
+        self.PBar.start(len(self.get_consecutive()) - 1, counter=True)
+        n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
+        return {name: i for name, i in zip(cuts, diff(n))}
+
+    def show_contributions(self):
+        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions().values()))) / self.Run.NEvents)
+        rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
+        print_table(rows, header=['Cut', 'Events', 'Contr. [%]', 'Abs [%]'])
+
+    def draw_contributions(self, flat=False, short=False, **kwargs):
+        n = len(self.get_consecutive())
+        contr = {key: (value, self.Draw.get_color(n)) for key, value in self.get_contributions().items()}
+        contr['Good Events'] = (self.Run.NEvents - sum(self.get_contributions().values()), self.Draw.get_color(n))
+        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * self.Run.NEvents if short else 0)).items(), key=lambda x: x[1]))  # sort by size
+        sorted_contr.update({'Other': (self.Run.NEvents - sum(v[0] for v in sorted_contr.values()), self.Draw.get_color(n))} if short else {})
         sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in range(len(sorted_contr)))  # sort by largest->smallest->next largest...
-        pie = TPie('pie', 'Cut Contributions', len(sorted_contr), array([v[0] for v in sorted_contr.values()], 'f'), array([v[1] for v in sorted_contr.values()], 'i'))
-        for i, label in enumerate(sorted_contr.keys()):
-            pie.SetEntryRadiusOffset(i, .05)
-            pie.SetEntryLabel(i, label)
-        format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250)
-        self.Draw(pie, 'CutContributions', draw_opt='{0}rsc'.format('3d' if not flat else ''), show=show)
+        self.Draw.pie(sorted_contr, **prep_kw(kwargs, offset=.05, flat=flat, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250))
         return sorted_contr
 
     def draw_fid(self, scale=10):
