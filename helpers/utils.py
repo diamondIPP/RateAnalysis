@@ -667,6 +667,10 @@ def fit2u(fit, par):
     return ufloat(fit.Parameter(par), fit.ParError(par))
 
 
+def eff2u(eff):
+    return ufloat(eff[0], mean(eff[1:]))
+
+
 def make_ufloat(n, s=0):
     if is_iter(n):
         return array([ufloat(*v) for v in array([n, s]).T])
