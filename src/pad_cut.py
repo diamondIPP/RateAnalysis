@@ -32,9 +32,12 @@ class PadCut(Cut):
     def get_raw_snr(self, _redo=False):
         return self.get_raw_pulse_height() / self.get_raw_noise()
 
+    def get_full_bucket(self):
+        return self.generate_custom(exclude='trigger phase', add=self.generate_bucket() + self.generate_b2(4), name='bful', prnt=False)
+
     def get_bucket(self, all_cuts=False):
         cut = self.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
-        return CutString('!bucket', cut + self.get('bucket', invert=True))()
+        return Cut.make('!bucket', cut + Cut.invert(self.generate_bucket()))
 
     def get_tp(self):
         return self.generate_custom(exclude=['bucket', 'bucket2'], add=self.generate_trigger_phase(), prnt=False, name='tp')
@@ -113,7 +116,7 @@ class PadCut(Cut):
         return CutString('bucket2', string, descr)
 
     def generate_trigger_phase(self):
-        tps = (arange(3) - 1 + self.get_trigger_phase()) % 10  # also exclude the two tps around the most probable
+        tps = self.get_trigger_phases()
         return CutString('trigger phase', ' && '.join(f'trigger_phase != {i}' for i in tps), f'trigger phase != {tps}')
 
     def generate_cft(self, n_sigma=3):
@@ -189,7 +192,11 @@ class PadCut(Cut):
     @save_pickle('TP', print_dur=True, high_rate=True)
     @high_rate
     def get_trigger_phase(self, show=False, _redo=False):
-        return argmax(get_hist_vec(self.Ana.Tel.draw_trigger_phase(cut=self.get_bucket() + self.generate_fiducial()(), show=show)))
+        h = self.Draw.distribution(self.get_tree_vec('trigger_phase', cut=self.get_bucket() + self.generate_fiducial()()), make_bins(11), show=show)
+        return argmax(get_hist_vec(h))
+
+    def get_trigger_phases(self, n=1):
+        return (arange(2 * n + 1) - 1 + self.get_trigger_phase()) % 10  # select also the [n] trigger phases around the MPV
 
     def calc_pedestal(self, n_sigma):
         def f():
