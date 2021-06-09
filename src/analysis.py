@@ -109,6 +109,7 @@ class Analysis(object):
         campaign = self.TCString if camp is None else camp
         run_str = str(run) if run is not None else self.RunPlan if hasattr(self, 'RunPlan') else ''
         run_str = run_str if run is not None or run_str else str(self.Run.Number) if hasattr(self, 'Run') and hasattr(self.Run, 'Number') else ''
+        run_str = run_str if run_str else str(self.Number) if hasattr(self, 'Number') else ''
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
         return join(directory, '{}.pickle'.format('_'.join([v for v in [name, campaign, run_str, dut, str(suf)] if v])))
 
