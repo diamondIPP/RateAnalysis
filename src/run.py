@@ -340,11 +340,10 @@ class Run(Analysis):
     def get_bias_strings(self):
         return [str(b) for b in self.load_biases()]
 
+    @save_pickle('HR', suf_args=0)
     def get_high_rate_run(self, high=True):
-        def f():
-            from src.run_selection import RunSelector
-            return int(RunSelector(testcampaign=self.TCString).get_high_rate_run(self.Number, high))
-        return do_pickle(self.make_simple_pickle_path('HR' if high else 'LR', run=self.Number), f)
+        from src.run_selection import RunSelector
+        return int(RunSelector(testcampaign=self.TCString).get_high_rate_run(self.Number, high))
 
     def get_low_rate_run(self):
         return self.get_high_rate_run(high=False)
