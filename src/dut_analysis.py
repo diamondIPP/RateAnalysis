@@ -84,6 +84,12 @@ class DUTAnalysis(Analysis):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
         return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
 
+    def set_verbose(self, status: bool):
+        self.Verbose = status
+        for field in self.__dict__.values():
+            if hasattr(field, 'Verbose'):
+                field.Verbose = status
+
     # ----------------------------------------
     # region GET
     def has_branch(self, branch):

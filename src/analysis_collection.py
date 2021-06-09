@@ -185,6 +185,7 @@ class AnalysisCollection(Analysis):
     def get_value(self, f, ana, **kwargs):
         return f(ana, **kwargs)
 
+    @quiet
     def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
         pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))

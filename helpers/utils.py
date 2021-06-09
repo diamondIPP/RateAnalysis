@@ -898,6 +898,19 @@ def print_duration(func):
     return wrapper
 
 
+def quiet(func):
+    @wraps(func)
+    def wrapper(col, *args, **kwargs):
+        old = col.FirstAnalysis.Verbose
+        for ana in col.get_analyses():
+            ana.set_verbose(False)
+        value = func(col, *args, **kwargs)
+        for ana in col.get_analyses():
+            ana.set_verbose(old)
+        return value
+    return wrapper
+
+
 # ----------------------------------------
 # region CLASSES
 class FitRes(ndarray):
