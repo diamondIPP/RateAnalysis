@@ -23,7 +23,7 @@ from os import path as pth
 from os.path import dirname, realpath, join
 from pytz import timezone, utc
 from termcolor import colored
-from uncertainties import ufloat
+from uncertainties import ufloat, ufloat_fromstr
 from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
@@ -858,11 +858,11 @@ def prep_kw(dic, **default):
     return d
 
 
-def save_pickle(*pargs, print_dur=False, low_rate=False, suf_args='[]', **pkwargs):
+def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            run = None if not low_rate else args[0].Run.get_low_rate_run()
+            run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
             def_pars = signature(func).parameters
             names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
             suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
@@ -873,7 +873,7 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, suf_args='[]', **pkwarg
                 with open(pickle_path, 'rb') as f:
                     return pickle.load(f)
             prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
-            t = (args[0].info if hasattr(args[0], 'info') else info)(f'{func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
+            t = (args[0].info if hasattr(args[0], 'info') else info)(f'{args[0].__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
             value = func(*args, **kwargs)
             with open(pickle_path, 'wb') as f:
                 pickle.dump(value, f)
