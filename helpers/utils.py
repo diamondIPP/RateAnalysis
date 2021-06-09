@@ -1052,6 +1052,9 @@ class Config(ConfigParser):
     def get_list(self, section, option, default=None):
         return self.get_value(section, option, list, choose(default, []))
 
+    def get_ufloat(self, section, option, default=None):
+        return ufloat_fromstr(self.get_value(section, option, default=default))
+
     def show(self):
         for key, section in self.items():
             print(colored('[{}]'.format(key), 'yellow'))
