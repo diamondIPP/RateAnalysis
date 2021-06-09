@@ -4,7 +4,7 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.draw import make_bins, choose, array, append, do_pickle, load_main_config, diff
+from helpers.draw import make_bins, choose, array, append, load_main_config, diff, save_pickle
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
 
@@ -50,14 +50,11 @@ class Bins(SubAnalysis):
         i, events = self.get_events(bin_size, cut)
         return [i, self.Run.Time[events.astype('i4')] / 1000]
 
-    def get_events(self, bin_size=None, cut=None, redo=False):
-        def f():
-            t = self.info('create binning ...')
-            events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')
-            b = events[::self.get_size(bin_size)]
-            self.add_to_info(t)
-            return append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 else [])
-        bins = do_pickle(self.make_simple_pickle_path(suf='{}_{}'.format(self.get_size(bin_size), self.Cut(cut).GetName())), f, redo=redo)
+    @save_pickle(suf_args='[0, 1]', print_dur=True)
+    def get_events(self, bin_size=None, cut=None, _redo=False):
+        events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')
+        b = events[::self.get_size(bin_size)]
+        bins = append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 else [])
         return [bins.size - 1, array(bins, 'd')]
 
     def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, t_from_event=False):
