@@ -34,7 +34,7 @@ class Cut(SubAnalysis):
         return self.get(name)
 
     def has(self, name):
-        return bool(self.get(name).GetTitle())
+        return bool(self.get(name, warn=False).GetTitle())
 
     def get_name(self, cut=None):
         return 'NoCut' if cut == '' else self(cut).GetName() if not self(cut).GetName().startswith('All') else ''
@@ -388,8 +388,8 @@ class Cut(SubAnalysis):
         return cut.GetTitle() if type(cut) is TCut else choose(cut, '')
 
     @staticmethod
-    def make(name, cut):
-        return TCut(name, Cut.to_string(cut))
+    def make(name, cut, invert=False):
+        return TCut(name, Cut.invert(cut) if invert else Cut.to_string(cut))
 
 
 class CutString:
