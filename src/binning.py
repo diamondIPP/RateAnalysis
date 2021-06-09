@@ -50,6 +50,9 @@ class Bins(SubAnalysis):
         i, events = self.get_events(bin_size, cut)
         return [i, self.Run.Time[events.astype('i4')] / 1000]
 
+    def get_end_time(self, bin_size=None, cut=None):
+        return self.Run.Time[int(self.get_events(bin_size, cut)[1][-1])] / 1000
+
     @save_pickle(suf_args='[0, 1]', print_dur=True)
     def get_events(self, bin_size=None, cut=None, _redo=False):
         events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')

@@ -187,8 +187,8 @@ class PadAnalysis(DUTAnalysis):
     def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
-            return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
-        suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
+            return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=redo)[1]
+        suffix = '{}_{}_{}_{}'.format(Bins.get_size(bin_size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
         if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr_ph and not self.Cut(cut).GetName() == 'bful':
             ph = self.correct_ph(ph)
@@ -320,7 +320,7 @@ class PadAnalysis(DUTAnalysis):
         p = do_pickle(pickle_path, f, redo=redo)
         y = get_hist_vec(p, err=False)
         y_range = ax_range(min(y), max(y), .5, .5) if y_range is None else y_range
-        format_histo(p, name='Fit Result', x_range=[self.Run.StartTime, self.Bins.get_time()[1][-1]], t_ax_off=self.get_t_off(rel_t), y_range=y_range, ndivx=505)
+        format_histo(p, name='Fit Result', x_range=[self.Run.StartTime, self.Bins.get_end_time(bin_size, cut)], t_ax_off=self.get_t_off(rel_t), y_range=y_range, ndivx=505)
         self.Draw(p, show=show, lm=.14, prnt=save)
         fit = self.fit_pulse_height(p, pickle_path)
         format_statbox(p, fit=True)
