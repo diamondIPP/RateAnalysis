@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 from src.pulser_collection import PulserCollection
 from src.analysis_collection import *
-from src.pad_analysis import PadAnalysis
+from src.pad_analysis import PadAnalysis, in1d
 
 
 class PadCollection(AnalysisCollection):
@@ -155,14 +155,16 @@ class PadCollection(AnalysisCollection):
 
     def draw_bucket_tp_ratio(self, avrg=False, redo=False, **kwargs):
         x, y = self.get_fluxes(), self.get_bucket_tp_ratios(avrg, redo)
-        return self.Draw.graph(x, y * 100, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
+        return self.Draw.graph(x, y, 'Bucket Trigger Phase Ratio', y_tit='Percentage of Trigger Phase', **self.get_x_args(draw=True), **kwargs)
 
-    def get_bucket_tpr(self, redo=False):
-        return mean_sigma(self.get_values('bucket tp ratios', PadAnalysis.get_bucket_tp_ratio, picklepath=self.get_pickle_path('TPRatio', '1', 'Bucket'), _redo=redo, all_cuts=True))[0]
+    @save_pickle('TPRatio')
+    def get_bucket_tpr(self, _redo=False):
+        x = concatenate([ana.get_tree_vec('trigger_phase', ana.Cut.get_bucket(all_cuts=True)) for ana in self.Analyses])
+        return calc_eff(values=in1d(x, self.FirstAnalysis.Cut.get_trigger_phases()))
 
     def create_bucket_estimate(self):
         print(f'bucket scale = {FitRes(self.draw_bucket_ratio(show=False).GetListOfFunctions()[0])[1]:.2e}')
-        print(f'bucket tpr = {mean_sigma(self.get_bucket_tp_ratios())[0]:.4f}')
+        print(f'bucket tpr = {eff2u(self.get_bucket_tpr()/ 100):.4f}')
     # endregion CUTS
     # ----------------------------------------
 

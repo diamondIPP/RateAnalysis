@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, round
+from numpy import quantile, insert, sum, round, in1d
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -184,13 +184,13 @@ class PadAnalysis(DUTAnalysis):
         return self.Run.get_tree_vec(var=self.get_signal_var(name, evnt_corr, cut=cut, region=region), cut=self.Cut(cut))
 
     # @reload_tree
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False):
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True):
         """ :returns: fitted (pol0) pulse height over time """
         def f():
             return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=self.Cut(cut), corr=corr, show=False, save=False, redo=redo)[1]
         suffix = '{}_{}_{}_{}'.format(choose(bin_size, Bins.get_size(bin_size)), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
         ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
-        if not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp':
+        if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr_ph and not self.Cut(cut).GetName() == 'bful':
             ph = self.correct_ph(ph)
         return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
 
@@ -456,11 +456,10 @@ class PadAnalysis(DUTAnalysis):
         return ufloat(n_bucket, sqrt(n_bucket)) / n
 
     @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
-    def get_bucket_tp_ratio(self, all_cuts=False, show=False, _redo=False):
+    def get_bucket_tp_ratio(self, all_cuts=False, _redo=False):
         """ :returns the ratio of correctly identified bucket events with the trigger phase cut """
-        x = get_hist_vec(self.Tel.draw_trigger_phase(cut=self.Cut.get_bucket(all_cuts), show=show))
-        tps = (arange(3) - 1 + self.Cut.get_trigger_phase()) % 10  # select also the two trigger phases around the MPV
-        return sum(x[tps]) / sum(x) if sum(x) else ufloat(.5, .5)
+        x = self.get_tree_vec('trigger_phase', cut=self.Cut.get_bucket(all_cuts))
+        return calc_eff(values=in1d(x, self.Cut.get_trigger_phases())) if x.size else [50] * 3
 
     def get_tp_ratio(self, redo=False):
         """ :returns the ratio of bucket events after the trigger phase cut. """
@@ -468,7 +467,7 @@ class PadAnalysis(DUTAnalysis):
 
     def calc_bucket_ratio(self):
         br = self.get_bucket_ratio(all_cuts=True)  # ratio of bucket events
-        tpr = self.get_bucket_tp_ratio(all_cuts=True)  # ratio of the bucket trigger phase
+        tpr = self.get_bucket_tp_ratio(all_cuts=True) / 100  # ratio of the bucket trigger phase
         return br * (1 - tpr)
 
     def estimate_bucket_ratio(self):
