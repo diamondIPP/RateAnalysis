@@ -92,9 +92,6 @@ class RunPlan(Ensemble):
         self.Type = data['type']
         return [(run, self.DUTNr, self.TCString) for run in data['runs']]
 
-    def get_irradiation(self):
-        return None
-
 
 class RunSelection(Ensemble):
     """ Container for an arbitrary selection of runs. """
