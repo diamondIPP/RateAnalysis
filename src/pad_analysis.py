@@ -183,21 +183,22 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: all pulse height values for a given cut. """
         return self.Run.get_tree_vec(var=self.get_signal_var(name, evnt_corr, cut=cut, region=region), cut=self.Cut(cut))
 
-    # @reload_tree
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True):
+    @save_pickle('Fit', sub_dir='PH', suf_args='[0, 1, 2, 3]')
+    def _get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, _redo=False):
         """ :returns: fitted (pol0) pulse height over time """
-        def f():
-            return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=redo)[1]
-        suffix = '{}_{}_{}_{}'.format(Bins.get_size(bin_size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName())
-        ph = do_pickle(self.make_simple_pickle_path('Fit', suffix, sub_dir='Ph_fit'), f, redo=redo)[0]
-        if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr_ph and not self.Cut(cut).GetName() == 'bful':
-            ph = self.correct_ph(ph)
-        return self.Peaks.get_bunch_height() if peaks else ufloat(ph.n, ph.s + sys_err)
+        return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=_redo)[1][0]
 
-    def correct_ph(self, ph=None):
-        ph = choose(ph, self.get_pulse_height, cut=self.Cut.get_tp())
-        r = self.estimate_bucket_ratio() / 100  # % -> value
-        return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
+    @update_pbar
+    def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True, redo=False):
+        ph = self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, redo), cut, corr_ph)
+        return ufloat(ph.n, ph.s + sys_err)
+
+    def correct_ph(self, ph=None, cut=None, corr=True):
+        ph = choose(ph, self._get_pulse_height, cut=self.Cut.get_tp())
+        if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr and not self.Cut(cut).GetName() == 'bful':
+            r = self.estimate_bucket_ratio() / 100  # % -> value
+            return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
+        return ph
 
     def get_min_signal(self, name=None):
         h = self.draw_signal_distribution(show=False, save=False, sig=name)
