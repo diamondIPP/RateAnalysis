@@ -258,10 +258,11 @@ class PadCut(Cut):
         self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
 
     @quiet
-    def draw_means(self, short=False, redo=False, cuts=None, names=None, **kwargs):
+    def draw_means(self, short=False, redo=False, cuts=None, names=None, normalise=True, **kwargs):
         cuts, labels = choose(cuts, list(self.get_consecutive(short).values())), choose(names, self.get_consecutive(short).keys())
         self.Ana.PBar.start(len(cuts), counter=True) if not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
-        x, y = arange(len(cuts)), [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
+        x, y = arange(len(cuts)), array([self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts])
+        y /= y[-1] if normalise else 1
         return self.Draw.graph(x, y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', **prep_kw(kwargs, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels))
 
     def draw_cut_vars(self, normalise=False, consecutive=False):
