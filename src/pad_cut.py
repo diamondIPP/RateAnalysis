@@ -37,7 +37,7 @@ class PadCut(Cut):
 
     def get_bucket(self, all_cuts=False):
         cut = self.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
-        return Cut.make('!bucket', cut + Cut.invert(self.generate_bucket()))
+        return Cut.make('!bucket', cut + self.generate_bucket().invert())
 
     def get_tp(self):
         return self.generate_custom(exclude=['bucket', 'bucket2'], add=self.generate_trigger_phase(), prnt=False, name='tp')
@@ -257,11 +257,12 @@ class PadCut(Cut):
         histos = [self.Ana.draw_signal_distribution(cut=cut, show=False, redo=redo, x_range=x_range, save=False) for cut in cuts.values()]
         self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
 
-    def draw_means(self, short=False, redo=False, show=True, cuts=None, names=None):
-        y = [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in choose(cuts, self.get_consecutive(short).values())]
-        g = self.Draw.graph(arange(len(y)), y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', draw_opt='ap', show=show, bm=.26, gridy=True, x_range=[-1, len(y)])
-        set_bin_labels(g, choose(names, self.get_consecutive(short).keys()))
-        update_canvas()
+    @quiet
+    def draw_means(self, short=False, redo=False, cuts=None, names=None, **kwargs):
+        cuts, labels = choose(cuts, list(self.get_consecutive(short).values())), choose(names, self.get_consecutive(short).keys())
+        self.Ana.PBar.start(len(cuts), counter=True) if not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
+        x, y = arange(len(cuts)), [self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
+        return self.Draw.graph(x, y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', **prep_kw(kwargs, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels))
 
     def draw_cut_vars(self, normalise=False, consecutive=False):
         values = [self.Ana.get_ph_values(cut=(self.generate_threshold() + cut).Value) for cut in (self.get_consecutive().values() if consecutive else self.get_strings(with_raw=True))]
