@@ -63,6 +63,11 @@ class AnalysisCollection(Analysis):
             legend.AddEntry(h, make_flux_string(self.get_fluxes()[list(self.Runs).index(run)].n, prec=0), draw_style)
         return legend
 
+    def set_verbose(self, status):
+        self.Verbose = status
+        for ana in self.get_analyses():
+            ana.set_verbose(status)
+
     # ----------------------------------------
     # region INIT
     def print_start_info(self):

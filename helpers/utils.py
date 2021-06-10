@@ -900,13 +900,12 @@ def print_duration(func):
 
 def quiet(func):
     @wraps(func)
-    def wrapper(col, *args, **kwargs):
-        old = col.FirstAnalysis.Verbose
-        for ana in col.get_analyses():
-            ana.set_verbose(False)
-        value = func(col, *args, **kwargs)
-        for ana in col.get_analyses():
-            ana.set_verbose(old)
+    def wrapper(analysis, *args, **kwargs):
+        ana = analysis.Ana if hasattr(analysis, 'Ana') else analysis
+        old = ana.Verbose
+        ana.set_verbose(False)
+        value = func(analysis, *args, **kwargs)
+        ana.set_verbose(old)
         return value
     return wrapper
 
