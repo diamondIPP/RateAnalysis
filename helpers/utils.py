@@ -297,24 +297,16 @@ def binned_stats(x, values, f, bins):
 
 
 def make_latex_table_row(row, hline=False):
-    return '{0}\\\\{1}\n'.format('\t& '.join(row), '\\hline' if hline else '')
+    row_str, end = ' & '.join(row), '\\hline' if hline else ''
+    return f'{row_str} \\\\{end}'
 
 
-def make_latex_table(header, cols, endline=False):
-    header = ['\\textbf{0}{1}{2}'.format('{', head, '}') if head else '' for head in header]
-    size = max([len(col) for col in cols])
-    rows = []
-    for col in cols:
-        for i in range(size):
-            if len(rows) < size:
-                rows.append([])
-            rows[i].append(col[i] if len(col) > i else '')
-    out = '\\toprule\n'
-    out += make_latex_table_row(header, hline=True)
-    for i, row in enumerate(rows, 1):
-        out += make_latex_table_row(row) if i != len(rows) else make_latex_table_row(row, endline)
-    out += '\\bottomrule' if not endline else ''
-    return out
+def make_latex_table(header, rows, hlines=False):
+    header, cols = [f'\\textbf{{{head}}}' if head else '' for head in header], array(rows, str).T
+    max_width = [len(max(col, key=len)) for col in cols]
+    rows = array([[f'{word:<{w}}' for word in col] for col, w in zip(cols, max_width)]).T
+    rows = '\n'.join(make_latex_table_row(row, hlines) for row in rows)
+    return f'{make_latex_table_row(header, hline=True)}\n{rows}'
 
 
 def make_dia_str(dia):
