@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-from ROOT import gROOT, TF1, TMath, TSpectrum, TTree
+from ROOT import TF1, TSpectrum, TTree
 
 import pickle
 from collections import OrderedDict
@@ -87,55 +87,12 @@ def print_check():
     COUNT += 1
 
 
-def set_root_warnings(status):
-    gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
-
-
-def set_root_output(status=True):
-    gROOT.SetBatch(not status)
-    set_root_warnings(status)
-
-
-def scale_margins(gr1, gr2):
-    ymin1, ymax1 = gr1.GetYaxis().GetXmin(), gr1.GetYaxis().GetXmax()
-    ymin2, ymax2 = gr2.GetYaxis().GetXmin(), gr2.GetYaxis().GetXmax()
-    ymin = ymin1 if ymin1 < ymin2 else ymin2
-    ymax = ymax1 if ymax1 > ymax2 else ymax2
-    return ymin, ymax
-
-
 def untitle(string):
     s = ''
     for word in string.split(' '):
         if word:
             s += word[0].lower() + word[1:] + ' '
     return s.strip(' ')
-
-
-def draw_frame(pad, x, y, base=False, x_tit='', y_tit='', y_off=1, x_off=1):
-    pad.cd()
-    fr = pad.DrawFrame(x[0], y[0], x[1], y[1])
-    pad.Modified()
-    fr.GetXaxis().SetTitleOffset(x_off)
-    fr.GetYaxis().SetTitleOffset(y_off)
-    format_base_frame(fr, x_tit, y_tit) if base else format_transparent_frame(fr)
-
-
-def format_transparent_frame(frame):
-    fr = frame
-    fr.GetXaxis().SetTickLength(0)
-    fr.GetYaxis().SetTickLength(0)
-    fr.GetXaxis().SetLabelOffset(99)
-    fr.GetYaxis().SetLabelOffset(99)
-    fr.SetLineColor(0)
-
-
-def format_base_frame(frame, x_tit, y_tit):
-    fr = frame
-    # X-axis
-    fr.GetXaxis().SetTitle(x_tit)
-    # Y-axis
-    fr.GetYaxis().SetTitle(y_tit)
 
 
 def round_down_to(num, val=1):
@@ -193,30 +150,6 @@ def move_element(odict, thekey, newpos):
     return odict
 
 
-def make_transparent(pad):
-    pad.SetFillStyle(4000)
-    pad.SetFillColor(0)
-    pad.SetFrameFillStyle(4000)
-
-
-def hide_axis(axis):
-    axis.SetTickLength(0)
-    axis.SetLabelOffset(99)
-    axis.SetTitleOffset(99)
-
-
-def set_graph_color(mg, color=None, do_marker=True, marker_size=None):
-    try:
-        for g in mg.GetListOfGraphs():
-            set_graph_color(g, color=color, do_marker=do_marker, marker_size=marker_size)
-    except AttributeError:
-        mg.SetLineColor(color)
-        if do_marker:
-            mg.SetMarkerColor(color)
-        if marker_size:
-            mg.SetMarkerSize(marker_size)
-
-
 def get_bias_root_string(biases):
     if type(biases) == list:
         retval = ''
@@ -238,31 +171,6 @@ def get_bias_root_string(biases):
     retval = retval.replace('+', '#plus')
     retval = retval.replace('-', '#minus')
     return retval
-
-
-def resize_markers(mg, default_size=0, marker_sizes=None):
-    marker_sizes = {} if marker_sizes is None else marker_sizes
-    try:
-        for g in mg.GetListOfGraphs():
-            resize_markers(g, default_size=default_size, marker_sizes=marker_sizes)
-    except AttributeError:
-        mg.SetMarkerSize(marker_sizes.get(mg.GetName(), default_size))
-
-
-def move_legend(leg, x1, y1):
-    xdiff = leg.GetX2NDC() - leg.GetX1NDC()
-    ydiff = leg.GetY2NDC() - leg.GetY1NDC()
-    leg.SetX1NDC(x1)
-    leg.SetX2NDC(x1 + xdiff)
-    leg.SetY1NDC(y1)
-    leg.SetY2NDC(y1 + ydiff)
-
-
-def scale_legend(leg, txt_size=None, width=None, height=None):
-    sleep(.05)
-    leg.SetY2NDC(height) if height is not None else do_nothing()
-    leg.SetX2NDC(width) if width is not None else do_nothing()
-    leg.SetTextSize(txt_size) if txt_size is not None else do_nothing()
 
 
 def make_irr_string(val):
@@ -439,58 +347,6 @@ def pol2cart(rho, phi):
     return array([rho * cos(phi), rho * sin(phi)])
 
 
-def set_time_axis(histo, form='%H:%M', off=0):
-    histo.GetXaxis().SetTimeFormat(form)
-    histo.GetXaxis().SetTimeOffset(-off - 3600 if off else 0)
-    histo.GetXaxis().SetTimeDisplay(1)
-
-
-def find_mpv_fwhm(histo, bins=15):
-    max_bin = histo.GetMaximumBin()
-    fit = TF1('fit', 'gaus', 0, 500)
-    histo.Fit('fit', 'qs0', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
-    mpv = ufloat(fit.GetParameter(1), fit.GetParError(1))
-    fwhm = histo.FindLastBinAbove(fit(mpv.n) / 2) - histo.FindFirstBinAbove(fit(mpv.n) / 2)
-    return mpv, fwhm, mpv / fwhm
-
-
-def get_fw_center(h):
-    low, high = get_fwhm(h, ret_edges=True)
-    fwc = low + (high - low) * .5  # center of fwhm as mpv
-    return fwc
-
-
-def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
-    half_max0 = h.GetMaximum() * fit_range
-    # fit the top with a gaussian to get better maxvalue
-    bins = [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]
-    bins = bins if diff(bins)[0] > 5 else (h.GetMaximumBin() + array([-5, 5])).tolist()
-    half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in bins]))[0] * .5
-    half_max = ufloat(h.GetMaximum() * .5, 0) if half_max > half_max0 else half_max
-    blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
-    low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
-    high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
-    return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
-
-
-def fit_fwhm(h, fitfunc='gaus', show=False, fit_range=.8):
-    low, high = get_fwhm(h, fit_range, ret_edges=True)
-    return FitRes(h.Fit(fitfunc, 'qs{}'.format('' if show else 0), '', low.n, high.n))
-
-
-def scale_histo(histo, value=None, to_max=False, x_range=None):
-    h = histo
-    maximum = h.GetBinContent(h.GetMaximumBin())
-    if x_range is not None:
-        h.GetXaxis().SetRangeUser(*x_range) if x_range is not None else do_nothing()
-        maximum = h.GetBinContent(h.GetMaximumBin())
-        h.GetXaxis().UnZoom()
-    value = maximum if to_max else value
-    if value:
-        h.Scale(1 / value)
-    return h
-
-
 def make_cut_string(cut, n):
     return '{n}Cuts'.format(n=str(n).zfill(2)) if cut is not None else ''
 
@@ -584,52 +440,12 @@ def int_to_roman(integer):
     return result
 
 
-def set_z_range(zmin, zmax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetZaxis().SetRangeUser(zmin, zmax)
-
-
-def set_axes_range(xmin, xmax, ymin, ymax):
-    set_x_range(xmin, xmax)
-    set_y_range(ymin, ymax)
-
-
-def set_x_range(xmin, xmax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetXaxis().SetRangeUser(xmin, xmax)
-
-
-def set_y_range(ymin, ymax):
-    c = get_last_canvas()
-    h = c.GetListOfPrimitives()[1]
-    h.GetYaxis().SetRangeUser(ymin, ymax)
-
-
 def remove_letters(string):
     return ''.join(x for x in string if x.isdigit())
 
 
 def remove_digits(string):
     return ''.join(x for x in string if not x.isdigit())
-
-
-def get_last_canvas(warn=True):
-    try:
-        return gROOT.GetListOfCanvases()[-1]
-    except IndexError:
-        warning('There is no canvas is in the list...', prnt=warn)
-
-
-def close_last_canvas():
-    get_last_canvas().Close()
-
-
-def get_object(name):
-    if name is not None:
-        o = gROOT.FindObject(name)
-        return None if o.__class__.Class_Name() == 'TObject' else o
 
 
 def do(fs, pars, exe=-1):
@@ -679,14 +495,6 @@ def is_iter(v):
         return True
     except TypeError:
         return False
-
-
-def find_graph_margins(graphs):
-    graphs = deepcopy(graphs)
-    for i, g in enumerate(graphs):
-        if g.Class().GetName().startswith('TMulti'):
-            graphs[i] = g.GetListOfGraphs()[0]
-    return min([min(gr.GetY()[i] for i in range(gr.GetN()) if gr.GetY()[i] >= 0.01) for gr in graphs]), max([TMath.MaxElement(gr.GetN(), gr.GetY()) for gr in graphs])
 
 
 def get_time_vec(sel, run=None):
@@ -746,16 +554,6 @@ def remove_file(file_path):
 def get_running_time(t):
     now = datetime.fromtimestamp(time() - t) - timedelta(hours=1)
     return now.strftime('%H:%M:%S')
-
-
-def del_rootobj(obj):
-    if obj is None:
-        return
-    try:
-        if obj.IsA().GetName() != 'TCanvas':
-            obj.Delete()
-    except AttributeError:
-        pass
 
 
 def get_tree_vec(tree, var, cut='', dtype=None, nentries=None, firstentry=0):

@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
-from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie
+from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie, gROOT
 from numpy import sign, linspace, ones, ceil, append, tile, absolute
 from helpers.utils import *
 
@@ -966,6 +966,119 @@ def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
         min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
         bins = append(arange(min_val, max_val, bin_width, dtype='d'), max_val if last else []) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
     return [bins.size - 1, bins + off]
+
+
+def set_z_range(zmin, zmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetZaxis().SetRangeUser(zmin, zmax)
+
+
+def set_axes_range(xmin, xmax, ymin, ymax):
+    set_x_range(xmin, xmax)
+    set_y_range(ymin, ymax)
+
+
+def set_x_range(xmin, xmax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetXaxis().SetRangeUser(xmin, xmax)
+
+
+def set_y_range(ymin, ymax):
+    c = get_last_canvas()
+    h = c.GetListOfPrimitives()[1]
+    h.GetYaxis().SetRangeUser(ymin, ymax)
+
+
+def get_last_canvas(warn=True):
+    try:
+        return gROOT.GetListOfCanvases()[-1]
+    except IndexError:
+        warning('There is no canvas is in the list...', prnt=warn)
+
+
+def close_last_canvas():
+    get_last_canvas().Close()
+
+
+def get_object(name):
+    if name is not None:
+        o = gROOT.FindObject(name)
+        return None if o.__class__.Class_Name() == 'TObject' else o
+
+
+def set_time_axis(histo, form='%H:%M', off=0):
+    histo.GetXaxis().SetTimeFormat(form)
+    histo.GetXaxis().SetTimeOffset(-off - 3600 if off else 0)
+    histo.GetXaxis().SetTimeDisplay(1)
+
+
+def find_mpv_fwhm(histo, bins=15):
+    max_bin = histo.GetMaximumBin()
+    fit = TF1('fit', 'gaus', 0, 500)
+    histo.Fit('fit', 'qs0', '', histo.GetBinCenter(max_bin - bins), histo.GetBinCenter(max_bin + bins))
+    mpv = ufloat(fit.GetParameter(1), fit.GetParError(1))
+    fwhm = histo.FindLastBinAbove(fit(mpv.n) / 2) - histo.FindFirstBinAbove(fit(mpv.n) / 2)
+    return mpv, fwhm, mpv / fwhm
+
+
+def get_fw_center(h):
+    low, high = get_fwhm(h, ret_edges=True)
+    fwc = low + (high - low) * .5  # center of fwhm as mpv
+    return fwc
+
+
+def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
+    half_max0 = h.GetMaximum() * fit_range
+    # fit the top with a gaussian to get better maxvalue
+    bins = [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]
+    bins = bins if diff(bins)[0] > 5 else (h.GetMaximumBin() + array([-5, 5])).tolist()
+    half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in bins]))[0] * .5
+    half_max = ufloat(h.GetMaximum() * .5, 0) if half_max > half_max0 else half_max
+    blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
+    low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
+    high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
+    return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
+
+
+def fit_fwhm(h, fitfunc='gaus', show=False, fit_range=.8):
+    low, high = get_fwhm(h, fit_range, ret_edges=True)
+    return FitRes(h.Fit(fitfunc, 'qs{}'.format('' if show else 0), '', low.n, high.n))
+
+
+def scale_histo(histo, value=None, to_max=False, x_range=None):
+    h = histo
+    maximum = h.GetBinContent(h.GetMaximumBin())
+    if x_range is not None:
+        h.GetXaxis().SetRangeUser(*x_range) if x_range is not None else do_nothing()
+        maximum = h.GetBinContent(h.GetMaximumBin())
+        h.GetXaxis().UnZoom()
+    value = maximum if to_max else value
+    if value:
+        h.Scale(1 / value)
+    return h
+
+
+def make_transparent(pad):
+    pad.SetFillStyle(4000)
+    pad.SetFillColor(0)
+    pad.SetFrameFillStyle(4000)
+
+
+def hide_axis(axis):
+    axis.SetTickLength(0)
+    axis.SetLabelOffset(99)
+    axis.SetTitleOffset(99)
+
+
+def set_root_warnings(status):
+    gROOT.ProcessLine('gErrorIgnoreLevel = {e};'.format(e='0' if status else 'kError'))
+
+
+def set_root_output(status=True):
+    gROOT.SetBatch(not status)
+    set_root_warnings(status)
 
 
 if __name__ == '__main__':
