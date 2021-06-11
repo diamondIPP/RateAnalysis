@@ -854,12 +854,16 @@ def prep_kw(dic, **default):
     return d
 
 
+def make_suffix(ana, values):
+    suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in values]
+    return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
+
+
 def prep_suffix(f, args, kwargs, suf_args):
     def_pars = signature(f).parameters
     names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
-    suf_vals = [args[0].get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in suf_vals]
-    return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
+    return make_suffix(args[0], suf_vals)
 
 
 def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
