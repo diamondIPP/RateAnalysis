@@ -56,11 +56,13 @@ if __name__ == '__main__':
     if not pargs.collection and isint(pargs.runplan):
         z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
-            p = z.Peaks if pargs.tree else None
-            pul = z.Pulser if pargs.tree else None
-            w = z.Waveform if pargs.tree else None
-            tr = z.Tracks if pargs.tree else None
-            t = z.Tel if pargs.tree else None
+            if pargs.tree:
+                p = z.Peaks
+                pul = z.Pulser
+                ped = z.Pedestal
+                w = z.Waveform
+                tr = z.Tracks
+                t = z.Tel
             c = z.Run.Converter
             cut = z.Cut
         except AttributeError:
