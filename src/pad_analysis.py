@@ -143,8 +143,8 @@ class PadAnalysis(DUTAnalysis):
         sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type, t_corr))
         pol = self.get_polarity('pulser' in sig_type)
         if not any([off_corr, evnt_corr]):
-            return '{} * {}'.format(pol, sig_name)
-        return '{} * ({} - {})'.format(pol, sig_name, self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name())
+            return f'{pol} * {sig_name}'
+        return f'{pol} * ({sig_name} - {self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name()})'
 
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
@@ -313,53 +313,42 @@ class PadAnalysis(DUTAnalysis):
         g = Draw.make_tgrapherrors(x, means, title='Mean vs Bin Size', x_tit='Bin Size', y_tit='Pulse Height [mV]', x_range=[min(x) / 2, max(x) * 2])
         self.Draw(g, lm=.14, show=show, gridy=True, logx=True)
 
-    def draw_pulse_height(self, bin_size=None, cut=None, y_range=None, redo=False, corr=True, sig=None, rel_t=True, show=True, save=True, prnt=True):
-        def f():
-            ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
-            return self.Draw.profile(t, ph, self.Bins.get_time(bin_size, cut), 'Pulse Height Evolution', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', y_off=1.6, show=False)
-        pickle_path = self.make_simple_pickle_path('', '{}{}_{}{}'.format(Bins.w(bin_size), int(corr), self.get_short_regint(sig), self.Cut(cut).GetName()), 'Ph_fit')
-        p = do_pickle(pickle_path, f, redo=redo)
-        y = get_hist_vec(p, err=False)
-        y_range = ax_range(min(y), max(y), .5, .5) if y_range is None else y_range
-        format_histo(p, name='Fit Result', x_range=[self.Run.StartTime, self.Bins.get_end_time(bin_size, cut)], t_ax_off=self.get_t_off(rel_t), y_range=y_range, ndivx=505)
-        self.Draw(p, show=show, lm=.14, prnt=save)
-        fit = self.fit_pulse_height(p, pickle_path)
-        format_statbox(p, fit=True)
-        self.Draw.save_plots('PulseHeight{}'.format(Bins.w(bin_size)), show=show, save=save, prnt=prnt)
-        return p, fit
+    @save_pickle('Trend', sub_dir='PH', suf_args='[0, 1, 2, 3]')
+    def get_pulse_height_trend(self, bin_size=None, sig=None, cut=None, corr=True, _redo=False):
+        ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
+        return self.Draw.profile(t, ph, self.Bins.get_time(bin_size, cut), 'Pulse Height Trend', y_tit='Mean Pulse Height [mV]', **self.get_t_args(), graph=True, show=False)
+
+    def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, **kwargs):
+        g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
+        fit = self.fit_pulse_height(g, self.make_simple_pickle_path('Trend', make_suffix(self, [bin_size, sig, cut, corr]), 'PH'))
+        kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g), 0, .6, .8), ndivx=505, lm=.12, stats=set_statbox(fit=True))
+        g = self.Draw.graph(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
+        return g, fit
 
     def fit_pulse_height(self, p, picklepath):
         fit = p.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(p))
         SaveDraw.server_pickle(picklepath, FitRes(fit))
         return FitRes(fit)
 
-    def __get_max_fit_pos(self, h):
+    def __get_max_fit_pos(self, g, thresh=.8):
         """ look for huge fluctiations in ph graph and return last stable point"""
-        if mean([h.GetBinContent(i) for i in range(h.GetNbinsX())]) < 10:  # if the pulse height is very low there will be always big fluctuations!
-            return h.GetBinCenter(h.GetNbinsX()) + 1000
-        sum_ph = h.GetBinContent(1)
-        for i in range(2, h.GetNbinsX() + 1):
-            sum_ph += h.GetBinContent(i)
-            if h.GetBinContent(i) < .8 * sum_ph / (i + 1):
-                if not h.GetBinEntries(i):
-                    continue  # if the bin is empty
-                warning('Found PH fluctiation in run {}! Stopping fit after {:2.0f}%'.format(self.Run.Number, 100. * (i - 1) / h.GetNbinsX()))
-                return h.GetBinCenter(i - 1)
-        return h.GetBinCenter(h.GetNbinsX()) + 1000
+        x, y = get_graph_vecs(g, err=False)
+        if mean(y) > 10:  # if the pulse height is very low there will be always big fluctuations!
+            averages = cumsum(y) / (arange(y.size) + 1)
+            j = next((is_bad for is_bad in y[2:] < thresh * averages[1:-1] if is_bad), None)  # find next entry that is below the average of the previous
+            if j is not None:
+                warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * (j + 2) / y.size:2.0f}%')
+                return x[j + 1]
+        return x[-1] + 1000
 
-    def draw_signal_distribution(self, cut=None, evnt_corr=True, off_corr=False, show=True, sig=None, bin_width=None, events=None,
-                                 start=0, x_range=None, redo=False, prnt=True, save=True, normalise=None):
-        def func():
-            self.info('Drawing signal distribution for run {} and {}...'.format(self.Run.Number, self.DUT.Name), prnt=prnt)
-            nentries = self.Run.NEvents if events is None else self.Run.find_n_events(n=events, cut=str(cut), start=start)
-            values = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut), nentries=nentries, firstentry=start)
-            return self.Draw.distribution(values, self.Bins.get_pad_ph(bin_width, mean(values)), show=False, x_tit='Pulse Height [mV]', y_off=2)
+    @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
+    def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, _redo=False):
+        x = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut))
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width, mean(x)), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=2)
 
-        suffix = f'{bin_width}_{evnt_corr:d}_{self.Cut(cut).GetName()}_{self.get_short_regint(sig)}'
-        h = do_pickle(self.make_simple_pickle_path('Histo', suffix, 'PulseHeight'), func, redo=redo)
-        format_histo(h, x_range=choose(x_range, ax_range(0, 3, .1, h=h)), normalise=normalise)
-        self.Draw(h, 'SignalDistribution', lm=.15, show=show, prnt=prnt, save=save, stats=None)
-        return h
+    def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, prnt=True, save=True, **kwargs):
+        h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bin_width, _redo=redo)
+        return self.Draw.distribution(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=2))
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth
