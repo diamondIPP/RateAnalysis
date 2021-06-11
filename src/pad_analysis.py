@@ -190,7 +190,7 @@ class PadAnalysis(DUTAnalysis):
 
     @update_pbar
     def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True, redo=False):
-        ph = self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, redo), cut, corr_ph)
+        ph = self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, _redo=redo), cut, corr_ph)
         return ufloat(ph.n, ph.s + sys_err)
 
     def correct_ph(self, ph=None, cut=None, corr=True):

@@ -298,7 +298,7 @@ def binned_stats(x, values, f, bins):
 
 def make_latex_table_row(row, hline=False):
     row_str, end = ' & '.join(row), '\\hline' if hline else ''
-    return f'{row_str} \\\\{end}'
+    return f'  {row_str} \\\\{end}'
 
 
 def make_latex_table(header, rows, hlines=False):
