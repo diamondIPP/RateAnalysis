@@ -125,6 +125,18 @@ class DUTAnalysis(Analysis):
     def get_event_cut(self, cut=None, redo=False):
         return self.make_event_cut(self.get_events(cut, redo))
 
+    def set_event_cut(self, events):
+        """ selects the [events] in the TTree, undo with self.reset_entries()"""
+        from ROOT import TEntryList
+        elist = TEntryList()
+        for ev in array(events, 'i'):
+            elist.Enter(ev)
+        self.Tree.SetEntryList(elist)
+
+    def reset_entries(self):
+        """ reset the TEntryList from the TTree """
+        self.Tree.SetEntryList(0)
+
     def make_event_cut(self, events):
         c = zeros(self.Run.NEvents, dtype=bool)
         c[events] = True
