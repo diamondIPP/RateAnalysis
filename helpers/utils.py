@@ -854,16 +854,20 @@ def prep_kw(dic, **default):
     return d
 
 
+def prep_suffix(f, args, kwargs, suf_args):
+    def_pars = signature(f).parameters
+    names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
+    suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
+    suf_vals = [args[0].get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in suf_vals]
+    return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
+
+
 def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
-            def_pars = signature(func).parameters
-            names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
-            suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
-            suf = '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
-            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=suf))
+            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args)))
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 with open(pickle_path, 'rb') as f:
