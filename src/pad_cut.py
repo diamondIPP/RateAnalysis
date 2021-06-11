@@ -71,7 +71,7 @@ class PadCut(Cut):
         # self.CutStrings.register(self.generate_cft(), 36)
 
         # -- FIDUCIAL --
-        self.CutStrings.register(self.generate_fiducial(), 90)
+        self.CutStrings.register(self.generate_fiducial(), 23)
 
         # --BUCKET --
         if self.get_raw_snr() > 5:
@@ -258,9 +258,9 @@ class PadCut(Cut):
         self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
 
     @quiet
-    def draw_means(self, short=False, redo=False, cuts=None, names=None, normalise=True, **kwargs):
+    def draw_means(self, short=False, cuts=None, names=None, normalise=True, redo=False, **kwargs):
         cuts, labels = choose(cuts, list(self.get_consecutive(short).values())), choose(names, self.get_consecutive(short).keys())
-        self.Ana.PBar.start(len(cuts), counter=True) if not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
+        self.Ana.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
         x, y = arange(len(cuts)), array([self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts])
         y /= y[-1] if normalise else 1
         return self.Draw.graph(x, y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', **prep_kw(kwargs, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels))

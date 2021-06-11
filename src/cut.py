@@ -366,9 +366,9 @@ class Cut(SubAnalysis):
         rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
         print_table(rows, header=['Cut', 'Events', 'Contr. [%]', 'Abs [%]'])
 
-    def draw_contributions(self, flat=False, short=False, **kwargs):
+    def draw_contributions(self, flat=False, short=False, redo=False, **kwargs):
         n = len(self.get_consecutive())
-        contr = {key: (value, self.Draw.get_color(n)) for key, value in self.get_contributions().items()}
+        contr = {key: (value, self.Draw.get_color(n)) for key, value in self.get_contributions(_redo=redo).items()}
         contr['Good Events'] = (self.Run.NEvents - sum(self.get_contributions().values()), self.Draw.get_color(n))
         sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * self.Run.NEvents if short else 0)).items(), key=lambda x: x[1]))  # sort by size
         sorted_contr.update({'Other': (self.Run.NEvents - sum(v[0] for v in sorted_contr.values()), self.Draw.get_color(n))} if short else {})
