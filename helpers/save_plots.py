@@ -74,6 +74,11 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return th
 
+    def graph(self, x, y=None, title='', file_name=None, prnt=True, show=True, save=True, **kwargs):
+        g = super(SaveDraw, self).graph(x, y, title, **kwargs)
+        self.save_plots(file_name, prnt=prnt, show=show, save=save)
+        return g
+
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
