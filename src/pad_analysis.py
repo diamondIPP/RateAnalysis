@@ -168,7 +168,7 @@ class PadAnalysis(DUTAnalysis):
         name = choose(name, self.PeakIntegralName)
         return array(self.Run.PeakIntegrals[self.DUT.Number - 1]['PeakIntegral{}'.format(name) if 'Peak' not in str(name) else name])
 
-    def get_short_regint(self, signal=None, signal_type='signal'):
+    def get_short_name(self, signal=None, signal_type='signal'):
         return self.get_all_signal_names(signal_type)[signal if signal is not None else self.SignalName]
 
     def get_attenuator(self):

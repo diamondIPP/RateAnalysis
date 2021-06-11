@@ -127,7 +127,7 @@ class PulserAnalysis(PadSubAnalysis):
     def get_all_signal_names(self):
         return self.Ana.get_all_signal_names('pulser')
 
-    def get_short_regint(self, signal=None):
+    def get_short_name(self, signal=None):
         return self.get_all_signal_names()[choose(signal, self.SignalName)]
 
     def get_signal_var(self, name=None, event_corr=False, off_corr=True, cut=None):
@@ -165,7 +165,7 @@ class PulserAnalysis(PadSubAnalysis):
             x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
             m, s = mean_sigma(x[x < mean(x) + 10], err=False)
             return self.Draw.distribution(x, make_bins(m - 3 * s, m + 5 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
-        h = do_pickle(self.make_simple_pickle_path('Disto', f'{int(corr)}{int(beam_on)}{self.get_short_regint(name)}'), f, redo=redo)
+        h = do_pickle(self.make_simple_pickle_path('Disto', f'{int(corr)}{int(beam_on)}{self.get_short_name(name)}'), f, redo=redo)
         return self.Draw.distribution(h, file_name='PulserDistribution', lm=.12, **kwargs, y_off=1.8)
 
     def get_fit_range(self, h, lsig=3, rsig=.5):
