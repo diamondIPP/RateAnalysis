@@ -388,10 +388,11 @@ class Draw(object):
         self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid, stats=stats)
         return g
 
-    def profile(self, x, y, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
+    def profile(self, x, y, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, graph=False, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
+        p = self.make_graph_from_profile(p) if graph else p
         format_histo(p, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor, stats=stats))
         self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
