@@ -381,11 +381,11 @@ class Draw(object):
         return f
 
     def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None,
-              bin_labels=None, **kwargs):
+              bin_labels=None, stats=False, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
-        self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid)
+        self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid, stats=stats)
         return g
 
     def profile(self, x, y, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, **kwargs):
