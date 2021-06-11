@@ -17,8 +17,6 @@ class PedestalAnalysis(PadSubAnalysis):
         self.RawName = self.get_signal_name(peak_int=1)
         self.Region = self.Ana.get_region('pedestal')[0]
 
-        self.Histogram = None
-        
     def __call__(self, err=False):
         return (self.get_mean(), self.get_noise()) if err else (self.get_mean().n, self.get_noise().n)
 
@@ -65,7 +63,6 @@ class PedestalAnalysis(PadSubAnalysis):
         def f():
             return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
         return do_pickle(self.make_simple_pickle_path('USig'), f, redo=redo).get_pars(err)[1:]
-
     # endregion GET
     # ----------------------------------------
 
@@ -116,7 +113,7 @@ class PedestalAnalysis(PadSubAnalysis):
             info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
             x = self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
             bs = choose(bin_size, max(.1, 30 / sqrt(x.size)))
-            return self.Draw.distribution(x, self.get_bins(bs), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .1, .1, thresh=5), y_off=1.8)
+            return self.Draw.distribution(x, self.get_bins(bs), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5), y_off=1.8)
         h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name), bin_size)), f, redo=redo)
         format_histo(h, **kwargs)
         self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
@@ -149,20 +146,17 @@ class PedestalAnalysis(PadSubAnalysis):
         y_range = ax_range(y, 0, .2, .2)
         return self.Draw.histo_2d(x, y, self.Bins.get_time() + self.get_bins(.5), 'Pedestal vs. Time', y_tit='Pedestal [mV]', pal=53, show=show, y_range=y_range, **self.get_t_args(rel_t))
 
-    def test(self):
-        x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var()], cut=self.Cut())
-        return binned_stats(x, y, mean_sigma, self.Bins.get_time()[-1])
+    @save_pickle('Trend', suf_args='[0, 1, 2]')
+    def get_trend(self, signal_name=None, bin_size=None, sigma=False, _redo=False):
+        (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut()), self.Bins.get_time(bin_size)[-1]
+        x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
+        name = 'Sigma' if sigma else 'Pedestal'
+        return self.Draw.graph(x, y, title=f'{name} Trend', y_tit=f'{name} [mV]', show=False)
 
-    def draw_trend(self, signal_name=None, bin_size=None, sigma=False, rel_t=False, redo=False, show=True):
-        def f():
-            (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut()), self.Bins.get_time(bin_size)[-1]
-            x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
-            name = 'Sigma' if sigma else 'Pedestal'
-            return self.Draw.graph(x, y, title='{} Trend'.format(name), y_tit='{} [mV]'.format(name), show=False)
-        g = do_pickle(self.make_simple_pickle_path('Trend', '{}_{}{}'.format(int(sigma), self.get_short_name(signal_name), self.Bins.w(bin_size))), f, redo=redo)
-        format_histo(g, **self.get_t_args(rel_t))
-        self.Draw(g, show=show)
-        return g
+    def draw_trend(self, signal_name=None, bin_size=None, sigma=False, fit=False, rel_t=False, redo=False, **kwargs):
+        g = self.get_trend(signal_name, bin_size, sigma, _redo=redo)
+        g.Fit('pol0', f'qs{"" if fit else "0"}')
+        return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit))
 
     def fit_trend(self, signal_name=None, show=True, sigma=False):
         g = self.draw_trend(signal_name, show=False, sigma=sigma)
