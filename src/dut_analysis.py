@@ -350,36 +350,38 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL MAP
-    def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, hitmap=False, redo=False, bins=None, z_range=None, size=None, show=True, save=True, prnt=True, scale=False):
+    @save_pickle('SM', print_dur=True, suf_args='all')
+    def get_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, _redo=False):
+        v, bins = array(self.get_tree_vec(self.get_track_vars() + [self.get_ph_var(ped)])).T, Bins.get_global(res) if m is None else self.get_fid_bins(m, n)
+        track_cut = self.get_event_cut(Cut.to_string(self.Cut.get('tracks')))
+        c1 = self.get_event_cut(Cut.to_string(self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut)))[track_cut]
+        c2 = c1 if fid else self.get_event_cut(Cut.to_string(self.Cut()))[track_cut]
+        z_range = ax_range(get_2d_hist_vec(self.Draw.prof2d(*v[c2].T, bins, show=False)), thresh=4)
+        return self.Draw.prof2d(*v[c1].T, bins, 'Pulse Height Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Pulse Height [mV]', z_range=z_range, show=False)
 
-        cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=prnt) if not fid and cut is None else self.Cut(cut)
-        suf = '{c}_{ch}_{res}'.format(c=cut.GetName(), ch=self.Cut.get_chi2(), res=res if bins is None else '{}x{}'.format(bins[0], bins[2]))
-
-        def f():
-            self.info('drawing {mode}map of {dia} for Run {run}...'.format(dia=self.DUT.Name, run=self.Run.Number, mode='hit' if hitmap else 'signal '), prnt=prnt)
-            v = self.get_tree_vec(var=self.get_track_vars() + ([] if hitmap else [self.get_ph_var(ped)]), cut=cut)
-            h1 = (self.Draw.histo_2d if hitmap else self.Draw.prof2d)(*v, choose(bins, Bins.get_global(res)), 'Track Hit Map' if hitmap else 'Signal Map', show=False)
-            set_2d_ranges(h1, *([3, 3] if size is None else size))
-            adapt_z_range(h1) if not hitmap else do_nothing()
-            return h1
-
-        h = do_pickle(self.make_simple_pickle_path('Hit' if hitmap else 'Signal', suf, 'SignalMaps'), f, redo=redo)
+    def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, scale=False, redo=False, **kwargs):
+        h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
-        z_tit = 'Number of Entries' if hitmap else 'Pulse Height [mV]'
-        format_histo(h, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', y_off=1.4, z_off=1.5, z_tit=z_tit, ncont=50, ndivy=510, ndivx=510, z_range=z_range, pal=1 if hitmap else 53)
-        self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame', stats=set_statbox(entries=True, w=.2))
-        self.draw_fid_cut(scale=10)
-        self.Draw.save_plots('HitMap' if hitmap else 'SignalMap2D', prnt=prnt, save=save, show=show)
+        self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53, z_off=1.5))
+        self.centre_sm()
+        self.draw_fid_cut()
+        self.Draw.save_plots('SignalMap2D', **kwargs)
         return h
 
     def centre_sm(self, s=4):
         cx, cy = self.find_center()
         set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2)
-        update_canvas()
 
-    def draw_hitmap(self, res=None, cut=None, fid=False, redo=False, z_range=None, size=None, show=True, prnt=True):
-        cut = self.Cut.get('tracks') if cut is None else self.Cut(cut)
-        return self.draw_signal_map(res, cut, fid, hitmap=True, redo=redo, bins=None, z_range=z_range, size=size, show=show, prnt=prnt)
+    @save_pickle('HM', suf_args='all')
+    def get_hitmap(self, res=None, cut='', _redo=False):
+        x, y = self.get_tree_vec(self.get_track_vars(), self.Cut(cut))
+        return self.Draw.histo_2d(x, y, Bins.get_global(res), 'Hit Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', show=False)
+
+    def draw_hitmap(self, res=None, cut='', redo=False, **kwargs):
+        h = self.Draw.prof2d(self.get_hitmap(res, cut, _redo=redo), title='DUT Hit Map', **kwargs)
+        self.draw_fid_cut()
+        self.centre_sm()
+        return h
 
     def get_fid_bins(self, m, n):
         n = choose(n, m)
