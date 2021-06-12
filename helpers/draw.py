@@ -480,6 +480,13 @@ class Draw(object):
         self.histo(pie, draw_opt=draw_opt, show=show)
         return pie
 
+    def prof2hist(self, p):
+        bins = get_2d_bins(p)
+        h, nx, ny = self.histo_2d([], [], bins, show=False), bins[0], bins[2]
+        xax, yax = p.GetXaxis(), p.GetYaxis()
+        [h.Fill(xax.GetBinCenter(ix), yax.GetBinCenter(iy)) for ix in range(1, nx + 2) for iy in range(1, ny + 2) for _ in range(get_2d_bin_entries(p, ix, iy, nx))]
+        return h
+
     @staticmethod
     def info(txt, c=None, size=.04):
         c = (get_last_canvas() if c is None else c).cd()
@@ -539,7 +546,7 @@ class Draw(object):
         return Draw.make_tgrapherrors(x, y, x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
-    def make_legend(x2=None, y2=None, w=.2, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+    def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
         use_margins = y2 is None
         x2, y2 = get_stat_margins(x2=x2, y2=y2)
         x1 = choose(x1, x2 - w)
@@ -572,7 +579,8 @@ class Draw(object):
 def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=None, marker=None, color=None, line_color=None, line_style=None, markersize=None, x_off=None, y_off=None, z_off=None,
                  lw=None, fill_color=None, fill_style=None, stats=None, tit_size=None, lab_size=None, l_off_y=None, l_off_x=None, draw_first=False, x_range=None, y_range=None, z_range=None,
                  sumw2=None, do_marker=True, style=None, ndivx=None, ndivy=None, ncont=None, tick_size=None, t_ax_off=None, center_y=False, center_x=False, yax_col=None, normalise=None, pal=None,
-                 rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None, center_tit=None):
+                 rebin=None, y_ticks=None, x_ticks=None, z_ticks=None, opacity=None, center_tit=None, **kwargs):
+    _ = kwargs
     h = histo
     if draw_first:
         set_root_output(False)
@@ -739,13 +747,6 @@ def set_2d_ranges(h, dx, dy):
     format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
 
 
-def adapt_z_range(h, n_sigma=2):
-    values = get_2d_hist_vec(h)
-    m, s = mean_sigma(values[5:-5] if values.size > 20 else values, err=False)
-    z_range = [min(values).n, .8 * max(values).n] if s > m else [m - n_sigma * s, m + n_sigma * s]
-    format_histo(h, z_range=z_range)
-
-
 def find_bins(values, thresh=.02, lfac=.2, rfac=.2, n=1):
     binning = linspace(*find_range(values, lfac, rfac, thresh), int(n * sqrt(values.size)))
     return [binning.size - 1, binning]
@@ -814,10 +815,11 @@ def get_hist_vec(p, err=True):
     return array([ufloat(p.GetBinContent(ibin), p.GetBinError(ibin)) if err else p.GetBinContent(ibin) for ibin in range(1, p.GetNbinsX() + 1)])
 
 
-def get_hist_args(h, err=True, raw=False):
+def get_hist_args(h, err=True, raw=False, axis='X'):
+    ax = getattr(h, f'Get{axis.title()}axis')()
     if raw:
-        return array([h.GetBinLowEdge(i) for i in range(1, h.GetNbinsX() + 2)], 'd')
-    return array([ufloat(h.GetBinCenter(ibin), h.GetBinWidth(ibin) / 2) if err else h.GetBinCenter(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
+        return array([ax.GetBinLowEdge(i) for i in range(1, ax.GetNbins() + 2)], 'd')
+    return array([ufloat(ax.GetBinCenter(ibin), ax.GetBinWidth(ibin) / 2) if err else ax.GetBinCenter(ibin) for ibin in range(1, ax.GetNbins() + 1)])
 
 
 def get_hist_vecs(p, err=True, raw=False):
@@ -839,6 +841,15 @@ def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for ybin in ybins for xbin in xbins])
     values = values if err else array([v.n for v in values])
     return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(xbins), len(ybins))
+
+
+def get_2d_bins(h):
+    x, y = [get_hist_args(h, raw=True, axis=ax) for ax in ['X', 'Y']]
+    return [x.size - 1, x, y.size - 1, y]
+
+
+def get_2d_bin_entries(h, ix, iy, nx):
+    return int(h.GetBinEntries((nx + 2) * iy + ix))
 
 
 def get_2d_args(h):
@@ -988,6 +999,7 @@ def set_z_range(zmin, zmax):
 def set_axes_range(xmin, xmax, ymin, ymax):
     set_x_range(xmin, xmax)
     set_y_range(ymin, ymax)
+    update_canvas()
 
 
 def set_x_range(xmin, xmax):
