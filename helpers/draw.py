@@ -88,11 +88,15 @@ class Draw(object):
         gStyle.SetNumberContours(Draw.Config.get_value('PLOTS', 'contours', default=20))
 
     @staticmethod
+    def set_margin(c, side, value=None, default=.1, off=0):
+        do(getattr(c, f'Set{side}Margin'), None if round(getattr(c, f'Get{side}Margin')(), 2) != .1 and value is None else max(choose(value, default) + off, 0))
+
+    @staticmethod
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
-        do(c.SetLeftMargin, l_)
-        do(c.SetRightMargin, r if r is not None else None if round(c.GetRightMargin(), 2) != .1 else .03)
-        do(c.SetBottomMargin, None if round(c.GetBottomMargin(), 2) != .1 and b is None else (.17 if b is None else b) - (.07 if not Draw.Legend else 0))
-        do(c.SetTopMargin, None if round(c.GetTopMargin(), 2) != .1 else max((.1 if t is None else t) - (0 if Draw.Title else .07), 0))
+        Draw.set_margin(c, 'Left', l_, default=.13)
+        Draw.set_margin(c, 'Right', r, default=.02)
+        Draw.set_margin(c, 'Bottom', b, default=.11, off=.06 if Draw.Legend else 0)
+        Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title else 0)
     # endregion SET
     # ----------------------------------------
 

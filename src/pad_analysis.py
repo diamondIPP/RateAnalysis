@@ -344,11 +344,11 @@ class PadAnalysis(DUTAnalysis):
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
     def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, _redo=False):
         x = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut))
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width, mean(x)), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=2)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width, mean(x)), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=1.65)
 
     def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, prnt=True, save=True, **kwargs):
         h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bin_width, _redo=redo)
-        return self.Draw.distribution(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=2))
+        return self.Draw.distribution(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=1.65))
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth
