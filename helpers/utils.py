@@ -660,7 +660,8 @@ def make_suffix(ana, values):
 def prep_suffix(f, args, kwargs, suf_args):
     def_pars = signature(f).parameters
     names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
-    suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in make_list(loads(str(suf_args))) + 1]
+    i_arg = (arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))) + 1
+    suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
     return make_suffix(args[0], suf_vals)
 
 
