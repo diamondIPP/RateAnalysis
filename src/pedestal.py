@@ -108,26 +108,25 @@ class PedestalAnalysis(PadSubAnalysis):
         Draw.info('Correlation Factor: {:.2f}'.format(h.GetCorrelationFactor()))
         return h
 
-    def draw_distribution(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, **kwargs):
-        def f():
-            info('Drawing pedestal distribution for {d} of run {r}'.format(d=self.DUT.Name, r=self.Run.Number), prnt=prnt)
-            x = self.get_tree_vec(var=self.get_signal_var(name), cut=self.Cut(cut))
-            bs = choose(bin_size, max(.1, 30 / sqrt(x.size)))
-            return self.Draw.distribution(x, self.get_bins(bs), 'Pedestal', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5), y_off=1.8)
-        h = do_pickle(self.make_simple_pickle_path('Disto', '{}_{}_{}'.format(self.Cut(cut).GetName(), self.get_short_name(name), bin_size)), f, redo=redo)
-        format_histo(h, **kwargs)
-        self.Draw(h, 'PedestalDistribution{}'.format(self.Cut(cut).GetName()), show, save=save, logy=logy, prnt=prnt, lm=.13, stats=None)
-        return h
+    @save_pickle('Disto', print_dur=True, suf_args='all')
+    def get_distribution(self, sig=None, bin_size=None, cut=None, _redo=False):
+        x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
+        bins = self.get_bins(choose(bin_size, max(.1, 30 / sqrt(x.size))))
+        return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5))
 
-    def draw_disto_fit(self, name=None, bin_size=None, cut=None, logy=False, show=True, save=True, redo=False, prnt=True, draw_cut=False, **kwargs):
+    def draw_distribution(self, sig=None, bin_size=None, cut=None, redo=False, **kwargs):
+        h = self.get_distribution(sig, bin_size, cut, _redo=redo)
+        return self.Draw.distribution(h, file_name='PedestalDistribution', **prep_kw(kwargs,))
+
+    def draw_disto_fit(self, name=None, bin_size=None, cut=None, redo=False, draw_cut=False, **kwargs):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut and cut is None else self.Cut(cut)
-        h = self.draw_distribution(name, bin_size, cut, logy, show=show, save=save, redo=redo, prnt=prnt, **kwargs)
+        h = self.draw_distribution(name, bin_size, cut, redo, **kwargs)
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')
         self.__draw_cut(fit, draw_cut)
         format_statbox(h, fit=True, all_stat=True, form='.2f')
-        self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), save=save, prnt=prnt, show=show)
+        self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), **kwargs)
         SaveDraw.server_pickle(self.make_simple_pickle_path(suf=f'{cut.GetName()}_fwhm_{self.get_short_name(name)}'), fit)
         return fit
 
@@ -156,7 +155,7 @@ class PedestalAnalysis(PadSubAnalysis):
     def draw_trend(self, signal_name=None, bin_size=None, sigma=False, fit=False, rel_t=False, redo=False, **kwargs):
         g = self.get_trend(signal_name, bin_size, sigma, _redo=redo)
         g.Fit('pol0', f'qs{"" if fit else "0"}')
-        return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit))
+        return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit, form='.2f'))
 
     def fit_trend(self, signal_name=None, show=True, sigma=False):
         g = self.draw_trend(signal_name, show=False, sigma=sigma)

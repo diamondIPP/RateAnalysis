@@ -321,7 +321,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, **kwargs):
         g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
         fit = self.fit_pulse_height(g, self.make_simple_pickle_path('Trend', make_suffix(self, [bin_size, sig, cut, corr]), 'PH'))
-        kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g), 0, .6, .8), ndivx=505, lm=.12, stats=set_statbox(fit=True))
+        kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g), 0, .6, .8), ndivx=505, stats=set_statbox(fit=True, form='.2f'))
         g = self.Draw.graph(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
         return g, fit
 
