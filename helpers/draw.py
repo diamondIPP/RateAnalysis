@@ -362,8 +362,9 @@ class Draw(object):
         return Draw.add(c, th, leg)[0]
 
     @staticmethod
-    def mode(m, **kwargs):
-        d = {2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
+    def mode(m=1, **kwargs):
+        d = {1: {'tit_size': .05, 'lab_size': .045, 'y_off': 1.35},
+             2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
              3: {'w': 1.5, 'h': .5, 'tit_size': .07, 'lab_size': .06, 'y_off': .5, 'lm': .073, 'bm': .225, 'rm': .03, 'x_tit': 'Time [ns]', 'y_tit': 'Signal [mV]', 'markersize': .5}
              }[m]
         return prep_kw(kwargs, **d)
@@ -374,12 +375,12 @@ class Draw(object):
         else:
             th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
             fill_hist(th, values)
-        format_histo(th, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor, y_tit='Number of Entries'))
+        format_histo(th, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, y_tit='Number of Entries'))
         self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
         return th
 
     def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
-        format_histo(f, title=title, **prep_kw(kwargs, y_off=1.4))
+        format_histo(f, title=title, **prep_kw(kwargs, **Draw.mode()))
         c = get_last_canvas() if draw_opt and 'same' in draw_opt and c is None else c
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
@@ -387,37 +388,43 @@ class Draw(object):
     def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None,
               bin_labels=None, stats=False, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
-        format_histo(g, title=title, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor))
+        format_histo(g, title=title, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
         self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid, stats=stats)
         return g
 
-    def profile(self, x, y, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, graph=False, **kwargs):
+    def profile(self, x, y=None, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, graph=False, **kwargs):
         x, y = array(x, dtype='d'), array(y, dtype='d')
         p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
         fill_hist(p, x, y)
         p = self.make_graph_from_profile(p) if graph else p
-        format_histo(p, **prep_kw(kwargs, y_off=1.4, fill_color=Draw.FillColor, stats=stats))
+        format_histo(p, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, stats=stats))
         self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
 
-    def prof2d(self, x, y, zz, binning=None, title='', lm=None, rm=.15, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
-        dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
-        p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
-        fill_hist(p, x, y, uarr2n(zz))
-        format_histo(p, **prep_kw(kwargs, y_off=1.4, z_off=1.2, pal=55, stats=stats))
-        set_statbox(entries=True, w=.2) if stats is None else do_nothing()
+    def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
+        if y is None:
+            p = x
+        else:
+            dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
+            p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
+            fill_hist(p, x, y, uarr2n(zz))
+        format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats))
+        set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.15, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
+    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
                  **kwargs):
-        x, y = array(x, dtype='d'), array(y, dtype='d')
-        dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
-        th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
-        fill_hist(th, x, y)
-        format_histo(th, **prep_kw(kwargs, y_off=1.4, z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
-        set_statbox(entries=True, w=.2) if stats is None else do_nothing()
+        if y is None:
+            th = x
+        else:
+            x, y = array(x, dtype='d'), array(y, dtype='d')
+            dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
+            th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
+            fill_hist(th, x, y)
+        format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
+        set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
         return th
 

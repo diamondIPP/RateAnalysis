@@ -362,7 +362,7 @@ class DUTAnalysis(Analysis):
     def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
-        self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53, z_off=1.5))
+        self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
         self.centre_sm()
         self.draw_fid_cut()
         self.Draw.save_plots('SignalMap2D', **kwargs)
