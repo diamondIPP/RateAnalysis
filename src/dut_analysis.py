@@ -360,8 +360,9 @@ class DUTAnalysis(Analysis):
         h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
-        self.draw_fid_cut()
-        self.centre_sm()
+        if m is None:
+            self.draw_fid_cut()
+            self.centre_sm()
         self.Draw.save_plots('SignalMap2D', **kwargs)
         return h
 
@@ -392,21 +393,12 @@ class DUTAnalysis(Analysis):
         cut = self.Cut.generate_sub_fid('f{}{}{}{}'.format(m, n, mi, ni), *array([x[mi], x[mi + 1], y[ni], y[ni + 1]]) / 10)
         return self.get_sub_events(cut)
 
-    def split_signal_map(self, m=2, n=None, grid=True, redo=False, show=True, z_range=None, draw_n=False):
-        m, x_bins, n, y_bins = self.get_fid_bins(m, n)
-        h = self.draw_signal_map(bins=[m, x_bins, n, y_bins], show=False, fid=True, redo=redo)
-        format_histo(h, x_range=[x_bins[0], x_bins[-1] - .01], y_range=[y_bins[0], y_bins[-1] - .01], name='hssm', stats=0, z_range=z_range)
-        self.Draw(h, show=show, lm=.12, rm=.16, draw_opt='colzsame')
-        Draw.grid(x_bins, y_bins, width=2) if grid else do_nothing()
+    def split_signal_map(self, m=2, n=None, redo=False, draw_n=False, grid=True, **kwargs):
+        h = self.draw_signal_map(fid=True, m=m, n=n, redo=redo, **prep_kw(kwargs, stats=False))
+        Draw.grid(*get_2d_bins(h, arr=True), width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
-        i = 0
-        if draw_n:
-            dx, dy = diff(x_bins)[0] / 2, diff(y_bins)[0] / 2
-            for i_n in range(n):
-                for i_m in range(m):
-                    Draw.tlatex(x_bins[i_m] + dx, y_bins[i_n] + dy, '{}'.format(i))
-                    i += 1
-        return h, x_bins, y_bins
+        Draw.bin_numbers(h, draw_n)
+        return h
 
     def draw_split_means(self, n=10):
         x = arange(1, n + 1).tolist()
