@@ -280,8 +280,8 @@ class DUTAnalysis(Analysis):
         self.draw_guard_ring()
 
     @save_pickle('Center', sub_dir='Maps')
-    def find_center(self, _redo=False):
-        h = self.get_signal_map(cut='', _redo=_redo)
+    def find_center(self, _redo=False, h=None, _no_save=False):
+        h = choose(h, self.get_signal_map(cut='', _redo=_redo))
         px, py = h.ProjectionX(), h.ProjectionY()
         return array([mean([p.GetBinCenter(b) for b in [p.FindFirstBinAbove(p.GetMaximum() * .5), p.FindLastBinAbove(p.GetMaximum() * .5)]]) for p in [px, py]])
     # endregion SIZES
@@ -359,16 +359,16 @@ class DUTAnalysis(Analysis):
     def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
-        self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
+        h = self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
         if m is None:
-            self.draw_fid_cut()
-            self.centre_sm()
+            self.draw_fid_cut() if 'mirror' not in kwargs and 'rot' not in kwargs else do_nothing()
+            self.centre_sm(h=h)
         self.Draw.save_plots('SignalMap2D', **kwargs)
         return h
 
-    def centre_sm(self, s=4):
+    def centre_sm(self, s=4, h=None):
         c = get_last_canvas()
-        cx, cy = self.find_center()
+        cx, cy = self.find_center() if h is None else self.find_center(h=h, _no_save=True)
         set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2, c)
 
     @save_pickle('HM', sub_dir='Maps', suf_args='all')
