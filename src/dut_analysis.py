@@ -354,14 +354,14 @@ class DUTAnalysis(Analysis):
         c1 = self.get_event_cut(Cut.to_string(self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut)))[track_cut]
         c2 = c1 if fid else self.get_event_cut(Cut.to_string(self.Cut()))[track_cut]
         z_range = ax_range(get_2d_hist_vec(self.Draw.prof2d(*v[c2].T, bins, show=False)), thresh=4)
-        return self.Draw.prof2d(*v[c1].T, bins, 'Pulse Height Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Pulse Height [mV]', z_range=z_range, show=False)
+        return self.Draw.prof2d(*v[c1].T, bins, 'Pulse Height Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Pulse Height [mV]', z_range=z_range, show=False, pal=53)
 
     def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
-        self.centre_sm()
         self.draw_fid_cut()
+        self.centre_sm()
         self.Draw.save_plots('SignalMap2D', **kwargs)
         return h
 
