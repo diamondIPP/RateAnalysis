@@ -279,14 +279,11 @@ class DUTAnalysis(Analysis):
         self.draw_metal_size()
         self.draw_guard_ring()
 
-    def find_center(self, redo=False):
-        def f():
-            h = self.draw_signal_map(cut='', show=False, prnt=False)
-            px, py = h.ProjectionX(), h.ProjectionY()
-            mx = mean([px.GetBinCenter(b) for b in [px.FindFirstBinAbove(px.GetMaximum() * .5), px.FindLastBinAbove(px.GetMaximum() * .5)]])
-            my = mean([py.GetBinCenter(b) for b in [py.FindFirstBinAbove(py.GetMaximum() * .5), py.FindLastBinAbove(py.GetMaximum() * .5)]])
-            return array([mx, my])
-        return do_pickle(self.make_simple_pickle_path('Center', sub_dir='Center'), f, redo=redo)
+    @save_pickle('Center', sub_dir='Maps')
+    def find_center(self, _redo=False):
+        h = self.get_signal_map(cut='', _redo=_redo)
+        px, py = h.ProjectionX(), h.ProjectionY()
+        return array([mean([p.GetBinCenter(b) for b in [p.FindFirstBinAbove(p.GetMaximum() * .5), p.FindLastBinAbove(p.GetMaximum() * .5)]]) for p in [px, py]])
     # endregion SIZES
     # ----------------------------------------
 
@@ -350,7 +347,7 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SIGNAL MAP
-    @save_pickle('SM', print_dur=True, suf_args='all')
+    @save_pickle('SM', sub_dir='Maps', print_dur=True, suf_args='all')
     def get_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, _redo=False):
         v, bins = array(self.get_tree_vec(self.get_track_vars() + [self.get_ph_var(ped)])).T, Bins.get_global(res) if m is None else self.get_fid_bins(m, n)
         track_cut = self.get_event_cut(Cut.to_string(self.Cut.get('tracks')))
@@ -372,7 +369,7 @@ class DUTAnalysis(Analysis):
         cx, cy = self.find_center()
         set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2)
 
-    @save_pickle('HM', suf_args='all')
+    @save_pickle('HM', sub_dir='Maps', suf_args='all')
     def get_hitmap(self, res=None, cut='', _redo=False):
         x, y = self.get_tree_vec(self.get_track_vars(), self.Cut(cut))
         return self.Draw.histo_2d(x, y, Bins.get_global(res), 'Hit Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', show=False)
