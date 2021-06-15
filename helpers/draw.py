@@ -6,7 +6,7 @@
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie, gROOT
-from numpy import sign, linspace, ones, ceil, append, tile, absolute
+from numpy import sign, linspace, ones, ceil, append, tile, absolute, rot90, flip
 from helpers.utils import *
 
 
@@ -402,20 +402,23 @@ class Draw(object):
         self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
         return p
 
-    def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None, **kwargs):
+    def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None,
+               rot=None, mirror=None, **kwargs):
         if y is None:
             p = x
         else:
-            dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y)))
+            dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y))) if binning is None else None
             p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
             fill_hist(p, x, y, uarr2n(zz))
+        p = self.rotate_2d(p, rot)
+        p = self.flip_2d(p, mirror)
         format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
         return p
 
-    def histo_2d(self, x, y, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
-                 **kwargs):
+    def histo_2d(self, x, y=None, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
+                 rot=None, mirror=None, **kwargs):
         if y is None:
             th = x
         else:
@@ -423,6 +426,8 @@ class Draw(object):
             dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
             th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
             fill_hist(th, x, y)
+        th = self.rotate_2d(th, rot)
+        th = self.flip_2d(th, mirror)
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
@@ -498,8 +503,24 @@ class Draw(object):
             x, y = get_2d_bins(h, arr=True)
             dx, dy = diff(x)[0] / 2, diff(y)[0] / 2
             [Draw.tlatex(x[m] + dx, y[n] + dy, str((x.size - 1) * n + m)) for n in range(y.size - 1) for m in range(x.size - 1)]
-
     # endregion DRAW
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region OPERATIONS
+    def operate(self, h, f, *args, **kwargs):
+        h0, h = h, self.histo_2d([], [], get_2d_bins(h), show=False)
+        set_2d_values(h, f(get_2d_hist_vec(h0, err=False, flat=False), *args, **kwargs))
+        format_histo(h, z_range=[h0.GetMinimum(), h0.GetMaximum()], **{f'{i}_tit': getattr(h0, f'Get{i.title()}axis')().GetTitle() for i in ['x', 'y', 'z']}, ncont=h0.GetContour())
+        h.SetEntries(int(h0.GetEntries()))
+        return h
+
+    def rotate_2d(self, h, exe=True):
+        return self.operate(h, rot90, 2) if exe else h
+
+    def flip_2d(self, h, axis=0):
+        return self.operate(h, flip, axis=axis) if axis is not None else h
+    # endregion OPERATIONS
     # ----------------------------------------
 
     # ----------------------------------------
@@ -854,6 +875,10 @@ def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
 def get_2d_bins(h, arr=False):
     x, y = [get_hist_args(h, raw=True, axis=ax) for ax in ['X', 'Y']]
     return [x, y] if arr else [x.size - 1, x, y.size - 1, y]
+
+
+def set_2d_values(h, arr):
+    [h.SetBinContent(ix + 1, iy + 1, arr[iy, ix]) for ix in range(arr.shape[1]) for iy in range(arr.shape[0])]
 
 
 def _get_2d_bin_entries(h, ix, iy, nx):
