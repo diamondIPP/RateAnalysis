@@ -641,6 +641,10 @@ def p2ecut(n, cut):
 
 
 def correlate(l1, l2):
+    if len(l1.shape) == 2:
+        x, y = l1.flatten(), l2.flatten()
+        cut, s = (x > 0) & (y > 0), count_nonzero(x)
+        return correlate(x[cut], y[cut]) if count_nonzero(cut) > .6 * s else 0
     return corrcoef(l1, l2)[0][1]
 
 
