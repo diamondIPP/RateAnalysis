@@ -484,7 +484,7 @@ class Draw(object):
         bins = get_2d_bins(p)
         h, nx, ny = self.histo_2d([], [], bins, show=False), bins[0], bins[2]
         xax, yax = p.GetXaxis(), p.GetYaxis()
-        [h.Fill(xax.GetBinCenter(ix), yax.GetBinCenter(iy)) for ix in range(1, nx + 2) for iy in range(1, ny + 2) for _ in range(get_2d_bin_entries(p, ix, iy, nx))]
+        [h.Fill(xax.GetBinCenter(ix), yax.GetBinCenter(iy)) for ix in range(1, nx + 2) for iy in range(1, ny + 2) for _ in range(_get_2d_bin_entries(p, ix, iy, nx))]
         return h
 
     @staticmethod
@@ -848,7 +848,7 @@ def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     xbins, ybins = range(1, h.GetNbinsX() + 1), range(1, h.GetNbinsY() + 1)
     values = array([ufloat(h.GetBinContent(xbin, ybin), h.GetBinError(xbin, ybin)) for ybin in ybins for xbin in xbins])
     values = values if err else array([v.n for v in values])
-    return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(xbins), len(ybins))
+    return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(ybins), len(xbins))
 
 
 def get_2d_bins(h, arr=False):
@@ -856,8 +856,14 @@ def get_2d_bins(h, arr=False):
     return [x, y] if arr else [x.size - 1, x, y.size - 1, y]
 
 
-def get_2d_bin_entries(h, ix, iy, nx):
+def _get_2d_bin_entries(h, ix, iy, nx):
     return int(h.GetBinEntries((nx + 2) * iy + ix))
+
+
+def get_2d_bin_entries(h, flat=False):
+    nx, ny = h.GetNbinsX(), h.GetNbinsY()
+    entries = array([[_get_2d_bin_entries(h, ix, iy, nx) for ix in range(1, nx + 1)] for iy in range(1, ny + 1)])
+    return entries.flatten() if flat else entries
 
 
 def get_2d_args(h):
