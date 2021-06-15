@@ -673,6 +673,8 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if '_no_save' in kwargs:
+                return func(*args, **kwargs)
             run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
             pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args)))
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
