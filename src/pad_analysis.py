@@ -277,7 +277,7 @@ class PadAnalysis(DUTAnalysis):
 
     def correlate_sm(self, run, col=True, **kwargs):
         """ optimise correlation of two signal maps by translating one map. """
-        sms = [ana.get_signal_map(**kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
+        sms = [ana.get_signal_map(fid=True, **kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
         a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in sms]
         n1, n2 = [get_2d_bin_entries(sm) for sm in sms]
         a1[n1 < .1 * max(n1)] = 0  # set bins with low stats to 0
