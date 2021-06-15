@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, round, in1d
+from numpy import quantile, insert, sum, round, in1d, max, unravel_index, argmax
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -274,6 +274,17 @@ class PadAnalysis(DUTAnalysis):
         fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
         kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
+
+    def correlate_sm(self, run, **kwargs):
+        """ optimise correlation of two signal maps by translating one map. """
+        sms = [ana.get_signal_map(**kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
+        a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in sms]
+        n1, n2 = [get_2d_bin_entries(sm) for sm in sms]
+        a1[n1 < .1 * max(n1)] = 0  # set bins with low stats to 0
+        a2[n2 < .1 * max(n2)] = 0
+        c = array([[correlate(a1, roll(a2, [x, y], axis=[0, 1])) for x in range(a1.shape[0])] for y in range(a1.shape[1])])
+        info(f'best correlation: {max(c):.2f} at shift {unravel_index(argmax(c), c.shape)}')
+        return max(c)
 
     def draw_sm_correlation(self, run, m=10, show=True):
         x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
