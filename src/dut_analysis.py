@@ -369,8 +369,7 @@ class DUTAnalysis(Analysis):
     def centre_sm(self, s=4):
         c = get_last_canvas()
         cx, cy = self.find_center()
-        c.cd()
-        set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2)
+        set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2, c)
 
     @save_pickle('HM', sub_dir='Maps', suf_args='all')
     def get_hitmap(self, res=None, cut='', _redo=False):

@@ -1010,20 +1010,20 @@ def set_z_range(zmin, zmax):
     h.GetZaxis().SetRangeUser(zmin, zmax)
 
 
-def set_axes_range(xmin, xmax, ymin, ymax):
-    set_x_range(xmin, xmax)
-    set_y_range(ymin, ymax)
+def set_axes_range(xmin, xmax, ymin, ymax, c=None):
+    set_x_range(xmin, xmax, c)
+    set_y_range(ymin, ymax, c)
     update_canvas()
 
 
-def set_x_range(xmin, xmax):
-    c = get_last_canvas()
+def set_x_range(xmin, xmax, c=None):
+    c = choose(c, get_last_canvas())
     h = c.GetListOfPrimitives()[1]
     h.GetXaxis().SetRangeUser(xmin, xmax)
 
 
-def set_y_range(ymin, ymax):
-    c = get_last_canvas()
+def set_y_range(ymin, ymax, c=None):
+    c = choose(c, get_last_canvas())
     h = c.GetListOfPrimitives()[1]
     h.GetYaxis().SetRangeUser(ymin, ymax)
 
