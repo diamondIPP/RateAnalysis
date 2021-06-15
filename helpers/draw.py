@@ -491,6 +491,14 @@ class Draw(object):
     def info(txt, c=None, size=.04):
         c = (get_last_canvas() if c is None else c).cd()
         Draw.tlatex(c.GetLeftMargin() + .02, 1 - (c.GetTopMargin() + .02), txt, align=13, ndc=True, size=size)
+
+    @staticmethod
+    def bin_numbers(h, show=True):
+        if show:
+            x, y = get_2d_bins(h, arr=True)
+            dx, dy = diff(x)[0] / 2, diff(y)[0] / 2
+            [Draw.tlatex(x[m] + dx, y[n] + dy, str((x.size - 1) * n + m)) for n in range(y.size - 1) for m in range(x.size - 1)]
+
     # endregion DRAW
     # ----------------------------------------
 
@@ -843,9 +851,9 @@ def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(xbins), len(ybins))
 
 
-def get_2d_bins(h):
+def get_2d_bins(h, arr=False):
     x, y = [get_hist_args(h, raw=True, axis=ax) for ax in ['X', 'Y']]
-    return [x.size - 1, x, y.size - 1, y]
+    return [x, y] if arr else [x.size - 1, x, y.size - 1, y]
 
 
 def get_2d_bin_entries(h, ix, iy, nx):
