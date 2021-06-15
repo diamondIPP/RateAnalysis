@@ -367,7 +367,9 @@ class DUTAnalysis(Analysis):
         return h
 
     def centre_sm(self, s=4):
+        c = get_last_canvas()
         cx, cy = self.find_center()
+        c.cd()
         set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2)
 
     @save_pickle('HM', sub_dir='Maps', suf_args='all')
