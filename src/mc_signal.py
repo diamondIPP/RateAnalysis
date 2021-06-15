@@ -4,9 +4,9 @@
 # created on January 12th 2021 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from numpy.random import normal, randint
-from numpy import concatenate, cumsum, linspace, where, polyfit, array, append, arange, invert, mean
+from numpy import concatenate, cumsum, linspace, where, polyfit, array, append, arange, invert, mean, round
 from ROOT import gRandom
-from helpers.draw import Draw, choose, get_base_dir, join, get_hist_vecs, PBar, calc_eff, mean_sigma, ax_range
+from helpers.draw import Draw, choose, get_base_dir, join, get_hist_vecs, PBar, calc_eff, mean_sigma, ax_range, get_2d_hist_vec, update_pbar, prep_kw
 
 
 class MCSignal(object):
@@ -109,6 +109,24 @@ class MCSignal(object):
         lc = Draw.horizontal_line(no_cut, w=2)
         lr = Draw.horizontal_line(1 if rel else real, w=2, color=3)
         self.Draw.legend([g, lr, lc], ['w/ cut', 'real signal', 'w/o cut'], ['f', 'l', 'l'])
+
+    @update_pbar
+    def _sim_signal(self, mpv, xi):
+        return gRandom.Landau(mpv, xi)
+
+    def sim_signal(self, res=.5, n=1e6, noise=None):
+        m, p = [get_2d_hist_vec(f(res, cut=self.Ana.Cut(), show=False), err=False).astype(t) for f, t in [(self.Ana.draw_signal_map, 'd'), (self.Ana.draw_hitmap, 'i')]]
+        m = m.repeat(array(round(p / sum(p) * n), 'i'))
+        self.PBar.start(int(m.size))
+        mpv = -1.49e-01 + m * 7.35e-01 + m ** 2 * 5.77e-04
+        xi = mpv * 0.067142
+        noise = normal(0, choose(noise, self.Ana.Pedestal.get_mean().n), xi.size)
+        ph = array([self._sim_signal(i, j) for i, j in array([mpv, xi]).T]) + noise
+        return ph
+
+    def draw_sim(self, res=.5, n=1e6, noise=None, cut_off=410, **kwargs):
+        x = self.sim_signal(res, n, noise)
+        self.Draw.distribution(x[x < cut_off], self.Ana.Bins.get_pad_ph(2), x_tit='Pulse Height [mV]', **prep_kw(kwargs, y_off=1.65, lm=.15))
 
 
 if __name__ == '__main__':
