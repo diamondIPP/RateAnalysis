@@ -275,7 +275,7 @@ class PadAnalysis(DUTAnalysis):
         kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
 
-    def correlate_sm(self, run, **kwargs):
+    def correlate_sm(self, run, col=True, **kwargs):
         """ optimise correlation of two signal maps by translating one map. """
         sms = [ana.get_signal_map(**kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
         a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in sms]
@@ -283,8 +283,18 @@ class PadAnalysis(DUTAnalysis):
         a1[n1 < .1 * max(n1)] = 0  # set bins with low stats to 0
         a2[n2 < .1 * max(n2)] = 0
         c = array([[correlate(a1, roll(a2, [x, y], axis=[0, 1])) for x in range(a1.shape[0])] for y in range(a1.shape[1])])
-        info(f'best correlation: {max(c):.2f} at shift {unravel_index(argmax(c), c.shape)}')
-        return max(c)
+        return c if col else c.T
+
+    def find_best_sm_correlation(self, arr):
+        self.info(f'best correlation: {max(arr):.2f} at shift {unravel_index(argmax(arr), arr.shape)}')
+        return max(arr)
+
+    def draw_sm_correlation_vs_shift(self, run, col=True, res=1, n=4, **kwargs):
+        c = self.correlate_sm(run, col, res=res)
+        iy, ix = unravel_index(argmax(c), c.shape)
+        x = (arange(2 * n + 1) - n + ix)
+        x = x % c.shape[1] if max(x) > c.shape[1] else x
+        self.Draw.graph(x, c[iy][x], **prep_kw(kwargs, x_tit=f'Shift in {"X" if col else "Y"}', y_tit='Correlation Factor'))
 
     def draw_sm_correlation(self, run, m=10, show=True):
         x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
