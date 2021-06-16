@@ -359,11 +359,12 @@ class DUTAnalysis(Analysis):
     def draw_signal_map(self, res=None, cut=None, fid=False, ped=False, m=None, n=None, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, ped, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
-        h = self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53))
+        rz = array([h.GetMinimum(), h.GetMaximum()]) * 1 / self.get_pulse_height().n if scale else None
+        h = self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53, z_tit='Relative Pulse Height' if scale else None, z_range=rz))
         if m is None:
             self.draw_fid_cut() if 'mirror' not in kwargs and 'rot' not in kwargs else do_nothing()
             self.centre_sm(h=h)
-        self.Draw.save_plots('SignalMap2D', **prep_kw(kwargs, save=res is None and m is None))
+        self.Draw.save_plots('SignalMap2D', **prep_kw(kwargs, save=res is None and m is None and not scale))
         return h
 
     def centre_sm(self, s=4, h=None):
