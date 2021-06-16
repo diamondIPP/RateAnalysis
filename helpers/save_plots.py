@@ -74,9 +74,9 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return th
 
-    def graph(self, x, y=None, title='', file_name=None, prnt=True, show=True, save=True, **kwargs):
+    def graph(self, x, y=None, title='', file_name=None, **kwargs):
         g = super(SaveDraw, self).graph(x, y, title, **kwargs)
-        self.save_plots(file_name, prnt=prnt, show=show, save=save)
+        self.save_plots(file_name, **kwargs)
         return g
 
     def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
