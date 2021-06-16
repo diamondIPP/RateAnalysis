@@ -513,10 +513,13 @@ class Draw(object):
     # ----------------------------------------
     # region OPERATIONS
     def operate(self, h, f, *args, **kwargs):
-        h0, h = h, self.histo_2d([], [], get_2d_bins(h), show=False)
-        set_2d_values(h, f(get_2d_hist_vec(h0, err=False, flat=False), *args, **kwargs))
-        format_histo(h, z_range=[h0.GetMinimum(), h0.GetMaximum()], **{f'{i}_tit': getattr(h0, f'Get{i.title()}axis')().GetTitle() for i in ['x', 'y', 'z']}, ncont=h0.GetContour())
+        h0, h = h, self.prof2d([], [], [], get_2d_bins(h), show=False)
+        prof = 'Profile' in h0.ClassName()
+        x, n = get_2d_hist_vec(h0, err=False, flat=False), get_2d_bin_entries(h0) if prof else 1
+        set_2d_values(h, f(x * n, *args, **kwargs))
+        set_2d_entries(h, f(n, *args, **kwargs)) if prof else do_nothing()
         h.SetEntries(int(h0.GetEntries()))
+        format_histo(h, z_range=[h0.GetMinimum(), h0.GetMaximum()], **{f'{i}_tit': getattr(h0, f'Get{i.title()}axis')().GetTitle() for i in ['x', 'y', 'z']}, ncont=h0.GetContour())
         return h
 
     def rotate_2d(self, h, exe=True):
@@ -883,6 +886,11 @@ def get_2d_bins(h, arr=False):
 
 def set_2d_values(h, arr):
     [h.SetBinContent(ix + 1, iy + 1, arr[iy, ix]) for ix in range(arr.shape[1]) for iy in range(arr.shape[0])]
+
+
+def set_2d_entries(h, arr):
+    ny, nx = arr.shape
+    [h.SetBinEntries((nx + 2) * (iy + 1) + (ix + 1), arr[iy, ix]) for ix in range(nx) for iy in range(ny)]
 
 
 def _get_2d_bin_entries(h, ix, iy, nx):
