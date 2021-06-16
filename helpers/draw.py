@@ -227,11 +227,15 @@ class Draw(object):
         Draw.polygon(x, y, name=name, **kwargs)
 
     @staticmethod
-    def tlatex(x, y, text, name='text', align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
+    def tlatex(x, y, text, name=None, align=20, color=1, size=.05, angle=None, ndc=None, font=None, show=True):
         tlatex = TLatex(x, y, text)
-        format_text(tlatex, name, align, color, size, angle, ndc, font)
+        format_text(tlatex, choose(name, Draw.get_name('t')), align, color, size, angle, ndc, font)
         tlatex.Draw() if show else do_nothing()
         return Draw.add(tlatex)
+
+    @staticmethod
+    def date(x, y, align=20, color=1, size=.05, angle=None, font=42, **kwargs):
+        return Draw.tlatex(x, y, datetime.now().strftime('%Y-%m-%d %H:%M'), None, align, color, size, angle, ndc=True, font=font, **kwargs)
 
     @staticmethod
     def arrow(x1, x2, y1, y2, col=1, width=1, opt='<|', size=.005):

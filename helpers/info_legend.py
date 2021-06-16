@@ -13,10 +13,15 @@ from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_ir
 class InfoLegend(object):
     def __init__(self, analysis=None):
         self.Ana = analysis
-        self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash')
+        self.ShowDate = analysis.MainConfig.getboolean('SAVE', 'date')
+        self.ShowGit = analysis.MainConfig.getboolean('SAVE', 'git hash') and not self.ShowDate
         self.ShowInfo = analysis.MainConfig.getboolean('SAVE', 'info legend')
 
         self.Objects = []
+
+    def __repr__(self):
+        on = ['OFF', 'ON']
+        return f'InfoLegend: legend {on[self.ShowInfo]}, git hash {on[self.ShowGit]}, date {on[self.ShowDate]}'
         
     def has_dut(self):
         return hasattr(self.Ana, 'DUT')
@@ -70,6 +75,8 @@ class InfoLegend(object):
             pad.cd()
             if self.ShowGit:
                 git_text.Draw()
+            if self.ShowDate:
+                Draw.date(.995, .005, align=31, size=.02)
             if self.ShowInfo:
                 legend.Draw()
             pad.Modified()

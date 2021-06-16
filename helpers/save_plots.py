@@ -110,7 +110,7 @@ class SaveDraw(Draw):
     def save_on_server(self, canvas, file_name, ftype=None):
         if self.ServerDir is not None:
             for ft in ['pdf', 'png'] if ftype is None else make_list(ftype):
-                canvas.SaveAs('{}.{}'.format(join(self.ServerDir, basename(file_name)), ft))
+                canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.{ft}'))
 
     @staticmethod
     def server_pickle(old_path, value):
