@@ -69,9 +69,9 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return c
 
-    def distribution(self, values, binning=None, title='', file_name=None, show=True, prnt=True, save=True, w=1, h=1, *args, **kwargs):
-        th = super(SaveDraw, self).distribution(values, binning, title, show=show, w=w, h=h, *args, **kwargs)
-        self.save_plots(file_name, prnt=prnt, show=show, save=save)
+    def distribution(self, values, binning=None, title='', file_name=None, w=1, h=1, *args, **kwargs):
+        th = super(SaveDraw, self).distribution(values, binning, title, w=w, h=h, *args, **kwargs)
+        self.save_plots(file_name, **kwargs)
         return th
 
     def graph(self, x, y=None, title='', file_name=None, **kwargs):
