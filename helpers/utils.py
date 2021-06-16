@@ -227,7 +227,7 @@ def make_list(value):
 
 
 def uarr2n(arr):
-    return array([i.n for i in arr]) if is_ufloat(arr[0]) else arr
+    return array([i.n for i in arr]) if len(arr) and is_ufloat(arr[0]) else arr
 
 
 def file_exists(path, warn=False):
