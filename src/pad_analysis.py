@@ -275,19 +275,24 @@ class PadAnalysis(DUTAnalysis):
         kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
 
-    def correlate_sm(self, run, col=True, **kwargs):
+    @staticmethod
+    def _correlate_sm(sm1, sm2, col=True):
         """ optimise correlation of two signal maps by translating one map. """
-        sms = [ana.get_signal_map(fid=True, **kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
-        a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in sms]
-        n1, n2 = [get_2d_bin_entries(sm) for sm in sms]
+        a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in [sm1, sm2]]
+        n1, n2 = [get_2d_bin_entries(sm) for sm in [sm1, sm2]]
         a1[n1 < .1 * max(n1)] = 0  # set bins with low stats to 0
         a2[n2 < .1 * max(n2)] = 0
         c = array([[correlate(a1, roll(a2, [x, y], axis=[0, 1])) for x in range(a1.shape[0])] for y in range(a1.shape[1])])
         return c if col else c.T
 
-    def find_best_sm_correlation(self, arr):
-        self.info(f'best correlation: {max(arr):.2f} at shift {unravel_index(argmax(arr), arr.shape)}')
-        return max(arr)
+    def correlate_sm(self, run, col=True, **kwargs):
+        sm1, sm2 = [ana.get_signal_map(fid=True, **kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
+        return self._correlate_sm(sm1, sm2, col)
+
+    def find_best_sm_correlation(self, run):
+        c = self._correlate_sm(*run) if is_iter(run) else self.correlate_sm(run, res=1)
+        self.info(f'best correlation: {max(c):.2f} at shift {unravel_index(argmax(c), c.shape)}')
+        return max(c)
 
     def draw_sm_correlation_vs_shift(self, run, col=True, res=1, n=4, **kwargs):
         c = self.correlate_sm(run, col, res=res)

@@ -363,7 +363,7 @@ class DUTAnalysis(Analysis):
         if m is None:
             self.draw_fid_cut() if 'mirror' not in kwargs and 'rot' not in kwargs else do_nothing()
             self.centre_sm(h=h)
-        self.Draw.save_plots('SignalMap2D', **kwargs)
+        self.Draw.save_plots('SignalMap2D', **prep_kw(kwargs, save=res is None and m is None))
         return h
 
     def centre_sm(self, s=4, h=None):
