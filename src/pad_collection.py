@@ -55,7 +55,7 @@ class PadCollection(AnalysisCollection):
     # region GET
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False, flux_sort=False):
         error = self.get_repr_error(110, peaks, redo) if err else 0
-        picklepath = self.make_simple_pickle_path('Fit', '{}_1_b2_AllCuts'.format(Bins.w(bin_width)), run='{}', sub_dir='Ph_fit')
+        picklepath = self.get_pickle_path('Fit', int(corr), 'PH')
         pbar = False if peaks else pbar
         return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo and not err, corr=corr,
                                sys_err=error, peaks=peaks, flux_sort=flux_sort)
