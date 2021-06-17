@@ -582,12 +582,15 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region SIGNAL MAP
-    def draw_signal_map(self, fid=False, res=.7, hitmap=False, redo=False, show=True):
-        histos = self.get_values('signal maps', self.Analysis.draw_signal_map, show=False, prnt=False, hitmap=hitmap, res=res, redo=redo, fid=fid)
+    def draw_signal_map(self, fid=False, res=.7, redo=False, square=False, scale=False, **kwargs):
+        histos = self.get_plots('signal maps', self.Analysis.get_signal_map, res=res, square=square, _redo=redo, fid=fid)
         for h in histos[1:]:
             histos[0].Add(h)
-        format_histo(histos[0], title='Cumulative {} Map'.format('Hit' if hitmap else 'Signal'))
-        self.Draw(histos[0], 'Cumulative{}Map'.format('Hit' if hitmap else 'Signal'), show=show, lm=.12, rm=.16, draw_opt='colz', leg=self.FirstAnalysis.Cut.get_fid())
+        histos[0].Scale(1 / self.get_pulse_height()[0].n) if scale else do_nothing()
+        rz = array([histos[0].GetMinimum(), histos[0].GetMaximum()]) * 1 / self.get_pulse_height()[0].n if scale else None
+        h = self.Draw.prof2d(histos[0], title='Cumulative Pulse Height Map', **prep_kw(kwargs, pal=53, z_range=rz, z_tit='Relative Pulse Height' if scale else None))
+        self.FirstAnalysis.centre_sm(h=h)
+        self.Draw.save_plots('CumSignalMap2D', **kwargs)
 
     def draw_hitmap(self, fid=False, res=.7, redo=False, show=True):
         self.draw_signal_map(fid, res, True, redo, show)
