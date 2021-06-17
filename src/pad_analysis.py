@@ -466,7 +466,8 @@ class PadAnalysis(DUTAnalysis):
     @save_pickle('Ratio', suf_args='[0, 1]', sub_dir='Bucket')
     def get_bucket_ratio(self, cut=None, all_cuts=False, _redo=False):
         """ return fraction of bucket events with no signal in the signal region. """
-        c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.Cut.ConsecutiveCuts['beam stops'])
+        default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
+        c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else default)
         n = self.get_n_entries(c)
         n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
         return ufloat(n_bucket, sqrt(n_bucket)) / n
