@@ -589,7 +589,8 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region SIGNAL MAP
     def draw_signal_map(self, fid=False, res=.7, redo=False, square=False, scale=False, **kwargs):
-        histos = self.get_plots('signal maps', self.Analysis.get_signal_map, res=res, square=square, _redo=redo, fid=fid)
+        pickle_path = self.get_pickle_path('SM', make_suffix(self.FirstAnalysis, [res, None, fid, 0, square]), 'Maps')
+        histos = self.get_plots('signal maps', self.Analysis.get_signal_map, res=res, square=square, _redo=redo, fid=fid, picklepath=pickle_path)
         for h in histos[1:]:
             histos[0].Add(h)
         histos[0].Scale(1 / self.get_pulse_height()[0].n) if scale else do_nothing()
@@ -597,6 +598,7 @@ class AnalysisCollection(Analysis):
         h = self.Draw.prof2d(histos[0], title='Cumulative Pulse Height Map', **prep_kw(kwargs, pal=53, z_range=rz, z_tit='Relative Pulse Height' if scale else None))
         self.FirstAnalysis.centre_sm(h=h)
         self.Draw.save_plots('CumSignalMap2D', **kwargs)
+        return h
 
     def draw_hitmap(self, fid=False, res=.7, redo=False, show=True):
         self.draw_signal_map(fid, res, True, redo, show)
@@ -637,6 +639,9 @@ class AnalysisCollection(Analysis):
         g = Draw.make_tgrapherrors(x_values, y_values, title='STD of the Signal Map')
         format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='rel. STD', y_off=1.3, t_ax_off=0 if vs_time else None)
         self.Draw(g, 'STDSigMap', show, lm=.12, logx=not vs_time)
+
+    def find_sm_correlation(self, sm1, sm2):
+        return self.FirstAnalysis.find_best_sm_correlation([sm1, sm2])
     # endregion SIGNAL MAP
     # ----------------------------------------
 
