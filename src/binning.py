@@ -93,8 +93,8 @@ class Bins(SubAnalysis):
         return Bins.get_pixel_x(bin_width, aspect_ratio) + Bins.get_pixel_y(bin_width, aspect_ratio)
 
     @staticmethod
-    def get_global(res=None):
-        return Bins.get_global_x(res) + Bins.get_global_y(res)
+    def get_global(res=None, square=False):
+        return Bins.get_global_x(res) + (Bins.get_global_x(res) if square else Bins.get_global_y(res))
 
     @staticmethod
     def get_native_global():
