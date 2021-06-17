@@ -44,6 +44,12 @@ class AnalysisCollection(Analysis):
 
         self.print_finished() if verbose else print()
 
+    def __str__(self):
+        return f'{self.__class__.__name__} of {self.Ensemble} and {self.DUT}'
+
+    def __repr__(self):
+        return self.__str__()
+
     def __del__(self):
         print('\n good bye... ')
 
