@@ -522,8 +522,8 @@ class Draw(object):
         format_histo(h, z_range=[h0.GetMinimum(), h0.GetMaximum()], **{f'{i}_tit': getattr(h0, f'Get{i.title()}axis')().GetTitle() for i in ['x', 'y', 'z']}, ncont=h0.GetContour())
         return h
 
-    def rotate_2d(self, h, exe=True):
-        return self.operate(h, rot90, 2) if exe else h
+    def rotate_2d(self, h, n=2):
+        return self.operate(h, rot90, n) if n is not None else h
 
     def flip_2d(self, h, axis=0):
         return self.operate(h, flip, axis=axis) if axis is not None else h
