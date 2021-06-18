@@ -69,7 +69,7 @@ if __name__ == '__main__':
             pass
         if pargs.draw:
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    elif isfloat(pargs.runplan):
+    elif isfloat(pargs.runplan) or pargs.collection:
         z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         if pargs.draw:
             z.draw_all(redo=pargs.redo)
