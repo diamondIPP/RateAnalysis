@@ -6,7 +6,7 @@
 
 from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort, invert, any
 from numpy.random import rand
-from uncertainties import umath
+from uncertainties.umath import sqrt as usqrt
 
 from src.currents import Currents
 from src.cut import Cut
@@ -181,8 +181,9 @@ class DUTAnalysis(Analysis):
         cut = self.Cut.generate_custom(exclude=['fiducial'], prnt=False) if not fid and cut is None else self.Cut(cut)
         return self.get_tree_vec(self.get_track_vars() + [self.get_ph_var()], cut)
 
-    def get_uniformity(self, use_fwc=True, redo=False):
-        return do_pickle(self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal'), self.draw_uniformity, redo=redo, show=False, use_fwc=use_fwc)
+    @save_pickle('Uniformity', sub_dir='Signal', suf_args='all')
+    def get_uniformity(self, use_fwc=True, _redo=False):
+        return self.draw_uniformity(use_fwc=use_fwc, redo=_redo, show=False)
 
     def get_track_length_var(self):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
@@ -412,7 +413,7 @@ class DUTAnalysis(Analysis):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
-        return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(mean_ph=mean(ph)), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
+        return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(Bins.find_width(ph[cut])), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
@@ -420,7 +421,7 @@ class DUTAnalysis(Analysis):
         n = cumsum(histogram2d(x, y, [bx, by])[0].flatten().astype('i'))[:-1]  # get the number of events for each bin
         values = split(ph[lexsort((digitize(x, bx), digitize(y, by)))], n)  # bin x and y and sort then ph according to bins
         values = concatenate([lst / mean(lst) * mean(ph) for lst in values if lst.size > 2])  # normalise the values of each bin
-        return self.Draw.distribution(values, self.Bins.get_pad_ph(mean_ph=mean(values)), 'Signal Distribution Normalised by area mean', x_tit='Pulse Height [mV]', show=show)
+        return self.Draw.distribution(values, self.Bins.get_pad_ph(Bins.find_width(values)), 'Signal Distribution Normalised by area mean', x_tit='Pulse Height [mV]', show=show)
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         x = get_2d_hist_vec(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)
@@ -480,25 +481,21 @@ class DUTAnalysis(Analysis):
     # endregion SIGNAL MAP
     # ----------------------------------------
 
-    def draw_uniformity(self, histo=None, use_fwc=False, x_range=None, corr_noise=True, show=True, redo=False):
-        noise = self.Pedestal.get_fwhm() if histo is None and hasattr(self, 'Pedestal') else 0
-        h = self.draw_signal_distribution(show=show, normalise=True, redo=redo, x_range=x_range) if histo is None else histo
+    def draw_uniformity(self, h=None, use_fwc=True, redo=False, **kwargs):
+        noise = self.Pedestal.get_fwhm(raw=True, redo=redo) if h is None and hasattr(self, 'Pedestal') else 0
+        h = choose(h, self.draw_signal_distribution, sig=self.get_signal_name(peak_int=1), redo=redo, **prep_kw(kwargs, normalise=True))
+        format_histo(h, **prep_kw(kwargs, x_range=ax_range(h=h, thresh=h.GetMaximum() * .02, fl=.2, fh=.6)))
+        format_statbox(h, w=.35, all_stat=True)
         (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
-        Draw.vertical_line(m.n, 0, 1e7, style=7, w=2)
         fwhm, half_max = high - low, h.GetMaximum() / 2
-        Draw.tlatex(m.n + 5, .1 * half_max, 'FWC' if use_fwc else 'Mean', align=10)
-        Draw.arrow(low.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        Draw.arrow(high.n, m.n, half_max, half_max, col=2, width=3, opt='<', size=.02)
-        Draw.tlatex(high.n + 5, half_max, 'FWHM', align=12, color=2)
-        fwhm = umath.sqrt(fwhm ** 2 - noise ** 2) if corr_noise else fwhm
+        li = Draw.vertical_line(m.n, style=7, w=2)
+        a = Draw.arrow(low.n, high.n, half_max, half_max, col=2, width=3, opt='<>', size=.02)
+        Draw.legend([a, li], ['FWHM', 'FWC' if use_fwc else 'Mean'], 'l', y2=.72, w=.2)
+        fwhm = usqrt(fwhm ** 2 - noise ** 2)  # correct fwhm for noise
         value = fwhm / m
-        legend = Draw.make_legend(w=.3, y2=.768, nentries=1, margin=.1, cols=2, scale=1.1)
-        legend.AddEntry('', 'FWHM/{}'.format('FWC' if use_fwc else 'Mean'), '')
-        legend.AddEntry('', '{:.2f} ({:.2f})'.format(value.n, value.s), '')
-        legend.Draw()
-        self.info('FWHM / MPV: {}'.format(value))
-        h.Sumw2(False)
-        update_canvas()
+        Draw.add_stats_entry(h, f'FWHM/{"FWC" if use_fwc else "Mean"}', value, line=3)
+        self.info(f'Uniformity: {value:.2f}')
+        self.Draw.save_plots('Uniformity', **kwargs)
         return m, fwhm, value
 
     def model_trap_number(self, f=1000, t=1, max_traps=10000, steps=20, show=True):

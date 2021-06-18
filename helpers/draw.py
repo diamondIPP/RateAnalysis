@@ -309,8 +309,9 @@ class Draw(object):
         value = f'{value.n:{form}} #pm {value.s:{form}}' if is_ufloat(value) else f'{value:{form}}'
         text = f'{key} = {value}'
         h.SetStats(0)
-        s.AddText(text)
         y2, hl = s.GetY2NDC(), (s.GetY2NDC() - s.GetY1NDC()) / s.GetSize()
+        s.AddText(text)
+        s.SetY1NDC(s.GetY1NDC() - hl)
         [Draw.horizontal_line(y2 - i * hl, s.GetX1NDC(), s.GetX2NDC(), tline=True, ndc=True) for i in make_list(line)] if line is not None else do_nothing()
 
     @staticmethod
