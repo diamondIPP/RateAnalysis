@@ -32,9 +32,6 @@ class SaveDraw(Draw):
         SaveDraw.server_is_mounted()
         self.ServerDir = SaveDraw.load_server_save_dir(analysis)
 
-    def __call__(self, *args, **kwargs):
-        return self.histo(*args, **kwargs)
-
     # ----------------------------------------
     # region SET
     def set_sub_dir(self, name):
@@ -62,6 +59,10 @@ class SaveDraw(Draw):
 
     # ----------------------------------------
     # region SAVE
+    def save_full(self, h, filename, **kwargs):
+        self(h, **prep_kw(kwargs, show=False, save=False))
+        self.save_plots(None, full_path=join(self.Dir, filename), show=False, **kwargs)
+
     def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, info_leg=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
         if info_leg:
@@ -69,34 +70,25 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return c
 
-    def distribution(self, values, binning=None, title='', file_name=None, w=1, h=1, *args, **kwargs):
-        th = super(SaveDraw, self).distribution(values, binning, title, w=w, h=h, *args, **kwargs)
-        self.save_plots(file_name, **kwargs)
-        return th
-
-    def graph(self, x, y=None, title='', file_name=None, **kwargs):
-        g = super(SaveDraw, self).graph(x, y, title, **kwargs)
-        self.save_plots(file_name, **kwargs)
-        return g
-
-    def save_plots(self, savename, sub_dir=None, canvas=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
+    def save_plots(self, savename, sub_dir=None, canvas=None, full_path=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
         kwargs = prep_kw(kwargs, save=save, prnt=prnt, show=show)
-        if not kwargs['save'] or not SaveDraw.Save or savename is None:
+        if not kwargs['save'] or not SaveDraw.Save or (savename is None and full_path is None):
             return
         canvas = get_last_canvas() if canvas is None else canvas
         update_canvas(canvas)
         try:
-            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, **kwargs)
+            self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, full_path=full_path, **kwargs)
             return Draw.add(canvas)
         except Exception as inst:
             warning('Error saving plots ...:\n  {}'.format(inst))
 
-    def __save_canvas(self, canvas, file_name, res_dir=None, sub_dir=None, ftype=None, prnt=True, show=True, **kwargs):
+    def __save_canvas(self, canvas, file_name, res_dir=None, sub_dir=None, full_path=None, ftype=None, prnt=True, show=True, **kwargs):
         """should not be used in analysis methods..."""
         _ = kwargs
-        file_path = join(choose(res_dir, self.ResultsDir), choose(sub_dir, self.SubDir), file_name)
+        file_path = join(choose(res_dir, self.ResultsDir), choose(sub_dir, self.SubDir), file_name) if full_path is None else full_path
+        file_name = basename(file_path)
         ensure_dir(dirname(file_path))
         info('saving plot: {}'.format(file_name), prnt=prnt and SaveDraw.Verbose)
         canvas.Update()
@@ -104,11 +96,11 @@ class SaveDraw(Draw):
         set_root_warnings(False)
         for f in choose(make_list(ftype), default=['pdf'], decider=ftype):
             canvas.SaveAs('{}.{}'.format(file_path, f.strip('.')))
-        self.save_on_server(canvas, file_name, ftype)
+        self.save_on_server(canvas, file_name, ftype, save=full_path is None)
         set_root_output(True)
 
-    def save_on_server(self, canvas, file_name, ftype=None):
-        if self.ServerDir is not None:
+    def save_on_server(self, canvas, file_name, ftype=None, save=True):
+        if self.ServerDir is not None and save:
             for ft in ['pdf', 'png'] if ftype is None else make_list(ftype):
                 canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.{ft}'))
 
