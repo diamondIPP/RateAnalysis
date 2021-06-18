@@ -50,8 +50,8 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_noise(self, name=None, cut=None, redo=False):
         return self.get_par(2, name, cut, redo)
 
-    def get_fwhm(self, raw=False):
-        return (self.get_raw_noise() if raw else self.get_noise()) * 2 * sqrt(2 * log(2))
+    def get_fwhm(self, raw=False, redo=False):
+        return (self.get_raw_noise if raw else self.get_noise)(redo=redo) * 2 * sqrt(2 * log(2))
 
     def get_raw_mean(self, cut=None, redo=False):
         return self.get_mean(self.RawName, cut, redo)
