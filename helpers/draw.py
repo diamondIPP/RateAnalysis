@@ -382,14 +382,14 @@ class Draw(object):
              }[m]
         return prep_kw(kwargs, **d)
 
-    def distribution(self, x, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
+    def distribution(self, x, binning=None, title='', thresh=.02, show=True, **kwargs):
         if hasattr(x, 'GetName'):
             th = x
         else:
             th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=x, thresh=thresh))
             fill_hist(th, x)
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, y_tit='Number of Entries'))
-        self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, **kwargs)
+        self.histo(th, show=show, **prep_kw(kwargs, stats=None))
         return th
 
     def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
@@ -398,15 +398,14 @@ class Draw(object):
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
 
-    def graph(self, x, y=None, title='', c=None, lm=None, rm=None, bm=None, tm=None, w=1, h=1, show=True, draw_opt=None, gridy=None, logx=False, logy=False, grid=None,
-              bin_labels=None, stats=False, **kwargs):
+    def graph(self, x, y=None, title='', c=None, bm=None, w=1, h=1, show=True, draw_opt=None, bin_labels=None, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
-        self.histo(g, show=show, lm=lm, rm=rm, bm=choose(bm, .24 if bin_labels else None), tm=tm, w=w, h=h, gridy=gridy, draw_opt=draw_opt, logx=logx, logy=logy, canvas=c, grid=grid, stats=stats)
+        self.histo(g, show=show, bm=choose(bm, .24 if bin_labels else None), canvas=c, **kwargs)
         return g
 
-    def profile(self, x, y=None, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, graph=False, **kwargs):
+    def profile(self, x, y=None, binning=None, title='', thresh=.02, show=True, graph=False, **kwargs):
         if y is None:
             p = x
         else:
@@ -414,11 +413,11 @@ class Draw(object):
             p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
             fill_hist(p, x, y)
         p = self.make_graph_from_profile(p) if graph else p
-        format_histo(p, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, stats=stats))
-        self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
+        format_histo(p, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, stats=None))
+        self.histo(p, show=show, **kwargs)
         return p
 
-    def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None,
+    def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, show=True, phi=None, theta=None, draw_opt='colz', stats=None,
                rot=None, mirror=None, centre=None, **kwargs):
         if y is None:
             p = x
@@ -431,10 +430,10 @@ class Draw(object):
         rx, ry = get_2d_centre_ranges(p, centre)
         format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats, x_range=rx, y_range=ry))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
-        self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
+        self.histo(p, show=show, lm=lm, rm=rm, bm=bm, phi=phi, theta=theta, draw_opt=draw_opt, stats=choose(stats, True), **kwargs)
         return p
 
-    def histo_2d(self, x, y=None, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
+    def histo_2d(self, x, y=None, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, stats=None, canvas=None,
                  rot=None, mirror=None, centre=None, **kwargs):
         if y is None:
             th = x
@@ -448,7 +447,7 @@ class Draw(object):
         rx, ry = get_2d_centre_ranges(th, centre)
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats, x_range=rx, y_range=ry))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
-        self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas, **kwargs)
+        self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, stats=choose(stats, True), canvas=canvas, **prep_kw(kwargs, draw_opt='colz'))
         return th
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
