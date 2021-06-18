@@ -50,8 +50,8 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_noise(self, name=None, cut=None, redo=False):
         return self.get_par(2, name, cut, redo)
 
-    def get_fwhm(self):
-        return self.get_noise() * 2 * sqrt(2 * log(2))
+    def get_fwhm(self, raw=False):
+        return (self.get_raw_noise() if raw else self.get_noise()) * 2 * sqrt(2 * log(2))
 
     def get_raw_mean(self, cut=None, redo=False):
         return self.get_mean(self.RawName, cut, redo)
@@ -111,7 +111,7 @@ class PedestalAnalysis(PadSubAnalysis):
     @save_pickle('Disto', print_dur=True, suf_args='all')
     def get_distribution(self, sig=None, bin_size=None, cut=None, _redo=False):
         x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
-        bins = self.get_bins(choose(bin_size, max(.1, 30 / sqrt(x.size))))
+        bins = self.get_bins(choose(bin_size, max(.1, self.Bins.find_width(x))))
         return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5))
 
     def draw_distribution(self, sig=None, bin_size=None, cut=None, redo=False, prefix='', **kwargs):
