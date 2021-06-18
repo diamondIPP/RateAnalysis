@@ -361,17 +361,11 @@ class DUTAnalysis(Analysis):
         h = self.get_signal_map(res, cut, fid, ped, square, m, n, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         rz = array([h.GetMinimum(), h.GetMaximum()]) * 1 / self.get_pulse_height().n if scale else None
-        h = self.Draw.prof2d(h, **prep_kw(kwargs, ncont=50, ndivy=510, ndivx=510, pal=53, z_tit='Relative Pulse Height' if scale else None, z_range=rz))
+        h = self.Draw.prof2d(h, **prep_kw(kwargs, centre=4, ncont=50, ndivy=510, ndivx=510, pal=53, z_tit='Relative Pulse Height' if scale else None, z_range=rz))
         if m is None:
             self.draw_fid_cut() if 'mirror' not in kwargs and 'rot' not in kwargs else do_nothing()
-            self.centre_sm(h=h)
         self.Draw.save_plots('SignalMap2D', **prep_kw(kwargs, save=res is None and m is None and not scale))
         return h
-
-    def centre_sm(self, s=4, h=None):
-        c = get_last_canvas()
-        cx, cy = self.find_center() if h is None else self.find_center(h=h, _no_save=True)
-        set_axes_range(cx - s / 2, cx + s / 2, cy - s / 2, cy + s / 2, c)
 
     @save_pickle('HM', sub_dir='Maps', suf_args='all')
     def get_hitmap(self, res=None, cut='', _redo=False):
@@ -379,9 +373,8 @@ class DUTAnalysis(Analysis):
         return self.Draw.histo_2d(x, y, Bins.get_global(res), 'Hit Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', show=False)
 
     def draw_hitmap(self, res=None, cut='', redo=False, **kwargs):
-        h = self.Draw.prof2d(self.get_hitmap(res, cut, _redo=redo), title='DUT Hit Map', **kwargs)
+        h = self.Draw.prof2d(self.get_hitmap(res, cut, _redo=redo), **prep_kw(kwargs, centre=4, title='DUT Hit Map'))
         self.draw_fid_cut()
-        self.centre_sm()
         return h
 
     def get_fid_bins(self, m, n):

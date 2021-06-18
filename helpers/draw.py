@@ -407,7 +407,7 @@ class Draw(object):
         return p
 
     def prof2d(self, x, y=None, zz=None, binning=None, title='', lm=None, rm=.17, bm=None, w=1, h=1, show=True, phi=None, theta=None, draw_opt='colz', stats=None,
-               rot=None, mirror=None, **kwargs):
+               rot=None, mirror=None, centre=None, **kwargs):
         if y is None:
             p = x
         else:
@@ -419,10 +419,11 @@ class Draw(object):
         format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
+        centre_2d(p, centre) if centre is not None else do_nothing()
         return p
 
     def histo_2d(self, x, y=None, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
-                 rot=None, mirror=None, **kwargs):
+                 rot=None, mirror=None, centre=None, **kwargs):
         if y is None:
             th = x
         else:
@@ -435,6 +436,7 @@ class Draw(object):
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
+        centre_2d(th, centre) if centre is not None else do_nothing()
         return th
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
@@ -1132,6 +1134,18 @@ def scale_histo(histo, value=None, to_max=False, x_range=None):
     if value:
         h.Scale(1 / value)
     return h
+
+
+def find_2d_centre(h, thresh=.5):
+    px, py = h.ProjectionX(), h.ProjectionY()
+    return array([mean([p.GetBinCenter(b) for b in [p.FindFirstBinAbove(p.GetMaximum() * thresh), p.FindLastBinAbove(p.GetMaximum() * thresh)]]) for p in [px, py]])
+
+
+def centre_2d(h, dx, dy=None, thresh=.5):
+    c = get_last_canvas()
+    cx, cy = find_2d_centre(h, thresh)
+    dx, dy = dx / 2, choose(dy, dx) / 2
+    set_axes_range(cx - dx, cx + dx, cy - dy, cy + dy, c)
 
 
 def make_transparent(pad):
