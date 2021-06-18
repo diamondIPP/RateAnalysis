@@ -191,6 +191,10 @@ class DiaScans(Analysis):
 
     def get_savename(self, name):
         return '{}{}'.format(name, self.Name.title().replace('-', '').replace('_', ''))
+
+    def get_signal_maps(self, fid=False, res=.2, square=True, scale=True, redo=False):
+        pickle_info = PickleInfo('Maps', 'SM', make_suffix(self, [fid, res, square, scale]))
+        return self.get_values(AnalysisCollection.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
     # endregion GET
     # ----------------------------------------
 
