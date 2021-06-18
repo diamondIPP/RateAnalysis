@@ -355,7 +355,7 @@ class Draw(object):
 
     @staticmethod
     def histo(th, show=True, lm=None, rm=None, bm=None, tm=None, m=None, draw_opt=None, w=1, h=1, logx=None, logy=None, logz=None, grid=None, gridy=None, gridx=None, phi=None, theta=None,
-              leg=None, canvas=None, sumw2=None, stats=False):
+              leg=None, canvas=None, sumw2=None, stats=False, **kwargs):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
         set_root_output(show)
@@ -382,14 +382,14 @@ class Draw(object):
              }[m]
         return prep_kw(kwargs, **d)
 
-    def distribution(self, values, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
-        if type(values) == TH1F:
-            th = values
+    def distribution(self, x, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, **kwargs):
+        if hasattr(x, 'GetName'):
+            th = x
         else:
-            th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=values, thresh=thresh))
-            fill_hist(th, values)
+            th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=x, thresh=thresh))
+            fill_hist(th, x)
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, y_tit='Number of Entries'))
-        self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt)
+        self.histo(th, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, **kwargs)
         return th
 
     def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
@@ -428,10 +428,10 @@ class Draw(object):
             fill_hist(p, x, y, uarr2n(zz))
         p = self.rotate_2d(p, rot)
         p = self.flip_2d(p, mirror)
-        format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats))
+        rx, ry = get_2d_centre_ranges(p, centre)
+        format_histo(p, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, pal=55, stats=stats, x_range=rx, y_range=ry))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
         self.histo(p, show=show, lm=lm, rm=rm, bm=bm, w=w, h=h, phi=phi, theta=theta, draw_opt=draw_opt, stats=True if stats is None else stats)
-        centre_2d(p, centre) if centre is not None else do_nothing()
         return p
 
     def histo_2d(self, x, y=None, binning=None, title='', lm=None, rm=.17, bm=None, tm=None, show=True, logz=None, draw_opt='colz', stats=None, grid=None, canvas=None, w=1, h=1, gridy=None,
@@ -445,10 +445,10 @@ class Draw(object):
             fill_hist(th, x, y)
         th = self.rotate_2d(th, rot)
         th = self.flip_2d(th, mirror)
-        format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats))
+        rx, ry = get_2d_centre_ranges(th, centre)
+        format_histo(th, **prep_kw(kwargs, **Draw.mode(), z_off=1.2, z_tit='Number of Entries', pal=55, stats=stats, x_range=rx, y_range=ry))
         set_statbox(entries=True, w=.25) if stats is None else do_nothing()
-        self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas)
-        centre_2d(th, centre) if centre is not None else do_nothing()
+        self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, w=w, h=h, draw_opt=draw_opt, logz=logz, grid=grid, gridy=gridy, stats=choose(stats, True), canvas=canvas, **kwargs)
         return th
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
@@ -1153,11 +1153,17 @@ def find_2d_centre(h, thresh=.5):
     return array([mean([p.GetBinCenter(b) for b in [p.FindFirstBinAbove(p.GetMaximum() * thresh), p.FindLastBinAbove(p.GetMaximum() * thresh)]]) for p in [px, py]])
 
 
-def centre_2d(h, dx, dy=None, thresh=.5):
-    c = get_last_canvas()
+def get_2d_centre_ranges(h, dx, dy=None, thresh=.5):
+    if dx is None:
+        return None, None
     cx, cy = find_2d_centre(h, thresh)
     dx, dy = dx / 2, choose(dy, dx) / 2
-    set_axes_range(cx - dx, cx + dx, cy - dy, cy + dy, c)
+    return [cx - dx, cx + dx], [cy - dy, cy + dy]
+
+
+def centre_2d(h, dx, dy=None, thresh=.5):
+    c = get_last_canvas()
+    set_axes_range(*concatenate(get_2d_centre_ranges(h, dx, dy, thresh)), c)
 
 
 def make_transparent(pad):
