@@ -199,11 +199,12 @@ class Draw(object):
         return Draw.add(line)
 
     @staticmethod
-    def tline(x1, x2, y1, y2, color=1, width=1, style=1):
+    def tline(x1, x2, y1, y2, color=1, width=1, style=1, ndc=None):
         line = TLine(x1, y1, x2, y2)
         line.SetLineColor(color)
         line.SetLineWidth(width)
         line.SetLineStyle(style)
+        do(line.SetNDC, ndc)
         line.Draw()
         return Draw.add(line)
 
@@ -212,8 +213,8 @@ class Draw(object):
         return Draw.line(x, x, ymin, ymax, color, w, style) if not tline else Draw.tline(x, x, ymin, ymax, color, w, style)
 
     @staticmethod
-    def horizontal_line(y, xmin=-1e9, xmax=1e9, color=1, w=1, style=1, tline=False):
-        return Draw.line(xmin, xmax, y, y, color, w, style) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style)
+    def horizontal_line(y, xmin=-1e9, xmax=1e9, color=1, w=1, style=1, tline=False, ndc=None):
+        return Draw.line(xmin, xmax, y, y, color, w, style) if not tline else Draw.tline(xmin, xmax, y, y, color, w, style, ndc)
 
     @staticmethod
     def polygon(x, y, line_color=1, width=1, style=1, name=None, fillstyle=None, fill_color=None, opacity=None, show=True):
@@ -302,6 +303,17 @@ class Draw(object):
         return Draw.add(p)
 
     @staticmethod
+    def add_stats_entry(h, key, value, form='.2f', line=None):
+        s = h.GetListOfFunctions()[0]
+        s.SetName(Draw.get_name('st'))
+        value = f'{value.n:{form}} #pm {value.s:{form}}' if is_ufloat(value) else f'{value:{form}}'
+        text = f'{key} = {value}'
+        h.SetStats(0)
+        s.AddText(text)
+        y2, hl = s.GetY2NDC(), (s.GetY2NDC() - s.GetY1NDC()) / s.GetSize()
+        [Draw.horizontal_line(y2 - i * hl, s.GetX1NDC(), s.GetX2NDC(), tline=True, ndc=True) for i in make_list(line)] if line is not None else do_nothing()
+
+    @staticmethod
     def frame(pad, xmin, xmax, ymin, ymax, tit, div=None, y_cent=None):
         pad.cd()
         fr = pad.DrawFrame(xmin, ymin, xmax, ymax)
@@ -347,7 +359,7 @@ class Draw(object):
 
     @staticmethod
     def legend(histos, titles, styles=None, x2=None, y2=None, *args, **kwargs):
-        leg = Draw.make_legend(x2, y2, nentries=len(histos), *args, **kwargs)
+        leg = Draw.make_legend(x2, y2, *args, **prep_kw(kwargs, nentries=len(histos)))
         for i in range(len(histos)):
             leg.AddEntry(histos[i], titles[i], 'lpf' if styles is None else styles[i] if type(styles) is list else styles)
         leg.Draw('same')
@@ -1111,9 +1123,7 @@ def find_mpv_fwhm(histo, bins=15):
 
 
 def get_fw_center(h):
-    low, high = get_fwhm(h, ret_edges=True)
-    fwc = low + (high - low) * .5  # center of fwhm as mpv
-    return fwc
+    return mean(get_fwhm(h, ret_edges=True))  # center of FWHM as MPV
 
 
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
