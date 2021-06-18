@@ -70,7 +70,6 @@ class AnalysisCollection(Analysis):
         return legend
 
     def set_verbose(self, status):
-        self.Verbose = status
         for ana in self.get_analyses():
             ana.set_verbose(status)
 
@@ -690,11 +689,11 @@ class AnalysisCollection(Analysis):
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
             format_histo(h, stats=0, color=self.Draw.get_color(self.NRuns), lw=2, normalise=True, sumw2=False, fill_style=4000, fill_color=4000)
             stack.Add(h)
-        format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True, x_range=ax_range(0, cuts.max(), fh=.4))
+        format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True, x_range=ax_range(0, max(cuts), fh=.4))
         legend = self.make_flux_legend(histos)
         self.Draw(stack, '', show, lm=.15, draw_opt='nostack', leg=legend)
         if mod_str:
-            line = Draw.vertical_line(cuts.min(), -1e9, 1e9, color=2, style=2)
+            line = Draw.vertical_line(min(cuts), -1e9, 1e9, color=2, style=2)
             legend.AddEntry(line, 'cut: {}% q'.format(cut_value), 'l')
             histos[0].GetListOfFunctions().Add(line)
             histos[0].GetListOfFunctions().Add(legend)
@@ -737,6 +736,10 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region GENERATE PLOTS
+    def save_plots(self, name, f, ftype='pdf', **kwargs):
+        for i, plot in enumerate(self.get_plots(f.__name__, f)):
+            self.Draw.save_full(plot, f'{name}-{i}', ftype=ftype, **kwargs)
+
     def draw_run_currents(self):
         self.get_values('currents', self.Analysis.get_current)
         self.get_values('currents', self.Analysis.draw_current, show=False)
