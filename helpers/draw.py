@@ -61,8 +61,17 @@ class Draw(object):
 
         Draw.setup()
 
-    def __call__(self, *args, **kwargs):
-        return Draw.histo(**kwargs)
+        self.Dic = {'TH1F': self.distribution, 'TH1I': self.distribution, 'TH1D': self.distribution,
+                    'TH1': self.function,
+                    'TGraph': self.graph, 'TGraphErrors': self.graph, 'TGraphAsymmErrors': self.graph,
+                    'TProfile': self.profile,
+                    'TH2I': self.histo_2d, 'TH2D': self.histo_2d, 'TH2F': self.histo_2d,
+                    'TProfile2D': self.prof2d}
+
+    def __call__(self, h, *args, **kwargs):
+        if h.ClassName() in self.Dic:
+            return self.Dic[h.ClassName()](h, *args, **kwargs)
+        return Draw.histo(h, *args, **kwargs)
 
     @staticmethod
     def add(*args):
@@ -398,9 +407,12 @@ class Draw(object):
         return g
 
     def profile(self, x, y=None, binning=None, title='', thresh=.02, bm=None, lm=None, rm=None, w=1, h=1, show=True, draw_opt=None, logz=None, stats=None, graph=False, **kwargs):
-        x, y = array(x, dtype='d'), array(y, dtype='d')
-        p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
-        fill_hist(p, x, y)
+        if y is None:
+            p = x
+        else:
+            x, y = array(x, dtype='d'), array(y, dtype='d')
+            p = TProfile(Draw.get_name('p'), title, *choose(binning, find_bins, values=x, thresh=thresh))
+            fill_hist(p, x, y)
         p = self.make_graph_from_profile(p) if graph else p
         format_histo(p, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, stats=stats))
         self.histo(p, show=show, bm=bm, lm=lm, rm=rm, w=w, h=h, draw_opt=draw_opt, logz=logz, stats=stats)
