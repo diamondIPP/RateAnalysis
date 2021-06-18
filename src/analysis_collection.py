@@ -737,7 +737,7 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region GENERATE PLOTS
     def save_plots(self, name, f, ftype='pdf', **kwargs):
-        for i, plot in enumerate(self.get_plots(f.__name__, f)):
+        for i, plot in enumerate(self.get_plots(f.__name__, f, **{key: value for key, value in kwargs.items() if 'redo' in key})):
             self.Draw.save_full(plot, f'{name}-{i}', ftype=ftype, **kwargs)
 
     def draw_run_currents(self):

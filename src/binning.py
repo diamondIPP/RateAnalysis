@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 
 from helpers.draw import make_bins, choose, array, append, load_main_config, diff, save_pickle
+from numpy import quantile
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
 
@@ -147,8 +148,8 @@ class Bins(SubAnalysis):
     # ----------------------------------------
     # region PAD
     @staticmethod
-    def get_pad_ph(bin_width=None, mean_ph=None):
-        return Bins.make(*Bins.PadPHRange, choose(bin_width, Bins.PadPHBinWidth if mean_ph is None else mean_ph / 40))
+    def get_pad_ph(bin_width=None):
+        return Bins.make(*Bins.PadPHRange, choose(bin_width, Bins.PadPHBinWidth))
 
     def get_wf(self, bin_width=1):
         return Bins.make(0, self.Run.NSamples, bin_width)
@@ -163,3 +164,11 @@ class Bins(SubAnalysis):
     def make2d(x, y, bs=None, off=0):
         bs = max(diff(sorted(x))) if bs is None else bs
         return Bins.make(min(x), max(x) + bs, bs, last=True, off=off) + Bins.make(min(y), max(y) + bs, bs, last=True, off=off)
+
+    @staticmethod
+    def find_width(x):
+        return Bins.freedman_diaconis(x)
+
+    @staticmethod
+    def freedman_diaconis(x):
+        return 2 * (quantile(x, .75) - quantile(x, .25)) / x.size ** (1 / 3)
