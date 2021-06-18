@@ -114,13 +114,13 @@ class PedestalAnalysis(PadSubAnalysis):
         bins = self.get_bins(choose(bin_size, max(.1, 30 / sqrt(x.size))))
         return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5))
 
-    def draw_distribution(self, sig=None, bin_size=None, cut=None, redo=False, **kwargs):
+    def draw_distribution(self, sig=None, bin_size=None, cut=None, redo=False, prefix='', **kwargs):
         h = self.get_distribution(sig, bin_size, cut, _redo=redo)
-        return self.Draw.distribution(h, file_name='PedestalDistribution', **prep_kw(kwargs,))
+        return self.Draw.distribution(h, **prep_kw(kwargs, file_name=f'{prefix}PedestalDistribution'))
 
-    def draw_disto_fit(self, name=None, bin_size=None, cut=None, redo=False, draw_cut=False, **kwargs):
+    def draw_disto_fit(self, name=None, bin_size=None, cut=None, redo=False, draw_cut=False, prefix='', **kwargs):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut and cut is None else self.Cut(cut)
-        h = self.draw_distribution(name, bin_size, cut, redo, **kwargs)
+        h = self.draw_distribution(name, bin_size, cut, redo, prefix, **kwargs)
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')

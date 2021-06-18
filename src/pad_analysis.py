@@ -348,7 +348,7 @@ class PadAnalysis(DUTAnalysis):
         g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
         fit = self.fit_pulse_height(g, self.make_simple_pickle_path('Trend', make_suffix(self, [bin_size, sig, cut, corr]), 'PH'))
         kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g), 0, .6, .8), ndivx=505, stats=set_statbox(fit=True, form='.2f'))
-        g = self.Draw.graph(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
+        g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
         return g, fit
 
     def fit_pulse_height(self, p, picklepath):
@@ -374,7 +374,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, prnt=True, save=True, **kwargs):
         h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bin_width, _redo=redo)
-        return self.Draw.distribution(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=1.65))
+        return self.Draw(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=1.65))
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth

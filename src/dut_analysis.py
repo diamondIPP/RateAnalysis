@@ -373,9 +373,7 @@ class DUTAnalysis(Analysis):
         return self.Draw.histo_2d(x, y, Bins.get_global(res), 'Hit Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', show=False)
 
     def draw_hitmap(self, res=None, cut='', redo=False, **kwargs):
-        h = self.Draw.prof2d(self.get_hitmap(res, cut, _redo=redo), **prep_kw(kwargs, centre=4, title='DUT Hit Map'))
-        self.draw_fid_cut()
-        return h
+        return self.Draw(self.get_hitmap(res, cut, _redo=redo), **prep_kw(kwargs, centre=4, title='DUT Hit Map'), leg=self.Cut.get_fid(), file_name='HitMap')
 
     def get_fid_bins(self, m, n):
         n = choose(n, m)
