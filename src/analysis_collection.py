@@ -24,7 +24,7 @@ class AnalysisCollection(Analysis):
         self.Fluxes = self.Ensemble.get_fluxes()
         self.MinFluxRun, self.MaxFluxRun = self.get_high_low_rate_runs()
 
-        super(AnalysisCollection, self).__init__(testcampaign, sub_dir=join(self.DUT.Name, self.RunPlan), verbose=verbose)
+        super(AnalysisCollection, self).__init__(self.Ensemble.TCString, sub_dir=join(self.DUT.Name, self.RunPlan), verbose=verbose)
         self.print_start(name, prnt=load_tree, dut=self.DUT.Name)
         self.print_start_info()
 
@@ -595,8 +595,7 @@ class AnalysisCollection(Analysis):
             histos[0].Add(h)
         histos[0].Scale(1 / self.get_pulse_height()[0].n) if scale else do_nothing()
         rz = array([histos[0].GetMinimum(), histos[0].GetMaximum()]) * 1 / self.get_pulse_height()[0].n if scale else None
-        h = self.Draw.prof2d(histos[0], title='Cumulative Pulse Height Map', **prep_kw(kwargs, pal=53, z_range=rz, z_tit='Relative Pulse Height' if scale else None))
-        self.FirstAnalysis.centre_sm(h=h)
+        h = self.Draw.prof2d(histos[0], title='Cumulative Pulse Height Map', **prep_kw(kwargs, centre=4, pal=53, z_range=rz, z_tit='Relative Pulse Height' if scale else None))
         self.Draw.save_plots('CumSignalMap2D', **kwargs)
         return h
 

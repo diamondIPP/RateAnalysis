@@ -102,6 +102,10 @@ class RunSelection(Ensemble):
     def __str__(self):
         return f'RS{self.Name}'
 
+    def init_run(self, verbose):
+        run, ch, tc = self.load_data()[0]
+        return Run(run, tc, load_tree=False, verbose=verbose)
+
     def load_data(self):
         name = self.Name.lower()
         data = {key.lower(): value for key, value in load_json(join(get_base_dir(), 'Runinfos', 'run_selections.json')).items()}
