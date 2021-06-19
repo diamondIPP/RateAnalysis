@@ -395,14 +395,14 @@ class Draw(object):
              }[m]
         return prep_kw(kwargs, **d)
 
-    def distribution(self, x, binning=None, title='', thresh=.02, show=True, **kwargs):
+    def distribution(self, x, binning=None, title='', **kwargs):
         if hasattr(x, 'GetName'):
             th = x
         else:
-            th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=x, thresh=thresh))
+            th = TH1F(Draw.get_name('h'), title, *choose(binning, find_bins, values=x))
             fill_hist(th, x)
         format_histo(th, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor, y_tit='Number of Entries'))
-        self.histo(th, show=show, **prep_kw(kwargs, stats=None))
+        self.histo(th, **prep_kw(kwargs, stats=None))
         return th
 
     def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
@@ -809,15 +809,14 @@ def set_2d_ranges(h, dx, dy):
     format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
 
 
-def find_bins(values, thresh=.02, lfac=.2, rfac=.2, n=1):
-    binning = linspace(*find_range(values, lfac, rfac, thresh), int(n * sqrt(values.size)))
-    return [binning.size - 1, binning]
+def find_bins(values, lfac=.2, rfac=.2, q=.02, n=1):
+    width, (xmin, xmax) = freedman_diaconis(values) * n, find_range(values, lfac, rfac, q)
+    bins = arange(xmin, xmax + width, width)
+    return [bins.size - 1, bins]
 
 
-def find_range(values, lfac=.2, rfac=.2, thresh=.02):
-    v = array(sorted(uarr2n(values)))
-    xmin, xmax = v[int(thresh * v.size)], v[int(v.size - thresh * v.size)]
-    return ax_range(xmin, xmax, lfac, rfac)
+def find_range(values, lfac=.2, rfac=.2, q=.02):
+    return ax_range(*quantile(values, [q, 1 - q]), lfac, rfac)
 
 
 def fix_chi2(g, prec=.01, show=True):

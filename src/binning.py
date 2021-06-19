@@ -4,8 +4,7 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.draw import make_bins, choose, array, append, load_main_config, diff, save_pickle
-from numpy import quantile
+from helpers.draw import make_bins, choose, array, append, load_main_config, diff, save_pickle, freedman_diaconis
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
 
@@ -167,8 +166,4 @@ class Bins(SubAnalysis):
 
     @staticmethod
     def find_width(x):
-        return Bins.freedman_diaconis(x)
-
-    @staticmethod
-    def freedman_diaconis(x):
-        return 2 * (quantile(x, .75) - quantile(x, .25)) / x.size ** (1 / 3)
+        return freedman_diaconis(x)

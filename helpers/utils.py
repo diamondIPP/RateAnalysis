@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2, diff, isfinite, pi, corrcoef
+from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile
 from os import makedirs, _exit, remove, devnull, stat
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -632,6 +632,10 @@ def discrete_int(x, y):
 
 def kramers_kronig(x, y):
     return 1 + 2 / pi * array([discrete_int(x, x * y / (x ** 2 - ix ** 2)) for ix in x])
+
+
+def freedman_diaconis(x):
+    return 2 * (quantile(x, .75) - quantile(x, .25)) / x.size ** (1 / 3)
 
 
 def p2ecut(n, cut):
