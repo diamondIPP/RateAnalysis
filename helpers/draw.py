@@ -1127,16 +1127,19 @@ def get_fw_center(h):
 
 
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
-    half_max0 = h.GetMaximum() * fit_range
-    # fit the top with a gaussian to get better maxvalue
-    bins = [h.FindFirstBinAbove(half_max0), h.FindLastBinAbove(half_max0)]
-    bins = bins if diff(bins)[0] > 5 else (h.GetMaximumBin() + array([-5, 5])).tolist()
-    half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in bins]))[0] * .5
-    half_max = ufloat(h.GetMaximum() * .5, 0) if half_max > half_max0 else half_max
-    blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
-    low = interpolate_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
-    high = interpolate_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
+    fit_range = [f(h.GetMaximum() * fit_range) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
+    fit_range = fit_range if diff(fit_range)[0] > 5 else (h.GetMaximumBin() + array([-5, 5])).tolist()
+    half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in fit_range]))[0] * .5  # fit the top with a gaussian to get better maxvalue
+    half_max = ufloat(1, .05) * h.GetMaximum() if half_max > .9 * h.GetMaximum() else ufloat(1, .02) * half_max  # half max must be lower than max ...
+    low, high = [ufloat(v.n, v.s + abs(v.n - i.n)) for v, i in zip(_get_fwhm(h, half_max), _get_fwhm(h, half_max - half_max.s))]
     return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
+
+
+def _get_fwhm(h, half_max):
+    blow, bhigh, w = h.FindFirstBinAbove(half_max.n), h.FindLastBinAbove(half_max.n), h.GetBinWidth(1)
+    low = get_x(h.GetBinCenter(blow - 1), h.GetBinCenter(blow), h.GetBinContent(blow - 1), h.GetBinContent(blow), half_max)
+    high = get_x(h.GetBinCenter(bhigh), h.GetBinCenter(bhigh + 1), h.GetBinContent(bhigh), h.GetBinContent(bhigh + 1), half_max)
+    return low, high
 
 
 def fit_fwhm(h, fitfunc='gaus', show=False, fit_range=.8):
