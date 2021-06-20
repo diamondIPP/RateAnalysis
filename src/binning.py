@@ -55,6 +55,7 @@ class Bins(SubAnalysis):
 
     @save_pickle(suf_args='[0, 1]', print_dur=True)
     def get_events(self, bin_size=None, cut=None, _redo=False):
+        self.Tree.SetEstimate(self.Run.NEvents)
         events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')
         b = events[::self.get_size(bin_size)]
         bins = append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 else [])
