@@ -1,5 +1,5 @@
 from ROOT import gRandom, TCut
-from numpy import quantile, insert, sum, round, in1d, max, unravel_index, argmax
+from numpy import insert, sum, round, in1d, max, unravel_index, argmax
 
 from src.pedestal import PedestalAnalysis
 from src.timing import TimingAnalysis
@@ -34,6 +34,7 @@ class PadAnalysis(DUTAnalysis):
 
             # Signal Names
             self.SignalName = self.get_signal_name()
+            self.RawName = self.get_signal_name(peak_int=1)
             self.PedestalName = self.get_pedestal_name()
             self.PeakName = self.get_peak_name()
 
@@ -373,9 +374,12 @@ class PadAnalysis(DUTAnalysis):
         bin_width = choose(bin_width, Bins.find_width, x=x)
         return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=1.65)
 
-    def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, prnt=True, save=True, **kwargs):
+    def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, **kwargs):
         h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bin_width, _redo=redo)
-        return self.Draw(h, file_name='SignalDistribution', prnt=prnt, save=save, **prep_kw(kwargs, lm=.15, y_off=1.65))
+        return self.Draw(h, **prep_kw(kwargs, lm=.15, y_off=1.65, file_name='SignalDistribution'))
+
+    def draw_raw_signal_distribution(self, cut=None, bin_width=None, redo=False, **kwargs):
+        return self.draw_signal_distribution(self.RawName, cut, False, False, bin_width, redo, file_name='RawSignalDistribution', **kwargs)
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth

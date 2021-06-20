@@ -241,6 +241,9 @@ class DUTAnalysis(Analysis):
     def draw_signal_distribution(self, *args, **kwargs):
         pass
 
+    def draw_raw_signal_distribution(self, *args, **kwargs):
+        return self.draw_signal_distribution(*args, **kwargs)
+
     def draw_fid_cut(self, scale=10):
         return self.Cut.draw_fid(scale)
 
@@ -483,11 +486,13 @@ class DUTAnalysis(Analysis):
 
     def draw_uniformity(self, h=None, use_fwc=True, redo=False, **kwargs):
         noise = self.Pedestal.get_fwhm(raw=True, redo=redo) if h is None and hasattr(self, 'Pedestal') else 0
-        h = choose(h, self.draw_signal_distribution, sig=self.get_signal_name(peak_int=1), redo=redo, **prep_kw(kwargs, normalise=True))
+        h = choose(h, self.draw_raw_signal_distribution, redo=redo, **prep_kw(kwargs, normalise=True))
         format_histo(h, **prep_kw(kwargs, x_range=ax_range(h=h, thresh=h.GetMaximum() * .02, fl=.2, fh=.6)))
         format_statbox(h, w=.35, all_stat=True)
         (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
         fwhm, half_max = high - low, h.GetMaximum() / 2
+        if noise > fwhm:
+            return fwhm, noise, 0
         li = Draw.vertical_line(m.n, style=7, w=2)
         a = Draw.arrow(low.n, high.n, half_max, half_max, col=2, width=3, opt='<>', size=.02)
         Draw.legend([a, li], ['FWHM', 'FWC' if use_fwc else 'Mean'], 'l', y2=.72, w=.2)
