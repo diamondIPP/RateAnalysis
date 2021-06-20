@@ -279,7 +279,7 @@ class AnalysisCollection(Analysis):
     def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, redo=False):
         runs = self.get_runs_below_flux(110) if low_flux else self.get_runs_above_flux(2000) if high_flux else self.Runs
         picklepath = self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal', run='{}')
-        return self.get_values('Getting uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, redo=redo, use_fwc=use_fwc)
+        return self.get_values('uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, _redo=redo, use_fwc=use_fwc)
 
     def get_mean_uniformity(self, use_fwc=True, redo=False, low_flux=False, high_flux=False):
         values = self.get_uniformities(use_fwc, redo, low_flux, high_flux)
@@ -448,22 +448,20 @@ class AnalysisCollection(Analysis):
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return values
 
-    def draw_fwhm(self, arg=1, vs_time=False, use_fcw=True, show=True, redo=False):
-        x, y = self.get_x_var(vs_time), self.get_uniformities(use_fcw, redo)[:, arg]
-        ph_var = 'FWC' if use_fcw else 'Mean'
+    def draw_fwhm(self, arg=1, vs_time=False, vs_irrad=False, use_fwc=True, redo=False, **kwargs):
+        x, y = self.get_x_var(vs_time, vs_irrad), self.get_uniformities(use_fwc, redo)[:, arg]
+        ph_var = 'FWC' if use_fwc else 'Mean'
         var, unit, tit = [ph_var, 'FWHM', 'FWHM/{}'.format(ph_var)][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
-        g = Draw.make_tgrapherrors(x, y, title=tit, y_tit='{}{}'.format(var, unit), y_off=1.3, **self.get_x_args(vs_time))
-        self.Draw(g, 'FWHM', show, lm=.12, logx=not vs_time)
-        return g
+        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad), file_name=var))
 
-    def draw_means(self, vs_time=False, show=True, redo=False):
-        return self.draw_fwhm(0, vs_time, False, show, redo)
+    def draw_means(self, vs_time=False, vs_irrad=False, redo=False, **kwargs):
+        return self.draw_fwhm(0, vs_time, vs_irrad, False, redo, **kwargs)
 
-    def draw_fcw(self, vs_time=False, show=True, redo=False):
-        return self.draw_fwhm(0, vs_time, True, show, redo)
+    def draw_fwc(self, vs_time=False, vs_irrad=False, redo=False, **kwargs):
+        return self.draw_fwhm(0, vs_time, vs_irrad, True, redo, **kwargs)
 
-    def draw_uniformity(self, vs_time=False, show=True, redo=False):
-        return self.draw_fwhm(2, vs_time, show=show, redo=redo)
+    def draw_uniformity(self, vs_time=False, vs_irrad=False, use_fwc=True, redo=False, **kwargs):
+        return self.draw_fwhm(2, vs_time, vs_irrad, use_fwc, redo=redo, **kwargs)
 
     def draw_ph_slope(self, vs_time=False, show=True):
         y = [fit2u(ana.draw_pulse_height(show=False)[0].Fit('pol1', 'qs0'), par=1) * 60 for ana in self.get_analyses()]
