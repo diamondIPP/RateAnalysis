@@ -176,11 +176,14 @@ class AnalysisCollection(Analysis):
     def get_n_events(self, redo=False):
         return array([e.size for e in self.get_events(redo)])
 
-    def get_x_var(self, vs_time=False, avrg=False):
-        return self.get_times() if vs_time else self.get_fluxes(avrg=avrg)
+    def get_x_var(self, vs_time=False, vs_irrad=False, avrg=False):
+        return self.get_times() if vs_time else self.get_irradiations() if vs_irrad else self.get_fluxes(avrg=avrg)
 
     def get_irradiation(self):
         return self.FirstAnalysis.get_irradiation()
+
+    def get_irradiations(self):
+        return array([ufloat(i, .2 * i) for i in [float(ana.get_irradiation()) for ana in self.get_analyses()]]) / 1e15
 
     def get_attenuator(self):
         return self.FirstAnalysis.get_attenuator()
@@ -283,8 +286,8 @@ class AnalysisCollection(Analysis):
         return [mean_sigma(values[:, i][where(values[:, i] > 0)[0]]) for i in range(values[0].size)]
 
     @staticmethod
-    def get_x_tit(vs_time=False):
-        return 'Time [hh:mm]' if vs_time else 'Flux [kHz/cm^{2}]'
+    def get_x_tit(vs_time=False, vs_irrad=False):
+        return 'Time [hh:mm]' if vs_time else 'Fluence [10^{15}n/cm^{2}]' if vs_irrad else 'Flux [kHz/cm^{2}]'
 
     @staticmethod
     def get_x_draw(vs_time=False):
@@ -298,12 +301,10 @@ class AnalysisCollection(Analysis):
         return x_range if vs_time else Bins.FluxRange
 
     @staticmethod
-    def get_x_args(vs_time=False, rel_time=False, draw=False, **kwargs):
-        hist_kwargs = {'x_tit': AnalysisCollection.get_x_tit(vs_time), 't_ax_off': AnalysisCollection.get_tax_off(vs_time, rel_time),
-                       'x_range': AnalysisCollection.get_range(vs_time), 'x_off': None if vs_time else 1.2}
-        for kw, val in kwargs.items():
-            hist_kwargs[kw] = val
-        return {**hist_kwargs, **AnalysisCollection.get_x_draw(vs_time)} if draw else hist_kwargs
+    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
+        kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time),
+                         x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.2)
+        return {**kwargs, **AnalysisCollection.get_x_draw(vs_time or vs_irrad)} if draw else kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
         return '?'.join(['python analyse.py {} {} -tc {} -d -cmd {} -kw {}'.format(run, self.DUT.Number, self.TCString, cmd, kwargs) for run in self.Runs])
