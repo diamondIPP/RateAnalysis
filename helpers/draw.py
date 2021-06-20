@@ -1144,6 +1144,11 @@ def fit_fwhm(h, fitfunc='gaus', show=False, fit_range=.8):
     return FitRes(h.Fit(fitfunc, 'qs{}'.format('' if show else 0), '', low.n, high.n))
 
 
+def get_f_fwhm(f: TF1):
+    half_max = f.GetMaximum() / 2
+    return f.GetX(half_max, f.GetMaximumX(), 1e9) - f.GetX(half_max)
+
+
 def scale_histo(histo, value=None, to_max=False, x_range=None):
     h = histo
     maximum = h.GetBinContent(h.GetMaximumBin())
