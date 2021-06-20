@@ -379,7 +379,7 @@ class PadAnalysis(DUTAnalysis):
         return self.Draw(h, **prep_kw(kwargs, lm=.15, y_off=1.65, file_name='SignalDistribution'))
 
     def draw_raw_signal_distribution(self, cut=None, bin_width=None, redo=False, **kwargs):
-        return self.draw_signal_distribution(self.RawName, cut, False, False, bin_width, redo, file_name='RawSignalDistribution', **kwargs)
+        return self.draw_signal_distribution(self.RawName, cut, False, True, bin_width, redo, file_name='RawSignalDistribution', **kwargs)
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth
