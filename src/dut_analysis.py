@@ -497,6 +497,7 @@ class DUTAnalysis(Analysis):
         a = Draw.arrow(low.n, high.n, half_max, half_max, col=2, width=3, opt='<>', size=.02)
         Draw.legend([a, li], ['FWHM', 'FWC' if use_fwc else 'Mean'], 'l', y2=.72, w=.2)
         fwhm = usqrt(fwhm ** 2 - noise ** 2)  # correct fwhm for noise
+        fwhm += ufloat(0, 1 if fwhm > 15 else -.3 * fwhm + 5.3)  # add error for false estimate
         value = fwhm / m
         Draw.add_stats_entry(h, f'FWHM/{"FWC" if use_fwc else "Mean"}', value, line=3)
         self.info(f'Uniformity: {value:.2f}')
