@@ -151,19 +151,18 @@ class AnalysisCollection(Analysis):
     def get_flux_strings(self, prec=0, runs=None):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
 
-    def get_flux_splits(self, redo=False, corr=True, show=True):
-        def f():
-            values = sort([flux.n for flux in self.get_fluxes(corr=corr)])
-            h = TH1F('hmf', 'Fluxes', *log_bins(50, 1, 1e5))
-            h.FillN(values.size, values, full(values.size, 1, 'd'))
-            format_histo(h, x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Entries', y_off=.5, x_off=1.2, lab_size=.05, tit_size=.05)
-            self.Draw(h, lm=.07, logx=True, show=show, h=.75, w=1.5, bm=.14, stats=set_entries())
-            s = TSpectrum(20)
-            s.Search(h, 1)
-            bins = sorted(s.GetPositionX()[i] for i in range(s.GetNPeaks()))
-            split_bins = histogram(values, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
-            return cumsum(split_bins[where(split_bins > 0)])[:-1]
-        return do_pickle(self.make_simple_pickle_path('Splits', sub_dir='Flux'), f, redo=redo or show)
+    @save_pickle('Splits', sub_dir='Flux')
+    def get_flux_splits(self, corr=True, _redo=False):
+        return self.draw_flux_splits(corr, show=False)
+
+    def draw_flux_splits(self, corr=True, **kwargs):
+        x = sort([flux.n for flux in self.get_fluxes(corr=corr)])
+        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True)))
+        bins = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
+        format_statbox(h, entries=True, w=.2)
+        split_bins = histogram(x, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
+        self.Draw.save_plots('FluxSplits', **kwargs)
+        return cumsum(split_bins[where(split_bins > 0)])[:-1]
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
