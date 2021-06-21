@@ -730,6 +730,16 @@ class RunSelector(object):
             server_root_file = join(self.Run.load_tc_directory(server_data_dir), self.Run.make_root_subdir(), Run.make_root_filename(run))
             check_call(['rsync', '-aP', '{}:{}'.format(server, server_root_file), self.Run.RootFileDir])
 
+    @update_pbar
+    def _has_branch(self, branch, run):
+        self.Run.reload_run_config(run)
+        return file_exists(self.Run.RootFilePath) and self.Run.load_rootfile(prnt=False).GetBranch(branch)
+
+    def has_branch(self, branch, sel=False):
+        runs = self.get_selected_runs() if sel else self.get_runplan_runs()
+        self.PBar.start(len(runs), counter=True)
+        return [run for run in runs if self._has_branch(branch, run)]
+
     def backup_to_isg(self):
         backup_path = join('isg:', 'home', 'ipp', self.Run.TCDir)
         system('rsync -aPv {} {}'.format(join(self.Run.DataDir, self.Run.TCDir, 'run_log.json'), backup_path))
