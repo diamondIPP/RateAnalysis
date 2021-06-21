@@ -325,13 +325,13 @@ class AnalysisCollection(Analysis):
     def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
         ph0 = self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg, peaks=peaks)
         x, ph = self.get_x_var(vs_time, avrg=avrg), self.get_pulse_heights(bin_width, corr=corr, err=err, avrg=avrg, peaks=peaks)
-        g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=1, lw=2)
-        g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, lw=2)
+        g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
+        g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit='Pulse Height [mV]')
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
         graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg else [])
-        mg = self.Draw.multigraph(graphs, 'Pulse Height', color=False, show=False)
+        mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend:
-            mg.GetListOfFunctions().Add(self.draw_legend(graphs))
+            mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True, d=.05))
         if vs_time:
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.02))
@@ -365,15 +365,12 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show=True, show_first_last=True, y_range=None, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
         """ Shows the pulse heights of the runs. """
         mg = self.make_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg, peaks=peaks)
-        y_range = choose(y_range, ax_range(get_graph_y(mg.GetListOfGraphs()[0], err=False), fl=.5, fh=.2, rnd=True))
-        format_histo(mg, color=None, y_tit='Signal Pulse Height [mV]', y_off=1.75, draw_first=True, y_range=y_range, **self.get_x_args(vs_time))
-        if fit:
-            mg.GetListOfGraphs()[0].Fit('pol0', 'qs')
-        self.Draw(mg, 'PulseHeight{mod}'.format(mod=self.get_mode(vs_time)), show=show, lm=.14, draw_opt='ap', **self.get_x_draw(vs_time), stats=set_statbox(fit=fit, form='2.1f', stats=fit))
-        return mg
+        mg.GetListOfGraphs()[0].Fit('pol0', f'qs{"" if fit else 0}')
+        stats = set_statbox(fit=fit, form='2.1f', stats=fit)
+        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None))
 
     def draw_full_pulse_height(self, bin_width=10000, show=True, rel_t=True, redo=False, with_flux=True):
         """ Shows the pulse heights bins of all runs vs time. """
