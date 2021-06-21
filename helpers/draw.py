@@ -105,7 +105,7 @@ class Draw(object):
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         Draw.set_margin(c, 'Left', l_, default=.13)
         Draw.set_margin(c, 'Right', r, default=.02)
-        Draw.set_margin(c, 'Bottom', b, default=.11, off=.06 if Draw.Legend else 0)
+        Draw.set_margin(c, 'Bottom', b, default=.115, off=.06 if Draw.Legend else 0)
         Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title else 0)
     # endregion SET
     # ----------------------------------------
@@ -385,13 +385,14 @@ class Draw(object):
                 i_leg.Draw('same')
         set_root_output(True)
         if stats or stats is None:
-            format_statbox(th, **Draw.Stats if stats else Draw.DefaultStats)
+            for i in (th.GetListOfGraphs() if 'Multi' in th.ClassName() else [th]):
+                format_statbox(i, **Draw.Stats if stats else Draw.DefaultStats)
         return Draw.add(c, th, leg)[0]
 
     @staticmethod
     def mode(m=1, **kwargs):
         d = {1: {'tit_size': .05, 'lab_size': .045, 'y_off': 1.35},
-             2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .2},
+             2: {'w': 1.5, 'h': .75, 'tit_size': .06, 'lab_size': .05, 'y_off': .7, 'lm': .08, 'bm': .15},
              3: {'w': 1.5, 'h': .5, 'tit_size': .07, 'lab_size': .06, 'y_off': .5, 'lm': .073, 'bm': .225, 'rm': .03, 'x_tit': 'Time [ns]', 'y_tit': 'Signal [mV]', 'markersize': .5}
              }[m]
         return prep_kw(kwargs, **d)
@@ -598,9 +599,7 @@ class Draw(object):
         ex, ey = [array([[v.s for v in vals]] if is_u and not asym else vals[:, 1:3].T if has_e else zeros((2, s)) if asym else [zeros(s)], 'd') for vals, is_u, has_e in zip([x, y], utypes, has_ers)]
         x, y = [array([v.n for v in vals] if utype else vals[:, 0] if has_e else vals, 'd') for vals, utype, has_e in zip([x, y], utypes, has_ers)]
         g = (TGraphAsymmErrors if asym else TGraphErrors)(s, x, y, *array(ex.tolist()), *array(ey.tolist()))  # doesn't work without double conversion...
-        kwargs['marker'] = 20 if 'marker' not in kwargs else kwargs['marker']
-        kwargs['markersize'] = 1 if 'markersize' not in kwargs else kwargs['markersize']
-        format_histo(g, Draw.get_name('g'), **kwargs)
+        format_histo(g, Draw.get_name('g'), **prep_kw(kwargs, marker=20, markersize=1))
         return Draw.add(g)
 
     @staticmethod
@@ -611,11 +610,11 @@ class Draw(object):
         return Draw.make_tgrapherrors(x, y, x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
-    def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False):
+    def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, d=.01, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False, bottom=False, left=False):
         use_margins = y2 is None
-        x2, y2 = get_stat_margins(x2=x2, y2=y2)
-        x1 = choose(x1, x2 - w)
         h = nentries * .05 * scale
+        x2, y2 = get_stat_margins(None, x2, y2, d, bottom, left, h, w)
+        x1 = choose(x1, x2 - w)
         y1 = choose(y1, y2 - h)
         if not use_margins:
             y1 += .07 if not Draw.Title and y1 + h > .8 and not fix else 0
@@ -707,13 +706,16 @@ def set_entries():
     return True
 
 
-def get_stat_margins(c=None, x2=None, y2=None):
+def get_stat_margins(c=None, x2=None, y2=None, d=.01, bottom=False, left=False, h=0, w=0):
     c = choose(c, get_last_canvas(warn=False))
     r = c.GetWindowHeight() / c.GetWindowWidth()
-    return choose(x2, 1 - c.GetRightMargin() - r * .01), choose(y2, 1 - c.GetTopMargin() - .01 / r)
+    x2 = choose(x2, c.GetLeftMargin() + w + d * r if left else 1 - c.GetRightMargin() - d * r)
+    y2 = choose(y2, c.GetBottomMargin() + h + d if bottom else 1 - c.GetTopMargin() - d)
+    return x2, y2
 
 
-def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False, center_y=False, form=None, c=None):
+def format_statbox(th, x2=None, y2=None, d=.01, h=None, w=.3, entries=False, m=False, rms=False, all_stat=False, fit=False, center_x=False,
+                   center_y=False, bottom=False, left=False, form=None, c=None):
     c = choose(c, get_last_canvas(warn=False))
     update_canvas(c)
     f = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'TF1' in o.ClassName()), None)
@@ -722,11 +724,11 @@ def format_statbox(th, x2=None, y2=None, h=None, w=.3, entries=False, m=False, r
     p = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
     if p is not None:
         r = c.GetWindowHeight() / c.GetWindowWidth()
-        x2, y2 = get_stat_margins(c, x2, y2)
-        cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
         stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
         fit_pars = f.GetNpar() + 1 if fit and f is not None else 0
         h = choose(h, .05 / r * (stats.nonzero()[0].size + fit_pars))
+        x2, y2 = get_stat_margins(c, x2, y2, d, bottom, left, h, w)
+        cx, cy = mean([1 - c.GetRightMargin(), c.GetLeftMargin()]), mean([1 - c.GetTopMargin(), c.GetBottomMargin()])
         p.SetX1NDC(cx - w / 2 if center_x else x2 - w)
         p.SetX2NDC(cx + w / 2 if center_x else x2)
         p.SetY1NDC(cy - h / 2 if center_y else y2 - h)
