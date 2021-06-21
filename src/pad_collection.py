@@ -60,9 +60,9 @@ class PadCollection(AnalysisCollection):
         return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo and not err, corr=corr,
                                sys_err=error, peaks=peaks, flux_sort=flux_sort)
 
-    def get_pedestals(self, runs=None, sigma=False, flux_sort=False, redo=False):
+    def get_pedestals(self, runs=None, sigma=False, flux_sort=False, avrg=False, redo=False):
         picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')
-        return self.get_values('pedestals', self.Analysis.get_pedestal, runs, par=[1, 2][sigma], redo=redo, flux_sort=flux_sort, picklepath=picklepath)
+        return self.get_values('pedestals', self.Analysis.get_pedestal, runs, par=[1, 2][sigma], redo=redo, flux_sort=flux_sort, picklepath=picklepath, avrg=avrg)
 
     def get_peak_fluxes(self, corr=True, avrg=False, rel=False):
         values = self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg, corr=corr)
@@ -92,10 +92,11 @@ class PadCollection(AnalysisCollection):
         format_histo(mg, y_range=[1 - yr, 1 + yr], **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5, ndivy=504)
         format_histo(cur, **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5)
 
-    def draw_pedestals(self, vs_time=False, sigma=False, redo=False, show=True):
-        x, y = self.get_x_var(vs_time), self.get_pedestals(redo=redo, sigma=sigma)
-        y_tit = ['Pedestal', 'Noise'][sigma]
-        return self.Draw.graph(x, y, title=y_tit, y_tit='{} [mV]'.format(y_tit), **self.get_x_args(vs_time, draw=True), color=810, show=show)
+    def draw_pedestals(self, vs_time=False, sigma=False, redo=False, avrg=False, **kwargs):
+        x, y = self.get_x_var(vs_time, avrg=avrg), self.get_pedestals(redo=redo, sigma=sigma, avrg=avrg)
+        y_tit, tit = f'{["Pedestal", "Noise"][sigma]}', f'{["Pedestal", "Noise"][sigma]} {["Flux", "Time"][vs_time]} {"Avrg" if avrg else ""}'
+        kwargs = prep_kw(kwargs, title=tit, y_tit=f'{y_tit} [mV]', **self.get_x_args(vs_time, draw=True), color=810, file_name=tit.replace(' ', ''), markersize=.8)
+        return self.Draw.graph(x, y, **kwargs)
 
     def draw_noise(self, vs_time=False, redo=False, show=True):
         return self.draw_pedestals(vs_time, True, redo, show)
