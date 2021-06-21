@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TFile
 from helpers.utils import *
+from helpers.draw import set_root_output
 from numpy import sign, invert
 
 MAX_SIZE = 255
@@ -28,7 +29,7 @@ class EventAligment(object):
         self.NewTree = None
 
         # Info
-        self.HitVar = 'n_hits_tot'
+        self.HitVar = 'n_hits_tot' if bool(self.InTree.GetBranch('n_hits_tot')) else '@col.size()'
         self.NEntries = int(self.InTree.GetEntries())
         self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment()
