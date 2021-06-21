@@ -12,6 +12,8 @@ from helpers.draw import *
 class AnalysisCollection(Analysis):
     """ Analysis of the various runs of a single runplan. """
 
+    StartTime = None
+
     def __init__(self, name, dut_nr, testcampaign=None, load_tree=True, verbose=False):
 
         # RUN SELECTION
@@ -37,7 +39,7 @@ class AnalysisCollection(Analysis):
         self.FirstAnalysis = self.Analyses[0]
         self.LastAnalysis = self.Analyses[-1]
         self.Bins = self.FirstAnalysis.Bins if load_tree else None
-        self.StartTime = self.FirstAnalysis.Run.StartTime if load_tree else time_stamp(self.FirstAnalysis.Run.LogStart)
+        AnalysisCollection.StartTime = self.FirstAnalysis.Run.StartTime if load_tree else time_stamp(self.FirstAnalysis.Run.LogStart)
 
         # Sub Classes
         self.Currents = Currents(self)
@@ -293,8 +295,9 @@ class AnalysisCollection(Analysis):
     def get_x_draw(vs_time=False):
         return {'logx': not vs_time, 'grid': vs_time}
 
-    def get_tax_off(self, vs_time, rel_time=False):
-        return None if not vs_time else self.StartTime if rel_time else 0
+    @staticmethod
+    def get_tax_off(vs_time, rel_time=False):
+        return None if not vs_time else AnalysisCollection.StartTime if rel_time else 0
 
     @staticmethod
     def get_range(vs_time, x_range=None):
@@ -303,7 +306,7 @@ class AnalysisCollection(Analysis):
     @staticmethod
     def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
         kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time),
-                         x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.2)
+                         x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.1)
         return {**kwargs, **AnalysisCollection.get_x_draw(vs_time or vs_irrad)} if draw else kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
