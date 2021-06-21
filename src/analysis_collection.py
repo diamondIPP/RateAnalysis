@@ -166,7 +166,7 @@ class AnalysisCollection(Analysis):
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
-        return array([mean(lst) for lst in split(values, self.get_flux_splits(show=False))])  # split into sub-lists of similar flux and take average
+        return array([mean(lst) for lst in split(values, self.get_flux_splits())])  # split into sub-lists of similar flux and take average
 
     def get_times(self, runs=None):
         return self.get_values('times', DUTAnalysis.get_time, runs, pbar=False)
@@ -250,7 +250,7 @@ class AnalysisCollection(Analysis):
         return self.Runs[self.get_fluxes() >= flux]
 
     def get_signal_spread(self, peaks=False, redo=False, rel=False):
-        groups = split(self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True), self.get_flux_splits(show=False))
+        groups = split(self.get_pulse_heights(redo=redo, err=False, peaks=peaks, flux_sort=True), self.get_flux_splits())
         values = array([(value - mean_sigma(grp)[0]) / (mean_sigma(grp)[0] if rel else 1) for grp in groups for value in grp if grp.size > 1])
         return values if values.size > 1 else None
 
