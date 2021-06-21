@@ -121,13 +121,15 @@ class PadAnalysis(DUTAnalysis):
         reg_ints = [(r, i) for r in self.Run.IntegralRegions[self.DUT.Number - 1] for i in self.Run.PeakIntegrals[self.DUT.Number - 1] if sig_type in r]
         return {self.get_signal_name(r, i, sig_type): r.replace(sig_type, '').strip('_') + i.replace('PeakIntegral', '') for r, i in reg_ints}
 
+    @save_pickle('Events', sub_dir='Alignment')
+    def _get_alignment(self, _redo=False):
+        from src.pad_alignment import PadAlignment
+        return PadAlignment(self.Run.Converter).IsAligned
+
     def check_alignment(self, redo=False):
         """ check if the events from telescope and digitiser are aligned"""
-        def f():
-            from src.pad_alignment import PadAlignment
-            return PadAlignment(self.Run.Converter).IsAligned
-        is_aligned = do_pickle(self.make_simple_pickle_path(sub_dir='Alignment'), f, redo=redo)
-        warning('Run {r} is misaligned :-('.format(r=self.Run.Number)) if not is_aligned else do_nothing()
+        is_aligned = self._get_alignment(_redo=redo)
+        warning('Run {r} is misaligned :-('.format(r=self.Run.Number), prnt=not is_aligned)
         return is_aligned
     # endregion INIT
     # ----------------------------------------
