@@ -66,12 +66,13 @@ class Draw(object):
                     'TGraph': self.graph, 'TGraphErrors': self.graph, 'TGraphAsymmErrors': self.graph,
                     'TProfile': self.profile,
                     'TH2I': self.histo_2d, 'TH2D': self.histo_2d, 'TH2F': self.histo_2d,
-                    'TProfile2D': self.prof2d}
+                    'TProfile2D': self.prof2d,
+                    'TMultiGraph': self.multigraph}
 
-    def __call__(self, h, *args, **kwargs):
-        if h.ClassName() in self.Dic:
-            return self.Dic[h.ClassName()](h, *args, **kwargs)
-        return Draw.histo(h, *args, **kwargs)
+    def __call__(self, th, *args, **kwargs):
+        if th.ClassName() in self.Dic:
+            return self.Dic[th.ClassName()](th, *args, **kwargs)
+        return Draw.histo(th, *args, **kwargs)
 
     @staticmethod
     def add(*args):
@@ -411,7 +412,7 @@ class Draw(object):
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
 
-    def graph(self, x, y=None, title='', c=None, bm=None, w=1, h=1, show=True, draw_opt=None, bin_labels=None, **kwargs):
+    def graph(self, x, y=None, title='', c=None, bm=None, show=True, bin_labels=None, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
@@ -490,18 +491,20 @@ class Draw(object):
         self.histo(s, draw_opt=draw_opt, leg=leg, lm=get_last_canvas().GetLeftMargin(), show=show)
         return s
 
-    def multigraph(self, graphs, title, leg_titles=None, bin_labels=None, x_tit=None, y_tit=None, draw_opt='p', gridy=None, lm=None, bm=None, show=True, logx=None, logy=None, color=True, c=None,
-                   y_range=None, w=1, grid=None, wleg=.2, *args, **kwargs):
-        g0 = graphs[0]
-        m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, choose(x_tit, g0.GetXaxis().GetTitle()), choose(y_tit, g0.GetYaxis().GetTitle())]))
-        y_range = choose(y_range, ax_range(get_graph_y(graphs, err=False), 0, .3, .6))
-        format_histo(m, draw_first=True, y_off=g0.GetYaxis().GetTitleOffset(), x_tit=choose('', None, bin_labels), y_range=y_range)
+    def multigraph(self, graphs, title='', leg_titles=None, bin_labels=None, draw_opt='p', wleg=.2, **kwargs):
+        if hasattr(graphs, 'GetName'):
+            m, g = graphs, graphs.GetListOfGraphs()[0]
+        else:
+            g = graphs[0]
+            m = TMultiGraph(Draw.get_name('mg'), ';'.join([title, g.GetXaxis().GetTitle(), g.GetYaxis().GetTitle()]))
+            for i, g in enumerate(graphs):
+                m.Add(g, draw_opt)
+                format_histo(g, **prep_kw(kwargs, color=self.get_color(len(graphs)), stats=False))
+        y_range = ax_range(get_graph_y(graphs, err=False), 0, .3, .6)
+        format_histo(m, draw_first=True, **prep_kw(kwargs, **Draw.mode(1, y_off=g.GetYaxis().GetTitleOffset()), y_range=y_range, x_tit=choose('', None, bin_labels)))
         set_bin_labels(m, bin_labels)
-        for i, g in enumerate(graphs):
-            m.Add(g, draw_opt)
-            format_histo(g, color=self.get_color(len(graphs)) if color else None, stats=False, *args, **kwargs)
-        self.histo(m, draw_opt='ap', lm=lm, bm=choose(.26, bm, bin_labels), gridy=gridy, show=show, logx=logx, canvas=c, logy=logy, w=w, grid=grid)
-        self.legend(graphs, leg_titles, 'p', w=wleg) if leg_titles else do_nothing()
+        leg = self.legend(graphs, leg_titles, 'p', w=wleg, show=False) if leg_titles else None
+        self.histo(m, leg=leg, **prep_kw(kwargs, bm=choose(.26, None, bin_labels), draw_opt='ap'))
         return m
 
     def pie(self, labels, values=None, colors=None, title='', offset=0, show=True, flat=False, draw_opt=None, **kwargs):
