@@ -303,8 +303,8 @@ class Run(Analysis):
         if self.Number is None:
             return
         if not self.find_for_in_comment():
-            warning('no plane rates in the data...')
-            return self.Info['measuredflux'] / (ufloat(mean(self.load_plane_efficiencies()), 0.03) if corr else 1)
+            # warning('no plane rates in the data...')
+            return self.Info['measuredflux'] / (mean(self.load_plane_efficiencies()) if corr else 1)
         return self.get_mean_flux(corr) if plane is None else self.calculate_plane_flux(plane, corr)
 
     def get_mean_flux(self, corr=True):
