@@ -111,7 +111,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    z = AutoConvert(args.m, args.s, args.e, args.tc, 'pad' if args.pad else 'pixel' if args.pixel else None, args.v)
+    from src.analysis import Analysis
+    z = AutoConvert(args.m, args.s, args.e, Analysis.find_testcampaign(args.tc), 'pad' if args.pad else 'pixel' if args.pixel else None, args.v)
     if not args.t:
         if z.Runs.size:
             print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
