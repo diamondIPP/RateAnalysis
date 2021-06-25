@@ -48,6 +48,14 @@ class PadCollection(AnalysisCollection):
         self.draw_occupancies()
         self.get_values('timing', PadAnalysis.draw_timing)
         print_elapsed_time(t0)
+
+    @quiet
+    def save_data(self):
+        self.PBar.start(self.NRuns, counter=True, t='min')
+        for ana in self.get_analyses():
+            ana.save_data()
+            self.PBar.update()
+
     # endregion RESULTS
     # ----------------------------------------
 
