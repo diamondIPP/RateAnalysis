@@ -294,6 +294,9 @@ class Run(Analysis):
     def find_n_events(self, n, cut, start=0):
         evt_numbers = self.get_tree_vec(var='Entry$', cut=cut, nentries=self.NEvents, firstentry=start)
         return int(evt_numbers[:n][-1] + 1 - start)
+
+    def get_max_run(self):
+        return int(max(self.load_run_info_file()))
     # endregion HELPERS
     # ----------------------------------------
 

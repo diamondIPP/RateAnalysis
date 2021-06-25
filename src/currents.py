@@ -188,7 +188,6 @@ class Currents(Analysis):
                 current = ufloat(fm, fit.ParError(1) + self.Precision / 2)
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + self.Precision / 2)
-        self.Draw.server_pickle(self.make_pickle_path('Currents', run=self.Run.Number, ch=self.DUT.Number), current)
         return current
 
     def get_title(self):

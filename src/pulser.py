@@ -70,22 +70,22 @@ class PulserAnalysis(PadSubAnalysis):
     def get_t_bins(self, bin_size=None):
         return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
-    def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, par=1, redo=False):
-        return self.draw_distribution_fit(corr, beam_on, bin_width, redo, show=False)[par]
+    def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+        return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[1]
 
     def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
-        return self.get_pulse_height(corr, beam_on, bin_width, par=2, redo=redo)
+        return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[2]
 
-    def get_pedestal(self, sigma=False, beam_on=True, redo=False):
+    def get_pedestal(self, par=1, beam_on=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Pedestal', str(int(beam_on)))
         fit = do_pickle(pickle_path, partial(self.draw_pedestal_fit, show=False, prnt=False, redo=redo, beam_on=beam_on), redo=redo)
-        return fit2u(fit, par=[1, 2][sigma])
+        return fit[par]
 
     def get_pedestal_mean(self, redo=False):
         return self.get_pedestal(redo=redo)
 
     def get_pedestal_sigma(self, redo=False):
-        return self.get_pedestal(sigma=True, redo=redo)
+        return self.get_pedestal(par=2, redo=redo)
 
     def get_values(self, cut=None):
         return self.get_tree_vec(var=self.get_signal_var(cut=self.Cut(cut)), cut=self.Cut(cut), dtype='f4')
@@ -181,7 +181,6 @@ class PulserAnalysis(PadSubAnalysis):
     def get_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, _redo=False):
         h = self.get_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, _redo=_redo)
         fit = FitRes(h.Fit('gaus', 'qs0', '', *self.get_fit_range(h)))
-        SaveDraw.server_pickle(self.make_simple_pickle_path('HistoFit', make_suffix(self, [corr, beam_on, bin_width])), fit)
         return fit
 
     def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):

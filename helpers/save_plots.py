@@ -46,7 +46,7 @@ class SaveDraw(Draw):
     def server_is_mounted():
         if SaveDraw.MountExists is not None:
             return SaveDraw.MountExists
-        SaveDraw.MountExists = dir_exists(join(SaveDraw.ServerMountDir, 'Diamonds'))
+        SaveDraw.MountExists = dir_exists(join(SaveDraw.ServerMountDir, 'data'))
         if not SaveDraw.MountExists:
             warning('Diamond server is not mounted in {}'.format(SaveDraw.ServerMountDir))
 
@@ -103,12 +103,6 @@ class SaveDraw(Draw):
         if self.ServerDir is not None and save:
             for ft in ['pdf', 'png'] if ftype is None else make_list(ftype):
                 canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.{ft}'))
-
-    @staticmethod
-    def server_pickle(old_path, value):
-        if SaveDraw.server_is_mounted():
-            picklepath = join(SaveDraw.ServerMountDir, 'Pickles', basename(dirname(old_path)), basename(old_path))
-            do_pickle(picklepath, do_nothing, value)
     # endregion SAVE
     # ----------------------------------------
 

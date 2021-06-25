@@ -61,6 +61,18 @@ class PadAnalysis(DUTAnalysis):
         self.draw_signal_map(redo=redo, show=False)
         self.draw_hitmap(redo=redo, show=False)
 
+    def save_data(self):
+        if self.Draw.server_is_mounted():
+            data = [self.get_flux(), self.get_current(), self.get_pulse_height(), self.get_pedestal(), self.get_pedestal(par=2), self.Pulser.get_pulse_height(),
+                    self.Pulser.get_sigma(), self.get_pedestal(pulser=True), self.get_pedestal(pulser=True, par=2), ufloat(self.get_n_entries(), 0)]
+            # return h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a')
+            with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
+                if self.TCString not in f:
+                    f.create_group(self.TCString)
+                if str(self.DUT.Number) not in f[self.TCString]:
+                    f[self.TCString].create_dataset(str(self.DUT.Number), data=zeros((self.Run.get_max_run(), len(data), 2), 'd'))
+                f[self.TCString][str(self.DUT.Number)][self.Run.Number] = array([[v.n, v.s] for v in data], 'd')
+
     # ----------------------------------------
     # region INFO
     def show_integral_names(self):
@@ -356,7 +368,6 @@ class PadAnalysis(DUTAnalysis):
 
     def fit_pulse_height(self, p, picklepath):
         fit = p.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(p))
-        SaveDraw.server_pickle(picklepath, FitRes(fit))
         return FitRes(fit)
 
     def __get_max_fit_pos(self, g, thresh=.8):

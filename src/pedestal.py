@@ -127,7 +127,6 @@ class PedestalAnalysis(PadSubAnalysis):
         self.__draw_cut(fit, draw_cut)
         format_statbox(h, fit=True, all_stat=True, form='.2f')
         self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), **kwargs)
-        SaveDraw.server_pickle(self.make_simple_pickle_path(suf=f'{cut.GetName()}_fwhm_{self.get_short_name(name)}'), fit)
         return fit
 
     def __draw_cut(self, fit, show=True):

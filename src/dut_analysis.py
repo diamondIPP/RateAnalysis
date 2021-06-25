@@ -156,7 +156,8 @@ class DUTAnalysis(Analysis):
     def get_event_at_time(self, seconds, rel=False):
         return self.Run.get_event_at_time(seconds, rel)
 
-    def get_n_entries(self, cut=None):
+    @save_pickle(sub_dir='Entries', suf_args='all')
+    def get_n_entries(self, cut=None, _redo=False):
         return self.Tree.GetEntries(self.Cut(cut).GetTitle())
 
     def get_current(self):
