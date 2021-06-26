@@ -75,6 +75,12 @@ class AnalysisCollection(Analysis):
         for ana in self.get_analyses():
             ana.set_verbose(status)
 
+    def save_plots(self):
+        self.PBar.start(self.NRuns, counter=True, t='min')
+        for ana in self.get_analyses():
+            ana.save_plots()
+            self.PBar.update()
+
     # ----------------------------------------
     # region INIT
     def print_start_info(self):
@@ -734,8 +740,8 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region GENERATE PLOTS
-    def save_plots(self, name, f, ftype='pdf', **kwargs):
-        for i, plot in enumerate(self.get_plots(f.__name__, f, **{key: value for key, value in kwargs.items() if 'redo' in key})):
+    def save_full_plots(self, name, f, ftype='pdf', **kwargs):
+        for i, plot in enumerate(self.get_plots(f.__name__, f, show=False, **{key: value for key, value in kwargs.items() if 'redo' in key})):
             self.Draw.save_full(plot, f'{name}-{i}', ftype=ftype, **kwargs)
 
     def draw_run_currents(self):
