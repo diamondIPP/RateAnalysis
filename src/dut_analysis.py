@@ -90,6 +90,12 @@ class DUTAnalysis(Analysis):
             if hasattr(field, 'Verbose'):
                 field.Verbose = status
 
+    @quiet
+    def save_plots(self):
+        self.draw_hitmap(show=False)
+        self.draw_signal_distribution(show=False)
+        self.draw_signal_map(show=False)
+
     # ----------------------------------------
     # region GET
     def has_branch(self, branch):

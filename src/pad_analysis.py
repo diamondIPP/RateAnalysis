@@ -61,6 +61,10 @@ class PadAnalysis(DUTAnalysis):
         self.draw_signal_map(redo=redo, show=False)
         self.draw_hitmap(redo=redo, show=False)
 
+    @quiet
+    def save_plots(self):
+        super(PadAnalysis, self).save_plots()
+
     def save_data(self):
         if self.Draw.server_is_mounted():
             data = [self.get_flux(), self.get_current(), self.get_pulse_height(), self.get_pedestal(), self.get_pedestal(par=2), self.Pulser.get_pulse_height(),
