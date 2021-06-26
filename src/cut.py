@@ -2,7 +2,6 @@
 #       general class to handle all the cut strings for the analysis
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import quantile
 from ROOT import TCut
 from helpers.draw import *
 from src.binning import Bins
@@ -143,6 +142,7 @@ class Cut(SubAnalysis):
         if cut:
             cut = deepcopy(cut)
             cut.SetName('fid{}{}'.format(self.Run.Number, scale))
+            cut.SetFillStyle(1)
             for i in range(cut.GetN()):
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             return Draw.add(cut)
