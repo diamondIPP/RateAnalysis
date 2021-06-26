@@ -54,14 +54,14 @@ class SaveDraw(Draw):
     def load_server_save_dir(ana):
         if not SaveDraw.MountExists or SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
             return
-        run_string = 'RunPlan{}'.format(ana.Ensemble.Name.lstrip('0')) if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
-        return join(SaveDraw.ServerMountDir, 'Diamonds', ana.DUT.Name, 'BeamTests', make_tc_str(ana.TCString, long_=False), run_string)
+        run_string = f'RP-{ana.Ensemble.Name.lstrip("0").replace(".", "-")}' if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
+        return join(SaveDraw.ServerMountDir, 'content', 'diamonds', ana.DUT.Name, ana.TCString, run_string)
 
     # ----------------------------------------
     # region SAVE
-    def save_full(self, h, filename, **kwargs):
+    def save_full(self, h, filename, cname='c', **kwargs):
         self(h, **prep_kw(kwargs, show=False, save=False))
-        self.save_plots(None, full_path=join(self.Dir, filename), show=False, **kwargs)
+        self.save_plots(None, full_path=join(self.Dir, filename), show=False, cname=cname, **kwargs)
 
     def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, info_leg=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
@@ -70,13 +70,15 @@ class SaveDraw(Draw):
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
         return c
 
-    def save_plots(self, savename, sub_dir=None, canvas=None, full_path=None, prnt=True, ftype=None, show=True, save=True, **kwargs):
+    def save_plots(self, savename, sub_dir=None, canvas=None, full_path=None, prnt=True, ftype=None, show=True, save=True, cname=None, **kwargs):
         """ Saves the canvas at the desired location. If no canvas is passed as argument, the active canvas will be saved. However for applications without graphical interface,
          such as in SSl terminals, it is recommended to pass the canvas to the method. """
         kwargs = prep_kw(kwargs, save=save, prnt=prnt, show=show)
         if not kwargs['save'] or not SaveDraw.Save or (savename is None and full_path is None):
             return
         canvas = get_last_canvas() if canvas is None else canvas
+        if cname is not None:
+            canvas.SetName(cname)
         update_canvas(canvas)
         try:
             self.__save_canvas(canvas, sub_dir=sub_dir, file_name=savename, ftype=ftype, full_path=full_path, **kwargs)
@@ -90,19 +92,19 @@ class SaveDraw(Draw):
         file_path = join(choose(res_dir, self.ResultsDir), choose(sub_dir, self.SubDir), file_name) if full_path is None else full_path
         file_name = basename(file_path)
         ensure_dir(dirname(file_path))
-        info('saving plot: {}'.format(file_name), prnt=prnt and SaveDraw.Verbose)
+        info('saving plot: {}'.format(file_name), prnt=prnt and self.Verbose)
         canvas.Update()
         set_root_output(show)  # needs to be in the same batch so that the pictures are created, takes forever...
         set_root_warnings(False)
         for f in choose(make_list(ftype), default=['pdf'], decider=ftype):
             canvas.SaveAs('{}.{}'.format(file_path, f.strip('.')))
-        self.save_on_server(canvas, file_name, ftype, save=full_path is None)
+        self.save_on_server(canvas, file_name, save=full_path is None)
         set_root_output(True)
 
-    def save_on_server(self, canvas, file_name, ftype=None, save=True):
+    def save_on_server(self, canvas, file_name, save=True):
         if self.ServerDir is not None and save:
-            for ft in ['pdf', 'png'] if ftype is None else make_list(ftype):
-                canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.{ft}'))
+            canvas.SetName('c')
+            canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.root'))
     # endregion SAVE
     # ----------------------------------------
 
