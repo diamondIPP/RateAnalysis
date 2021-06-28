@@ -64,6 +64,10 @@ class PadAnalysis(DUTAnalysis):
     @quiet
     def save_plots(self):
         super(PadAnalysis, self).save_plots()
+        self.Pedestal.draw_disto_fit(show=False)
+        self.Pulser.draw_pulse_height(show=False)
+        self.Pulser.draw_distribution_fit(show=False)
+        self.Pulser.draw_pedestal_fit(show=False)
 
     def save_data(self):
         if self.Draw.server_is_mounted():
@@ -254,7 +258,7 @@ class PadAnalysis(DUTAnalysis):
         return self.Peaks.get_n_additional(start_bunch, end_bunch)
 
     def get_pedestal(self, pulser=False, par=1, redo=False):
-        return self.Pulser.get_pedestal(par, redo) if pulser else self.Pedestal.get_par(par, redo=redo)
+        return self.Pulser.get_pedestal(par, redo=redo) if pulser else self.Pedestal.get_par(par, redo=redo)
 
     def get_peak_timing(self, par=1, redo=False):
         return self.Timing.get(par, redo)

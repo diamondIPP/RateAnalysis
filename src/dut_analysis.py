@@ -89,12 +89,19 @@ class DUTAnalysis(Analysis):
         for field in self.__dict__.values():
             if hasattr(field, 'Verbose'):
                 field.Verbose = status
+            if hasattr(field, '__dict__'):
+                for subfield in field.__dict__.values():
+                    if hasattr(subfield, 'Verbose'):
+                        subfield.Verbose = status
 
     @quiet
     def save_plots(self):
         self.draw_hitmap(show=False)
         self.draw_signal_distribution(show=False)
         self.draw_signal_map(show=False)
+        self.Currents.draw(show=False, fname='Current')
+        self.draw_flux(save=self.has_branch('rate'), show=False)
+        self.draw_pulse_height(show=False)
 
     # ----------------------------------------
     # region GET

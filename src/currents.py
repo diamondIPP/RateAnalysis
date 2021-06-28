@@ -32,6 +32,7 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.HVConfig = self.load_parser()
         self.Bias = self.Ana.Bias if hasattr(self.Ana, 'Bias') else None
+        self.Draw.ServerDir = analysis.Draw.ServerDir if analysis is not None else None
 
         # Times
         self.Begin, self.End = self.load_times(begin, end, dut)
@@ -211,7 +212,7 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region PLOTTING
-    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, show=True):
+    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, show=True, fname=None):
         self.reload_data(ignore_jumps)
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
         gv = self.Draw.graph(t, v, title=self.get_title(), y_tit='Voltage [nA]', yax_col=self.VCol, color=self.VCol, y_range=choose(v_range, [-1100, 1100]), l_off_x=10, x_ticks=0, show=False, lw=2)
@@ -228,7 +229,7 @@ class Currents(Analysis):
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
         save_name = '{}_{}{}'.format(self.get_run_number(), self.DUT.Name, 'Flux' if with_flux else '')
-        self.Draw.save_plots(save_name, show=show, ftype='png')
+        self.Draw.save_plots(choose(fname, save_name), show=show, ftype='png')
         return gc
 
     def draw_profile(self, bin_width=5, show=True):
