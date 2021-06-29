@@ -4,35 +4,24 @@
       "201510": "5e13"
     }, 
     "thickness": "None", 
-    "size": "None"
-  }, 
-  "8722": {
-    "irradiation": {
-      "201909": "0"
-    }, 
-    "thickness": "None", 
-    "size": "None"
-  }, 
-  "9273": {
-    "irradiation": {
-      "201909": "0"
-    }, 
-    "thickness": "None", 
-    "size": "None"
-  }, 
+    "size": "None",
+    "manufacturer": "II-VI"
+  },
   "CMS01": {
     "irradiation": {
       "201810": "0"
     }, 
     "thickness": "None",
-    "size": "None"
+    "size": "None",
+    "manufacturer": "Diego"
   }, 
   "CMS02": {
     "irradiation": {
       "201810": "0"
     }, 
     "thickness": "None",
-    "size": "None"
+    "size": "None",
+    "manufacturer": "Diego"
   }, 
   "CMS04": {
     "irradiation": {
@@ -44,28 +33,32 @@
       "201810": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "Diego"
   }, 
   "D2": {
     "irradiation": {
       "201909": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "D8": {
     "irradiation": {
       "201810": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "Dirac": {
     "irradiation": {
       "201708": "0"
     }, 
     "thickness": "514", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "Einstein": {
     "irradiation": {
@@ -73,7 +66,8 @@
       "201708": "0"
     }, 
     "thickness": "486", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "Heisenberg": {
     "irradiation": {
@@ -82,21 +76,24 @@
       "201708": "0"
     }, 
     "thickness": "518", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "Higgs": {
     "irradiation": {
       "201708": "0"
     }, 
     "thickness": "505", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "II6-78": {
     "irradiation": {
       "201505": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-79": {
     "irradiation": {
@@ -105,7 +102,8 @@
       "201707-2": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-81": {
     "irradiation": {
@@ -113,7 +111,8 @@
       "201510": "1e14"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-94": {
     "irradiation": {
@@ -127,7 +126,8 @@
       "201510": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-95": {
     "irradiation": {
@@ -141,14 +141,16 @@
       "201510": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-96": {
     "irradiation": {
       "201505": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-97": {
     "irradiation": {
@@ -160,7 +162,8 @@
       "201708-2": "3.5e15"
     }, 
     "thickness": "510", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-A2": {
     "irradiation": {
@@ -179,7 +182,8 @@
       "201810": "3D-pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-A7": {
     "irradiation": {
@@ -193,7 +197,8 @@
       "201708-2": "3D-multi"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-B2": {
     "irradiation": {
@@ -206,7 +211,8 @@
       "201807": "8e15"
     }, 
     "thickness": "455", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-B6": {
     "irradiation": {
@@ -220,7 +226,8 @@
       "201810": "3D-pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-E5-3": {
     "irradiation": {
@@ -230,14 +237,16 @@
       "201707-2": "pad (2x2)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0": {
     "irradiation": {
       "201705": "0"
     },
     "thickness": "515", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0-1": {
     "irradiation": {
@@ -247,7 +256,8 @@
       "201705": "pad (1x1)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0-2": {
     "irradiation": {
@@ -257,7 +267,8 @@
       "201705": "pad (2x1)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0-3": {
     "irradiation": {
@@ -267,7 +278,8 @@
       "201705": "pad (2x2)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0-4": {
     "irradiation": {
@@ -277,7 +289,8 @@
       "201705": "pad (4x2)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H0-5": {
     "irradiation": {
@@ -289,42 +302,48 @@
       "201707-2": "pad (4x4)"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H8": {
     "irradiation": {
       "201807": "0"
     }, 
     "thickness": "505", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H8-C1-1": {
     "irradiation": {
       "201810": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H8-C2-1": {
     "irradiation": {
       "201810": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "II6-H9": {
     "irradiation": {
       "201807": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "II-VI"
   }, 
   "IIa-3": {
     "irradiation": {
       "201510": "5e13"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "IIa"
   }, 
   "L100": {
     "irradiation": {
@@ -334,28 +353,32 @@
       "201708-2": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "Diego"
   }, 
   "S108": {
     "irradiation": {
       "201908": "0"
     }, 
     "thickness": "523", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S116": {
     "irradiation": {
       "201807": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S125": {
     "irradiation": {
       "201807": "?"
     }, 
     "thickness": "482", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S129": {
     "irradiation": {
@@ -374,21 +397,24 @@
     "thickness": "528", 
     "size": "[4.79, 4.64]",
     "metal": 3.48,
-    "guard ring": 4.04
+    "guard ring": 4.04,
+    "manufacturer": "elementsix"
   }, 
   "S30": {
     "irradiation": {
       "201908": "0"
     }, 
     "thickness": "520", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S49": {
     "irradiation": {
       "201807": "2e13"
     }, 
     "thickness": "488", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S83": {
     "irradiation": {
@@ -398,7 +424,8 @@
       "201810": "4e13"
     }, 
     "thickness": "539", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "S97": {
     "irradiation": {
@@ -406,7 +433,8 @@
       "201810": "4e13"
     }, 
     "thickness": "533", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "elementsix"
   }, 
   "Si320": {
     "irradiation": {
@@ -418,7 +446,8 @@
       "201510": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "Si352": {
     "irradiation": {
@@ -435,7 +464,8 @@
       "201708-2": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "SiD1": {
     "irradiation": {
@@ -443,7 +473,8 @@
       "201610": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "SiD2": {
     "irradiation": {
@@ -456,7 +487,8 @@
       "201908": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "IJS"
   }, 
   "SiD6": {
     "irradiation": {
@@ -467,7 +499,8 @@
       "201810": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "SiD7": {
     "irradiation": {
@@ -475,7 +508,8 @@
       "201810": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "SiD8": {
     "irradiation": {
@@ -485,13 +519,15 @@
       "201810": "pixel"
     },
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }, 
   "SiD9": {
     "irradiation": {
       "201908": "0"
     }, 
     "thickness": "None", 
-    "size": "None"
+    "size": "None",
+    "manufacturer": "PSI"
   }
 }
