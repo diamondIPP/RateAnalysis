@@ -50,7 +50,10 @@
   "D2": {
     "irradiation": {
       "201909": "0"
-    }, 
+    },
+    "type": {
+      "201909": "pixel"
+    },
     "thickness": "None", 
     "size": "None",
     "manufacturer": "PSI"
@@ -58,7 +61,10 @@
   "D8": {
     "irradiation": {
       "201810": "0"
-    }, 
+    },
+    "type": {
+      "201810": "pixel"
+    },
     "thickness": "None", 
     "size": "None",
     "manufacturer": "PSI"
@@ -648,8 +654,8 @@
     "irradiation": {
       "201908": "0"
     },
-    "type": {
-      "201810": "pixel"
+    "boardnumber": {
+      "201908": "C?"
     },
     "thickness": "None", 
     "size": "None",
@@ -658,7 +664,10 @@
   "SiD9": {
     "irradiation": {
       "201908": "0"
-    }, 
+    },
+    "boardnumber": {
+      "201908": "C?"
+    },
     "thickness": "None", 
     "size": "None",
     "manufacturer": "PSI"
