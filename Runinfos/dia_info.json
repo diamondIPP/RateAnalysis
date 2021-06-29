@@ -24,21 +24,25 @@
     "irradiation": {
       "201810": "0"
     }, 
-    "thickness": "None", 
+    "thickness": "None",
     "size": "None"
   }, 
   "CMS02": {
     "irradiation": {
       "201810": "0"
     }, 
-    "thickness": "None", 
+    "thickness": "None",
     "size": "None"
   }, 
   "CMS04": {
     "irradiation": {
       "201708-2": "0", 
       "201810": "0"
-    }, 
+    },
+    "type": {
+      "201708-2": "pixel",
+      "201810": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -117,7 +121,11 @@
       "201508": "0", 
       "201510": "0", 
       "201608": "0"
-    }, 
+    },
+    "type": {
+      "201508": "pixel",
+      "201510": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -127,7 +135,11 @@
       "201508": "0", 
       "201510": "5e14", 
       "201608": "5e14"
-    }, 
+    },
+    "type": {
+      "201508": "pixel",
+      "201510": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -157,15 +169,29 @@
       "201708": "0", 
       "201708-2": "0", 
       "201810": "0"
-    }, 
+    },
+    "type": {
+      "201608": "3D-pixel",
+      "201610": "3D-pixel",
+      "201705": "3D-pixel",
+      "201708": "3D-pixel",
+      "201708-2": "3D-pixel",
+      "201810": "3D-pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-A7": {
     "irradiation": {
-      "201610": "0", 
+      "201608": "0",
+      "201610": "0",
       "201708-2": "0"
-    }, 
+    },
+    "type": {
+      "201608": "3D-multi",
+      "201610": "3D-multi",
+      "201708-2": "3D-multi"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -187,49 +213,69 @@
       "201708": "0", 
       "201708-2": "0", 
       "201810": "0"
-    }, 
+    },
+    "type": {
+      "201708": "3D-pixel",
+      "201708-2": "3D-pixel",
+      "201810": "3D-pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-E5-3": {
     "irradiation": {
       "201707-2": "0"
-    }, 
+    },
+    "type": {
+      "201707-2": "pad (2x2)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-H0": {
     "irradiation": {
       "201705": "0"
-    }, 
+    },
     "thickness": "515", 
     "size": "None"
   }, 
   "II6-H0-1": {
     "irradiation": {
       "201705": "0"
-    }, 
+    },
+    "type": {
+      "201705": "pad (1x1)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-H0-2": {
     "irradiation": {
       "201705": "0"
-    }, 
+    },
+    "type": {
+      "201705": "pad (2x1)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-H0-3": {
     "irradiation": {
       "201705": "0"
-    }, 
+    },
+    "type": {
+      "201705": "pad (2x2)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
   "II6-H0-4": {
     "irradiation": {
       "201705": "0"
-    }, 
+    },
+    "type": {
+      "201705": "pad (4x2)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -237,7 +283,11 @@
     "irradiation": {
       "201705": "0", 
       "201707-2": "0"
-    }, 
+    },
+    "type": {
+      "201705": "pad (4x4)",
+      "201707-2": "pad (4x4)"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -279,7 +329,10 @@
   "L100": {
     "irradiation": {
       "201708-2": "0"
-    }, 
+    },
+    "type": {
+      "201708-2": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -359,7 +412,11 @@
     "irradiation": {
       "201508": "0", 
       "201510": "0"
-    }, 
+    },
+    "type": {
+      "201508": "pixel",
+      "201510": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -369,7 +426,14 @@
       "201705": "0", 
       "201708": "0", 
       "201708-2": "0"
-    }, 
+    },
+    "type": {
+      "201608": "pixel",
+      "201610": "pixel",
+      "201705": "pixel",
+      "201708": "pixel",
+      "201708-2": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
@@ -416,7 +480,10 @@
   "SiD8": {
     "irradiation": {
       "201908": "0"
-    }, 
+    },
+    "type": {
+      "201810": "pixel"
+    },
     "thickness": "None", 
     "size": "None"
   }, 
