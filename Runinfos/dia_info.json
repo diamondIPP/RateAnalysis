@@ -142,6 +142,9 @@
     "boardnumber": {
       "201510": "4"
     },
+    "pulser": {
+      "201510": "intern"
+    },
     "thickness": "None", 
     "size": "None",
     "manufacturer": "II-VI"
@@ -267,6 +270,9 @@
       "201707": "3",
       "201708-2": "3",
       "201807": "2"
+    },
+    "pulser": {
+      "201510": "intern"
     },
     "thickness": "455", 
     "size": "None",
