@@ -156,7 +156,7 @@ class PulserAnalysis(PadSubAnalysis):
         """ Shows the average pulse height of the pulser as a function of time """
         g = self.get_pulse_height_trend(bin_size, cut, _redo=redo)
         fit = FitRes(g.Fit('pol0', 'qs'))
-        kwargs = prep_kw(kwargs, gridy=True, lm=.14, y_off=1.7, stats=set_statbox(fit=True, entries=True), y_range=ax_range(get_graph_y(g), 0, .6, 1))
+        kwargs = prep_kw(kwargs, gridy=True, lm=.14, y_off=1.7, stats=set_statbox(fit=True, entries=True), y_range=ax_range(get_graph_y(g, err=False), 0, .6, 1))
         g = self.Draw(g, **self.get_t_args(), **kwargs, file_name='PulserPulseHeight')
         return g, fit
 

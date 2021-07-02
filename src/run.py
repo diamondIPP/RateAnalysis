@@ -296,7 +296,7 @@ class Run(Analysis):
         return int(evt_numbers[:n][-1] + 1 - start)
 
     def get_max_run(self):
-        return int(max(self.load_run_info_file()))
+        return int(max(self.load_run_info_file(), key=int))
     # endregion HELPERS
     # ----------------------------------------
 

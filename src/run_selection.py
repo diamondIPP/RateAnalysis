@@ -677,19 +677,6 @@ class RunSelector(object):
             dump(self.RunInfos, f, indent=2)
         self.RunInfos = self.load_run_infos()
 
-    def add_irradiation(self):
-        with open(self.Run.IrradiationFile, 'r+') as f:
-            data = load(f)
-            if self.TCString in data:
-                self.Run.info('The information of the testcampaign {tc} was already entered!'.format(tc=self.TCString))
-                return
-            data[self.TCString] = {}
-            for dia in self.get_diamond_names():
-                data[self.TCString][dia] = input('Enter the irradtion for the diamond {d} (e.g. 4e15): '.format(d=dia))
-            f.seek(0)
-            dump(data, f, indent=2, sort_keys=True)
-            f.truncate()
-
     def get_irradiation(self, dia=None):
         if self.SelectedDUT is not None and dia is None:
             return self.SelectedDUT.get_irradiation(self.TCString)
