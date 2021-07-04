@@ -58,6 +58,11 @@ class AnalysisCollection(Analysis):
     def draw_all(self, redo=False):
         pass
 
+    def save_coll_plots(self):
+        self.draw_flux(show=False)
+        self.draw_currents(show=False, fname='Currents')
+        self.draw_pulse_heights(show=False)
+
     def show_information(self):
         print_table(rows=self.get_values('', self.Analysis.show_information, pbar=False, prnt=False, ret_row=True), header=self.FirstAnalysis.get_info_header())
 
@@ -232,7 +237,7 @@ class AnalysisCollection(Analysis):
         return do_pickle(self.make_simple_pickle_path('SMSTD', f'{low:d}{high:d}', 'Uniformity'), f, redo=redo)
 
     def get_pulse_heights(self, *args, **kwargs):
-        return []
+        return array([])
 
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
@@ -262,26 +267,12 @@ class AnalysisCollection(Analysis):
 
     def get_repr_error(self, flux=None, peaks=False, redo=False):
         values = self.get_signal_spread(peaks, redo)
-        return self.get_repr_error_old(flux, show=False) if values is None else mean_sigma(values, err=False)[1]
+        return self.get_low_flux_std(flux) if values is None else mean_sigma(values, err=False)[1]
 
-    def get_repr_error_old(self, flux, show=True, redo=False):
-
-        pickle_path = self.make_pickle_path('Errors', 'Repr', self.RunPlan, self.DUT.Number, suf=flux)
-
-        def f():
-            runs = self.get_runs_below_flux(flux)
-            if not runs.size:
-                return 0
-            values = self.get_pulse_heights(runs=runs, redo=redo, err=False)
-            gr = Draw.make_tgrapherrors(self.get_fluxes(runs=runs), values, title='Pulse Heights Below {f} kHz/cm^{{2}}'.format(f=flux))
-            gr.Fit('pol0', 'qs{s}'.format(s='' if show else '0'))
-            format_histo(gr, x_tit='Flux [kHz/cm^{2}]', y_tit='Mean Pulse Height [au]', y_off=1.7)
-            self.Draw(gr, 'ReprErrors', show, draw_opt='ap', lm=.14, prnt=show, stats=set_statbox(fit=True))
-            if len(values) == 1:
-                return .01  # take 1% if there is only one measurement below the given flux
-            return mean_sigma(values, err=False)[1]
-
-        return do_pickle(pickle_path, f, redo=redo)
+    @save_pickle('LowFlux', sub_dir='Errors', suf_args=0)
+    def get_low_flux_std(self, flux, _redo=False):
+        x = self.get_pulse_heights(runs=self.get_runs_below_flux(flux), redo=_redo, err=False)
+        return 0 if not x.size else .01 if x.size == 1 else mean_sigma(x, err=False)[1]
 
     def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, redo=False):
         runs = self.get_runs_below_flux(110) if low_flux else self.get_runs_above_flux(2000) if high_flux else self.Runs
@@ -374,7 +365,7 @@ class AnalysisCollection(Analysis):
     def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
         """ Shows the pulse heights of the runs. """
         mg = self.make_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg, peaks=peaks)
-        mg.GetListOfGraphs()[0].Fit('pol0', f'qs{"" if fit else 0}')
+        mg.GetListOfGraphs()[0].Fit('pol0', f'qs') if fit else do_nothing()
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
         return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None))
 
@@ -538,8 +529,8 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region CURRENT
-    def draw_currents(self, v_range=None, rel_time=False, averaging=True, with_flux=False, c_range=None, f_range=None, draw_opt='al', show=True):
-        self.Currents.draw(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt)
+    def draw_currents(self, v_range=None, rel_time=False, averaging=True, with_flux=False, c_range=None, f_range=None, draw_opt='al', show=True, fname=None):
+        self.Currents.draw(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt, fname=fname)
 
     def draw_iv(self, show=True):
         g = self.Currents.draw_iv(show=False)
@@ -569,19 +560,20 @@ class AnalysisCollection(Analysis):
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', y_off=.85, fill_color=Draw.FillColor, stats=0, markersize=.3, t_ax_off=self.StartTime if rel_t else 0)
         self.Draw(h, 'AllBeamRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
-    def draw_flux(self, bin_width=5, rel_time=True, show=True, redo=False):
-        def f():
-            h1 = TH1F('hff', 'Flux Profile', *self.get_raw_time_bins(bin_width))
-            values = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
-            values = concatenate([append(run_values, ufloat(0, 0)) for run_values in values])  # add extra zero for time bin between runs
-            for i, value in enumerate(values, 1):
-                h1.SetBinContent(i, value.n)
-                h1.SetBinError(i, value.s)
-            return h1
-        h = do_pickle(self.make_simple_pickle_path('FullFlux', bin_width, 'Flux'), f, redo=redo)
-        format_histo(h, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', t_ax_off=self.get_tax_off(True, rel_time), fill_color=Draw.FillColor, y_range=Bins.FluxRange, stats=0)
-        self.Draw(h, 'FluxEvo', w=1.5, h=.75, show=show, logy=True, draw_opt='hist')
+    @save_pickle('Prof', sub_dir='Flux', suf_args='[0]')
+    def get_flux_prof(self, bin_width=5, _redo=False):
+        h = TH1F('hff', 'Flux Profile', *self.get_raw_time_bins(bin_width))
+        values = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
+        values = concatenate([append(run_values, ufloat(0, 0)) for run_values in values])  # add extra zero for time bin between runs
+        for i, value in enumerate(values, 1):
+            h.SetBinContent(i, value.n)
+            h.SetBinError(i, value.s)
         return h
+
+    def draw_flux(self, bin_width=5, rel_time=True, redo=False, **kwargs):
+        h = self.get_flux_prof(bin_width, _redo=redo)
+        return self.Draw.distribution(h, **prep_kw(kwargs, file_name='FluxProfile', **self.get_x_args(True, rel_time, draw=True), **Draw.mode(2), logy=True,
+                                                   y_tit='Flux [kHz/cm^{2}]', stats=False))
 
     def draw_flux_ratio(self, show=True):
         r = self.get_fluxes(1, rel=True) / self.get_fluxes(2, rel=True)

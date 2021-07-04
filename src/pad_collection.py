@@ -56,6 +56,13 @@ class PadCollection(AnalysisCollection):
             ana.save_data()
             self.PBar.update()
 
+    @quiet
+    def save_coll_plots(self):
+        super(PadCollection, self).save_coll_plots()
+        self.draw_pedestals(show=False)
+        self.draw_pedestals(show=False, sigma=True)
+        self.Pulser.draw_pulse_heights(show=False)
+        self.Pulser.draw_sigmas(show=False)
     # endregion RESULTS
     # ----------------------------------------
 

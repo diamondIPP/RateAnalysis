@@ -224,7 +224,7 @@ class Currents(Analysis):
         x_range = [gv.GetBinLowEdge(1), gv.GetBinLowEdge(gv.GetNbinsX() + 1)] if with_flux else [t[0], t[-1]]
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=x_range, markersize=self.MS, stats=0)
-        m = [.09, .09, .2, .1]
+        m = [.09, .09, .2, .02]
         self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format('hist' if with_flux else draw_opt), logy=with_flux)
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)

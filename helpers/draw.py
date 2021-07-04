@@ -504,7 +504,7 @@ class Draw(object):
         y_range = ax_range(get_graph_y(graphs, err=False), 0, .3, .6)
         format_histo(m, draw_first=True, **prep_kw(kwargs, **Draw.mode(1, y_off=g.GetYaxis().GetTitleOffset()), y_range=y_range, x_tit=choose('', None, bin_labels)))
         set_bin_labels(m, bin_labels)
-        leg = self.legend(graphs, leg_titles, 'p', w=wleg, show=False) if leg_titles else None
+        leg = self.legend(graphs, leg_titles, 'p', w=wleg) if leg_titles else None
         self.histo(m, leg=leg, **prep_kw(kwargs, bm=choose(.26, None, bin_labels), draw_opt='ap'))
         return m
 

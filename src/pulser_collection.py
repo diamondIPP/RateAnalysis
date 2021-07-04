@@ -20,12 +20,13 @@ class PulserCollection(SubCollection):
     def get_analyses(self, runs=None):
         return [ana.Pulser for ana in self.Analyses if ana.Run.Number in choose(runs, self.Ana.Runs)]
 
-    def get_pulse_heights(self, corr=True, beam_on=True, sigma=False, avrg=False, redo=False):
-        pickle_path = self.get_pickle_path('HistoFit', f'{corr:d}_{beam_on:d}_0')
-        return self.get_values('pulser pulse heights', PulserAnalysis.get_pulse_height, avrg=avrg, corr=corr, beam_on=beam_on, redo=redo, par=[1, 2][sigma], picklepath=pickle_path)
+    def get_pulse_heights(self, corr=True, beam_on=True, avrg=False, redo=False):
+        pickle_path = self.get_pickle_path('Fit', f'{corr:d}_{beam_on:d}_0.2')
+        return self.get_values('pulser pulse heights', PulserAnalysis.get_pulse_height, avrg=avrg, corr=corr, beam_on=beam_on, redo=redo, picklepath=pickle_path)
 
-    def get_sigmas(self, corr=True, beam_on=True, redo=False):
-        return self.get_pulse_heights(corr, beam_on, sigma=True, redo=redo)
+    def get_sigmas(self, corr=True, beam_on=True, avrg=False, redo=False):
+        pickle_path = self.get_pickle_path('Fit', f'{corr:d}_{beam_on:d}_0.2')
+        return self.get_values('pulser pulse heights', PulserAnalysis.get_sigma, avrg=avrg, corr=corr, beam_on=beam_on, redo=redo, picklepath=pickle_path)
 
     def get_pedestals(self, sigma=False, beam_on=True, redo=False):
         pickle_path = self.Analysis.make_simple_pickle_path('Pedestal', str(int(beam_on)), run='{}')
@@ -45,15 +46,16 @@ class PulserCollection(SubCollection):
         self.Draw.profile(x, y, self.get_time_bins(bin_size), 'Pulser Pulse Height Trend', **self.get_x_args(True, rel_t), y_tit='Pulser Pulse Height [mV]', w=2, show=show, stats=0,
                           y_range=ax_range(y, 0, .3, .3))
 
-    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, fl=True, redo=False, show=True):
-        x, y = self.get_x(vs_time), self.get_pulse_heights(corr, beam_on, sigma, redo)
+    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, fl=True, redo=False, **kwargs):
+        x, y = self.get_x(vs_time), (self.get_sigmas if sigma else self.get_pulse_heights)(corr, beam_on, redo=redo)
         y /= mean(y) if scaled else 1
         marker, colors, ms = [20, 22, 23], [self.Draw.get_color(10, 6)] + [int(Draw.Colors[0])] * 2, [1, 2, 2]
         g = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
         g = g[:(1 if vs_time or not fl else 3)]
-        mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **self.get_x_draw(vs_time), color=False, show=show, lm=.12)
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **self.get_x_draw(vs_time), color=None, **kwargs)
         format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit=f'{"Relative " if scaled else ""}Pulser Pulse Height {"" if scaled else "[mV]"}')
         Draw.info(f'{self.Type}al pulser')
+        self.Draw.save_plots(f'Pulser{"Sigma" if sigma else "PH"}')
         if vs_time and show_flux:
             for ix, iy, flux in zip(x, y, self.get_fluxes()):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iy.n + iy.s * 1.2, '{:1.0f}'.format(flux.n), color=1, align=21, size=.02))
@@ -62,11 +64,11 @@ class PulserCollection(SubCollection):
             format_statbox(g[0], fit=True, x2=.41)
         return mg
 
-    def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, show=True):
-        return self.draw_pulse_heights(sigma, vs_time, True, corr, beam_on, show_flux, legend, fit, redo, show)
+    def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, **kwargs):
+        return self.draw_pulse_heights(sigma, vs_time, True, corr, beam_on, show_flux, legend, fit, redo, **kwargs)
 
-    def draw_sigmas(self, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, show=True):
-        return self.draw_pulse_heights(True, vs_time, False, corr, beam_on, show_flux, legend, fit, redo, show)
+    def draw_sigmas(self, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, **kwargs):
+        return self.draw_pulse_heights(True, vs_time, False, corr, beam_on, show_flux, legend, fit, redo, **kwargs)
 
     def draw_distributions(self, show=True, corr=True):
         histos = self.get_plots('pulser distributions', PulserAnalysis.draw_distribution, show=False, corr=corr, picklepath=self.Analysis.make_simple_pickle_path('Disto', '{}12'.format(int(corr))))
