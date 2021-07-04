@@ -222,7 +222,6 @@
       "201810": "0"
     },
     "type": {
-      "201608": "3D-pixel",
       "201610": "3D-pixel",
       "201705": "3D-pixel",
       "201708": "3D-pixel",
@@ -235,12 +234,10 @@
   }, 
   "II6-A7": {
     "irradiation": {
-      "201608": "0",
       "201610": "0",
       "201708-2": "0"
     },
     "type": {
-      "201608": "3D-multi",
       "201610": "3D-multi",
       "201708-2": "3D-multi"
     },
@@ -456,77 +453,61 @@
     "thickness": "None", 
     "size": "None",
     "manufacturer": "Diego"
-  }, 
-  "S108": {
-    "irradiation": {
-      "201908": "0"
-    },
-    "boardnumber": {
-      "201908": "C1"
-    },
-    "thickness": "523", 
-    "size": "None",
-    "manufacturer": "elementsix"
-  }, 
-  "S116": {
-    "irradiation": {
-      "201807": "0"
-    },
-    "boardnumber": {
-      "201807": "C9"
-    },
-    "thickness": "None", 
-    "size": "None",
-    "manufacturer": "elementsix"
-  }, 
-  "S125": {
-    "irradiation": {
-      "201807": "?"
-    },
-    "boardnumber": {
-      "201807": "C4"
-    },
-    "thickness": "482", 
-    "size": "None",
-    "manufacturer": "elementsix"
-  }, 
-  "S129": {
-    "irradiation": {
-      "201505": "0", "201508": "0", "201510": "0", "201608": "0", "201610": "0", "201705": "0", "201707": "0", "201707-2": "0", "201708-2": "0", "201807": "0",
-      "201908": "0"
-    },
-    "boardnumber": {
-      "201505": "0", "201508": "0", "201510": "0", "201608": "0", "201610": "0", "201705": "0", "201707": "0", "201707-2": "0", "201708-2": "0", "201807": "0",
-      "201908": "3"
-    },
-    "thickness": "528", 
-    "size": "[4.79, 4.64]",
-    "metal": 3.48,
-    "guard ring": 4.04,
-    "manufacturer": "elementsix"
-  }, 
+  },
   "S30": {
     "irradiation": {
-      "201908": "0"
+      "201908": "5e13"
     },
     "boardnumber": {
       "201908": "C2"
     },
     "thickness": "520", 
     "size": "None",
-    "manufacturer": "elementsix"
-  }, 
+    "manufacturer": "elementsix",
+    "comment": "sent to Marko for neutron irradiation (5e13)"
+  },
+  "S33": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "irradiated to 2.5e14 p/cm2 at Massachusetts General Hospital"
+  },
   "S49": {
     "irradiation": {
-      "201807": "2e13"
+      "201807": "1e15"
     },
     "boardnumber": {
       "201807": "C2"
     },
     "thickness": "488", 
     "size": "None",
-    "manufacturer": "elementsix"
-  }, 
+    "manufacturer": "elementsix",
+    "comment": "irradiated at Los Alamos Laboratory ~1x10^15 with 800MeV protons"
+  },
+  "S66": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "20-dec-13   stripped for LANL proton irrad?"
+  },
+  "S72": {
+    "thickness": "515",
+    "size": "4.7",
+    "manufacturer": "elementsix",
+    "comment": "14-May-10  run 20449     full chg@0.2 V/micron  side A  0.6 nA @500V dist OK\n17-May-10  run 20450     full chg@0.4 V/micron  side B  0.15nA @400V dist OK"
+  },
+  "S74": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "25-oct-13  sent to Marko for neutron irradiation (5e13)"
+  },
+  "S81": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "25-oct-13  sent to Marko for neutron irradiation (5e13)"
+  },
   "S83": {
     "irradiation": {
       "201705": "4e13", 
@@ -542,8 +523,15 @@
     },
     "thickness": "539", 
     "size": "None",
-    "manufacturer": "elementsix"
-  }, 
+    "manufacturer": "elementsix",
+    "comment": "Was in Castor region full run"
+  },
+  "S86": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "Was in Castor region full run"
+  },
   "S97": {
     "irradiation": {
       "201705": "4e13", 
@@ -555,8 +543,84 @@
     },
     "thickness": "533", 
     "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "Was in Castor region full run"
+  },
+  "S99": {
+    "thickness": "531",
+    "size": "4.7",
+    "manufacturer": "elementsix",
+    "comment": "1 -nov-10  run 10403     full chg@0.2 V/micron  side A  0.9 nA @900V dist OK\n3 -nov-10  run 10404     full chg@0.2 V/micron  side B  <20 pA @1 KV dist OK\n25-jan-11 At RU for Pixel testing"
+  },
+  "S105": {
+    "thickness": "544",
+    "size": "4.7",
+    "manufacturer": "elementsix",
+    "comment": "23-nov-10  run 10411     full chg@0.2 V/micron  side A  0.7 nA @700V dist OK\n30-nov-10  run 10412     full chg@0.2 V/micron  side B  0.3 nA @1 KV dist OK"
+  },
+  "S108": {
+    "irradiation": {
+      "201908": "5e13"
+    },
+    "boardnumber": {
+      "201908": "C1"
+    },
+    "thickness": "523",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "oct-13  neutron irradiated by Marko (5e13)"
+  },
+  "S112": {
+    "thickness": "538",
+    "size": "4.8",
+    "manufacturer": "elementsix",
+    "comment": "12-may-11  run 20503     full chg@0.4 V/micron  side A <0.15nA @ 1KV dist OK\n13-may-11  run 20504     full chg@0.4 V/micron  side B  1   nA @500V dist OK"
+  },
+  "S116": {
+    "irradiation": {
+      "201807": "0"
+    },
+    "boardnumber": {
+      "201807": "C9"
+    },
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "needs a lot of voltage to get full charge\nmade by Element 6, sold to us through DDL, never irradiated"
+  },
+  "S118": {
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "needs a lot of voltage to get full charge\nmade by Element 6, sold to Rutgers through DDL, \nnever irradiated\nmetallized by Rutgers TiW sputtered with shadow mask"
+  },
+  "S125": {
+    "irradiation": {
+      "201807": "1e15"
+    },
+    "boardnumber": {
+      "201807": "C4"
+    },
+    "thickness": "482",
+    "size": "None",
+    "manufacturer": "elementsix",
+    "comment": "Irradiated at LANL ~1x10^15"
+  },
+  "S129": {
+    "irradiation": {
+      "201505": "0", "201508": "0", "201510": "0", "201608": "0", "201610": "0", "201705": "0", "201707": "0", "201707-2": "0", "201708-2": "0", "201807": "0",
+      "201908": "0"
+    },
+    "boardnumber": {
+      "201505": "0", "201508": "0", "201510": "0", "201608": "0", "201610": "0", "201705": "0", "201707": "0", "201707-2": "0", "201708-2": "0", "201807": "0",
+      "201908": "3"
+    },
+    "thickness": "528",
+    "size": "[4.79, 4.64]",
+    "metal": 3.48,
+    "guard ring": 4.04,
     "manufacturer": "elementsix"
-  }, 
+  },
   "Si320": {
     "irradiation": {
       "201508": "0", 
@@ -578,7 +642,6 @@
       "201708-2": "0"
     },
     "type": {
-      "201608": "pixel",
       "201610": "pixel",
       "201705": "pixel",
       "201708": "pixel",
