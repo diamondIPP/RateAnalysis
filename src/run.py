@@ -101,6 +101,9 @@ class Run(Analysis):
     def get_type(self):
         return self.Config.get('BASIC', 'type') if self.Number is not None else None
 
+    def set_estimate(self, n=None):
+        self.Tree.SetEstimate(choose(n, self.NEvents))
+
     # ----------------------------------------
     # region INIT
     def load_rootfile(self, prnt=True):
