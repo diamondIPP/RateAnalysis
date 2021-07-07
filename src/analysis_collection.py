@@ -58,11 +58,6 @@ class AnalysisCollection(Analysis):
     def draw_all(self, redo=False):
         pass
 
-    def save_coll_plots(self):
-        self.draw_flux(show=False)
-        self.draw_currents(show=False, fname='Currents')
-        self.draw_pulse_heights(show=False)
-
     def show_information(self):
         print_table(rows=self.get_values('', self.Analysis.show_information, pbar=False, prnt=False, ret_row=True), header=self.FirstAnalysis.get_info_header())
 
@@ -80,11 +75,29 @@ class AnalysisCollection(Analysis):
         for ana in self.get_analyses():
             ana.set_verbose(status)
 
+    def save_all(self):
+        self.save_data()
+        self.save_plots()
+        self.save_coll_plots()
+
+    @quiet
     def save_plots(self):
-        self.PBar.start(self.NRuns, counter=True, t='min')
-        for ana in self.get_analyses():
-            ana.save_plots()
-            self.PBar.update()
+        self.parallel(self.Analysis.save_plots)
+
+    @quiet
+    def save_data(self):
+        for i, data in enumerate(self.parallel(self.Analysis.get_data)):
+            self.Analyses[i].save_data(data)
+
+    def save_coll_plots(self):
+        self.draw_flux(show=False)
+        self.draw_currents(show=False, fname='Currents')
+        self.draw_pulse_heights(show=False)
+
+    def parallel(self, f, *args):
+        with Pool() as pool:
+            res = pool.starmap(f, [(ana, *args) for ana in self.Analyses])
+        return res
 
     # ----------------------------------------
     # region INIT

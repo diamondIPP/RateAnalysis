@@ -94,6 +94,10 @@ class DUTAnalysis(Analysis):
                     if hasattr(subfield, 'Verbose'):
                         subfield.Verbose = status
 
+    def get_data(self):
+        return []
+
+    @reload_tree
     @quiet
     def save_plots(self):
         self.draw_hitmap(show=False)
@@ -332,7 +336,7 @@ class DUTAnalysis(Analysis):
         leg = Draw.make_legend(nentries=2, x2=.93, margin=.2)
         leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=418, fillcolor=418, name='b1'), 'aligned', 'f')
         leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=633, fillcolor=633), 'misaligned', 'f')
-        self.Draw(h, 'EventAlignment', draw_opt='col', rm=.06, leg=leg, show=show, prnt=show)
+        self.Draw(h, filename='EventAlignment', draw_opt='col', rm=.06, leg=leg, show=show, prnt=show)
         return h
 
     def draw_ph_pull(self, *args, **kwargs):

@@ -69,11 +69,14 @@ class PadAnalysis(DUTAnalysis):
         self.Pulser.draw_distribution_fit(show=False)
         self.Pulser.draw_pedestal_fit(show=False)
 
-    def save_data(self):
+    @reload_tree
+    def get_data(self):
+        return [self.get_flux(), self.get_current(), self.get_pulse_height(), self.get_pedestal(), self.get_pedestal(par=2), self.Pulser.get_pulse_height(),
+                self.Pulser.get_sigma(), self.get_pedestal(pulser=True), self.get_pedestal(pulser=True, par=2), ufloat(self.get_n_entries(), 0)]
+
+    def save_data(self, data=None):
         if self.Draw.server_is_mounted():
-            data = [self.get_flux(), self.get_current(), self.get_pulse_height(), self.get_pedestal(), self.get_pedestal(par=2), self.Pulser.get_pulse_height(),
-                    self.Pulser.get_sigma(), self.get_pedestal(pulser=True), self.get_pedestal(pulser=True, par=2), ufloat(self.get_n_entries(), 0)]
-            # return h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a')
+            data = choose(data, self.get_data())
             with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
                 if self.TCString not in f:
                     f.create_group(self.TCString)

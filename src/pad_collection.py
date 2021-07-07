@@ -50,13 +50,6 @@ class PadCollection(AnalysisCollection):
         print_elapsed_time(t0)
 
     @quiet
-    def save_data(self):
-        self.PBar.start(self.NRuns, counter=True, t='min')
-        for ana in self.get_analyses():
-            ana.save_data()
-            self.PBar.update()
-
-    @quiet
     def save_coll_plots(self):
         super(PadCollection, self).save_coll_plots()
         self.draw_pedestals(show=False)
