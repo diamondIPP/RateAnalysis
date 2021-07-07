@@ -279,16 +279,14 @@ class Cut(SubAnalysis):
 
     # ----------------------------------------
     # region COMPUTE
-    def calc_chi2(self, mode='x', q=None):
-        def f():
-            t = self.Ana.info('calculating chi2 cut in {mod} for run {run} ...'.format(run=self.Run.Number, mod=mode), endl=False)
-            values = self.Ana.get_tree_vec('chi2_{}'.format(mode))
-            chi2s = quantile(values[values > -500], linspace(0, 1, 101))
-            self.Ana.add_to_info(t)
-            return chi2s
-        chi2 = do_hdf5(self.Ana.make_simple_hdf5_path('Chi2{}'.format(mode.title()), sub_dir='Cuts'), f)
+    @save_pickle('Chi2', print_dur=True, suf_args=0)
+    def calc_chi2_(self, mode='x', _redo=False):
+        x = self.Ana.get_tree_vec(f'chi2_{mode}')
+        return quantile(x[x != -999], linspace(0, 1, 101))
+
+    def calc_chi2(self, mode='x', q=None, redo=False):
         q = choose(q, self.get_chi2(mode))
-        return chi2[q] if q != 100 else None
+        return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
 
     def find_zero_ph_event(self, redo=False):
         pickle_path = self.Ana.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Ana.DUT.Number)
