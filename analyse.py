@@ -8,12 +8,12 @@ from src.binning import Bins
 _ = Bins.Verbose
 
 
-def analysis_selector(run, dut, tc, tree, verbose=False):
+def analysis_selector(run, dut, tc, tree, verbose=False, prnt=True):
     from src.run import Run
     dummy = Run(int(run), tc, load_tree=False)
     if dummy.get_type() == 'pad':
         from src.pad_analysis import PadAnalysis
-        return PadAnalysis(int(run), dut, tc, tree, verbose)
+        return PadAnalysis(int(run), dut, tc, tree, verbose, prnt)
     elif dummy.get_type() == 'pixel':
         from src.pix_analysis import PixAnalysis
         return PixAnalysis(int(run), dut, tc, tree, verbose)

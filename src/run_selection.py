@@ -569,6 +569,13 @@ class RunSelector(object):
                         self.RunInfos[run][key] = new
         self.save_runinfo()
 
+    def test_runs(self, dut=1):
+        from analyse import analysis_selector
+        for run in self.get_selected_runs():
+            try:
+                print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
+            except Exception as err:
+                print(run, err)
     # endregion RUN PLAN
     # ----------------------------------------
 
