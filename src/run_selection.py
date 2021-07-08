@@ -581,8 +581,11 @@ class RunSelector(object):
         from analyse import collection_selector
         for rp in self.RunPlan:
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
-                collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo else do_nothing()
-                collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False).save_all()
+                try:
+                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo else do_nothing()
+                    collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False).save_all()
+                except Exception as err:
+                    print(rp, err)
     # endregion RUN PLAN
     # ----------------------------------------
 
