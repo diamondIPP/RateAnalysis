@@ -67,8 +67,6 @@ class InfoLegend(object):
 
         git_text = self.make_git_text()
 
-        self.Objects.append([legend, git_text])
-
         pads = [i for i in canvas.GetListOfPrimitives() if i.IsA().GetName() == 'TPad'] if all_pads else [canvas]
         pads = [canvas] if not pads else pads
         for pad in pads:
@@ -76,7 +74,7 @@ class InfoLegend(object):
             if self.ShowGit:
                 git_text.Draw()
             if self.ShowDate:
-                Draw.date(.995, .005, align=31, size=.02)
+                Draw.date(.995, .005, align=31, size=.02) if self.ShowInfo else Draw.date(.005, .05, align=12, size=.02)
             if self.ShowInfo:
                 legend.Draw()
             pad.Modified()
@@ -86,11 +84,10 @@ class InfoLegend(object):
     def get(self, canvas=None):
         return self.draw(canvas, show=False)
 
-    @staticmethod
-    def make_git_text():
+    def make_git_text(self):
         chdir(Draw.Dir)
         txt = 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always']).decode('utf-8').strip('\n'))
-        return Draw.tlatex(.9, .02, txt, show=False, ndc=True, size=.02)
+        return Draw.tlatex(.9 if self.ShowInfo else 0.02, .02, txt, show=False, ndc=True, size=.02)
 
     def get_duration(self):
         dur = sum([ana.Run.Duration for ana in self.Ana.get_analyses()], timedelta()) if self.is_collection() else self.Ana.Run.Duration
