@@ -174,10 +174,13 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region GET
-    def get_current(self):
+    def get(self):
         if self.Ana is not None and not self.Ana.DUT.Bias:
             warning('Bias of run {} is 0!'.format(self.Run.Number))
-            current = ufloat(0, 0)
+            return ufloat(0, 0)
+        elif self.Data is None:
+            warning('no current data!')
+            return ufloat(0, 0)
         else:
             h = self.draw_distribution(show=False)
             if h.GetEntries() < 3:
@@ -214,6 +217,8 @@ class Currents(Analysis):
     # region PLOTTING
     def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, show=True, fname=None):
         self.reload_data(ignore_jumps)
+        if self.Data is None:
+            return warning('no current data!')
         t, c, v = (average_list(self.Data[n], averaging) for n in ['timestamps', 'currents', 'voltages'])
         gv = self.Draw.graph(t, v, title=self.get_title(), y_tit='Voltage [nA]', yax_col=self.VCol, color=self.VCol, y_range=choose(v_range, [-1100, 1100]), l_off_x=10, x_ticks=0, show=False, lw=2)
         if with_flux:
