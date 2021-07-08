@@ -372,14 +372,10 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, **kwargs):
         g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
-        fit = self.fit_pulse_height(g, self.make_simple_pickle_path('Trend', make_suffix(self, [bin_size, sig, cut, corr]), 'PH'))
+        fit = FitRes(g.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(g)))
         kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=True, form='.2f'))
         g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
         return g, fit
-
-    def fit_pulse_height(self, p, picklepath):
-        fit = p.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(p))
-        return FitRes(fit)
 
     def __get_max_fit_pos(self, g, thresh=.8):
         """ look for huge fluctiations in ph graph and return last stable point"""
