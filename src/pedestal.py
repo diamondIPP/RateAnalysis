@@ -40,24 +40,27 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_short_name(self, name=None):
         return self.get_all_signal_names()[choose(name, self.SignalName)]
 
-    def get_par(self, par=1, name=None, cut=None, redo=False):
-        suffix = f'{self.Cut(cut).GetName()}_{self.get_short_name(name)}'
-        return do_pickle(self.make_simple_pickle_path('', suffix), self.draw_disto_fit, redo=redo, name=name, cut=self.Cut(cut), show=False, prnt=False)[par]
+    @save_pickle(suf_args='all')
+    def get_fit(self, name=None, bin_scale=None, cut=None, _redo=False):
+        return self.draw_disto_fit(name, bin_scale, cut, _redo, show=False, prnt=False)
 
-    def get_mean(self, name=None, cut=None, redo=False, raw=False):
-        return self.get_par(1, name, cut, redo) * (self.Polarity if raw else 1)
+    def get(self, par=1, name=None, bin_scale=None, cut=None, redo=False):
+        return self.get_fit(name, bin_scale, cut, _redo=redo)[par]
 
-    def get_noise(self, name=None, cut=None, redo=False):
-        return self.get_par(2, name, cut, redo)
+    def get_mean(self, name=None, bin_scale=None, cut=None, redo=False, raw=False):
+        return self.get(1, name, bin_scale, cut, redo) * (self.Polarity if raw else 1)
+
+    def get_noise(self, name=None, bin_scale=None, cut=None, redo=False):
+        return self.get(2, name, bin_scale, cut, redo)
 
     def get_fwhm(self, raw=False, redo=False):
         return (self.get_raw_noise if raw else self.get_noise)(redo=redo) * 2 * sqrt(2 * log(2))
 
     def get_raw_mean(self, cut=None, redo=False):
-        return self.get_mean(self.RawName, cut, redo)
+        return self.get_mean(self.RawName, 5, cut, redo)
 
     def get_raw_noise(self, cut=None, redo=False):
-        return self.get_noise(self.RawName, cut, redo)
+        return self.get_noise(self.RawName, 5, cut, redo)
 
     def get_under_signal(self, err=True, redo=False):
         def f():
@@ -84,14 +87,14 @@ class PedestalAnalysis(PadSubAnalysis):
 
     def compare_under_signal(self, cut=None, bin_size=None, x_range=None):
         cut = choose(cut, self.Cut.get_pulser().Value)
-        histos = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
+        histos = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_scale=bin_size) for n in [None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
         s = self.Draw.stack(histos, 'Pedestal Comparison', ['Bucket 0', 'Bucket 1', 'Bucket 6'], scale=True)
         format_histo(s, x_range=choose(x_range, [-20, 20]))
         print([h.GetRMS() for h in histos])
 
     def draw_diffs(self, cut=None, bin_size=None, x_range=None):
         cut = choose(cut, self.Cut.get_pulser().Value)
-        h = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_size=bin_size) for n in [None, None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
+        h = [self.draw_distribution(name=n, cut=cut, show=False, redo=True, bin_scale=bin_size) for n in [None, None, self.get_signal_name('aa'), self.get_signal_name('ad')]]
         for ih in h:
             ih.Sumw2(True)
             ih.Scale(1 / ih.GetMaximum())
@@ -109,18 +112,18 @@ class PedestalAnalysis(PadSubAnalysis):
         return h
 
     @save_pickle('Disto', print_dur=True, suf_args='all')
-    def get_distribution(self, sig=None, bin_size=None, cut=None, _redo=False):
+    def get_distribution(self, sig=None, bin_scale=None, cut=None, _redo=False):
         x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
-        bins = self.get_bins(choose(bin_size, max(.1, self.Bins.find_width(x))))
+        bins = self.get_bins(max(.1, self.Bins.find_width(x)) * choose(bin_scale, 1))
         return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5))
 
-    def draw_distribution(self, sig=None, bin_size=None, cut=None, redo=False, prefix='', **kwargs):
-        h = self.get_distribution(sig, bin_size, cut, _redo=redo)
+    def draw_distribution(self, sig=None, bin_scale=None, cut=None, redo=False, prefix='', **kwargs):
+        h = self.get_distribution(sig, bin_scale, cut, _redo=redo)
         return self.Draw.distribution(h, **prep_kw(kwargs, file_name=f'{prefix}PedestalDistribution'))
 
-    def draw_disto_fit(self, name=None, bin_size=None, cut=None, redo=False, draw_cut=False, prefix='', **kwargs):
+    def draw_disto_fit(self, name=None, bin_scale=None, cut=None, redo=False, draw_cut=False, prefix='', **kwargs):
         cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut and cut is None else self.Cut(cut)
-        h = self.draw_distribution(name, bin_size, cut, redo, prefix, **kwargs)
+        h = self.draw_distribution(name, bin_scale, cut, redo, prefix, **kwargs)
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')
@@ -167,7 +170,7 @@ class PedestalAnalysis(PadSubAnalysis):
         return self.draw_trend(signal_name, bin_size, sigma=True, show=show)
 
     def compare(self, sigma=False):
-        values = [self.get_par(par=2 if sigma else 1, name=name) for name in self.get_all_signal_names()]
+        values = [self.get(par=2 if sigma else 1, name=name) for name in self.get_all_signal_names()]
         g = self.Draw.graph(arange(len(values)), values, title='Pedestal Comparison', x_tit='Region Integral', y_tit='Mean {}'.format('Sigma' if sigma else 'Pedestal'), x_off=1.5, bm=.2,
                             x_range=ax_range(0, len(values) - 1, .2, .2))
         set_bin_labels(g, list(self.get_all_signal_names().values()))
