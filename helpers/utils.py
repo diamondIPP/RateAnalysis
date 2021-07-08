@@ -278,9 +278,9 @@ def make_byte_string(v):
     return '{:1.1f} {}'.format(v / 2 ** (10 * n), ['B', 'kB', 'MB', 'GB'][n])
 
 
-def get_elapsed_time(start):
-    t = datetime.fromtimestamp(time() - start)
-    return '{}.{:02.0f}'.format(t.strftime('%M:%S'), t.microsecond / 10000)
+def get_elapsed_time(start, hrs=False):
+    t = str(timedelta(seconds=round(time() - start, 0 if hrs else 2)))
+    return t if hrs else t[2:-4]
 
 
 def conv_log_time(time_str, strg=False):
