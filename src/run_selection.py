@@ -122,7 +122,7 @@ class RunSelection(Ensemble):
 class RunSelector(object):
     """ Class to group several runs of a single test campaign together to runplans as well as to show information about all the runs. """
 
-    def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=True):
+    def __init__(self, testcampaign=None, runplan=None, dut_nr=None, verbose=None):
         self.Run = Run(testcampaign=testcampaign, load_tree=False, verbose=verbose)
 
         # Info
@@ -577,12 +577,13 @@ class RunSelector(object):
             except Exception as err:
                 print(run, err)
 
-    def save_data(self, redo=False):
+    def save_data(self, redo=False, rp0=None):
         from analyse import collection_selector
-        for rp in self.RunPlan:
+        rps = list(self.RunPlan)
+        for rp in (rps if rp0 is None else rps[rps.index(rp0):]):
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
                 try:
-                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo else do_nothing()
+                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo and isint(rp) else do_nothing()
                     collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False).save_all()
                 except Exception as err:
                     print(rp, err)

@@ -14,7 +14,7 @@ class Currents(Analysis):
     CCol = 899  # 418
     MS = .3
 
-    def __init__(self, analysis=None, test_campaign=None, dut=None, begin=None, end=None, averaging=None, verbose=False):
+    def __init__(self, analysis=None, test_campaign=None, dut=None, begin=None, end=None, averaging=None, verbose=None):
         Analysis.__init__(self, test_campaign if analysis is None else analysis.TCString, verbose=verbose, sub_dir='currents')
 
         # Settings
