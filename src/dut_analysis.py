@@ -61,6 +61,9 @@ class DUTAnalysis(Analysis):
 
     def reload_tree_(self):
         self.Tree = self.Run.load_rootfile(prnt=False)
+        for field in self.__dict__.values():
+            if hasattr(field, 'Tree'):
+                field.Tree = self.Tree
 
     def set_tree(self, tree):
         self.Tree = tree
@@ -178,7 +181,7 @@ class DUTAnalysis(Analysis):
         return self.Tree.GetEntries(self.Cut(cut).GetTitle())
 
     def get_current(self):
-        return self.Currents.get_current()
+        return self.Currents.get()
 
     def get_irradiation(self):
         return self.DUT.get_irradiation(self.TCString)
