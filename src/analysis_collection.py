@@ -76,9 +76,11 @@ class AnalysisCollection(Analysis):
             ana.set_verbose(status)
 
     def save_all(self):
+        t = info('creating all data ...')
         self.save_data()
         self.save_plots()
         self.save_coll_plots()
+        print_elapsed_time(t, color='green')
 
     @quiet
     def save_plots(self):
@@ -217,7 +219,7 @@ class AnalysisCollection(Analysis):
         return self.FirstAnalysis.Currents.Name
 
     def get_currents(self):
-        return [ana.Currents.get_current() for ana in self.Analyses]
+        return [ana.Currents.get() for ana in self.Analyses]
 
     @update_pbar
     def get_value(self, f, ana, **kwargs):
