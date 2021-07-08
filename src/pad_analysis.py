@@ -147,7 +147,7 @@ class PadAnalysis(DUTAnalysis):
     @save_pickle('Events', sub_dir='Alignment')
     def _get_alignment(self, _redo=False):
         from src.pad_alignment import PadAlignment
-        return PadAlignment(self.Run.Converter).IsAligned
+        return calc_eff(values=PadAlignment(self.Run.Converter).get_aligned())[0] > 99.7
 
     def check_alignment(self, redo=False):
         """ check if the events from telescope and digitiser are aligned"""
@@ -261,7 +261,7 @@ class PadAnalysis(DUTAnalysis):
         return self.Peaks.get_n_additional(start_bunch, end_bunch)
 
     def get_pedestal(self, pulser=False, par=1, redo=False):
-        return self.Pulser.get_pedestal(par, redo=redo) if pulser else self.Pedestal.get_par(par, redo=redo)
+        return self.Pulser.get_pedestal(par, redo=redo) if pulser else self.Pedestal.get(par, redo=redo)
 
     def get_peak_timing(self, par=1, redo=False):
         return self.Timing.get(par, redo)
