@@ -65,6 +65,7 @@ class SaveDraw(Draw):
 
     def histo(self, histo, file_name=None, show=True, all_pads=False, prnt=True, save=True, info_leg=True, *args, **kwargs):
         c = super(SaveDraw, self).histo(histo, show, *args, **kwargs)
+        histo.SetTitle('') if not Draw.Title else do_nothing()
         if info_leg:
             self.Legends.draw(c, all_pads, show and Draw.Legend)
         self.save_plots(file_name, prnt=prnt, show=show, save=save)
