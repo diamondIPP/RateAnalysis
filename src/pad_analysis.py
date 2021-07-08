@@ -386,10 +386,10 @@ class PadAnalysis(DUTAnalysis):
         x, y = get_graph_vecs(g, err=False)
         if mean(y) > 10:  # if the pulse height is very low there will be always big fluctuations!
             averages = cumsum(y) / (arange(y.size) + 1)
-            j = next((is_bad for is_bad in y[2:] < thresh * averages[1:-1] if is_bad), None)  # find next entry that is below the average of the previous
+            j = next((i for i, is_bad in enumerate(y[2:] < thresh * averages[1:-1], 2) if is_bad), None)  # find next entry that is below the average of the previous
             if j is not None:
-                warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * (j + 2) / y.size:2.0f}%')
-                return x[j + 1]
+                warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * j / y.size:2.0f}%')
+                return x[j - 1]
         return x[-1] + 1000
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
