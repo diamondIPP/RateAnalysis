@@ -6,7 +6,7 @@
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
 from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie, gROOT
-from numpy import sign, linspace, ones, ceil, append, tile, absolute, rot90, flip
+from numpy import sign, linspace, ones, ceil, append, tile, absolute, rot90, flip, argsort
 from helpers.utils import *
 
 
@@ -1132,10 +1132,10 @@ def get_fw_center(h):
 
 
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
-    y = sorted(get_hist_vec(h, err=False))
-    ymax = y[-1] if y[-1] < 1.5 * y[-2] else y[-2]
+    x, y = [f(get_hist_vec(h, err=False)) for f in [argsort, sorted]]
+    x, ymax = (x[-1] + 1, y[-1]) if y[-1] < 1.5 * y[-2] else (x[-2] + 1, y[-2])
     fit_range = [f(ymax * fit_range) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
-    fit_range = fit_range if diff(fit_range)[0] > 5 else (h.FindBin(ymax) + array([-5, 5])).tolist()
+    fit_range = fit_range if diff(fit_range)[0] > 5 else (x + array([-5, 5])).tolist()
     half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in fit_range]))[0] * .5  # fit the top with a gaussian to get better maxvalue
     half_max = ufloat(1, .05) * h.GetMaximum() if half_max > .9 * ymax else ufloat(1, .02) * half_max  # half max must be lower than max ...
     low, high = [ufloat(v.n, v.s + abs(v.n - i.n)) for v, i in zip(_get_fwhm(h, half_max), _get_fwhm(h, half_max - half_max.s))]
