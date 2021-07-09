@@ -53,7 +53,8 @@ class AnalysisCollection(Analysis):
         return self.__str__()
 
     def __del__(self):
-        print('\n good bye... ')
+        if self.Verbose:
+            print('\n good bye... ')
 
     def draw_all(self, redo=False):
         pass
