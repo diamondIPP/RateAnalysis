@@ -73,7 +73,7 @@ class TimingAnalysis(PadSubAnalysis):
     @save_pickle('RawMean', suf_args=0)
     def get_raw(self, cut=None, _redo=False):
         x = self.get_tree_vec(self.get_raw_var(corr=True), self.Cut(cut))
-        return fit_fwhm(self.Draw.distribution(x, make_bins(*ax_range(self.Ana.SignalRegion * self.DigitiserBinWidth, 0, .5, .5), self.DigitiserBinWidth / 2), show=1))[1]
+        return fit_fwhm(self.Draw.distribution(x, make_bins(*ax_range(self.Ana.SignalRegion * self.DigitiserBinWidth, 0, .5, .5), self.DigitiserBinWidth / 2), show=False))[1]
 
     def draw_max_peaks(self, cut=None):
         h = self.draw_raw_peaks(0, 512, bin_width=.5, corr=True, show=False, cut=self.TimingCut(cut))
