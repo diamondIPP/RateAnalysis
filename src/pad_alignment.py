@@ -88,10 +88,10 @@ class PadAlignment(EventAligment):
 
     # ----------------------------------------
     # region OFFSETS
-    def find_offset(self, off=-5, event=0, n=None):
+    def find_offset(self, off=-5, event=0, n=None, max_iter=2900):
         aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .15
         # self.Run.info(f'Offset: {off}, aligned: {mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits)}')
-        return off if aligned else self.find_offset(off + 1, event, n)
+        return warning('end of iteration') if max_iter == 1 else off if aligned else self.find_offset(off + 1, event, n, max_iter - 1)
 
     def find_final_offset(self, off=-500, n_bins=-3):
         """return the offset at the end of the run"""
@@ -158,6 +158,7 @@ if __name__ == '__main__':
     from converter import Converter
 
     # examples: 7(201708), 218(201707)
+    # not possible to align: 442(201508), 439(201508)
     args = init_argparser(run=504, tc='201608')
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
