@@ -38,7 +38,7 @@ class PadAnalysis(DUTAnalysis):
             self.PedestalName = self.get_pedestal_name()
             self.PeakName = self.get_peak_name()
 
-            # cuts
+            # Modules
             self.Timing = TimingAnalysis(self)
             self.Pedestal = PedestalAnalysis(self)
             self.Waveform = Waveform(self)
