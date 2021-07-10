@@ -1,7 +1,7 @@
 from glob import glob
 from os.path import getsize
 from ROOT import TH2F
-from numpy import genfromtxt, isnan, datetime64, invert, uint32, char
+from numpy import genfromtxt, isnan, datetime64, invert, uint32, char, inf
 from helpers.save_plots import *
 from src.analysis import Analysis
 from src.run_selection import RunSelector
@@ -61,11 +61,14 @@ class Currents(Analysis):
         data = h5py.File(data_file, 'r')[f'{self.Name}_CH{self.Channel}']
         data = data[(data['timestamps'] >= time_stamp(self.Begin)) & (data['timestamps'] <= time_stamp(self.End))]
         if not data.size:
-            return None
+            return
         if self.IgnoreJumps:  # filter out jumps
+            data = data[where(abs(data['currents']) < 1e20)]  # take out very large unphysical currents
             data = data[where(abs(data['currents'][:-1]) * 100 > abs(data['currents'][1:]))[0] + 1]  # take out the events that are 100 larger than the previous
+        if not data.size:
+            return
         data['currents'] *= 1e9 * sign(mean(data['currents']))  # convert to nA and flip sign if current is negative
-        if self.Ana is not None and data.size:
+        if self.Ana is not None:
             data['timestamps'] -= uint32(data['timestamps'][0] - time_stamp(self.load_ana_start_time()))  # synchronise time vectors
         return data
 
