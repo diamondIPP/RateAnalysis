@@ -27,9 +27,9 @@ def make_volage_scan(base_class):
         def get_x_draw(vs_time=False):
             return {'grid': vs_time}
 
-        def get_x_args(self, vs_time=False, rel_time=False, x_range=None, draw_args=False):
+        def get_x_args(self, vs_time=False, rel_time=False, x_range=None, draw=False):
             hist_kwargs = {'x_tit': self.get_x_tit(vs_time), 't_ax_off': self.get_tax_off(vs_time, rel_time), 'x_off': None if vs_time else 1.2}
-            return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw_args else hist_kwargs
+            return {**hist_kwargs, **self.get_x_draw(vs_time)} if draw else hist_kwargs
 
         def get_repr_error(self, *args, **kwargs):
             return 0
