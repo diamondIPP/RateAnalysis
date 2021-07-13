@@ -668,6 +668,7 @@ class RunSelector(object):
         self.save_runinfo()
 
     def add_n_entries(self):
+        from ROOT import TFile
         self.PBar.start(self.RunNumbers.size)
         for i, run in enumerate(self.RunInfos):
             file_path = self.get_final_file_path(run)
