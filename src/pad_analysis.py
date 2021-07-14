@@ -55,12 +55,6 @@ class PadAnalysis(DUTAnalysis):
     def get_info_header():
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
 
-    def make_all(self, redo=False):
-        self.draw_signal_distribution(redo=redo, show=False)
-        self.draw_pulse_height(redo=redo, show=False)
-        self.draw_signal_map(redo=redo, show=False)
-        self.draw_hitmap(redo=redo, show=False)
-
     @quiet
     def save_plots(self):
         super(PadAnalysis, self).save_plots()
