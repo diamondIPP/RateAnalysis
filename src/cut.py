@@ -171,6 +171,9 @@ class Cut(SubAnalysis):
     def update(self, name, value=None):
         self.CutStrings.set(name, value)
 
+    def remove(self, name):
+        self.CutStrings.remove(name)
+
     def set_chi2(self, value):
         self.update('chi2_x', self.generate_chi2('x', value).Value)
         self.update('chi2_y', self.generate_chi2('y', value).Value)
@@ -359,8 +362,8 @@ class Cut(SubAnalysis):
         n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
         return {name: i for name, i in zip(cuts, diff(n))}
 
-    def show_contributions(self):
-        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions().values()))) / self.Run.NEvents)
+    def show_contributions(self, redo=False):
+        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions(_redo=redo).values()))) / self.Run.NEvents)
         rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
         print_table(rows, header=['Cut', 'Events', 'Contr. [%]', 'Abs [%]'])
 

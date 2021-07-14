@@ -76,7 +76,8 @@ class PadCut(Cut):
         # --BUCKET --
         if self.get_raw_snr() > 5:
             self.CutStrings.register(self.generate_bucket(), 91)
-            self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+            if 'voltage' not in self.Run.Info['runtype']:
+                self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
         else:
             self.CutStrings.register(self.generate_trigger_phase(), 91)
 
@@ -267,7 +268,7 @@ class PadCut(Cut):
 
     def draw_cut_vars(self, normalise=False, consecutive=False):
         values = [self.Ana.get_ph_values(cut=(self.generate_threshold() + cut).Value) for cut in (self.get_consecutive().values() if consecutive else self.get_strings(with_raw=True))]
-        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, Bins.get_pad_ph(mean_ph=mean(lst)), show=False))] for lst in values])
+        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, Bins.get_pad_ph(), show=False))] for lst in values])
         if normalise:
             v = v / mean(v, axis=0) + arange(3) / 100
         names = self.get_names(with_raw=True)
