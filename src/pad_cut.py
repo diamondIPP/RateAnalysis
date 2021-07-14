@@ -199,14 +199,13 @@ class PadCut(Cut):
     def get_trigger_phases(self, n=1):
         return (arange(2 * n + 1) - 1 + self.get_trigger_phase()) % 10  # select also the [n] trigger phases around the MPV
 
-    def calc_pedestal(self, n_sigma):
-        def f():
-            t = self.Ana.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.DUT.Name), endl=False)
-            h0 = self.Draw.distribution(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
-            fit = fit_fwhm(h0, show=False)
-            self.Ana.add_to_info(t)
-            return fit.Parameter(1), fit.Parameter(2)
-        m, s = do_pickle(self.make_simple_pickle_path('Pedestal'), f)
+    @save_pickle('Pedestal', print_dur=True)
+    def calc_pedestal_(self, _redo=False):
+        h0 = self.Draw.distribution(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
+        return fit_fwhm(h0, show=False).get_pars(err=False)[1:]
+
+    def calc_pedestal(self, n_sigma, redo=False):
+        m, s = self.calc_pedestal_(_redo=redo)
         return [m - n_sigma * s, m + n_sigma * s]
 
     def calc_threshold(self, redo=False, show=True):
