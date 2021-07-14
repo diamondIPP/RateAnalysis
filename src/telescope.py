@@ -58,8 +58,11 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    def get_flux(self, plane=None, corr=True, use_eff=True, show=False, full_size=False, redo=False):
-        flux = self.calculate_flux(plane, use_eff, show, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+    def get_flux(self, plane=None, corr=True, use_eff=True, full_size=False, redo=False):
+        flux = self.calculate_flux(plane, use_eff, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+        if flux == 0:
+            warning('Could not determine flux from TU rates ...')
+            flux = self.Run.get_flux(plane, use_eff)
         return flux * (self.get_flux_scale(full_size, redo=redo) if corr else ufloat(1, .1))
 
     def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
@@ -99,16 +102,18 @@ class Telescope(SubAnalysis):
     def get_areas(self):
         return [self.get_area(pl) for pl in [1, 2]]
 
-    def calculate_flux(self, plane=None, corr=True, show=False, redo=False):
-        def f():
-            rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
-            rates = rates[rates < 1e9]
-            fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
-            rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
-            return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
-        if plane is None:
-            return mean([self.calculate_flux(pl, corr, show, redo) for pl in [1, 2]])
-        return do_pickle(self.make_simple_pickle_path(f'Flux{plane}', int(corr)), f, redo=redo or show)
+    @save_pickle('Flux', suf_args='[0, 1]')
+    def calculate_flux_(self, plane, corr, _redo=False):
+        rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
+        if not rates.size:
+            return ufloat(0, 0)
+        rates = rates[rates < 1e9]
+        fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=False, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
+        rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
+        return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
+
+    def calculate_flux(self, plane=None, corr=True, redo=False):
+        return mean([self.calculate_flux(pl, corr, redo) for pl in [1, 2]]) if plane is None else self.calculate_flux_(plane, corr, _redo=redo)
     # endregion FLUX
     # ----------------------------------------
 
