@@ -103,10 +103,9 @@ class PulserAnalysis(PadSubAnalysis):
     def get_peak_time(self, sigma=False):
         return mean_sigma(self.get_peak_times())[sigma]
 
-    def get_mean_sigma(self, cut=None, redo=False):
-        def f():
-            return fit_fwhm(self.Draw.distribution(self.get_values(cut), self.Ana.Bins.get_pad_ph(bin_width=.5), '', show=False))[1:]
-        return do_pickle(self.make_simple_pickle_path('MeanSigma', self.Cut(cut).GetName()), f, redo=redo)
+    @save_pickle('Meansigma', suf_args=0)
+    def get_mean_sigma(self, cut=None, _redo=False):
+        return fit_fwhm(self.Draw.distribution(self.get_values(cut), show=False))[1:]
 
     def get_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
@@ -161,13 +160,13 @@ class PulserAnalysis(PadSubAnalysis):
         return g, fit
 
     @save_pickle('Disto', suf_args='all')
-    def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, _redo=False):
+    def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, _redo=False):
         cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
         x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
-        return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
+        return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 
-    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):
+    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, redo=False, **kwargs):
         """ Shows the distribution of the pulser integrals. """
         h = self.get_distribution(name, corr, beam_on, bin_width, _redo=redo)
         rx = ax_range(h=h, thresh=h.GetMaximum() * .02, fl=.3, fh=.6)
