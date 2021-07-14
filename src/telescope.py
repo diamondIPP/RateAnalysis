@@ -105,7 +105,7 @@ class Telescope(SubAnalysis):
     @save_pickle('Flux', suf_args='[0, 1]')
     def calculate_flux_(self, plane, corr, _redo=False):
         rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
-        if not rates.size:
+        if rates.size < 3:
             return ufloat(0, 0)
         rates = rates[rates < 1e9]
         fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=False, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
