@@ -82,7 +82,7 @@ class PadCut(Cut):
             self.CutStrings.register(self.generate_trigger_phase(), 91)
 
         # --SIGNAL DROPS--
-        self.update('event range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
+        self.update('event range', self.generate_event_range(None, self.find_signal_drops()).Value)  # update event range if drop is found
 
     def generate_saturated(self):
         cut_string = '!is_saturated[{ch}]'.format(ch=self.Channel)

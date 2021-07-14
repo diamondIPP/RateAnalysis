@@ -291,20 +291,14 @@ class Cut(SubAnalysis):
         q = choose(q, self.get_chi2(mode))
         return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
 
-    def find_zero_ph_event(self, redo=False):
-        pickle_path = self.Ana.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Ana.DUT.Number)
-
-        def f():
-            t0 = self.Ana.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
-            ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
-            time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
-            i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
-            ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
-            i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if abs(v) < .2 * ph and v), None)
-            self.Ana.add_to_info(t0)
-            return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(time_bins[i_break - 1])
-
-        return do_pickle(pickle_path, f, redo=redo)
+    @save_pickle('EventMax', print_dur=True)
+    def find_signal_drops(self, _redo=False):
+        ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
+        x, y = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
+        i_start = next(i for i, v in enumerate(y) if v) + 1  # find the index of the first bin that is not zero
+        ph = abs(mean(y[i_start:i_start + min(1, y.size // 10)]))  # take the mean of the first 10% of the bins
+        i_break = next((i + i_start for i, v in enumerate(y[i_start:]) if abs(v) < .2 * ph and v), None)
+        return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(x[i_break - 1])
 
     def find_beam_interruptions(self):
         return self.find_pixel_beam_interruptions()
