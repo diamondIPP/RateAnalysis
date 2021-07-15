@@ -1131,7 +1131,7 @@ def get_fw_center(h):
 
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
     x, y = [f(get_hist_vec(h, err=False)) for f in [argsort, sorted]]
-    x, ymax = (x[-1] + 1, y[-1]) if y[-1] < 1.5 * y[-2] else (x[-2] + 1, y[-2])
+    x, ymax = (x[-1] + 1, y[-1]) if y[-1] < 2 * y[-2] else (x[-2] + 1, y[-2])
     fit_range = [f(ymax * fit_range) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
     fit_range = fit_range if diff(fit_range)[0] > 5 else (x + array([-5, 5])).tolist()
     half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in fit_range]))[0] * .5  # fit the top with a gaussian to get better maxvalue
