@@ -170,7 +170,7 @@ class AnalysisCollection(Analysis):
         return self.Currents.Name
 
     def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=None, rel=False, redo=False):
-        picklepath = self.get_pickle_path(f'Flux{choose(plane, 1)}', '1', 'Telescope', dut='')
+        picklepath = self.get_pickle_path(f'Flux', f'{choose(plane, 1)}_1', 'Telescope', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
         values = self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr, full_size=full_size, redo=redo)
         return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
