@@ -76,7 +76,7 @@ class PadCut(Cut):
         # --BUCKET --
         if self.get_raw_snr() > 5:
             self.CutStrings.register(self.generate_bucket(), 91)
-            if 'voltage' not in self.Run.Info['runtype']:
+            if not any(name in self.Run.Info['runtype'] for name in ['voltage', 'hv']):
                 self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
         else:
             self.CutStrings.register(self.generate_trigger_phase(), 91)
