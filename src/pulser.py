@@ -70,10 +70,10 @@ class PulserAnalysis(PadSubAnalysis):
     def get_t_bins(self, bin_size=None):
         return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
-    def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+    def get_pulse_height(self, corr=True, beam_on=True, bin_width=None, redo=False):
         return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[1]
 
-    def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+    def get_sigma(self, corr=True, beam_on=True, bin_width=None, redo=False):
         return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[2]
 
     def get_pedestal(self, par=1, beam_on=True, redo=False):
@@ -177,12 +177,12 @@ class PulserAnalysis(PadSubAnalysis):
         return uarr2n([f0[1] + i * f0[2] for i in ([-lsig, rsig] if same_polarity else [-rsig, lsig])])  # fit left tail if same pol and right tail otherwise
 
     @save_pickle('Fit', suf_args='all')
-    def get_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, _redo=False):
+    def get_distribution_fit(self, corr=True, beam_on=True, bin_width=None, _redo=False):
         h = self.get_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, _redo=_redo)
         fit = FitRes(h.Fit('gaus', 'qs0', '', *self.get_fit_range(h)))
         return fit
 
-    def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):
+    def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=None, redo=False, **kwargs):
         fit = self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)
         h = self.draw_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo, **kwargs)
         f = self.Draw.function(Draw.make_f('gp0', 'gaus', 0, 500, pars=fit.Pars, npx=100, line_style=7), draw_opt='same')
