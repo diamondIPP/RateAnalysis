@@ -583,8 +583,9 @@ class RunSelector(object):
         for rp in (rps if rp0 is None else rps[rps.index(rp0):]):
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
                 try:
-                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo and isint(rp) else do_nothing()
-                    collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False).save_all()
+                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
+                    coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False)
+                    coll.save_all() if isint(rp) else coll.save_coll_plots()
                 except Exception as err:
                     print(rp, err)
     # endregion RUN PLAN
