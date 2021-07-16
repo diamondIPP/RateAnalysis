@@ -1135,7 +1135,7 @@ def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
     fit_range = [f(ymax * fit_range) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
     fit_range = fit_range if diff(fit_range)[0] > 5 else (x + array([-5, 5])).tolist()
     half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in fit_range]))[0] * .5  # fit the top with a gaussian to get better maxvalue
-    half_max = ufloat(1, .05) * h.GetMaximum() if half_max > .9 * ymax else ufloat(1, .02) * half_max  # half max must be lower than max ...
+    half_max = ufloat(1, .05) * ymax / 2 if half_max > .9 * ymax else ufloat(1, .02) * half_max  # half max must be lower than max ...
     low, high = [ufloat(v.n, v.s + abs(v.n - i.n)) for v, i in zip(_get_fwhm(h, half_max), _get_fwhm(h, half_max - half_max.s))]
     return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
 
