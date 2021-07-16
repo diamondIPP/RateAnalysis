@@ -102,6 +102,14 @@ class AnalysisCollection(Analysis):
             res = pool.starmap(f, [(ana, *args) for ana in self.Analyses])
         return res
 
+    def test_anas(self, f=None, *args, **kwargs):
+        for ana in self.Analyses:
+            try:
+                getattr(ana, choose(f, 'save_data'))(*args, **kwargs)
+                print(ana)
+            except Exception as err:
+                warning(f'{ana}, {err}')
+
     # ----------------------------------------
     # region INIT
     def print_start_info(self):
