@@ -58,7 +58,7 @@ class Bins(SubAnalysis):
         self.Tree.SetEstimate(self.Run.NEvents)
         events = self.get_tree_vec('Entry$', self.Cut(cut), 'i4')
         b = events[::self.get_size(bin_size)]
-        bins = append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 else [])
+        bins = append(b, events[-1] if events[events > b[-1]].size > self.get_size(bin_size) / 4 or b.size == 1 else [])
         return [bins.size - 1, array(bins, 'd')]
 
     def get_raw(self, bin_width=None, start_event=0, end_event=None, vs_time=False, t_from_event=False):
