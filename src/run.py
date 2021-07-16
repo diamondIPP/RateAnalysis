@@ -104,6 +104,9 @@ class Run(Analysis):
     def set_estimate(self, n=None):
         self.Tree.SetEstimate(choose(n, self.NEvents))
 
+    def is_volt_scan(self):
+        return any(name in self.Info['runtype'] for name in ['voltage', 'hv'])
+
     # ----------------------------------------
     # region INIT
     def load_rootfile(self, prnt=True):
