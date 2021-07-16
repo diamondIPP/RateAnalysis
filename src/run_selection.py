@@ -722,13 +722,15 @@ class RunSelector(object):
             self.Run.Converter.set_run(run, )
             self.Run.Converter.remove_final_file()
 
-    def copy_raw_files(self, sel=False, redo=False):
-        selected_runs = self.get_selected_runs() if sel else []
-        for run in self.get_runplan_runs():
-            if sel and run not in selected_runs:
-                continue
-            self.Run.Converter.set_run(run, )
-            self.Run.Converter.copy_raw_file(redo)
+    @update_pbar
+    def copy_raw_file(self, run_number):
+        self.Run.Converter.set_run(run_number)
+        self.Run.Converter.copy_raw_file()
+
+    def copy_raw_files(self, sel=False):
+        runs = self.get_selected_runs() if sel else self.get_runplan_runs()
+        self.PBar.start(len(runs), counter=True, t='min')
+        [self.copy_raw_file(run) for run in runs]
 
     def copy_final_files(self, server, server_data_dir):
         runs = self.get_selected_runs()
