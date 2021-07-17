@@ -228,7 +228,7 @@ class Run(Analysis):
 
     def load_mask(self, plane=None):
         mask_file = self.load_mask_file_path()
-        if basename(mask_file) in ['no mask', 'none', 'none!', ''] or self.Number is None:
+        if basename(mask_file).lower() in ['no mask', 'none', 'none!', ''] or self.Number is None:
             return
         try:
             data = genfromtxt(mask_file, [('id', 'U10'), ('pl', 'i'), ('x', 'i'), ('y', 'i')])
