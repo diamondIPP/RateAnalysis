@@ -589,7 +589,7 @@ class RunSelector(object):
                 except Exception as err:
                     print(rp, err)
 
-    def draw_signal_maps(self, *runs):
+    def gen_signal_maps(self, *runs):
         from analyse import analysis_selector
         with Pool() as pool:
             res = pool.starmap(analysis_selector, [(run, dut_nr, self.TCString, True, False, False) for run in runs for dut_nr in range(self.get_n_duts(run))])
