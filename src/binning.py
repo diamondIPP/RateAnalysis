@@ -66,16 +66,16 @@ class Bins(SubAnalysis):
 
     def get_raw_event(self, bin_width=None, start_event=0, end_event=None):
         end_event, bin_width = choose(end_event, self.NEvents), Bins.get_size(bin_width)
-        return Bins.make(start_event, end_event, bin_width, last=end_event - start_event % bin_width > bin_width / 4)
+        return Bins.make(start_event, end_event, bin_width, last=end_event - 1 if end_event - start_event % bin_width > bin_width / 4 else None)
 
     def get_raw_time(self, bin_width=None, start_time=0, end_time=None, t_from_event=False):
         """ returns bins with fixed time width. bin_width in seconds """
         if t_from_event:
             i, events = self.get_raw_event(bin_width, start_time, end_time)
-            return [i, self.Run.Time[events.astype('i4')]]
+            return [i, self.Run.Time[events.astype('i4')] / 1000]
         else:
             start, end = self.Run.StartTime + start_time, self.Run.EndTime if end_time is None else self.Run.StartTime + end_time
-            return Bins.make(start, end, bin_width, last=end - start % bin_width > bin_width / 4)
+            return Bins.make(start, end, bin_width, last=end - start % self.w(bin_width) > self.w(bin_width) / 4)
     # endregion GET
     # ----------------------------------------
 
@@ -157,7 +157,7 @@ class Bins(SubAnalysis):
     # ----------------------------------------
 
     @staticmethod
-    def make(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
+    def make(min_val, max_val=None, bin_width=1, last=None, n=None, off=0):
         return make_bins(min_val, max_val, bin_width, last, n, off)
 
     @staticmethod
