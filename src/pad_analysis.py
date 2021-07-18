@@ -228,9 +228,9 @@ class PadAnalysis(DUTAnalysis):
         xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
         return Bins.make(xmin, xmax, choose(bin_size, default=self.DigitiserBinWidth))
 
-    def get_alignment(self, bin_size=200, thresh=2):
-        x, y = get_graph_vecs(self.Pulser.draw_hit_efficiency(bin_size, show=False), err=False)
-        return x, y > thresh
+    def get_alignment(self, bin_size=1000):
+        from src.pad_alignment import PadAlignment
+        return PadAlignment(self.Run.Converter).get_aligned(bin_size=bin_size)
 
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
