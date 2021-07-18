@@ -650,7 +650,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         set_root_output(True)
     do(h.SetTitle, title)
     do(h.SetName, name)
-    do(set_palette, pal)
+    set_palette(*make_list(pal) if pal is not None else [])
     if normalise is not None:
         y_tit = 'Frequency' if 'Number' in choose(y_tit, h.GetYaxis().GetTitle()) else choose(y_tit, h.GetYaxis().GetTitle())
         normalise_histo(h)
@@ -976,8 +976,8 @@ def markers(i):
     return ((list(range(20, 24)) + [29, 33, 34]) * 2)[i]
 
 
-def set_palette(pal):
-    gStyle.SetPalette(pal)
+def set_palette(*pal):
+    gStyle.SetPalette(*pal) if pal else do_nothing()
 
 
 def is_graph(h):
@@ -1061,11 +1061,11 @@ def normalise_bins(h):
     update_canvas()
 
 
-def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
+def make_bins(min_val, max_val=None, bin_width=1, last=None, n=None, off=0):
     bins = array(min_val, 'd')
     if type(min_val) not in [ndarray, list]:
         min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
-        bins = append(arange(min_val, max_val, bin_width, dtype='d'), max_val if last else []) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
+        bins = append(arange(min_val, max_val, bin_width, dtype='d'), [] if last is None else choose(last, max_val)) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
     return [bins.size - 1, bins + off]
 
 
