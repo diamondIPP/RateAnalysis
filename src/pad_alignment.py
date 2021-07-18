@@ -91,23 +91,18 @@ class PadAlignment(EventAligment):
     def find_offset(self, off=-5, event=0, n=None, max_iter=2900):
         aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .15
         # self.Run.info(f'Offset: {off}, aligned: {mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits)}')
-        return warning('end of iteration') if max_iter == 1 else off if aligned else self.find_offset(off + 1, event, n, max_iter - 1)
+        return warning(f'end of iteration! Could not find offset for {self.Run}!') if max_iter == 1 else off if aligned else self.find_offset(off + 1, event, n, max_iter - 1)
 
     def find_final_offset(self, off=-500, n_bins=-3):
         """return the offset at the end of the run"""
-        try:
-            return self.find_offset(off, event=n_bins)
-        except RecursionError:
-            warning(f'could not find last offset for run {self.Run.Number}')
-            return 500
+        off = self.find_offset(off, event=n_bins)
+        return 500 if off is None else off
 
     def find_first_offset(self, off=-5):
         for ev in range(0, 51, 10):
-            try:
-                off = self.find_offset(off, ev)
+            off = self.find_offset(off, ev)
+            if off is not None:
                 return min(off, 0)
-            except RecursionError:
-                pass
         critical(f'could not determine starting offset of run {self.Run.Number}')
 
     def find_offsets(self, off=0, delta=1):
@@ -159,7 +154,7 @@ if __name__ == '__main__':
 
     # examples: 7(201708), 218(201707)
     # not possible to align: 442(201508), 439(201508)
-    args = init_argparser(run=504, tc='201608')
+    args = init_argparser(run=7, tc='201707-2')
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
     z.reload()
