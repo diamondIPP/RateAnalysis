@@ -285,7 +285,7 @@ class Cut(SubAnalysis):
     @save_pickle('Chi2', print_dur=True, suf_args=0)
     def calc_chi2_(self, mode='x', _redo=False):
         x = self.Ana.get_tree_vec(f'chi2_{mode}')
-        return quantile(x[x != -999], linspace(0, 1, 101))
+        return quantile(x[(x > -998) & (x < 100)], linspace(0, 1, 101))
 
     def calc_chi2(self, mode='x', q=None, redo=False):
         q = choose(q, self.get_chi2(mode))
