@@ -98,16 +98,16 @@ class PadAlignment(EventAligment):
         # self.Run.info(f'Offset: {off}, aligned: {mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits)}')
         return warning(f'end of iteration! Could not find offset for {self.Run}!') if max_iter == 1 else off if aligned else self.find_offset(off + 1, event, n, max_iter - 1)
 
-    def find_final_offset(self, off=-500, n_bins=-3):
+    def find_final_offset(self, off=None, n_bins=-3):
         """return the offset at the end of the run"""
-        off = self.find_offset(off, event=n_bins)
+        off = self.find_offset(choose(off, choose(self.FirstOffset, -500)), event=n_bins)
         return 500 if off is None else off
 
     def find_first_offset(self, off=-5):
         for ev in range(0, 51, 10):
-            off = self.find_offset(off, ev)
-            if off is not None:
-                return min(off, 0)
+            first_off = self.find_offset(off, ev)
+            if first_off is not None:
+                return min(first_off, 0)
         critical(f'could not determine starting offset of run {self.Run.Number}')
 
     def find_offsets(self, off=0, delta=1):
