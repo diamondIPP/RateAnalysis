@@ -577,17 +577,26 @@ class RunSelector(object):
             except Exception as err:
                 print(run, err)
 
-    def save_data(self, redo=False, rp0=None):
+    def save_data(self, rp, dut_nr, redo=False, verbose=False):
         from analyse import collection_selector
+        rp = make_runplan_string(rp)
+        try:
+            _a = collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
+            del _a
+            for _ in range(2):
+                sleep(1)
+                coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=verbose)
+                sleep(1)
+                coll.save_all() if isint(rp) else coll.save_coll_plots()
+                del coll
+        except Exception as err:
+            print(rp, err)
+
+    def save_all_data(self, redo=False, rp0=None):
         rps = list(self.RunPlan)
-        for rp in (rps if rp0 is None else rps[rps.index(rp0):]):
+        for rp in (rps if rp0 is None else rps[rps.index(make_runplan_string(rp0)):]):
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
-                try:
-                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
-                    coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False)
-                    coll.save_all() if isint(rp) else coll.save_coll_plots()
-                except Exception as err:
-                    print(rp, err)
+                self.save_data(rp, dut_nr, redo)
 
     def gen_signal_maps(self, *runs):
         from analyse import analysis_selector
