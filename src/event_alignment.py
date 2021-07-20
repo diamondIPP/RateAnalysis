@@ -6,7 +6,7 @@
 from ROOT import TFile
 from helpers.utils import *
 from helpers.draw import set_root_output
-from numpy import sign, invert
+from numpy import sign, invert, ones
 
 MAX_SIZE = 255
 
@@ -33,6 +33,7 @@ class EventAligment(object):
         self.NEntries = int(self.InTree.GetEntries())
         self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment()
+        self.Aligned = ones(self.NEntries, dtype='?')
         self.Offsets = {}
         self.FirstOffset = 0
         self.FinalOffset = 0
@@ -128,6 +129,8 @@ class EventAligment(object):
     def find_offsets(self, off, delta=1):
         return
 
+    def set_aligned(self, bin_size=None):
+        return
     # endregion OFFSETS
     # ----------------------------------------
 
@@ -148,6 +151,7 @@ class EventAligment(object):
     def write_aligned_tree(self):
         set_root_output(False)
         self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
+        self.set_aligned()
         for name in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
