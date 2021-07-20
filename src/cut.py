@@ -149,6 +149,9 @@ class Cut(SubAnalysis):
 
     def get_raw_pulse_height(self):
         return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
+
+    def get_align_var(self):
+        return ''
     # endregion GET
     # ----------------------------------------
 
@@ -245,8 +248,10 @@ class Cut(SubAnalysis):
 
     def generate_aligned(self):
         """ Cut to exclude events with a wrong event alignment. """
+        if not self.has_branch('alignment') or self.Tree.GetBranch('alignment').ClassName() == 'TBranchElement':
+            return CutString()
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
-        return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
+        return CutString('aligned', self.get_align_var() if self.find_n_misaligned() else '', description)
 
     def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
         x = choose(x, self.load_fiducial(fid_name)[0]) + (Plane.PX / 20 if center else 0)
@@ -329,13 +334,9 @@ class Cut(SubAnalysis):
             ranges.append([t_start, t_stop])
         return [[self.Run.get_event_at_time(t) for t in tup] for tup in ranges]
 
-    def find_n_misaligned(self):
-        pickle_path = self.Ana.make_pickle_path('Cuts', 'align', self.Run.Number)
-
-        def f():
-            return where(get_tree_vec(self.Ana.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
-        return do_pickle(pickle_path, f)
-
+    @save_pickle('Align')
+    def find_n_misaligned(self, _redo=False):
+        return where(self.get_tree_vec(self.get_align_var(), dtype=bool) == 0)[0].size
     # endregion COMPUTE
     # ----------------------------------------
 
@@ -391,7 +392,7 @@ class Cut(SubAnalysis):
 
 class CutString:
 
-    def __init__(self, name, value, description='', level=1):
+    def __init__(self, name='', value='', description='', level=1):
         self.Name = name
         self.Value = Cut.to_string(value)
         self.Level = level

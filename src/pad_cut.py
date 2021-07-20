@@ -52,6 +52,9 @@ class PadCut(Cut):
 
     def get_ped_sigma(self, sigma=None):
         return choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
+
+    def get_align_var(self):
+        return 'aligned'
     # endregion GET
     # ----------------------------------------
 
