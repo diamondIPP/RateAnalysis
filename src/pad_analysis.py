@@ -19,7 +19,7 @@ class PadAnalysis(DUTAnalysis):
 
         # MAIN
         self.Channel = self.get_channel()
-        self.DigitiserBinWidth = .5 if self.Run.Digitiser == 'drs4' else .4
+        self.DigitiserBinWidth = self.Run.DigitiserBinWidth
 
         if self.Tree.Hash():
             # Polarities
