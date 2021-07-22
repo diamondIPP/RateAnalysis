@@ -545,9 +545,9 @@ def say(txt, lang='en'):
     remove('good.mp3')
 
 
-def remove_file(file_path):
+def remove_file(file_path, prnt=True):
     if file_exists(file_path):
-        warning('removing {}'.format(file_path))
+        warning('removing {}'.format(file_path), prnt=prnt)
         remove(file_path)
 
 
