@@ -52,7 +52,7 @@ class PadAlignment(EventAligment):
     def get_aligned(self, tree=None, bin_size=1000, data=None):
         x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.HitVar], cut='pulser'))
         bins = histogram2d(x, y >= self.NMaxHits, bins=[self.get_xbins(bin_size), [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
-        bin_average = bins[:, 1] / sum(bins, axis=1)
+        bin_average = array([ib / (ig + ib) if ig + ib else 0 for ig, ib in bins])
         return bin_average < self.Threshold
     # endregion INIT
     # ----------------------------------------
@@ -174,4 +174,5 @@ if __name__ == '__main__':
     args = init_argparser(run=143, tc='201707-2')
     zrun = PadRun(args.run, testcampaign=args.testcampaign, load_tree=False, verbose=True)
     z = PadAlignment(Converter(zrun))
-    z.reload()
+    if not z.IsAligned:
+        z.reload()
