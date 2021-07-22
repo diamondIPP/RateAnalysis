@@ -286,7 +286,7 @@ class Run(Analysis):
     def rootfile_is_valid(self, file_path=None):
         tfile = self.RootFile if file_path is None else TFile(file_path)
         ttree = self.Tree if file_path is None else tfile.Get(self.TreeName)
-        is_valid = not tfile.IsZombie() and tfile.ClassName() == 'TFile' and ttree.ClassName() == 'TTree'
+        is_valid = not tfile.IsZombie() and tfile.ClassName() == 'TFile' and ttree and ttree.ClassName() == 'TTree'
         if not is_valid:
             warning('Invalid TFile or TTree! Deleting file {}'.format(tfile.GetName()))
             remove_file(tfile.GetName())
