@@ -348,7 +348,7 @@ class Cut(SubAnalysis):
 
     @update_pbar
     def get_contribution(self, cut, n_previous=0):
-        return self.Run.NEvents - self.Ana.get_n_entries(cut) - n_previous
+        return self.Run.NEvents - self.Tree.GetEntries(self(cut).GetTitle()) - n_previous
 
     @save_pickle('Contribution')
     def get_contributions(self, _redo=False):
