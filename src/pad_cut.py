@@ -77,7 +77,7 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_fiducial(), 23)
 
         # --BUCKET --
-        if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or self.Ana.DUT.Bias < 10:
+        if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
             self.CutStrings.register(self.generate_bucket(), 91)
             if not self.Run.is_volt_scan() or self.Ana.DUT.Bias < 10:
                 self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
