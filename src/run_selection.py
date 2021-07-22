@@ -174,6 +174,77 @@ class RunSelector(object):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region GET
+    def get_flux(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.get_flux()
+
+    def get_type(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.get_type()
+
+    def get_bias(self, run_number):
+        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
+
+    def get_duration(self, run_number):
+        return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
+
+    def get_dut_name(self, run_number):
+        return self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
+
+    def get_selected_type(self):
+        return self.get_type(self.get_selected_runs()[0])
+
+    def get_selected_fluxes(self):
+        return array([self.get_flux(run) for run in self.get_selected_runs()])
+
+    def get_selected_biases(self):
+        return [self.get_bias(run) for run in self.get_selected_runs()]
+
+    def get_selected_dut(self):
+        return self.get_dut_name(self.get_selected_runs()[0])
+
+    def get_selected_durations(self):
+        return [self.get_duration(run) for run in self.get_selected_runs()]
+
+    def get_selected_start_times(self):
+        return [self.get_start_time(run) for run in self.get_selected_runs()]
+
+    def get_start_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
+
+    def get_end_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
+
+    def get_shadow_runs(self):
+        """ :return: list of runs for diamond shadow. """
+        return [run for run, dic in self.RunInfos.items() if 'shadow' in dic['runtype']]
+
+    def get_selected_runs(self):
+        """ :return: list of selected run numbers. """
+        selected = []
+        for run in self.RunNumbers.tolist():
+            if self.Selection[run]:
+                selected.append(run)
+        if not selected:
+            warning('No runs selected!')
+        return sorted(selected)
+
+    def get_last_selected_run(self):
+        return self.get_selected_runs()[-1]
+
+    def get_first_selected_run(self):
+        return self.get_selected_runs()[0]
+
+    def get_runs(self, pixel=False):
+        return [run for run in self.get_runplan_runs() if self.get_type(run) == ('pixel' if pixel else 'pad')]
+
+    def get_first_run(self, pixel=False):
+        return next((run for run in self.get_runplan_runs() if self.get_type(run) == ('pixel' if pixel else 'pad')), None)
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region SELECT
     def has_selected_runs(self):
         return any(list(self.Selection.values()))
@@ -310,67 +381,6 @@ class RunSelector(object):
         if verify('Do you wish to save the selection to a runplan'):
             nr = input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
-
-    def get_flux(self, run_number):
-        self.Run.reload_run_config(run_number)
-        return self.Run.get_flux()
-
-    def get_type(self, run_number):
-        self.Run.reload_run_config(run_number)
-        return self.Run.get_type()
-
-    def get_bias(self, run_number):
-        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
-
-    def get_duration(self, run_number):
-        return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
-
-    def get_dut_name(self, run_number):
-        return self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
-
-    def get_selected_type(self):
-        return self.get_type(self.get_selected_runs()[0])
-
-    def get_selected_fluxes(self):
-        return array([self.get_flux(run) for run in self.get_selected_runs()])
-
-    def get_selected_biases(self):
-        return [self.get_bias(run) for run in self.get_selected_runs()]
-
-    def get_selected_dut(self):
-        return self.get_dut_name(self.get_selected_runs()[0])
-
-    def get_selected_durations(self):
-        return [self.get_duration(run) for run in self.get_selected_runs()]
-
-    def get_selected_start_times(self):
-        return [self.get_start_time(run) for run in self.get_selected_runs()]
-
-    def get_start_time(self, run_number=None):
-        return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
-
-    def get_end_time(self, run_number=None):
-        return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
-
-    def get_shadow_runs(self):
-        """ :return: list of runs for diamond shadow. """
-        return [run for run, dic in self.RunInfos.items() if 'shadow' in dic['runtype']]
-
-    def get_selected_runs(self):
-        """ :return: list of selected run numbers. """
-        selected = []
-        for run in self.RunNumbers.tolist():
-            if self.Selection[run]:
-                selected.append(run)
-        if not selected:
-            warning('No runs selected!')
-        return sorted(selected)
-
-    def get_last_selected_run(self):
-        return self.get_selected_runs()[-1]
-
-    def get_first_selected_run(self):
-        return self.get_selected_runs()[0]
 
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
