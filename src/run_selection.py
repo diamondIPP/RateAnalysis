@@ -616,6 +616,14 @@ class RunSelector(object):
                 ana.reload_tree_()
                 ana.Cut.generate_fiducial()
                 ana.draw_signal_map(show=False)
+
+    def clean_up(self, pixel=False):
+        self.Run.reload_run_config(self.get_first_run(pixel))
+        info(f'removing obsolete {"pixel" if pixel else "pad"} files')
+        for filename in glob(join(self.Run.RootFileDir, '*')):
+            if not basename(filename).startswith('Tracked') and not filename.endswith('.snr'):
+                remove_file(filename)
+        self.remove_raw_files()
     # endregion RUN PLAN
     # ----------------------------------------
 
@@ -739,8 +747,15 @@ class RunSelector(object):
         for file_path in sorted(glob(join(self.Run.Converter.RawFileDir, 'run0*'))):
             run = int(remove_letters(basename(file_path)))
             if run not in run_plan_runs:
-                warning('removing {}'.format(file_path))
-                remove(file_path)
+                remove_file(file_path)
+
+    def remove_raw_files(self):
+        if input(f'Do you really want to delete ALL raw files for {self.TCString} [y, yes]? ') in ['y', 'yes']:
+            files = glob(join(self.Run.Converter.RawFileDir, 'run0*.raw'))
+            self.PBar.start(len(files), counter=True)
+            for f in files:
+                remove_file(f)
+                self.PBar.update()
 
     def remove_tracked_files(self, sel=False):
         selected_runs = self.get_selected_runs() if sel else []
