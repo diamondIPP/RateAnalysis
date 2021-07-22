@@ -107,7 +107,8 @@ class PadCut(Cut):
 
     def generate_pedestal_bucket(self):
         """exclude events with a peak in bucket -1 (the pre-pedstal bucket)"""
-        return CutString('ped bucket', f'!ped_bucket[{self.DUT.Number - 1}]', 'pedestal bucket events')
+        wide_range = diff(self.Ana.get_region())[0] * self.Run.DigitiserBinWidth > 1.5 * self.BunchSpacing
+        return CutString() if wide_range else CutString('ped bucket', f'!ped_bucket[{self.DUT.Number - 1}]', 'pedestal bucket events')
 
     def generate_bucket(self):
         """exclude events with a peak in bucket 2 and no peak in the signal region"""
@@ -178,20 +179,15 @@ class PadCut(Cut):
         self.add_to_info(t)
         return array(interruptions, 'i4')
 
-    def get_b2_fit(self, redo=False):
+    @save_pickle('B2Fit', print_dur=True, low_rate=True)
+    @low_rate
+    def get_b2_fit(self, _redo=False):
         """ fit the b2/b1 profile of the lowest rate run with pol2 """
-        def f():
-            if not self.Run.get_low_rate_run() == self.Run.Number:
-                from src.pad_analysis import PadAnalysis
-                return PadAnalysis(self.Run.get_low_rate_run(), self.DUT.Number, self.TCString, prnt=False).Cut.get_b2_fit(redo)
-            t = self.info(f'generating bucket cut for {self.Run} and {self.DUT}', endl=False)
-            h = self.Ana.draw_bucket_profile(self(), show=False)
-            xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
-            fit, ped = FitRes(h.Fit('pol2', 'qs', '', 10, xmax)), self.calc_pedestal(1)
-            fit.Pars[0] -= self.Ana.get_polarity() * sum(ped) / 2  # subtract baseline
-            self.add_to_info(t)
-            return fit
-        return do_pickle(self.make_simple_pickle_path('B2Fit', run=self.Run.get_low_rate_run()), f, redo=redo)
+        h = self.Ana.draw_bucket_profile(self(), show=False)
+        xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
+        fit, ped = FitRes(h.Fit('pol2', 'qs', '', 10, xmax)), self.calc_pedestal(1)
+        fit.Pars[0] -= self.Ana.get_polarity() * sum(ped) / 2  # subtract baseline
+        return fit
 
     @save_pickle('TP', print_dur=True, high_rate=True)
     @high_rate
