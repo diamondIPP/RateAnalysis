@@ -624,6 +624,9 @@ class RunSelector(object):
             if not basename(filename).startswith('Tracked') and not filename.endswith('.snr'):
                 remove_file(filename)
         self.remove_raw_files()
+
+    def remove_metadata(self):
+        self.Run.remove_tc_metadata()
     # endregion RUN PLAN
     # ----------------------------------------
 
