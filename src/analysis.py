@@ -129,6 +129,12 @@ class Analysis(object):
         for f in self.get_meta_files(all_subdirs):
             remove_file(f)
 
+    def remove_tc_metadata(self):
+        files = glob(join(self.PickleDir, '*', f'*{self.TCString}*'))
+        info(f'removing {len(files)} meta files with a total size of {make_byte_string(sum(getsize(f) for f in files))}')
+        for f in glob(join(self.PickleDir, '*', f'*{self.TCString}*')):
+            remove_file(f, prnt=False)
+
     def get_metadata_size(self, all_subdirs=True):
         info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in self.get_meta_files(all_subdirs)))))
 
