@@ -200,7 +200,8 @@ class PadCut(Cut):
 
     @save_pickle('Pedestal', print_dur=True)
     def calc_pedestal_(self, _redo=False):
-        h0 = self.Draw.distribution(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
+        x = self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self())
+        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=False)
         return fit_fwhm(h0, show=False).get_pars(err=False)[1:]
 
     def calc_pedestal(self, n_sigma, redo=False):
