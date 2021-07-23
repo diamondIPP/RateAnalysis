@@ -23,8 +23,8 @@ class PeakAnalysis(PadSubAnalysis):
 
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
-        if self.has_branch(f'wf{self.Channel}'):
-            self.WF = self.Ana.Waveform
+        self.WF = self.Ana.Waveform
+        if self.WF.Exists:
             self.NoiseThreshold = self.calc_noise_threshold()
             self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
             self.BinWidth = self.DigitiserBinWidth
