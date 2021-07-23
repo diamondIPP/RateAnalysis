@@ -248,7 +248,7 @@ class Cut(SubAnalysis):
 
     def generate_aligned(self):
         """ Cut to exclude events with a wrong event alignment. """
-        if not self.has_branch('alignment') or self.Tree.GetBranch('alignment').ClassName() == 'TBranchElement':
+        if not self.has_branch('aligned') or self.Tree.GetBranch('aligned').ClassName() == 'TBranchElement':
             return CutString()
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
         return CutString('aligned', self.get_align_var() if self.find_n_misaligned() else '', description)
