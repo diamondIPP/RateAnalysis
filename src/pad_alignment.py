@@ -139,7 +139,8 @@ class PadAlignment(EventAligment):
         if not self.Offsets:
             return
         x, y = self.Pulser, self.NHits
-        ev, offs = array(list(self.Offsets.keys())), diff(append(self.FirstOffset, list(self.Offsets.values())))
+        ev = array(([0] if self.FirstOffset else []) + [*self.Offsets])
+        offs = append(-1 if self.FirstOffset < 0 else [], diff(append(self.FirstOffset, [*self.Offsets.values()])))
         x, y = delete(x, ev[where(offs == -1)]), delete(y, ev[where(offs == 1)])
         s = min(x.size, y.size)
         x, y = where(x[:s])[0], y[x[:s]]
