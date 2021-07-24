@@ -487,8 +487,8 @@ class PadAnalysis(DUTAnalysis):
         """ return fraction of bucket events with no signal in the signal region. """
         default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
         c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else default)
-        n = self.get_n_entries(c)
-        n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
+        n = self.get_n_entries(c, _redo=_redo)
+        n_bucket = n - self.get_n_entries(self.Cut['bucket'] + c, _redo=_redo)
         return ufloat(n_bucket, sqrt(n_bucket)) / n
 
     @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
