@@ -583,7 +583,9 @@ class RunSelector(object):
         from analyse import analysis_selector
         for run in self.get_selected_runs():
             try:
-                print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
+                self.Run.reload_run_config(run)
+                if file_exists(self.Run.RootFilePath):
+                    print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
             except Exception as err:
                 print(run, err)
 
@@ -593,12 +595,11 @@ class RunSelector(object):
         try:
             _a = collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
             del _a
-            for _ in range(2):
-                sleep(1)
-                coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=verbose)
-                sleep(1)
-                coll.save_all() if isint(rp) else coll.save_coll_plots()
-                del coll
+            sleep(1)
+            coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=verbose)
+            sleep(1)
+            coll.save_all() if isint(rp) else coll.save_coll_plots()
+            del coll
         except Exception as err:
             print(rp, err)
 
