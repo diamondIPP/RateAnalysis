@@ -173,7 +173,7 @@ class PadCollection(AnalysisCollection):
 
     def create_bucket_estimate(self):
         print(f'bucket scale = {FitRes(self.draw_bucket_ratio(show=False).GetListOfFunctions()[0])[1]:.2e}')
-        print(f'bucket tpr = {eff2u(self.get_bucket_tpr()/ 100):.4f}')
+        print(f'bucket tpr = {eff2u(self.get_bucket_tpr() / 100):.4f}')
     # endregion CUTS
     # ----------------------------------------
 
