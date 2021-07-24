@@ -235,7 +235,7 @@ class Run(Analysis):
             if 'cornBot' not in data['id']:
                 warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
             mask = [[data[where((data['pl'] == pl) & (data['id'] == n))][0][i] for n in ['cornBot', 'cornTop'] for i in [2, 3]] for pl in sorted(set(data['pl']))]
-            mask = [[max(1, m[0]), min(self.Plane.NCols - 2, m[1]), max(1, m[2]), min(self.Plane.NRows - 2, m[3])] for m in mask]  # outer pixels are ignored
+            mask = [[max(1, m[0]), max(1, m[1]), min(self.Plane.NCols - 2, m[2]), min(self.Plane.NRows - 2, m[3])] for m in mask]  # outer pixels are ignored
             return mask if plane is None else mask[plane - 1]
         except Exception as err:
             warning(err)
