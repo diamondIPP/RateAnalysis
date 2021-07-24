@@ -165,13 +165,13 @@ class PadCut(Cut):
         Draw.box(*array([x[0], y[0], x[1], y[1]]) * 10, show=show, width=2)
         return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
 
-    def find_beam_interruptions(self, bin_width=100, max_thresh=.6):
+    def find_beam_interruptions(self, bin_width=100, thresh=.2):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         x, y = self.get_tree_vec(var=['Entry$', 'pulser'], dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
-        thresh = min(max_thresh, mean(rates) + .2)
+        thresh = min(1, mean(rates) + thresh)
         events = x_bins[:-1][rates > thresh] + bin_width / 2
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
