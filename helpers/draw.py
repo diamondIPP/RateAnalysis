@@ -1018,7 +1018,7 @@ def show_line_styles():
 def ax_range(low=None, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
-        if len(low) == 2:
+        if len(low) == 2 and not is_ufloat(low[0]):
             return ax_range(low[0], low[1], fl, fh)
         m, s = mean_sigma(low, err=0)
         v = low[absolute(low - m) < thresh * s] if thresh is not None else low

@@ -175,6 +175,8 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_fit_range(self, h, lsig=3, rsig=.5):
         f0, same_polarity = fit_fwhm(h), self.Polarity == self.Ana.Polarity
+        if f0.get_chi2() > 50:
+            return get_fwhm(h, ret_edges=True, err=False)
         return uarr2n([f0[1] + i * f0[2] for i in ([-lsig, rsig] if same_polarity else [-rsig, lsig])])  # fit left tail if same pol and right tail otherwise
 
     @save_pickle('Fit', suf_args='all')
