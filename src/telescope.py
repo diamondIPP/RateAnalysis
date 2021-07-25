@@ -86,14 +86,15 @@ class Telescope(SubAnalysis):
     def get_flux_scale(self, full_size=False, redo=False):
         return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size), dut=self.Ana.DUT.Number), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
 
+    @save_pickle('Mask', suf_args='all')
+    def find_mask_(self, plane=1, _redo=False):
+        self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', dtype='u1', nentries=50000)))
+        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000, dtype='u2')
+        histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
+        return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
+
     def find_mask(self, plane=None, redo=False):
-        def f():
-            x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
-            histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
-            return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
-        if plane is None:
-            return [self.find_mask(pl, redo) for pl in [1, 2]]
-        return do_pickle(self.make_simple_pickle_path('Mask', plane), f, redo=redo)
+        return [self.find_mask_(pl, _redo=redo) for pl in [1, 2]] if plane is None else self.find_mask_(plane, _redo=redo)
 
     def get_area(self, plane=1):
         x0, y0, x1, y1 = self.find_mask(plane)
