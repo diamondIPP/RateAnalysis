@@ -192,12 +192,15 @@ class AnalysisCollection(Analysis):
 
     def draw_flux_splits(self, corr=True, **kwargs):
         x = sort([flux.n for flux in self.get_fluxes(corr=corr)])
-        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True)))
-        bins = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
-        format_statbox(h, entries=True, w=.2)
-        split_bins = histogram(x, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
-        self.Draw.save_plots('FluxSplits', **kwargs)
+        stats = set_statbox(entries=True, w=.2)
+        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True), filename='FluxSplits', stats=stats))
+        split_bins = histogram(x, self.find_flux_binning(h))[0]
         return cumsum(split_bins[where(split_bins > 0)])[:-1]
+
+    def find_flux_binning(self, h, width=.1):
+        maxima = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
+        bins = [0] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
+        return bins if all(diff(bins) > 0) else self.find_flux_binning(h, width - .01)
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
