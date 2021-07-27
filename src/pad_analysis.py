@@ -22,10 +22,7 @@ class PadAnalysis(DUTAnalysis):
         self.DigitiserBinWidth = self.Run.DigitiserBinWidth
 
         if self.Tree.Hash():
-            # Polarities
             self.Polarity = self.get_polarity()
-            self.PulserPolarity = self.get_polarity(pulser=True)
-
             # Regions & Ranges
             self.SignalRegionName = self.load_region_name()
             self.SignalRegion = self.get_region()
@@ -153,18 +150,16 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_polarity(self, pulser=False):
-        return int(self.Run.TreeConfig.get('General', '{}polarities'.format('pulser ' if pulser else '')).split()[self.get_channel()])
+    def get_polarity(self):
+        return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.get_channel()])
 
     def get_channel(self):
         return self.Run.Channels[self.DUT.Number - 1]
 
     def get_signal_var(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None, peak_int=None, sig_type='signal', t_corr=True):
         sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type, t_corr))
-        pol = self.get_polarity('pulser' in sig_type)
-        if not any([off_corr, evnt_corr]):
-            return f'{pol} * {sig_name}'
-        return f'{pol} * ({sig_name} - {self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name()})'
+        ped = self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name() if evnt_corr else None
+        return f'{self.get_polarity()} * {sig_name if ped is None else f"({sig_name} - {ped})"}'
 
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
@@ -217,7 +212,7 @@ class PadAnalysis(DUTAnalysis):
         ph = choose(ph, self._get_pulse_height, cut=self.Cut.get_tp())
         if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr and not self.Cut(cut).GetName() == 'bful':
             r = self.estimate_bucket_ratio() / 100  # % -> value
-            return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
+            return ph if r == 0 else (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
         return ph
 
     def get_min_signal(self, name=None):
@@ -508,7 +503,8 @@ class PadAnalysis(DUTAnalysis):
 
     def estimate_bucket_ratio(self):
         if not self.Run.Config.has_option('BASIC', 'bucket scale') and not self.Run.Config.has_option('BASIC', 'bucket tpr'):
-            critical('bucket parameters not defined!')
+            warning('bucket parameters not defined -> applying no correction!')
+            return 0
         return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
 
     def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, use_wf_int=False, redo=False, **kwargs):

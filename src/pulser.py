@@ -12,7 +12,7 @@ class PulserAnalysis(PadSubAnalysis):
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Pulser')
         self.Cut = self.Ana.Cut.get_pulser()
-        self.Polarity = self.Ana.PulserPolarity
+        self.Polarity = self.load_polarity()
         self.SignalName = self.get_signal_name()
         self.SignalRegion = array(self.Run.IntegralRegions[self.Ana.DUT.Number - 1]['pulser']) * self.Ana.DigitiserBinWidth
         self.PedestalName = self.load_pedestal_name()
@@ -30,6 +30,9 @@ class PulserAnalysis(PadSubAnalysis):
     def load_pedestal_name(self, peak_int=None):
         region = self.Config.get_value('BASIC', 'pulser pedestal', default='ac')
         return self.Ana.get_pedestal_name(region, self.Ana.PeakIntegral if None else peak_int)
+
+    def load_polarity(self):
+        return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.Channel])
     # endregion INIT
     # ----------------------------------------
 
@@ -129,8 +132,10 @@ class PulserAnalysis(PadSubAnalysis):
     def get_short_name(self, signal=None):
         return self.get_all_signal_names()[choose(signal, self.SignalName)]
 
-    def get_signal_var(self, name=None, event_corr=False, off_corr=True, cut=None):
-        return self.Ana.get_signal_var(choose(name, self.SignalName), event_corr, off_corr, self.Cut(cut), sig_type='pulser')
+    def get_signal_var(self, name=None, ped_corr=True, cut=None):
+        ped = self.Pedestal.get_mean(cut=self.Cut(cut)).n if ped_corr else None
+        sig_name = choose(name, self.SignalName)
+        return f'{self.Polarity} * {sig_name if ped is None else f"({sig_name} - {ped})"}'
     # endregion GET
     # ----------------------------------------
 
@@ -162,7 +167,7 @@ class PulserAnalysis(PadSubAnalysis):
     @save_pickle('Disto', suf_args='all')
     def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, _redo=False):
         cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
-        x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
+        x = self.get_tree_vec(self.get_signal_var(name, corr, cut), cut)
         x = x[x > 5]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
         return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
