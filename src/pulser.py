@@ -167,8 +167,9 @@ class PulserAnalysis(PadSubAnalysis):
     @save_pickle('Disto', suf_args='all')
     def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, _redo=False):
         cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
-        x = self.get_tree_vec(self.get_signal_var(name, corr, cut), cut)
-        x = x[x > 5]  # filter out very low signals
+        x, (m, s) = self.get_tree_vec(self.get_signal_var(name, corr, cut), cut), self.Pedestal()
+        if mean(x) > m + 3 * s:
+            x = x[x > m.n + 2 * s.n]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
         return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 
