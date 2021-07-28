@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 from src.sub_ana_collection import SubCollection
 from helpers.draw import *
-from src.pulser import PulserAnalysis
+from pad.pulser import PulserAnalysis
 
 
 class PulserCollection(SubCollection):

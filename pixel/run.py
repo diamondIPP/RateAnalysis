@@ -4,7 +4,7 @@
 # created on Oct 21st 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from run import Run
+from src.run import Run
 from helpers.utils import init_argparser
 
 

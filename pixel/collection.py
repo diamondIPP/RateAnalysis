@@ -4,8 +4,8 @@
 # created on April 5th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis_collection import AnalysisCollection
-from pix_analysis import PixAnalysis, format_histo, init_argparser
+from src.analysis_collection import AnalysisCollection
+from pixel.analysis import PixAnalysis, format_histo, init_argparser
 
 
 class PixCollection(AnalysisCollection):

@@ -1,14 +1,14 @@
 from ROOT import gRandom, TCut
 from numpy import insert, sum, round, in1d, max, unravel_index, argmax
 
-from src.pedestal import PedestalAnalysis
-from src.timing import TimingAnalysis
+from pad.pedestal import PedestalAnalysis
+from pad.timing import TimingAnalysis
 from src.dut_analysis import *
-from src.pad_cut import PadCut
-from src.pad_run import PadRun
-from src.peaks import PeakAnalysis
-from src.pulser import PulserAnalysis
-from src.waveform import Waveform
+from pad.cut import PadCut
+from pad.run import PadRun
+from pad.peaks import PeakAnalysis
+from pad.pulser import PulserAnalysis
+from pad.waveform import Waveform
 from src.mc_signal import MCSignal
 
 

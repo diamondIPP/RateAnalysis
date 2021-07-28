@@ -2,7 +2,7 @@
 #       PULSER ANALYSIS
 # created on June 16th 2016 by M. Reichmann
 # --------------------------------------------------------
-from src.waveform import Waveform
+from pad.waveform import Waveform
 from src.sub_analysis import PadSubAnalysis
 from helpers.save_plots import *
 
@@ -169,7 +169,7 @@ class PulserAnalysis(PadSubAnalysis):
         cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
         x, (m, s) = self.get_tree_vec(self.get_signal_var(name, corr, cut), cut), self.Pedestal()
         if mean(x) > m + 3 * s:
-            x = x[x > m.n + 2 * s.n]  # filter out very low signals
+            x = x[x > m + 2 * s]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
         return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 

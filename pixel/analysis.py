@@ -4,15 +4,12 @@
 # created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from __future__ import print_function
-
 from collections import Counter
 
 from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
-from numpy import corrcoef, ceil
 
-from dut_analysis import *
-from pix_cut import CutPix
+from src.dut_analysis import *
+from pixel.cut import CutPix
 
 
 class PixAnalysis(DUTAnalysis):

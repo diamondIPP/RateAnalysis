@@ -5,8 +5,8 @@ from re import sub
 from subprocess import check_call, check_output
 from numpy import genfromtxt
 
-from src.pad_alignment import PadAlignment
-from src.pix_alignment import *
+from pad.alignment import PadAlignment
+from pixel.alignment import *
 
 
 class Converter(object):

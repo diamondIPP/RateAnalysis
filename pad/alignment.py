@@ -167,8 +167,8 @@ class PadAlignment(EventAligment):
 
 if __name__ == '__main__':
 
-    from pad_run import PadRun
-    from converter import Converter
+    from pad.run import PadRun
+    from src.converter import Converter
 
     # examples: 7(201708), 218(201707)
     # not possible to align: 442(201508), 439(201508)
