@@ -44,8 +44,7 @@ class Converter(object):
 
             # Files
             self.RawFilePath = self.get_raw_file_path()
-            self.NewConfigFile = join(self.EudaqDir, 'conf', 'tmp', '{}.ini'.format(self.Run.Number))
-            self.EudaqConfigFile = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
+            self.NewConfigFile = join(self.EudaqDir, 'conf', 'tmp', f'{self.Run.Number}.ini')
             self.ErrorFile = join(self.Run.RootFileDir, 'Errors{:03d}.txt'.format(self.Run.Number if self.Run.Number is not None else 0))
 
             # Event Alignment
@@ -230,9 +229,10 @@ class Converter(object):
         remove_file(f'decoding_{self.Run.Number}.root')
 
     def set_converter_configfile(self, tree=None, max_events=None):
-        if not file_exists(self.EudaqConfigFile):
-            critical('EUDAQ config file: "{}" does not exist!'.format(self.EudaqConfigFile))
-        parser = Config(self.EudaqConfigFile)
+        filename = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')
+        if not file_exists(filename):
+            critical(f'EUDAQ config file: "{filename}" does not exist!')
+        parser = Config(filename)
         section = 'Converter.{}'.format(choose(tree, self.ConverterTree))
         if self.Type == 'pad':
             parser.set(section, 'polarities', self.load_polarities())
@@ -248,7 +248,7 @@ class Converter(object):
         for key, value in self.RunConfig.items('ROOTFILE_GENERATION'):
             parser.set('Converter.telescopetree' if 'decoding' in key else section, key, value)
         if max_events is not None:
-            parser.set(section, 'max_event_number', max_events)
+            parser.set(section, 'max_event_number', str(max_events))
 
         # write changes
         with open(self.NewConfigFile, 'w') as f:
