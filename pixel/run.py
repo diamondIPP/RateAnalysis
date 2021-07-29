@@ -9,7 +9,7 @@ from helpers.utils import init_argparser
 
 
 class PixelRun(Run):
-    """ Run class containing all the information for a single run. """
+    """ Run class child with pixel extension. """
 
     def __init__(self, number=None, testcampaign=None, load_tree=True, verbose=False):
         """
@@ -19,13 +19,14 @@ class PixelRun(Run):
         :param verbose: turn on more output
         """
 
+        Run.__init__(self, number, testcampaign, load_tree, verbose)
+
         # Settings
         self.Type = 'pixel'
-
-        Run.__init__(self, number, testcampaign, load_tree, verbose)
 
 
 if __name__ == '__main__':
 
-    args = init_argparser(489, tc='201610', tree=True)
+    # e.g.: (138, 201510), (489, 201610)
+    args = init_argparser(293, tc='201508', tree=True)
     z = PixelRun(args.run, testcampaign=args.testcampaign, load_tree=args.tree)

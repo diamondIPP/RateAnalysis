@@ -9,12 +9,11 @@ class CutPix(Cut):
 
         self.DUT = analysis.DUT
         self.DUTPlane = self.DUT.Number + 3
-
-        self.Bins = self.Analysis.Bins
+        self.Bins = self.Ana.Bins
 
         self.update_config()
         self.generate_dut()
-        self.ConsecutiveCuts = self.generate_consecutive()
+        self.ConsecutiveCuts = self.get_consecutive()
 
     @classmethod
     def from_parent(cls, parent):
