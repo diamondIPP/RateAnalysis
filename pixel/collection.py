@@ -4,8 +4,8 @@
 # created on April 5th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from analysis_collection import AnalysisCollection
-from pix_analysis import PixAnalysis, format_histo, init_argparser
+from src.analysis_collection import AnalysisCollection
+from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw
 
 
 class PixCollection(AnalysisCollection):
@@ -13,20 +13,16 @@ class PixCollection(AnalysisCollection):
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
         AnalysisCollection.__init__(self, run_plan, dut_nr, test_campaign, load_tree, verbose)
 
-    def load_analysis(self, run_number):
-        return PixAnalysis(run_number, self.DUT.Number, self.TCString, self.Threads[run_number].Tuple, self.Threads[run_number].Time, self.Verbose, prnt=False)
-
     @staticmethod
     def load_dummy():
         return PixAnalysis
 
-    def draw_hit_efficiencies(self, show=True):
-        fits = [ana.draw_hit_efficiency(show=False) for ana in self.Analyses.itervalues()]
-        y, ey = [fit.Parameter(0) for fit in fits], [fit.ParError(0) for fit in fits]
-        x, ex = self.get_fluxes().values(), [flux * .1 for flux in self.get_fluxes().itervalues()]
-        g = self.make_tgrapherrors('ghes', 'Hit Efficiencies', y=y, x=x, ex=ex, ey=ey)
-        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Hit Efficiency [%]', y_off=1.5)
-        self.save_histo(g, 'HitEfficiencies', lm=.12, draw_opt='alp', show=show, logx=True, bm=.17)
+    def get_hit_efficiecies(self):
+        return array(f[0] for f in self.get_values('hit eff', self.Analysis.draw_hit_efficiency, show=False))
+
+    def draw_hit_efficiencies(self, **kwargs):
+        x, y = self.get_fluxes(), self.get_hit_efficiecies()
+        self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(kwargs, y_tit='Hit Efficiency [%]', **self.get_x_args(draw=True), draw_opt='alp'))
 
     def generate_threshold_pickle(self):
         pass
@@ -44,6 +40,6 @@ if __name__ == '__main__':
     z.print_loaded()
     if pargs.runs:
         z.Currents.draw_indep_graphs()
-        raw_input('Press any button to exit')
+        input('Press any button to exit')
     if pargs.draw:
         z.draw_all(pargs.redo)

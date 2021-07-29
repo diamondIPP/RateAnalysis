@@ -174,6 +174,77 @@ class RunSelector(object):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region GET
+    def get_flux(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.get_flux()
+
+    def get_type(self, run_number):
+        self.Run.reload_run_config(run_number)
+        return self.Run.get_type()
+
+    def get_bias(self, run_number):
+        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
+
+    def get_duration(self, run_number):
+        return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
+
+    def get_dut_name(self, run_number):
+        return self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
+
+    def get_selected_type(self):
+        return self.get_type(self.get_selected_runs()[0])
+
+    def get_selected_fluxes(self):
+        return array([self.get_flux(run) for run in self.get_selected_runs()])
+
+    def get_selected_biases(self):
+        return [self.get_bias(run) for run in self.get_selected_runs()]
+
+    def get_selected_dut(self):
+        return self.get_dut_name(self.get_selected_runs()[0])
+
+    def get_selected_durations(self):
+        return [self.get_duration(run) for run in self.get_selected_runs()]
+
+    def get_selected_start_times(self):
+        return [self.get_start_time(run) for run in self.get_selected_runs()]
+
+    def get_start_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
+
+    def get_end_time(self, run_number=None):
+        return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
+
+    def get_shadow_runs(self):
+        """ :return: list of runs for diamond shadow. """
+        return [run for run, dic in self.RunInfos.items() if 'shadow' in dic['runtype']]
+
+    def get_selected_runs(self):
+        """ :return: list of selected run numbers. """
+        selected = []
+        for run in self.RunNumbers.tolist():
+            if self.Selection[run]:
+                selected.append(run)
+        if not selected:
+            warning('No runs selected!')
+        return sorted(selected)
+
+    def get_last_selected_run(self):
+        return self.get_selected_runs()[-1]
+
+    def get_first_selected_run(self):
+        return self.get_selected_runs()[0]
+
+    def get_runs(self, pixel=False):
+        return [run for run in self.get_runplan_runs() if self.get_type(run) == ('pixel' if pixel else 'pad')]
+
+    def get_first_run(self, pixel=False):
+        return next((run for run in self.get_runplan_runs() if self.get_type(run) == ('pixel' if pixel else 'pad')), None)
+    # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region SELECT
     def has_selected_runs(self):
         return any(list(self.Selection.values()))
@@ -310,67 +381,6 @@ class RunSelector(object):
         if verify('Do you wish to save the selection to a runplan'):
             nr = input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
-
-    def get_flux(self, run_number):
-        self.Run.reload_run_config(run_number)
-        return self.Run.get_flux()
-
-    def get_type(self, run_number):
-        self.Run.reload_run_config(run_number)
-        return self.Run.get_type()
-
-    def get_bias(self, run_number):
-        return self.RunInfos[run_number]['dia{}hv'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
-
-    def get_duration(self, run_number):
-        return (self.get_end_time(run_number) - self.get_start_time(run_number)).total_seconds()
-
-    def get_dut_name(self, run_number):
-        return self.RunInfos[run_number]['dia{}'.format(self.SelectedDUT.Number)] if self.SelectedDUT.Number is not None else None
-
-    def get_selected_type(self):
-        return self.get_type(self.get_selected_runs()[0])
-
-    def get_selected_fluxes(self):
-        return array([self.get_flux(run) for run in self.get_selected_runs()])
-
-    def get_selected_biases(self):
-        return [self.get_bias(run) for run in self.get_selected_runs()]
-
-    def get_selected_dut(self):
-        return self.get_dut_name(self.get_selected_runs()[0])
-
-    def get_selected_durations(self):
-        return [self.get_duration(run) for run in self.get_selected_runs()]
-
-    def get_selected_start_times(self):
-        return [self.get_start_time(run) for run in self.get_selected_runs()]
-
-    def get_start_time(self, run_number=None):
-        return conv_log_time(self.RunInfos[self.get_selected_runs()[0] if run_number is None else run_number]['starttime0'])
-
-    def get_end_time(self, run_number=None):
-        return conv_log_time(self.RunInfos[self.get_selected_runs()[-1] if run_number is None else run_number]['endtime'])
-
-    def get_shadow_runs(self):
-        """ :return: list of runs for diamond shadow. """
-        return [run for run, dic in self.RunInfos.items() if 'shadow' in dic['runtype']]
-
-    def get_selected_runs(self):
-        """ :return: list of selected run numbers. """
-        selected = []
-        for run in self.RunNumbers.tolist():
-            if self.Selection[run]:
-                selected.append(run)
-        if not selected:
-            warning('No runs selected!')
-        return sorted(selected)
-
-    def get_last_selected_run(self):
-        return self.get_selected_runs()[-1]
-
-    def get_first_selected_run(self):
-        return self.get_selected_runs()[0]
 
     def show_selected_runs(self, full_comments=False):
         """ Prints an overview of all selected runs. """
@@ -573,20 +583,51 @@ class RunSelector(object):
         from analyse import analysis_selector
         for run in self.get_selected_runs():
             try:
-                print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
+                self.Run.reload_run_config(run)
+                if file_exists(self.Run.RootFilePath):
+                    print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
             except Exception as err:
                 print(run, err)
 
-    def save_data(self, redo=False, rp0=None):
+    def save_data(self, rp, dut_nr, redo=False, verbose=False):
         from analyse import collection_selector
+        rp = make_runplan_string(rp)
+        try:
+            _a = collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
+            del _a
+            sleep(1)
+            coll = collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=verbose)
+            sleep(1)
+            coll.save_all() if isint(rp) else coll.save_coll_plots()
+            del coll
+        except Exception as err:
+            print(rp, err)
+
+    def save_all_data(self, redo=False, rp0=None):
         rps = list(self.RunPlan)
-        for rp in (rps if rp0 is None else rps[rps.index(rp0):]):
+        for rp in (rps if rp0 is None else rps[rps.index(make_runplan_string(rp0)):]):
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
-                try:
-                    collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=True) if redo and isint(rp) else do_nothing()
-                    collection_selector(rp, dut_nr, self.TCString, tree=True, verbose=False).save_all()
-                except Exception as err:
-                    print(rp, err)
+                self.save_data(rp, dut_nr, redo)
+
+    def gen_signal_maps(self, *runs):
+        from analyse import analysis_selector
+        with Pool() as pool:
+            res = pool.starmap(analysis_selector, [(run, dut_nr, self.TCString, True, False, False) for run in runs for dut_nr in range(self.get_n_duts(run))])
+            for ana in res:
+                ana.reload_tree_()
+                ana.Cut.generate_fiducial()
+                ana.draw_signal_map(show=False)
+
+    def clean_up(self, pixel=False):
+        self.Run.reload_run_config(self.get_first_run(pixel))
+        info(f'removing obsolete {"pixel" if pixel else "pad"} files')
+        for filename in glob(join(self.Run.RootFileDir, '*')):
+            if not basename(filename).startswith('Tracked') and not filename.endswith('.snr'):
+                remove_file(filename)
+        self.remove_raw_files()
+
+    def remove_metadata(self):
+        self.Run.remove_tc_metadata()
     # endregion RUN PLAN
     # ----------------------------------------
 
@@ -668,6 +709,7 @@ class RunSelector(object):
         self.save_runinfo()
 
     def add_n_entries(self):
+        from ROOT import TFile
         self.PBar.start(self.RunNumbers.size)
         for i, run in enumerate(self.RunInfos):
             file_path = self.get_final_file_path(run)
@@ -709,8 +751,15 @@ class RunSelector(object):
         for file_path in sorted(glob(join(self.Run.Converter.RawFileDir, 'run0*'))):
             run = int(remove_letters(basename(file_path)))
             if run not in run_plan_runs:
-                warning('removing {}'.format(file_path))
-                remove(file_path)
+                remove_file(file_path)
+
+    def remove_raw_files(self):
+        if input(f'Do you really want to delete ALL raw files for {self.TCString} [y, yes]? ') in ['y', 'yes']:
+            files = glob(join(self.Run.Converter.RawFileDir, 'run0*.raw'))
+            self.PBar.start(len(files), counter=True)
+            for f in files:
+                remove_file(f)
+                self.PBar.update()
 
     def remove_tracked_files(self, sel=False):
         selected_runs = self.get_selected_runs() if sel else []
@@ -720,13 +769,15 @@ class RunSelector(object):
             self.Run.Converter.set_run(run, )
             self.Run.Converter.remove_final_file()
 
-    def copy_raw_files(self, sel=False, redo=False):
-        selected_runs = self.get_selected_runs() if sel else []
-        for run in self.get_runplan_runs():
-            if sel and run not in selected_runs:
-                continue
-            self.Run.Converter.set_run(run, )
-            self.Run.Converter.copy_raw_file(redo)
+    @update_pbar
+    def copy_raw_file(self, run_number):
+        self.Run.Converter.set_run(run_number)
+        self.Run.Converter.copy_raw_file()
+
+    def copy_raw_files(self, sel=False):
+        runs = self.get_selected_runs() if sel else self.get_runplan_runs()
+        self.PBar.start(len(runs), counter=True, t='min')
+        [self.copy_raw_file(run) for run in runs]
 
     def copy_final_files(self, server, server_data_dir):
         runs = self.get_selected_runs()

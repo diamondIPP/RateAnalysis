@@ -324,7 +324,7 @@ def get_inner_efficiency(roc=1, q=.2):
     dx, dy = array([polyval(xfits.repeat(n, axis=1), z_[roc]) - x, polyval(yfits.repeat(n, axis=1), z_[roc]) - y]) * 10000  # to um
     rcut = get_res_cut(dx, n, chi_cut, 2 * z.Plane.PX * 1000) & get_res_cut(dy, n, chi_cut, 2 * z.Plane.PY * 1000)
     # n_good = round(mean([get_res_cut(dx, n, chi_cut), get_res_cut(dy, n, chi_cut)]))
-    n_max = count_nonzero(chi_cut)  #TODO fix wrong number of events
+    n_max = count_nonzero(chi_cut)  # TODO fix wrong number of events
     n_good = rcut[rcut].size
     eff = calc_eff(n_good, n_max)
     info('Efficiency for plane {}: ({:1.1f}+{:1.1f}-{:1.1f})%'.format(roc, *eff))
@@ -351,8 +351,9 @@ def get_avrg_p_miss(runs, q=.2, c=None):
 
 def get_raw_efficiency(put=2, tree=None):
     tree = choose(tree, t)
-    tree.SetEstimate(z.NEvents * z.NPlanes)
-    n_clusters = get_tree_vec(tree, 'n_clusters').reshape(z.NEvents, z.NPlanes)
+    e = z.NEvents if tree is None else tree.GetEntries()
+    tree.SetEstimate(e * z.NPlanes)
+    n_clusters = get_tree_vec(tree, 'n_clusters').reshape(e, z.NPlanes)
     return calc_eff(values=n_clusters[:, put][all(delete(n_clusters, put, axis=1) == 1, axis=1)] > 0)
 
 

@@ -2,7 +2,7 @@
 from glob import glob
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
-from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas
+from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
 from os.path import getsize
 from os import getcwd
 
@@ -119,13 +119,21 @@ class Analysis(object):
     def make_simple_hdf5_path(self, *args, **kwargs):
         return self.make_simple_pickle_path(*args, **kwargs).replace('pickle', 'hdf5')
 
-    def get_meta_files(self, all_subdirs=False):
+    def get_meta_files(self, all_=False):
         runs = self.Runs if hasattr(self, 'Runs') else [self.Run.Number] if hasattr(self, 'Run') else []
-        return [f for run in runs for f in glob(join(self.PickleDir, self.PickleSubDir if not all_subdirs else '*', '*{}_{}*'.format(self.TCString, run)))]
+        dut_nr = f'_{self.DUT.Number}' if hasattr(self, 'DUT') else ''
+        rp_files = glob(join(self.PickleDir, '*', f'*{self.TCString}_{self.RunPlan}{dut_nr}*')) if hasattr(self, 'RunPlan') else []
+        return rp_files + [f for run in runs for f in glob(join(self.PickleDir, '*' if all_ else self.PickleSubDir, f'*{self.TCString}_{run}{dut_nr}*'))]
 
     def remove_metadata(self, all_subdirs=False):
         for f in self.get_meta_files(all_subdirs):
             remove_file(f)
+
+    def remove_tc_metadata(self):
+        files = glob(join(self.PickleDir, '*', f'*{self.TCString}*'))
+        info(f'removing {len(files)} meta files with a total size of {make_byte_string(sum(getsize(f) for f in files))}')
+        for f in glob(join(self.PickleDir, '*', f'*{self.TCString}*')):
+            remove_file(f, prnt=False)
 
     def get_metadata_size(self, all_subdirs=True):
         info('total size of metadata: {}'.format(make_byte_string(sum(getsize(f) for f in self.get_meta_files(all_subdirs)))))

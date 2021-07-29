@@ -25,7 +25,7 @@ class Telescope(SubAnalysis):
     def verify_mask(self):
         """ verify that the mask file is in the right order. """
         run_mask, pl_mask = self.Run.load_mask(), [self.find_mask(i) for i in [1, 2]]
-        warning(f'mask file of run {self.Run.Number} does not agree with found mask!! {run_mask} != {pl_mask}', prnt=run_mask != pl_mask)
+        warning(f'mask file of run {self.Run.Number} does not agree with found mask!! {run_mask} != {pl_mask}', prnt=run_mask != pl_mask and run_mask is not None)
         return run_mask == pl_mask
 
     # ----------------------------------------
@@ -58,8 +58,11 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    def get_flux(self, plane=None, corr=True, use_eff=True, show=False, full_size=False, redo=False):
-        flux = self.calculate_flux(plane, use_eff, show, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+    def get_flux(self, plane=None, corr=True, use_eff=True, full_size=False, redo=False):
+        flux = self.calculate_flux(plane, use_eff, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+        if flux == 0:
+            warning('Could not determine flux from TU rates ...')
+            flux = self.Run.get_flux(plane, use_eff)
         return flux * (self.get_flux_scale(full_size, redo=redo) if corr else ufloat(1, .1))
 
     def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
@@ -83,14 +86,15 @@ class Telescope(SubAnalysis):
     def get_flux_scale(self, full_size=False, redo=False):
         return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size), dut=self.Ana.DUT.Number), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
 
+    @save_pickle('Mask', suf_args='all')
+    def find_mask_(self, plane=1, _redo=False):
+        self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', dtype='u1', nentries=50000)))
+        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000, dtype='u2')
+        histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
+        return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
+
     def find_mask(self, plane=None, redo=False):
-        def f():
-            x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000)
-            histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
-            return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
-        if plane is None:
-            return [self.find_mask(pl, redo) for pl in [1, 2]]
-        return do_pickle(self.make_simple_pickle_path('Mask', plane), f, redo=redo)
+        return [self.find_mask_(pl, _redo=redo) for pl in [1, 2]] if plane is None else self.find_mask_(plane, _redo=redo)
 
     def get_area(self, plane=1):
         x0, y0, x1, y1 = self.find_mask(plane)
@@ -99,16 +103,18 @@ class Telescope(SubAnalysis):
     def get_areas(self):
         return [self.get_area(pl) for pl in [1, 2]]
 
-    def calculate_flux(self, plane=None, corr=True, show=False, redo=False):
-        def f():
-            rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
-            rates = rates[rates < 1e9]
-            fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=show, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
-            rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
-            return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
-        if plane is None:
-            return mean([self.calculate_flux(pl, corr, show, redo) for pl in [1, 2]])
-        return do_pickle(self.make_simple_pickle_path(f'Flux{plane}', int(corr)), f, redo=redo or show)
+    @save_pickle('Flux', suf_args='[0, 1]')
+    def calculate_flux_(self, plane, corr, _redo=False):
+        rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
+        if rates.size < 3:
+            return ufloat(0, 0)
+        rates = rates[rates < 1e9]
+        fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=False, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
+        rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
+        return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
+
+    def calculate_flux(self, plane=None, corr=True, redo=False):
+        return mean([self.calculate_flux(pl, corr, redo) for pl in [1, 2]]) if plane is None else self.calculate_flux_(plane, corr, _redo=redo)
     # endregion FLUX
     # ----------------------------------------
 

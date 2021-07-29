@@ -1,5 +1,5 @@
-from utils import *
-from cut import Cut, CutString, loads, invert, TCut, linspace
+from helpers.utils import *
+from src.cut import Cut, CutString, loads, TCut, linspace
 
 
 class CutPix(Cut):
@@ -9,12 +9,11 @@ class CutPix(Cut):
 
         self.DUT = analysis.DUT
         self.DUTPlane = self.DUT.Number + 3
-
-        self.Bins = self.Analysis.Bins
+        self.Bins = self.Ana.Bins
 
         self.update_config()
         self.generate_dut()
-        self.ConsecutiveCuts = self.generate_consecutive()
+        self.ConsecutiveCuts = self.get_consecutive()
 
     @classmethod
     def from_parent(cls, parent):

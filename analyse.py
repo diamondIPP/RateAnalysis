@@ -12,10 +12,10 @@ def analysis_selector(run, dut, tc, tree, verbose=False, prnt=True):
     from src.run import Run
     dummy = Run(int(run), tc, load_tree=False)
     if dummy.get_type() == 'pad':
-        from src.pad_analysis import PadAnalysis
+        from pad.analysis import PadAnalysis
         return PadAnalysis(int(run), dut, tc, tree, verbose, prnt)
     elif dummy.get_type() == 'pixel':
-        from src.pix_analysis import PixAnalysis
+        from pixel.analysis import PixAnalysis
         return PixAnalysis(int(run), dut, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
@@ -25,13 +25,13 @@ def collection_selector(name, dut, tc, tree, verbose=False):
     from src.run_selection import RunPlan, RunSelection
     dummy = RunPlan(name, tc, dut, verbose) if isfloat(name) else RunSelection(name, verbose)
     if dummy.DUTType == 'pad':
-        from src.pad_collection import PadCollection
+        from pad.collection import PadCollection
         if 'voltage' in dummy.Type:
             from src.voltage_scan import make_volage_scan
             return make_volage_scan(PadCollection)(name, dut, tc, tree, verbose)
         return PadCollection(name, dut, tc, tree, verbose)
     elif dummy.DUTType == 'pixel':
-        from src.pix_collection import PixCollection
+        from pixel.collection import PixCollection
         if 'voltage' in dummy.Type:
             from src.voltage_scan import make_volage_scan
             return make_volage_scan(PixCollection)(name, dut, tc, tree, verbose)

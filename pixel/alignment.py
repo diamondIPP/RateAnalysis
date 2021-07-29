@@ -132,14 +132,14 @@ class PixAlignment(EventAligment):
         x, y = self.correlate_all(offset, n, start)
         return (x < self.Threshold) | (y < self.Threshold)
 
-    def fill_branches(self, offset):
+    def fill_branches(self, ev, offset):
         if not offset:
-            event = self.Variables[self.AtEntry]
+            event = self.Variables[ev]
         else:
             tel_offset = abs(offset) if offset < 0 else 0
             dut_offset = offset if offset > 0 else 0
             # select the according events
-            tel_event, dut_event = self.Variables[self.AtEntry + tel_offset], self.Variables[self.AtEntry + dut_offset]
+            tel_event, dut_event = self.Variables[ev + tel_offset], self.Variables[ev + dut_offset]
             # merge the right parts of the events
             event = concatenate((tel_event[:, tel_event[0] < self.NDutPlanes], dut_event[:, dut_event[0] >= self.NDutPlanes]), axis=1)
         for i, name in enumerate(self.Branches.keys()):
@@ -154,10 +154,9 @@ class PixAlignment(EventAligment):
 
 if __name__ == '__main__':
 
-    from src.pix_run import PixelRun
+    from pixel.run import PixelRun
     from src.converter import Converter
 
     pargs = init_argparser(run=147, tc='201810')
-    # pargs = init_argparser(run=138)
     zrun = PixelRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = PixAlignment(Converter(zrun))

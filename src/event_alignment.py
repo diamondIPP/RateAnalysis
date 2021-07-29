@@ -6,7 +6,7 @@
 from ROOT import TFile
 from helpers.utils import *
 from helpers.draw import set_root_output
-from numpy import sign, invert
+from numpy import sign, invert, ones
 
 MAX_SIZE = 255
 
@@ -33,6 +33,7 @@ class EventAligment(object):
         self.NEntries = int(self.InTree.GetEntries())
         self.InTree.SetEstimate(self.NEntries)
         self.IsAligned = self.check_alignment()
+        self.Aligned = ones(self.NEntries, dtype='?')
         self.Offsets = {}
         self.FirstOffset = 0
         self.FinalOffset = 0
@@ -113,7 +114,6 @@ class EventAligment(object):
 
     # ----------------------------------------
     # region OFFSETS
-
     def find_first_offset(self):
         return 0
 
@@ -128,6 +128,8 @@ class EventAligment(object):
     def find_offsets(self, off, delta=1):
         return
 
+    def set_aligned(self, bin_size=None):
+        return
     # endregion OFFSETS
     # ----------------------------------------
 
@@ -142,12 +144,13 @@ class EventAligment(object):
         self.NewFile.Write()
         self.Run.info('successfully aligned the tree and saved it to {}'.format(self.NewFile.GetName()))
 
-    def fill_branches(self, ev):
+    def fill_branches(self, ev, offset):
         pass
 
     def write_aligned_tree(self):
         set_root_output(False)
         self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
+        self.set_aligned()
         for name in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
@@ -162,7 +165,7 @@ class EventAligment(object):
                 offset = self.Offsets[ev]
             if ev > self.NEntries - abs(offset) - 1:
                 break
-            self.fill_branches(ev + offset)
+            self.fill_branches(ev, offset)
             self.NewTree.Fill()
         self.PBar.finish()
         self.save_tree()
@@ -172,10 +175,10 @@ class EventAligment(object):
 
 if __name__ == '__main__':
 
-    from pad_run import PadRun
+    from src.run import Run
     from converter import Converter
 
     # examples: (201508-442, ...)
     pargs = init_argparser(run=442)
-    zrun = PadRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
+    zrun = Run(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = EventAligment(Converter(zrun))

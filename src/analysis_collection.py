@@ -102,6 +102,14 @@ class AnalysisCollection(Analysis):
             res = pool.starmap(f, [(ana, *args) for ana in self.Analyses])
         return res
 
+    def test_anas(self, f=None, *args, **kwargs):
+        for ana in self.Analyses:
+            try:
+                getattr(ana, choose(f, 'save_data'))(*args, **kwargs)
+                print(ana)
+            except Exception as err:
+                warning(f'{ana}, {err}')
+
     # ----------------------------------------
     # region INIT
     def print_start_info(self):
@@ -170,7 +178,7 @@ class AnalysisCollection(Analysis):
         return self.Currents.Name
 
     def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=None, rel=False, redo=False):
-        picklepath = self.get_pickle_path(f'Flux{choose(plane, 1)}', '1', 'Telescope', dut='')
+        picklepath = self.get_pickle_path(f'Flux', f'{choose(plane, 1)}_1', 'Telescope', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
         values = self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr, full_size=full_size, redo=redo)
         return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
@@ -184,12 +192,15 @@ class AnalysisCollection(Analysis):
 
     def draw_flux_splits(self, corr=True, **kwargs):
         x = sort([flux.n for flux in self.get_fluxes(corr=corr)])
-        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True)))
-        bins = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
-        format_statbox(h, entries=True, w=.2)
-        split_bins = histogram(x, concatenate(([0], [[ibin / 10 ** .1, ibin * 10 ** .1] for ibin in bins], [1e5]), axis=None))[0]
-        self.Draw.save_plots('FluxSplits', **kwargs)
+        stats = set_statbox(entries=True, w=.2)
+        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True), filename='FluxSplits', stats=stats))
+        split_bins = histogram(x, self.find_flux_binning(h))[0]
         return cumsum(split_bins[where(split_bins > 0)])[:-1]
+
+    def find_flux_binning(self, h, width=.1):
+        maxima = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
+        bins = [0] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
+        return bins if all(diff(bins) > 0) else self.find_flux_binning(h, width - .01)
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes

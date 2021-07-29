@@ -2,7 +2,7 @@
 #       PULSER ANALYSIS
 # created on June 16th 2016 by M. Reichmann
 # --------------------------------------------------------
-from src.waveform import Waveform
+from pad.waveform import Waveform
 from src.sub_analysis import PadSubAnalysis
 from helpers.save_plots import *
 
@@ -12,7 +12,7 @@ class PulserAnalysis(PadSubAnalysis):
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Pulser')
         self.Cut = self.Ana.Cut.get_pulser()
-        self.Polarity = self.Ana.PulserPolarity
+        self.Polarity = self.load_polarity()
         self.SignalName = self.get_signal_name()
         self.SignalRegion = array(self.Run.IntegralRegions[self.Ana.DUT.Number - 1]['pulser']) * self.Ana.DigitiserBinWidth
         self.PedestalName = self.load_pedestal_name()
@@ -30,6 +30,9 @@ class PulserAnalysis(PadSubAnalysis):
     def load_pedestal_name(self, peak_int=None):
         region = self.Config.get_value('BASIC', 'pulser pedestal', default='ac')
         return self.Ana.get_pedestal_name(region, self.Ana.PeakIntegral if None else peak_int)
+
+    def load_polarity(self):
+        return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.Channel])
     # endregion INIT
     # ----------------------------------------
 
@@ -70,10 +73,10 @@ class PulserAnalysis(PadSubAnalysis):
     def get_t_bins(self, bin_size=None):
         return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
-    def get_pulse_height(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+    def get_pulse_height(self, corr=True, beam_on=True, bin_width=None, redo=False):
         return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[1]
 
-    def get_sigma(self, corr=True, beam_on=True, bin_width=.2, redo=False):
+    def get_sigma(self, corr=True, beam_on=True, bin_width=None, redo=False):
         return self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)[2]
 
     def get_pedestal(self, par=1, beam_on=True, redo=False):
@@ -103,10 +106,9 @@ class PulserAnalysis(PadSubAnalysis):
     def get_peak_time(self, sigma=False):
         return mean_sigma(self.get_peak_times())[sigma]
 
-    def get_mean_sigma(self, cut=None, redo=False):
-        def f():
-            return fit_fwhm(self.Draw.distribution(self.get_values(cut), self.Ana.Bins.get_pad_ph(bin_width=.5), '', show=False))[1:]
-        return do_pickle(self.make_simple_pickle_path('MeanSigma', self.Cut(cut).GetName()), f, redo=redo)
+    @save_pickle('Meansigma', suf_args=0)
+    def get_mean_sigma(self, cut=None, _redo=False):
+        return fit_fwhm(self.Draw.distribution(self.get_values(cut), show=False))[1:]
 
     def get_fraction(self, show=False, prnt=True):
         """ :returns the fitted value of the fraction of pulser events with event range and beam interruptions cuts and its fit error. """
@@ -130,8 +132,10 @@ class PulserAnalysis(PadSubAnalysis):
     def get_short_name(self, signal=None):
         return self.get_all_signal_names()[choose(signal, self.SignalName)]
 
-    def get_signal_var(self, name=None, event_corr=False, off_corr=True, cut=None):
-        return self.Ana.get_signal_var(choose(name, self.SignalName), event_corr, off_corr, self.Cut(cut), sig_type='pulser')
+    def get_signal_var(self, name=None, ped_corr=True, cut=None):
+        ped = self.Pedestal.get_mean(cut=self.Cut(cut)).n if ped_corr else None
+        sig_name = choose(name, self.SignalName)
+        return f'{self.Polarity} * {sig_name if ped is None else f"({sig_name} - {ped})"}'
     # endregion GET
     # ----------------------------------------
 
@@ -161,13 +165,15 @@ class PulserAnalysis(PadSubAnalysis):
         return g, fit
 
     @save_pickle('Disto', suf_args='all')
-    def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, _redo=False):
+    def get_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, _redo=False):
         cut = self.Ana.Cut.get_pulser(beam_on=beam_on)()
-        x = self.Run.get_tree_vec(var=self.get_signal_var(name, event_corr=False, off_corr=corr, cut=cut), cut=cut)
+        x, (m, s) = self.get_tree_vec(self.get_signal_var(name, corr, cut), cut), self.Pedestal()
+        if mean(x) > m + 3 * s:
+            x = x[x > m + 2 * s]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
-        return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, bin_width), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
+        return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 
-    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):
+    def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, redo=False, **kwargs):
         """ Shows the distribution of the pulser integrals. """
         h = self.get_distribution(name, corr, beam_on, bin_width, _redo=redo)
         rx = ax_range(h=h, thresh=h.GetMaximum() * .02, fl=.3, fh=.6)
@@ -175,15 +181,17 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_fit_range(self, h, lsig=3, rsig=.5):
         f0, same_polarity = fit_fwhm(h), self.Polarity == self.Ana.Polarity
+        if f0.get_chi2() > 50:
+            return get_fwhm(h, ret_edges=True, err=False)
         return uarr2n([f0[1] + i * f0[2] for i in ([-lsig, rsig] if same_polarity else [-rsig, lsig])])  # fit left tail if same pol and right tail otherwise
 
     @save_pickle('Fit', suf_args='all')
-    def get_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, _redo=False):
+    def get_distribution_fit(self, corr=True, beam_on=True, bin_width=None, _redo=False):
         h = self.get_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, _redo=_redo)
         fit = FitRes(h.Fit('gaus', 'qs0', '', *self.get_fit_range(h)))
         return fit
 
-    def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=.2, redo=False, **kwargs):
+    def draw_distribution_fit(self, corr=True, beam_on=True, bin_width=None, redo=False, **kwargs):
         fit = self.get_distribution_fit(corr, beam_on, bin_width, _redo=redo)
         h = self.draw_distribution(corr=corr, beam_on=beam_on, bin_width=bin_width, redo=redo, **kwargs)
         f = self.Draw.function(Draw.make_f('gp0', 'gaus', 0, 500, pars=fit.Pars, npx=100, line_style=7), draw_opt='same')

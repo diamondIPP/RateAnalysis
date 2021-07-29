@@ -1,14 +1,14 @@
 from ROOT import gRandom, TCut
 from numpy import insert, sum, round, in1d, max, unravel_index, argmax
 
-from src.pedestal import PedestalAnalysis
-from src.timing import TimingAnalysis
+from pad.pedestal import PedestalAnalysis
+from pad.timing import TimingAnalysis
 from src.dut_analysis import *
-from src.pad_cut import PadCut
-from src.pad_run import PadRun
-from src.peaks import PeakAnalysis
-from src.pulser import PulserAnalysis
-from src.waveform import Waveform
+from pad.cut import PadCut
+from pad.run import PadRun
+from pad.peaks import PeakAnalysis
+from pad.pulser import PulserAnalysis
+from pad.waveform import Waveform
 from src.mc_signal import MCSignal
 
 
@@ -19,13 +19,10 @@ class PadAnalysis(DUTAnalysis):
 
         # MAIN
         self.Channel = self.get_channel()
-        self.DigitiserBinWidth = .5 if self.Run.Digitiser == 'drs4' else .4
+        self.DigitiserBinWidth = self.Run.DigitiserBinWidth
 
         if self.Tree.Hash():
-            # Polarities
             self.Polarity = self.get_polarity()
-            self.PulserPolarity = self.get_polarity(pulser=True)
-
             # Regions & Ranges
             self.SignalRegionName = self.load_region_name()
             self.SignalRegion = self.get_region()
@@ -54,12 +51,6 @@ class PadAnalysis(DUTAnalysis):
     @staticmethod
     def get_info_header():
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
-
-    def make_all(self, redo=False):
-        self.draw_signal_distribution(redo=redo, show=False)
-        self.draw_pulse_height(redo=redo, show=False)
-        self.draw_signal_map(redo=redo, show=False)
-        self.draw_hitmap(redo=redo, show=False)
 
     @quiet
     def save_plots(self):
@@ -159,18 +150,16 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
-    def get_polarity(self, pulser=False):
-        return int(self.Run.TreeConfig.get('General', '{}polarities'.format('pulser ' if pulser else '')).split()[self.get_channel()])
+    def get_polarity(self):
+        return int(self.Run.TreeConfig.get('General', 'polarities').split()[self.get_channel()])
 
     def get_channel(self):
         return self.Run.Channels[self.DUT.Number - 1]
 
     def get_signal_var(self, signal=None, evnt_corr=True, off_corr=False, cut=None, region=None, peak_int=None, sig_type='signal', t_corr=True):
         sig_name = choose(signal, self.get_signal_name(region, peak_int, sig_type, t_corr))
-        pol = self.get_polarity('pulser' in sig_type)
-        if not any([off_corr, evnt_corr]):
-            return f'{pol} * {sig_name}'
-        return f'{pol} * ({sig_name} - {self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name()})'
+        ped = self.Pedestal.get_mean(cut=cut, raw=True).n if off_corr else self.get_pedestal_name() if evnt_corr else None
+        return f'{self.get_polarity()} * {sig_name if ped is None else f"({sig_name} - {ped})"}'
 
     def get_raw_signal_var(self, region=None, peak_int=None, sig_type='signal'):
         return self.get_signal_var(None, False, False, None, region, peak_int, sig_type)
@@ -223,7 +212,7 @@ class PadAnalysis(DUTAnalysis):
         ph = choose(ph, self._get_pulse_height, cut=self.Cut.get_tp())
         if (not self.Cut.has('bucket') or self.Cut(cut).GetName() == 'tp') and corr and not self.Cut(cut).GetName() == 'bful':
             r = self.estimate_bucket_ratio() / 100  # % -> value
-            return (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
+            return ph if r == 0 else (ph - r * self.Pedestal.get_under_signal()[0]) / (1 - r)
         return ph
 
     def get_min_signal(self, name=None):
@@ -234,9 +223,9 @@ class PadAnalysis(DUTAnalysis):
         xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
         return Bins.make(xmin, xmax, choose(bin_size, default=self.DigitiserBinWidth))
 
-    def get_alignment(self, bin_size=200, thresh=2):
-        x, y = get_graph_vecs(self.Pulser.draw_hit_efficiency(bin_size, show=False), err=False)
-        return x, y > thresh
+    def get_alignment(self, bin_size=1000):
+        from src.pad_alignment import PadAlignment
+        return PadAlignment(self.Run.Converter).get_aligned(bin_size=bin_size)
 
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
@@ -493,8 +482,8 @@ class PadAnalysis(DUTAnalysis):
         """ return fraction of bucket events with no signal in the signal region. """
         default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
         c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else default)
-        n = self.get_n_entries(c)
-        n_bucket = n - self.get_n_entries(c + self.Cut['bucket'])
+        n = self.get_n_entries(c, _redo=_redo)
+        n_bucket = n - self.get_n_entries(self.Cut['bucket'] + c, _redo=_redo)
         return ufloat(n_bucket, sqrt(n_bucket)) / n
 
     @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
@@ -514,7 +503,8 @@ class PadAnalysis(DUTAnalysis):
 
     def estimate_bucket_ratio(self):
         if not self.Run.Config.has_option('BASIC', 'bucket scale') and not self.Run.Config.has_option('BASIC', 'bucket tpr'):
-            critical('bucket parameters not defined!')
+            warning('bucket parameters not defined -> applying no correction!')
+            return 0
         return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
 
     def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, use_wf_int=False, redo=False, **kwargs):

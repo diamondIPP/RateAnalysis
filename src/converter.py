@@ -1,12 +1,12 @@
 from glob import glob
-from os import getcwd, chdir, rename, system
+from os import getcwd, chdir, rename
 from os.path import expanduser, basename
 from re import sub
-from subprocess import check_call
+from subprocess import check_call, check_output
 from numpy import genfromtxt
 
-from src.pad_alignment import PadAlignment
-from src.pix_alignment import *
+from pad.alignment import PadAlignment
+from pixel.alignment import *
 
 
 class Converter(object):
@@ -209,11 +209,9 @@ class Converter(object):
         polarities = [sign(biases.pop(0)) * fac if has_bit(active_regions, i) else 0 for i in range(self.NChannels)]
         return str([(1 if not pol and has_bit(active_regions, i) else pol) for i, pol in enumerate(polarities)])  # pol cannot be 0, just take 1 for 0V
 
-    def copy_raw_file(self, redo=False, raw_dir='raw'):
-        if not file_exists(self.RawFilePath) or redo:
-            main_data_path = join('isg:', 'home', 'ipp', basename(self.TCDir), raw_dir, basename(self.RawFilePath))
-            self.Run.info('Trying to copy {}'.format(basename(self.RawFilePath)))
-            system('rsync -aPv {} {}'.format(main_data_path, self.RawFileDir))
+    def copy_raw_file(self, raw_dir='raw'):
+        main_data_path = join('isg:', 'home', 'ipp', basename(self.TCDir), raw_dir, basename(self.RawFilePath))
+        return check_output(f'rsync -aPv {main_data_path} {self.RawFileDir}'.split())
 
     def remove_raw_file(self):
         remove_file(self.RawFilePath)

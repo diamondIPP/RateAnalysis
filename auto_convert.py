@@ -31,13 +31,16 @@ class AutoConvert:
         self.Runs = self.load_runs()
 
     def find_last_converted(self):
-        converted = [int(remove_letters(basename(name))) for name in glob(join(self.Selection.Run.TCDir, 'root', '*', 'TrackedRun*.root'))]
-        return max(converted) if len(converted) else None
+        rdir = 'pads' if self.Type == 'pad' else 'pixel' if self.Type == 'pixel' else '*'
+        converted = [int(remove_letters(basename(name))) for name in glob(join(self.Selection.Run.TCDir, 'root', rdir, 'TrackedRun*.root'))]
+        return max(converted) if converted else self.get_all_runs()[0]
+
+    def get_all_runs(self):
+        all_runs = self.Selection.get_runplan_runs()
+        return [r for r in all_runs if self.Selection.get_type(r) == self.Type] if self.Type is not None else all_runs
 
     def load_runs(self):
-        all_runs = self.Selection.get_runplan_runs()
-        runs = [r for r in all_runs if self.Selection.get_type(r) == self.Type] if self.Type is not None else all_runs
-        runs = array([r for r in runs if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
+        runs = array([r for r in self.get_all_runs() if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
         return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
 
     def load_logged_runs(self):

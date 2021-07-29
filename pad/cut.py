@@ -52,6 +52,9 @@ class PadCut(Cut):
 
     def get_ped_sigma(self, sigma=None):
         return choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
+
+    def get_align_var(self):
+        return 'aligned'
     # endregion GET
     # ----------------------------------------
 
@@ -74,14 +77,15 @@ class PadCut(Cut):
         self.CutStrings.register(self.generate_fiducial(), 23)
 
         # --BUCKET --
-        if self.get_raw_snr() > 5:
+        if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
             self.CutStrings.register(self.generate_bucket(), 91)
-            self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+            if not self.Run.is_volt_scan() or self.Ana.DUT.Bias < 10:
+                self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
         else:
             self.CutStrings.register(self.generate_trigger_phase(), 91)
 
         # --SIGNAL DROPS--
-        self.update('event range', self.generate_event_range(None, self.find_zero_ph_event()).Value)  # update event range if drop is found
+        self.update('event range', self.generate_event_range(None, self.find_signal_drops()).Value)  # update event range if drop is found
 
     def generate_saturated(self):
         cut_string = '!is_saturated[{ch}]'.format(ch=self.Channel)
@@ -103,15 +107,16 @@ class PadCut(Cut):
 
     def generate_pedestal_bucket(self):
         """exclude events with a peak in bucket -1 (the pre-pedstal bucket)"""
-        return CutString('ped bucket', f'!ped_bucket[{self.DUT.Number - 1}]', 'pedestal bucket events')
+        wide_range = diff(self.Ana.get_region())[0] * self.Run.DigitiserBinWidth > 1.5 * self.BunchSpacing
+        return CutString() if wide_range else CutString('ped bucket', f'!ped_bucket[{self.DUT.Number - 1}]', 'pedestal bucket events')
 
     def generate_bucket(self):
         """exclude events with a peak in bucket 2 and no peak in the signal region"""
         return CutString('bucket', f'!bucket[{self.DUT.Number - 1}]', 'bucket events')
 
     def generate_b2(self, n_sigma):
-        fit, b1, b2, noise = self.get_b2_fit(), self.Ana.get_raw_signal_var(), self.Ana.get_b2_var(), self.calc_pedestal(n_sigma)[1]
-        string = f'{b2} < {fit[0].n} + {fit[1].n} * {b1} +  {fit[2].n} * pow({b1}, 2) + {noise}'
+        fit, b1, b2, noise = self.get_b2_fit(), self.Ana.get_raw_signal_var(), self.Ana.get_b2_var(), self.calc_pedestal_()[1] * n_sigma
+        string = f'{b2} < {fit[0].n} + {fit[1].n} * {b1} + {fit[2].n} * pow({b1}, 2) + {noise}'
         descr = f'signals above 3 sigma in bucket 2 with pedestal shape {fit[0].n:.2f} + {fit[1].n:.2f} * x + {fit[2].n:.4f} * x²'
         return CutString('bucket2', string, descr)
 
@@ -160,13 +165,13 @@ class PadCut(Cut):
         Draw.box(*array([x[0], y[0], x[1], y[1]]) * 10, show=show, width=2)
         return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
 
-    def find_beam_interruptions(self, bin_width=100, max_thresh=.6):
+    def find_beam_interruptions(self, bin_width=100, thresh=.2):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         t = self.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         x, y = self.get_tree_vec(var=['Entry$', 'pulser'], dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
-        thresh = min(max_thresh, mean(rates) + .2)
+        thresh = min(1, mean(rates) + thresh)
         events = x_bins[:-1][rates > thresh] + bin_width / 2
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
@@ -174,20 +179,15 @@ class PadCut(Cut):
         self.add_to_info(t)
         return array(interruptions, 'i4')
 
-    def get_b2_fit(self, redo=False):
+    @save_pickle('B2Fit', print_dur=True, low_rate=True)
+    @low_rate
+    def get_b2_fit(self, _redo=False):
         """ fit the b2/b1 profile of the lowest rate run with pol2 """
-        def f():
-            if not self.Run.get_low_rate_run() == self.Run.Number:
-                from src.pad_analysis import PadAnalysis
-                return PadAnalysis(self.Run.get_low_rate_run(), self.DUT.Number, self.TCString, prnt=False).Cut.get_b2_fit(redo)
-            t = self.info(f'generating bucket cut for {self.Run} and {self.DUT}', endl=False)
-            h = self.Ana.draw_bucket_profile(self(), show=False)
-            xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
-            fit, ped = FitRes(h.Fit('pol2', 'qs', '', 10, xmax)), self.calc_pedestal(1)
-            fit.Pars[0] -= self.Ana.get_polarity() * sum(ped) / 2  # subtract baseline
-            self.add_to_info(t)
-            return fit
-        return do_pickle(self.make_simple_pickle_path('B2Fit', run=self.Run.get_low_rate_run()), f, redo=redo)
+        h = self.Ana.draw_bucket_profile(self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False), show=False)
+        xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
+        fit = FitRes(h.Fit('pol2', 'qs', '', 10, xmax))
+        # fit.Pars[0] -= self.Ana.get_polarity() * self.calc_pedestal_[0]  # subtract baseline -> THIS IS WRONG!
+        return fit
 
     @save_pickle('TP', print_dur=True, high_rate=True)
     @high_rate
@@ -198,14 +198,14 @@ class PadCut(Cut):
     def get_trigger_phases(self, n=1):
         return (arange(2 * n + 1) - 1 + self.get_trigger_phase()) % 10  # select also the [n] trigger phases around the MPV
 
-    def calc_pedestal(self, n_sigma):
-        def f():
-            t = self.Ana.info('generating pedestal cut for {dia} of run {run} ...'.format(run=self.Run.Number, dia=self.DUT.Name), endl=False)
-            h0 = self.Draw.distribution(self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self()), Bins.make(-100, 100, .5), show=False)
-            fit = fit_fwhm(h0, show=False)
-            self.Ana.add_to_info(t)
-            return fit.Parameter(1), fit.Parameter(2)
-        m, s = do_pickle(self.make_simple_pickle_path('Pedestal'), f)
+    @save_pickle('Pedestal', print_dur=True)
+    def calc_pedestal_(self, _redo=False):
+        x = self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self())
+        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=False)
+        return fit_fwhm(h0, show=False).get_pars(err=False)[1:]
+
+    def calc_pedestal(self, n_sigma, redo=False):
+        m, s = self.calc_pedestal_(_redo=redo)
         return [m - n_sigma * s, m + n_sigma * s]
 
     def calc_threshold(self, redo=False, show=True):
@@ -267,7 +267,7 @@ class PadCut(Cut):
 
     def draw_cut_vars(self, normalise=False, consecutive=False):
         values = [self.Ana.get_ph_values(cut=(self.generate_threshold() + cut).Value) for cut in (self.get_consecutive().values() if consecutive else self.get_strings(with_raw=True))]
-        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, Bins.get_pad_ph(mean_ph=mean(lst)), show=False))] for lst in values])
+        v = array([[mean_sigma(lst)[0], quantile(lst, .5), get_fw_center(self.Draw.distribution(lst, Bins.get_pad_ph(), show=False))] for lst in values])
         if normalise:
             v = v / mean(v, axis=0) + arange(3) / 100
         names = self.get_names(with_raw=True)

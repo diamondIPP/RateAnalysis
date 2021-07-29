@@ -604,10 +604,8 @@ class Draw(object):
 
     @staticmethod
     def make_graph_from_profile(p):
-        x_range = [i for i in range(p.GetNbinsX()) if p.GetBinContent(i)]
-        x = [ufloat(p.GetBinCenter(i), p.GetBinWidth(i) / 2) for i in x_range]
-        y = [ufloat(p.GetBinContent(i), p.GetBinError(i)) for i in x_range]
-        return Draw.make_tgrapherrors(x, y, x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
+        x, y = get_hist_vecs(p)
+        return Draw.make_tgrapherrors(x[y != 0], y[y != 0], x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
     def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, d=.01, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False, bottom=False, left=False):
@@ -652,7 +650,7 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
         set_root_output(True)
     do(h.SetTitle, title)
     do(h.SetName, name)
-    do(set_palette, pal)
+    set_palette(*make_list(pal) if pal is not None else [])
     if normalise is not None:
         y_tit = 'Frequency' if 'Number' in choose(y_tit, h.GetYaxis().GetTitle()) else choose(y_tit, h.GetYaxis().GetTitle())
         normalise_histo(h)
@@ -978,8 +976,8 @@ def markers(i):
     return ((list(range(20, 24)) + [29, 33, 34]) * 2)[i]
 
 
-def set_palette(pal):
-    gStyle.SetPalette(pal)
+def set_palette(*pal):
+    gStyle.SetPalette(*pal) if pal else do_nothing()
 
 
 def is_graph(h):
@@ -1020,7 +1018,7 @@ def show_line_styles():
 def ax_range(low=None, high=None, fl=0, fh=0, h=None, rnd=False, thresh=None):
     if type(low) in [list, ndarray]:
         utypes = [Variable, AffineScalarFunc]
-        if len(low) == 2:
+        if len(low) == 2 and not is_ufloat(low[0]):
             return ax_range(low[0], low[1], fl, fh)
         m, s = mean_sigma(low, err=0)
         v = low[absolute(low - m) < thresh * s] if thresh is not None else low
@@ -1063,11 +1061,12 @@ def normalise_bins(h):
     update_canvas()
 
 
-def make_bins(min_val, max_val=None, bin_width=1, last=False, n=None, off=0):
+def make_bins(min_val, max_val=None, bin_width=1, last=None, n=None, off=0):
     bins = array(min_val, 'd')
     if type(min_val) not in [ndarray, list]:
         min_val, max_val = choose(min_val, 0, decider=max_val), choose(max_val, min_val)
-        bins = append(arange(min_val, max_val, bin_width, dtype='d'), max_val if last else []) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
+        last = [] if last is None else max_val if last == 1 else last
+        bins = append(arange(min_val, max_val, bin_width, dtype='d'), last) if n is None else linspace(min_val, max_val, int(n) + 1, endpoint=True)
     return [bins.size - 1, bins + off]
 
 
@@ -1133,11 +1132,11 @@ def get_fw_center(h):
 
 def get_fwhm(h, fit_range=.8, ret_edges=False, err=True):
     x, y = [f(get_hist_vec(h, err=False)) for f in [argsort, sorted]]
-    x, ymax = (x[-1] + 1, y[-1]) if y[-1] < 1.5 * y[-2] else (x[-2] + 1, y[-2])
+    x, ymax = (x[-1] + 1, y[-1]) if y[-1] < 2 * y[-2] else (x[-2] + 1, y[-2])
     fit_range = [f(ymax * fit_range) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
     fit_range = fit_range if diff(fit_range)[0] > 5 else (x + array([-5, 5])).tolist()
     half_max = FitRes(h.Fit('gaus', 'qs0', '', *[h.GetBinCenter(i) for i in fit_range]))[0] * .5  # fit the top with a gaussian to get better maxvalue
-    half_max = ufloat(1, .05) * h.GetMaximum() if half_max > .9 * ymax else ufloat(1, .02) * half_max  # half max must be lower than max ...
+    half_max = ufloat(1, .05) * ymax / 2 if half_max > .9 * ymax else ufloat(1, .02) * half_max  # half max must be lower than max ...
     low, high = [ufloat(v.n, v.s + abs(v.n - i.n)) for v, i in zip(_get_fwhm(h, half_max), _get_fwhm(h, half_max - half_max.s))]
     return ((low, high) if err else (low.n, high.n)) if ret_edges else high - low
 

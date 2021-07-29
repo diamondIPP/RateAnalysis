@@ -104,6 +104,9 @@ class Run(Analysis):
     def set_estimate(self, n=None):
         self.Tree.SetEstimate(choose(n, self.NEvents))
 
+    def is_volt_scan(self):
+        return any(name in self.Info['runtype'] for name in ['voltage', 'hv'])
+
     # ----------------------------------------
     # region INIT
     def load_rootfile(self, prnt=True):
@@ -225,13 +228,14 @@ class Run(Analysis):
 
     def load_mask(self, plane=None):
         mask_file = self.load_mask_file_path()
-        if basename(mask_file) in ['no mask', 'none', 'none!', ''] or self.Number is None:
+        if basename(mask_file).lower() in ['no mask', 'none', 'none!', ''] or self.Number is None:
             return
         try:
             data = genfromtxt(mask_file, [('id', 'U10'), ('pl', 'i'), ('x', 'i'), ('y', 'i')])
             if 'cornBot' not in data['id']:
                 warning('Invalid mask file: "{}". Not taking any mask!'.format(mask_file))
             mask = [[data[where((data['pl'] == pl) & (data['id'] == n))][0][i] for n in ['cornBot', 'cornTop'] for i in [2, 3]] for pl in sorted(set(data['pl']))]
+            mask = [[max(1, m[0]), max(1, m[1]), min(self.Plane.NCols - 2, m[2]), min(self.Plane.NRows - 2, m[3])] for m in mask]  # outer pixels are ignored
             return mask if plane is None else mask[plane - 1]
         except Exception as err:
             warning(err)
@@ -283,7 +287,7 @@ class Run(Analysis):
     def rootfile_is_valid(self, file_path=None):
         tfile = self.RootFile if file_path is None else TFile(file_path)
         ttree = self.Tree if file_path is None else tfile.Get(self.TreeName)
-        is_valid = not tfile.IsZombie() and tfile.ClassName() == 'TFile' and ttree.ClassName() == 'TTree'
+        is_valid = not tfile.IsZombie() and tfile.ClassName() == 'TFile' and ttree and ttree.ClassName() == 'TTree'
         if not is_valid:
             warning('Invalid TFile or TTree! Deleting file {}'.format(tfile.GetName()))
             remove_file(tfile.GetName())

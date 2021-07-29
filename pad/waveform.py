@@ -19,6 +19,7 @@ class Waveform(PadSubAnalysis):
         self.Count = 0
         self.StartEvent = self.Ana.StartEvent
         self.BinWidth = self.Ana.DigitiserBinWidth
+        self.Exists = self.has_branch(f'wf{self.Channel}')
 
     def __getitem__(self, item):
         return self.get_all()[item]

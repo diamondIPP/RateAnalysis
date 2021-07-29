@@ -9,7 +9,6 @@ from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stac
 from numpy.random import normal, rand
 from scipy.signal import find_peaks
 from scipy.stats import poisson
-from uncertainties import ufloat_fromstr
 from uncertainties.umath import log as ulog, sqrt as usqrt
 
 from helpers.fit import PoissonI, Gauss, Landau
@@ -25,15 +24,16 @@ class PeakAnalysis(PadSubAnalysis):
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
         self.WF = self.Ana.Waveform
-        self.NoiseThreshold = self.calc_noise_threshold()
-        self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
-        self.BinWidth = self.DigitiserBinWidth
-        self.BunchSpacing = self.Ana.BunchSpacing
-        self.NAdd = 3
-        self.StartAdditional = self.get_bunch_centre() + (self.NAdd - 1 - .5) * self.BunchSpacing  # half bunch before the centre of NAdd
-        self.NBunches = self.calc_n_bunches()
-        self.MaxBunch = self.NBunches + 2
-        self.Fit = TF1('lan', 'landau', 0, 512)
+        if self.WF.Exists:
+            self.NoiseThreshold = self.calc_noise_threshold()
+            self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
+            self.BinWidth = self.DigitiserBinWidth
+            self.BunchSpacing = self.Ana.BunchSpacing
+            self.NAdd = 3
+            self.StartAdditional = self.get_bunch_centre() + (self.NAdd - 1 - .5) * self.BunchSpacing  # half bunch before the centre of NAdd
+            self.NBunches = self.calc_n_bunches()
+            self.MaxBunch = self.NBunches + 2
+            self.Fit = TF1('lan', 'landau', 0, 512)
 
     # ----------------------------------------
     # region INIT

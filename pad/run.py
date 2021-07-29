@@ -26,6 +26,7 @@ class PadRun(Run):
         # Settings
         self.NChannels = self.load_pre_n_channels()
         self.Digitiser = self.Config.get('BASIC', 'digitizer').lower()
+        self.DigitiserBinWidth = .5 if self.Digitiser == 'drs4' else .4
         self.Channels = self.load_channels()
 
         if self.Tree.Hash():

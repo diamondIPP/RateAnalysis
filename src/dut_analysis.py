@@ -210,8 +210,8 @@ class DUTAnalysis(Analysis):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
-    def get_flux(self, plane=None, corr=True, full_size=False, show=False, redo=False):
-        return self.Tel.get_flux(plane, corr, True, show, full_size, redo)
+    def get_flux(self, plane=None, corr=True, full_size=False, redo=False):
+        return self.Tel.get_flux(plane, corr, True, full_size, redo)
 
     def get_ph_values(self, *args, **kwargs):
         """ :returns: all pulse height values for a given cut. [numpy.ndarray] """
@@ -223,7 +223,7 @@ class DUTAnalysis(Analysis):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
 
     def get_alignment(self, *args, **kwargs):
-        return array([0, 1]), array([False])
+        return array([False])
 
     def get_split_ph(self, m=2):
         return get_2d_hist_vec(self.split_signal_map(m, show=0)[0])
@@ -328,18 +328,14 @@ class DUTAnalysis(Analysis):
     # endregion SIZES
     # ----------------------------------------
 
-    def draw_alignment(self, bin_size=200, thresh=40, show=True):
+    def draw_alignment(self, bin_size=1000, thresh=40, **kwargs):
         """ draw the aligment of telescope and DUT events """
-        x, y = self.get_alignment(bin_size, thresh)
-        h = TH2F('h{}'.format(self.Draw.get_count), 'Event Alignment', *(Bins.make(x) + [3, 0, 3]))
-        for ibin, v in enumerate(y, 1):
-            h.SetBinContent(ibin, 2, int(v) + 1)
-        format_histo(h, x_tit='Event Number', y_tit='Alignment', stats=False, l_off_y=99, center_y=True)
-        gStyle.SetPalette(3, array([1, 633, 418], 'i'))
-        leg = Draw.make_legend(nentries=2, x2=.93, margin=.2)
-        leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=418, fillcolor=418, name='b1'), 'aligned', 'f')
-        leg.AddEntry(Draw.box(0, 0, 0, 0, line_color=633, fillcolor=633), 'misaligned', 'f')
-        self.Draw(h, filename='EventAlignment', draw_opt='col', rm=.06, leg=leg, show=show, prnt=show)
+        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_alignment(bin_size)
+        x, y = (bins[1][:-1] + diff(bins[1]))[:y.size].repeat(y + 1), full(sum(y + 1), 1)
+        h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
+                               draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03))
+        Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
+        self.Draw.save_plots('EventAlignment')
         return h
 
     def draw_ph_pull(self, *args, **kwargs):

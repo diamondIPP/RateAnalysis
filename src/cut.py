@@ -149,6 +149,9 @@ class Cut(SubAnalysis):
 
     def get_raw_pulse_height(self):
         return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
+
+    def get_align_var(self):
+        return ''
     # endregion GET
     # ----------------------------------------
 
@@ -170,6 +173,9 @@ class Cut(SubAnalysis):
 
     def update(self, name, value=None):
         self.CutStrings.set(name, value)
+
+    def remove(self, name):
+        self.CutStrings.remove(name)
 
     def set_chi2(self, value):
         self.update('chi2_x', self.generate_chi2('x', value).Value)
@@ -242,8 +248,10 @@ class Cut(SubAnalysis):
 
     def generate_aligned(self):
         """ Cut to exclude events with a wrong event alignment. """
+        if not self.has_branch('aligned') or self.Tree.GetBranch('aligned').ClassName() == 'TBranchElement':
+            return CutString()
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
-        return CutString('aligned', 'aligned[0]' if self.find_n_misaligned() else '', description)
+        return CutString('aligned', self.get_align_var() if self.find_n_misaligned() else '', description)
 
     def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
         x = choose(x, self.load_fiducial(fid_name)[0]) + (Plane.PX / 20 if center else 0)
@@ -282,26 +290,20 @@ class Cut(SubAnalysis):
     @save_pickle('Chi2', print_dur=True, suf_args=0)
     def calc_chi2_(self, mode='x', _redo=False):
         x = self.Ana.get_tree_vec(f'chi2_{mode}')
-        return quantile(x[x != -999], linspace(0, 1, 101))
+        return quantile(x[(x > -998) & (x < 100)], linspace(0, 1, 101))
 
     def calc_chi2(self, mode='x', q=None, redo=False):
         q = choose(q, self.get_chi2(mode))
         return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
 
-    def find_zero_ph_event(self, redo=False):
-        pickle_path = self.Ana.make_pickle_path('Cuts', 'EventMax', self.Run.Number, self.Ana.DUT.Number)
-
-        def f():
-            t0 = self.Ana.info('Looking for signal drops of run {} ...'.format(self.Run.Number), endl=False)
-            ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
-            time_bins, values = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
-            i_start = next(i for i, v in enumerate(values) if v) + 1  # find the index of the first bin that is not zero
-            ph = abs(mean(values[i_start:(values.size + 9 * i_start) // 10]))  # take the mean of the first 10% of the bins
-            i_break = next((i + i_start for i, v in enumerate(values[i_start:]) if abs(v) < .2 * ph and v), None)
-            self.Ana.add_to_info(t0)
-            return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(time_bins[i_break - 1])
-
-        return do_pickle(pickle_path, f, redo=redo)
+    @save_pickle('EventMax', print_dur=True)
+    def find_signal_drops(self, _redo=False):
+        ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
+        x, y = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
+        i_start = next(i for i, v in enumerate(y) if v) + 1  # find the index of the first bin that is not zero
+        ph = abs(mean(y[i_start:i_start + min(1, y.size // 10)]))  # take the mean of the first 10% of the bins
+        i_break = next((i + i_start for i, v in enumerate(y[i_start:]) if abs(v) < .2 * ph and v), None)
+        return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(x[i_break - 1])
 
     def find_beam_interruptions(self):
         return self.find_pixel_beam_interruptions()
@@ -332,13 +334,9 @@ class Cut(SubAnalysis):
             ranges.append([t_start, t_stop])
         return [[self.Run.get_event_at_time(t) for t in tup] for tup in ranges]
 
-    def find_n_misaligned(self):
-        pickle_path = self.Ana.make_pickle_path('Cuts', 'align', self.Run.Number)
-
-        def f():
-            return where(get_tree_vec(self.Ana.Tree, var='aligned[0]', dtype=bool) == 0)[0].size
-        return do_pickle(pickle_path, f)
-
+    @save_pickle('Align')
+    def find_n_misaligned(self, _redo=False):
+        return where(self.get_tree_vec(self.get_align_var(), dtype=bool) == 0)[0].size
     # endregion COMPUTE
     # ----------------------------------------
 
@@ -350,7 +348,7 @@ class Cut(SubAnalysis):
 
     @update_pbar
     def get_contribution(self, cut, n_previous=0):
-        return self.Run.NEvents - self.Ana.get_n_entries(cut) - n_previous
+        return self.Run.NEvents - self.Tree.GetEntries(self(cut).GetTitle()) - n_previous
 
     @save_pickle('Contribution')
     def get_contributions(self, _redo=False):
@@ -359,8 +357,8 @@ class Cut(SubAnalysis):
         n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
         return {name: i for name, i in zip(cuts, diff(n))}
 
-    def show_contributions(self):
-        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions().values()))) / self.Run.NEvents)
+    def show_contributions(self, redo=False):
+        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions(_redo=redo).values()))) / self.Run.NEvents)
         rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
         print_table(rows, header=['Cut', 'Events', 'Contr. [%]', 'Abs [%]'])
 
@@ -394,7 +392,7 @@ class Cut(SubAnalysis):
 
 class CutString:
 
-    def __init__(self, name, value, description='', level=1):
+    def __init__(self, name='', value='', description='', level=1):
         self.Name = name
         self.Value = Cut.to_string(value)
         self.Level = level
