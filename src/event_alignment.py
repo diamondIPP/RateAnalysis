@@ -114,7 +114,6 @@ class EventAligment(object):
 
     # ----------------------------------------
     # region OFFSETS
-
     def find_first_offset(self):
         return 0
 
@@ -145,7 +144,7 @@ class EventAligment(object):
         self.NewFile.Write()
         self.Run.info('successfully aligned the tree and saved it to {}'.format(self.NewFile.GetName()))
 
-    def fill_branches(self, ev):
+    def fill_branches(self, ev, offset):
         pass
 
     def write_aligned_tree(self):
@@ -166,7 +165,7 @@ class EventAligment(object):
                 offset = self.Offsets[ev]
             if ev > self.NEntries - abs(offset) - 1:
                 break
-            self.fill_branches(ev + offset)
+            self.fill_branches(ev, offset)
             self.NewTree.Fill()
         self.PBar.finish()
         self.save_tree()
@@ -176,10 +175,10 @@ class EventAligment(object):
 
 if __name__ == '__main__':
 
-    from pad_run import PadRun
+    from src.run import Run
     from converter import Converter
 
     # examples: (201508-442, ...)
     pargs = init_argparser(run=442)
-    zrun = PadRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
+    zrun = Run(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = EventAligment(Converter(zrun))

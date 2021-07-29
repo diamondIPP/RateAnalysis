@@ -57,7 +57,8 @@ class PadAlignment(EventAligment):
     # endregion INIT
     # ----------------------------------------
 
-    def fill_branches(self, ev):
+    def fill_branches(self, ev, offset):
+        ev += offset
         n = self.NHits[ev]
         hits = sum(self.NHits[:ev])
         self.Branches['n_hits_tot'][0][0] = n  # n hits
