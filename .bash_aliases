@@ -1,6 +1,6 @@
 RATEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 alias analyse='ipython -i $RATEDIR/analyse.py -- $@'
-alias readRateTree='ipython -i $RATEDIR/readtree.py -- $@'
+alias readRateTree='ipython -i $RATEDIR/helpers/readtree.py -- $@'
 alias Multiconvert='$RATEDIR/auto_convert.py 0 -m'
 alias Autoconvert='$RATEDIR/auto_convert.py'
 alias DrawCurrents='ipython -i $RATEDIR/src/currents.py -- $@'
