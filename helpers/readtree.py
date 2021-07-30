@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F
+from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F, TBrowser
 from sys import argv
 from src.run import Run
 from src.binning import Bins
@@ -9,6 +9,7 @@ from numpy import genfromtxt, polyfit, polyval, quantile, delete, all
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
 plot = Draw()
+_ = TBrowser
 
 
 def get_track_vars(roc=0, local=False):
@@ -380,9 +381,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     from src.analysis import Analysis
+    tc = Analysis.find_testcampaign(args.tc)
 
     if isint(args.run):
-        z = Run(int(args.run), Analysis.find_testcampaign(args.tc))
+        z = Run(int(args.run), tc)
         t = z.Tree
     else:
         rootfile = TFile(args.run)
@@ -398,7 +400,7 @@ if __name__ == '__main__':
                 run = None
 
         try:
-            run = Run(run, testcampaign=args.tc, load_tree=False)
+            z = Run(run, testcampaign=tc, load_tree=False)
         except ValueError:
             run = Run(2, testcampaign='201807', load_tree=False)
 
