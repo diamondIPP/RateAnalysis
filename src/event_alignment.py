@@ -6,7 +6,7 @@
 from ROOT import TFile
 from helpers.utils import *
 from helpers.draw import set_root_output
-from numpy import sign, invert, ones
+from numpy import invert, ones
 
 MAX_SIZE = 255
 
@@ -125,7 +125,7 @@ class EventAligment(object):
         zero_offset = [(0, self.find_first_offset())] if self.find_first_offset() else []
         return OrderedDict(zero_offset + [(event_number, 1) for event_number in self.Converter.DecodingErrors])
 
-    def find_offsets(self, off, delta=1):
+    def find_all_offsets(self, *args, **kwargs):
         return
 
     def set_aligned(self, bin_size=None):
@@ -149,7 +149,7 @@ class EventAligment(object):
 
     def write_aligned_tree(self):
         set_root_output(False)
-        self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
+        self.find_all_offsets()
         self.set_aligned()
         for name in self.Branches:  # remove old branches
             self.InTree.SetBranchStatus(name, 0)
