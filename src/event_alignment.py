@@ -6,7 +6,7 @@
 from ROOT import TFile
 from helpers.utils import *
 from helpers.draw import set_root_output
-from numpy import invert, ones
+from numpy import invert, ones, append
 
 MAX_SIZE = 255
 
@@ -41,6 +41,7 @@ class EventAligment(object):
         # Branches
         self.Branches = self.init_branches()
         self.NHits = None
+        self.NTot = None
         self.Variables = None
 
         # Progress Bar
@@ -53,16 +54,22 @@ class EventAligment(object):
         if not self.IsAligned:
             self.print_start()
             self.NHits = self.load_n_hits()
+            self.NTot = self.load_n_tot()
             self.Variables = self.load_variables()
-            if not self.check_alignment():  # make detailed check
-                self.write_aligned_tree()
-                if file_exists(self.Converter.ErrorFile):
-                    remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
+            self.write_aligned_tree()
+            if file_exists(self.Converter.ErrorFile):
+                remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
             eff = calc_eff(values=self.get_aligned(self.NewTree))[0]
             print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)} ({eff:.1f}% aligned)', color='green')
 
     def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
         return get_tree_vec(self.InTree, var, cut, dtype, nentries, firstentry)
+
+    def show_event(self, ev):
+        print(f'NHits: {self.NHits[ev]}')
+        for i, name in enumerate(self.get_tel_branches()):
+            print(f'{name}: {self.Variables[i][self.NTot[ev]:self.NTot[ev + 1]]}')
+        print(f'Trigger Phase: {self.Variables[-1][[2 * ev, 2 * ev + 1]]}')
 
     # ----------------------------------------
     # region INIT
@@ -88,7 +95,9 @@ class EventAligment(object):
                 'col': (zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
                 'row': (zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
                 'adc': (zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
-                'charge': (zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F')}
+                'charge': (zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F'),
+                'trigger_phase': (zeros(2, 'u1'), 'trigger_phase[2]/b'),
+                'aligned': (zeros(1, '?'), 'trigger_phase/O')}
 
     @staticmethod
     def get_tel_branches():
@@ -98,16 +107,21 @@ class EventAligment(object):
         self.InTree.SetEstimate(self.NEntries)
         return get_tree_vec(self.InTree, self.HitVar, '', 'u1', choose(n_entries, self.NEntries), first_entry)
 
+    def load_n_tot(self):
+        return append(0, cumsum(self.NHits, dtype='i8'))
+
     def load_variables(self):
         """ get all the telescope branches in vectors"""
         t = self.Run.info('Loading information from tree ... ', endl=False)
-        self.InTree.SetEstimate(sum(self.NHits))
-        data = get_tree_vec(self.InTree, ['plane', 'col', 'row', 'adc', 'charge'], dtype=['u1', 'u1', 'u1', 'i2', 'f2'])
+        self.InTree.SetEstimate(self.NTot[-1])
+        data = self.get_tree_vec(['plane', 'col', 'row', 'adc', 'charge'], dtype=['u1', 'u1', 'u1', 'i2', 'f2'])
+        data += [self.get_tree_vec('trigger_phase', dtype='u1')]
         self.Run.add_to_info(t)
         return data
 
     def reload(self):
         self.NHits = self.load_n_hits()
+        self.NTot = self.load_n_tot()
         self.Variables = self.load_variables()
     # endregion INIT
     # ----------------------------------------
@@ -157,6 +171,7 @@ class EventAligment(object):
         self.NewTree = self.InTree.CloneTree(0)
         for name, (br, leaf) in self.Branches.items():  # set new branches
             self.NewTree.Branch(name, br, leaf)
+        info('STEP 2: Writing the TTree ...')
         self.PBar.start(self.NEntries, counter=False)
         offset = self.FirstOffset
         for ev, t in enumerate(self.InTree):

@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, sum, insert, delete, append, sign
+from numpy import histogram2d, sum, insert, delete, sign
 from src.event_alignment import *
 from src.binning import make_bins
 from helpers.draw import get_hist_vec, get_hist_vecs, ax_range
@@ -28,12 +28,6 @@ class PadAlignment(EventAligment):
 
     # ----------------------------------------
     # region INIT
-    @staticmethod
-    def init_branches():
-        dic = EventAligment.init_branches()
-        dic['trigger_phase'] = (zeros(1, 'u1'), 'trigger_phase/b')
-        dic['aligned'] = (zeros(1, '?'), 'trigger_phase/O')
-        return dic
 
     def load_variables(self):
         data = super(PadAlignment, self).load_variables()
@@ -42,9 +36,8 @@ class PadAlignment(EventAligment):
         self.PulserEvents = where(self.Pulser)[0]
         self.FirstOffset = self.find_first_offset()
         self.FinalOffset = self.find_final_offset()
-        tp = get_tree_vec(self.InTree, 'trigger_phase', dtype='u1')
         self.Run.add_to_info(t)
-        return data + [tp]
+        return data
 
     def get_xbins(self, bin_size):
         return append(arange(0, self.NEntries, bin_size), self.NEntries if self.NEntries % bin_size else [])
@@ -64,7 +57,7 @@ class PadAlignment(EventAligment):
         self.Branches['n_hits_tot'][0][0] = n  # n hits
         for i, br in enumerate(self.get_tel_branches()):
             self.Branches[br][0][:n] = self.Variables[i][hits:hits + n]
-        self.Branches['trigger_phase'][0][0] = self.Variables[-1][ev]
+        self.Branches['trigger_phase'][0][:2] = self.Variables[-1][[2 * ev, 2 * ev + 1]]
         self.Branches['aligned'][0][0] = self.Aligned[ev]
 
     def get_pulser(self):

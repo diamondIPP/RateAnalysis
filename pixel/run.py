@@ -27,6 +27,6 @@ class PixelRun(Run):
 
 if __name__ == '__main__':
 
-    # e.g.: (138, 201510), (489, 201610)
-    args = init_argparser(293, tc='201508', tree=True)
+    # e.g.: (138, 201510), (489, 201610), (293, 201508)
+    args = init_argparser(489, tc='201610', tree=True)
     z = PixelRun(args.run, testcampaign=args.testcampaign, load_tree=args.tree)
