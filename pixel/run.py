@@ -19,8 +19,8 @@ class PixelRun(Run):
         :param verbose: turn on more output
         """
 
+        self.NTelPlanes = 4
         Run.__init__(self, number, testcampaign, load_tree, verbose)
-
         # Settings
         self.Type = 'pixel'
 
