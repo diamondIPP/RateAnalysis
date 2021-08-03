@@ -97,7 +97,7 @@ class EventAligment(object):
                 'adc': (zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
                 'charge': (zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F'),
                 'trigger_phase': (zeros(2, 'u1'), 'trigger_phase[2]/b'),
-                'aligned': (zeros(1, '?'), 'trigger_phase/O')}
+                'aligned': (zeros(1, '?'), 'aligned/O')}
 
     @staticmethod
     def get_tel_branches():
