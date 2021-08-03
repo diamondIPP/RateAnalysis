@@ -40,7 +40,7 @@ class Bins(SubAnalysis):
         return Bins.get_size(bin_size)
 
     @staticmethod
-    def get_size(bin_size):
+    def get_size(bin_size=None):
         return choose(bin_size, Bins.Size)
 
     def get(self, time=True, bin_size=None, cut=None):
