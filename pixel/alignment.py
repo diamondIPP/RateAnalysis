@@ -9,13 +9,13 @@ from helpers.draw import Draw
 
 
 class PixAlignment(EventAligment):
-    def __init__(self, converter=None):
+    def __init__(self, converter=None, tel_plane=None):
 
         # Info
         self.Threshold = .35
-        self.NTelPlanes = 4
+        self.NTelPlanes = converter.Run.NTelPlanes
         self.DUTPlane = self.find_dut_plane(converter.Run.DUTs)
-        self.TelPlane = 1 if self.DUTPlane > self.NTelPlanes else 2
+        self.TelPlane = choose(tel_plane, 1 if self.DUTPlane > self.NTelPlanes else 2)
         self.MaxOffset = 1000
 
         self.X1, self.X2 = array([]), array([])  # col arrays
@@ -62,9 +62,9 @@ class PixAlignment(EventAligment):
         cut1, cut2 = c1.repeat(n) & (pl == self.TelPlane), c2.repeat(n) & (pl == self.DUTPlane)
         return col[cut1], col[cut2], row[cut1], row[cut2], c1, c2
 
-    def get_aligned(self, tree=None, n=200):
+    def get_aligned(self, tree=None, bin_size=200):
         self.init_data(tree)
-        x, y = self.correlate_all(n=n)
+        x, y = self.correlate_all(n=bin_size)
         return (x > self.Threshold) & (y > self.Threshold)
 
     def set_aligned(self, bin_size=200):
@@ -212,10 +212,10 @@ class PixAlignment(EventAligment):
         y = self.get_tree_vec(self.HitVar)
         self.Draw.profile(arange(y.size), y, x_tit='Event Number', y_tit='Total Number of Hits', y_range=[0, 1.5 * mean(y)])
 
-    def draw_correlation(self, off=0, bin_size=50):
+    def draw_correlation(self, off=0, bin_size=50, **kwargs):
         yx, yy = self.correlate_all(off, bin_size)
         g = [self.Draw.graph(self.get_x(y, off, bin_size), y, x_tit='Event Number', y_tit='Correlation Factor', show=False) for y in [yx, yy]]
-        self.Draw.multigraph(g, 'Correlations', ['xx', 'yy'], draw_opt='l', **Draw.mode(2))
+        self.Draw.multigraph(g, 'Correlations', ['xx', 'yy'], **prep_kw(kwargs, draw_opt='l', **Draw.mode(2), y_range=[0, 1.18]))
 
     def draw(self, off=0, bin_size=50):
         y = invert(self.find_all(off, bin_size))
