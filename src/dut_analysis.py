@@ -53,6 +53,9 @@ class DUTAnalysis(Analysis):
             self.Tracks = Tracks(self)
             self.Tel = Telescope(self)
 
+            # alignment
+            self.IsAligned = self.check_alignment()
+
     def __str__(self):
         return f'{self.__class__.__name__} of {self.Run} and {self.DUT}'
 
@@ -222,12 +225,40 @@ class DUTAnalysis(Analysis):
     def get_signal_var(self, *args, **kwargs):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
 
-    def get_alignment(self, *args, **kwargs):
-        return array([False])
-
     def get_split_ph(self, m=2):
         return get_2d_hist_vec(self.split_signal_map(m, show=0)[0])
     # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region ALIGNMENT
+    def get_alignment(self):
+        from src.event_alignment import EventAligment
+        return EventAligment
+
+    def get_aligned(self, *args, **kwargs):
+        return self.get_alignment()(self.Run.Converter).get_aligned(*args, **kwargs)
+
+    @save_pickle('Events', sub_dir='Alignment')
+    def check_alignment_(self, _redo=False):
+        return calc_eff(values=self.get_aligned())[0] > 99.7
+
+    def check_alignment(self, redo=False):
+        """ check if the events are aligned"""
+        is_aligned = self.check_alignment_(_redo=redo)
+        warning('Run {r} is misaligned :-('.format(r=self.Run.Number), prnt=not is_aligned)
+        return is_aligned
+
+    def draw_alignment(self, bin_size=1000, **kwargs):
+        """ draw the aligment of telescope and DUT events """
+        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_aligned(bin_size)
+        x, y = (bins[1][:-1] + diff(bins[1]))[:y.size].repeat(y + 1), full(sum(y + 1), 1)
+        h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
+                               draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03))
+        Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
+        self.Draw.save_plots('EventAlignment')
+        return h
+    # endregion ALIGNMENT
     # ----------------------------------------
 
     # ----------------------------------------
@@ -267,9 +298,6 @@ class DUTAnalysis(Analysis):
 
     def draw_fid_cut(self, scale=10):
         return self.Cut.draw_fid(scale)
-
-    def check_alignment(self, redo):
-        pass
 
     def get_efficiency(self, *args, **kwargs):
         pass
@@ -327,16 +355,6 @@ class DUTAnalysis(Analysis):
         self.Draw.save_plots('EffMap')
     # endregion SIZES
     # ----------------------------------------
-
-    def draw_alignment(self, bin_size=1000, thresh=40, **kwargs):
-        """ draw the aligment of telescope and DUT events """
-        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_alignment(bin_size)
-        x, y = (bins[1][:-1] + diff(bins[1]))[:y.size].repeat(y + 1), full(sum(y + 1), 1)
-        h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
-                               draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03))
-        Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
-        self.Draw.save_plots('EventAlignment')
-        return h
 
     def draw_ph_pull(self, *args, **kwargs):
         return self._draw_ph_pull(*args, **kwargs)

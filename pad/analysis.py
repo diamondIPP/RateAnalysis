@@ -43,9 +43,6 @@ class PadAnalysis(DUTAnalysis):
             self.Pulser = PulserAnalysis(self)
             self.MC = MCSignal(self)
 
-            # alignment
-            self.IsAligned = self.check_alignment()
-
         self.print_finished(prnt=prnt)
 
     @staticmethod
@@ -134,17 +131,6 @@ class PadAnalysis(DUTAnalysis):
     def get_all_signal_names(self, sig_type='signal'):
         reg_ints = [(r, i) for r in self.Run.IntegralRegions[self.DUT.Number - 1] for i in self.Run.PeakIntegrals[self.DUT.Number - 1] if sig_type in r]
         return {self.get_signal_name(r, i, sig_type): r.replace(sig_type, '').strip('_') + i.replace('PeakIntegral', '') for r, i in reg_ints}
-
-    @save_pickle('Events', sub_dir='Alignment')
-    def _get_alignment(self, _redo=False):
-        from src.pad_alignment import PadAlignment
-        return calc_eff(values=PadAlignment(self.Run.Converter).get_aligned())[0] > 99.7
-
-    def check_alignment(self, redo=False):
-        """ check if the events from telescope and digitiser are aligned"""
-        is_aligned = self._get_alignment(_redo=redo)
-        warning('Run {r} is misaligned :-('.format(r=self.Run.Number), prnt=not is_aligned)
-        return is_aligned
     # endregion INIT
     # ----------------------------------------
 
@@ -223,9 +209,9 @@ class PadAnalysis(DUTAnalysis):
         xmin, xmax = self.SignalRegion * self.DigitiserBinWidth
         return Bins.make(xmin, xmax, choose(bin_size, default=self.DigitiserBinWidth))
 
-    def get_alignment(self, bin_size=1000):
-        from src.pad_alignment import PadAlignment
-        return PadAlignment(self.Run.Converter).get_aligned(bin_size=bin_size)
+    def get_alignment(self):
+        from pad.alignment import PadAlignment
+        return PadAlignment
 
     def print_results(self, prnt=True):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
