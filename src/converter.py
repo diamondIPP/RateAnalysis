@@ -3,7 +3,7 @@ from os import getcwd, chdir, rename
 from os.path import expanduser, basename
 from re import sub
 from subprocess import check_call, check_output
-from numpy import genfromtxt
+from numpy import genfromtxt, sign
 
 from pad.alignment import PadAlignment
 from pixel.alignment import *
