@@ -112,7 +112,7 @@ class Analysis(object):
 
     def make_run_str(self, run=None):
         if run is not None:
-            return str(getattr(self, run) if hasattr(self, run) else run)
+            return str(getattr(self, str(run)) if hasattr(self, str(run)) else run)
         return self.RunPlan if hasattr(self, 'RunPlan') else str(self.Run.Number) if hasattr(self, 'Run') and hasattr(self.Run, 'Number') else str(self.Number) if hasattr(self, 'Number') else ''
 
     def make_hdf5_path(self, sub_dir, name=None, run=None, ch=None, suf=None, camp=None):
