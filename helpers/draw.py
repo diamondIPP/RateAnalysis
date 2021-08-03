@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TGraphErrors, TGaxis, TLatex, TGraphAsymmErrors, TCanvas, gStyle, TLegend, TArrow, TPad, TCutG, TLine, TPaveText, TPaveStats, TH1F, TEllipse, TColor, TProfile
-from ROOT import TProfile2D, TH2F, THStack, TMultiGraph, TPie, gROOT
+from ROOT import TProfile2D, TH2F, TH3F, THStack, TMultiGraph, TPie, gROOT
 from numpy import sign, linspace, ones, ceil, append, tile, absolute, rot90, flip, argsort
 from helpers.utils import *
 
@@ -466,6 +466,13 @@ class Draw(object):
         self.histo(th, show=show, lm=lm, rm=rm, bm=bm, tm=tm, stats=choose(stats, True), canvas=canvas, **prep_kw(kwargs, draw_opt='colz'))
         return th
 
+    def histo_3d(self, x, y, zz, binning, title='', **kwargs):
+        th = TH3F(Draw.get_name('h3'), title, *binning)
+        fill_hist(th, x, y, zz)
+        format_histo(th, **prep_kw(kwargs))
+        self.histo(th, **prep_kw(kwargs, draw_opt='colz', show=False))
+        return th
+
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
         binning = choose(binning, make_bins, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
         p = self.profile(x, e, binning, show=False)
@@ -803,8 +810,11 @@ def fill_hist(h, x, y=None, zz=None):
         h.FillN(x.size, x, ones(x.size))
     elif any(name in h.ClassName() for name in ['TH2', 'TProfile']):
         h.FillN(x.size, x, y, ones(x.size))
-    else:
+    elif h.ClassName() == 'TProfile2D':
         h.FillN(x.size, x, y, zz, ones(x.size))
+    else:
+        for i in range(x.size):
+            h.Fill(x[i], y[i], zz[i])
 
 
 def set_2d_ranges(h, dx, dy):
@@ -908,6 +918,10 @@ def get_2d_hist_vec(h, err=True, flat=True, zero_supp=True):
     return (values[values != 0] if zero_supp else values) if flat else values.reshape(len(ybins), len(xbins))
 
 
+def get_x_bins(h, err=True):
+    return get_hist_args(h, err, axis='X')
+
+
 def get_2d_bins(h, arr=False):
     x, y = [get_hist_args(h, raw=True, axis=ax) for ax in ['X', 'Y']]
     return [x, y] if arr else [x.size - 1, x, y.size - 1, y]
@@ -938,6 +952,16 @@ def get_2d_args(h):
 
 def get_2d_vecs(h, err=True, flat=False):
     return get_2d_args(h), get_2d_hist_vec(h, err, flat)
+
+
+def get_3d_profiles(h, opt, err=True):
+    px, py = [], []
+    for ibin in range(1, h.GetNbinsX() + 1):
+        h.GetXaxis().SetRange(ibin, ibin + 1)
+        p = h.Project3D(opt)
+        px.append(deepcopy(p.ProfileX()))
+        py.append(deepcopy(p.ProfileY()))
+    return get_x_bins(h, err), px, py
 
 
 def get_h_entries(h):
