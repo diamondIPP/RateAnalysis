@@ -11,6 +11,8 @@ from helpers.utils import init_argparser
 class PixelRun(Run):
     """ Run class child with pixel extension. """
 
+    NTelPlanes = 4
+
     def __init__(self, number=None, testcampaign=None, load_tree=True, verbose=False):
         """
         :param number: if None is provided it creates a dummy run
@@ -19,7 +21,6 @@ class PixelRun(Run):
         :param verbose: turn on more output
         """
 
-        self.NTelPlanes = 4
         Run.__init__(self, number, testcampaign, load_tree, verbose)
         # Settings
         self.Type = 'pixel'
