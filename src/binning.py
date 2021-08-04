@@ -19,7 +19,8 @@ class Bins(SubAnalysis):
     ADCBits = 2 ** 8
     PHRange = array([-5000, 100000])
     PHWidth = 200
-    VcalToEl = 47.
+    Vcal2El = 47.
+    Vcal2Ke = Vcal2El / 1000
 
     # Pad
     PadPHRange = [-50, 500]
@@ -133,7 +134,7 @@ class Bins(SubAnalysis):
 
     @staticmethod
     def get_vcal():
-        return Bins.make(*Bins.PHRange / Bins.VcalToEl)
+        return Bins.make(*Bins.PHRange / Bins.Vcal2El)
 
     @staticmethod
     def get_electrons(bin_width=None):
