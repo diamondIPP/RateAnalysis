@@ -290,7 +290,7 @@ class Draw(object):
         c = get_last_canvas()
         tm = .98 - .05 - c.GetTopMargin() if y2 is None else y2
         rm = .98 - c.GetRightMargin()
-        p = TPaveStats(rm - width, tm - .06 * (fit.NPars + 1), rm, tm, 'ndc')
+        p = TPaveStats(rm - width, tm - .06 * (fit.NPar + 1), rm, tm, 'ndc')
         p.SetBorderSize(1)
         p.SetFillColor(0)
         p.SetFillStyle(0)
@@ -298,7 +298,7 @@ class Draw(object):
         leg.SetTextFont(42)
         ls = p.GetListOfLines()
         ls.Add(Draw.tlatex(0, 0, '#chi^{{2}} / ndf  = {chi2:{p}} / {ndf}'.format(ndf=fit.Ndf(), chi2=fit.Chi2(), p=prec), size=0, align=0, font=42))
-        for i in range(fit.NPars):
+        for i in range(fit.NPar):
             ls.Add(Draw.tlatex(0, 0, '{n}  = {v:{p}} #pm {e:{p}}'.format(n=names[i], v=fit.Parameter(i), e=fit.ParError(i), p=prec), size=0, align=0, font=42))
         p.Draw()
         return Draw.add(p)
@@ -474,7 +474,6 @@ class Draw(object):
         return th
 
     def efficiency(self, x, e, binning=None, title='Efficiency', lm=None, show=True, **kwargs):
-        binning = choose(binning, make_bins, min(x), max(x), (max(x) - min(x)) / sqrt(x.size))
         p = self.profile(x, e, binning, show=False)
         x = get_hist_args(p)
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
@@ -823,14 +822,14 @@ def set_2d_ranges(h, dx, dy):
     format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
 
 
-def find_bins(values, lfac=.2, rfac=.2, q=.02, n=1):
-    width, (xmin, xmax) = freedman_diaconis(values) * n, find_range(values, lfac, rfac, q)
+def find_bins(values, lfac=.2, rfac=.2, q=.02, n=1, lq=None):
+    width, (xmin, xmax) = freedman_diaconis(values) * n, find_range(values, lfac, rfac, q, lq)
     bins = arange(xmin, xmax + width, width)
     return [bins.size - 1, bins]
 
 
-def find_range(values, lfac=.2, rfac=.2, q=.02):
-    return ax_range(*quantile(values, [q, 1 - q]), lfac, rfac)
+def find_range(values, lfac=.2, rfac=.2, q=.02, lq=None):
+    return ax_range(*quantile(values, [choose(lq, q), 1 - q]), lfac, rfac)
 
 
 def fix_chi2(g, prec=.01, show=True):
