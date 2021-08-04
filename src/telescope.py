@@ -178,9 +178,9 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region TIME
-    def draw_trigger_phase(self, dut=False, cut=None, show=True):
-        values = self.get_tree_vec(var='trigger_phase[{}]'.format(1 if dut else 0), cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
-        return self.Draw.distribution(values, Bins.make(0, 11), 'Trigger Phase', x_tit='Trigger Phase', y_off=1.95, fill_color=Draw.FillColor, show=show, lm=.145, stats=set_entries())
+    def draw_trigger_phase(self, dut=False, cut=None, **kwargs):
+        x = self.get_tree_vec(f'trigger_phase[{1 if dut else 0}]', self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
+        return self.Draw.distribution(x, Bins.make(0, 11), 'Trigger Phase', **prep_kw(kwargs, x_tit='Trigger Phase', y_off=1.95, fill_color=Draw.FillColor, lm=.145, stats=set_entries()))
 
     def draw_trigger_phase_trend(self, dut=False, bin_width=None, cut=None, show=True):
         values, t = self.get_tree_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
