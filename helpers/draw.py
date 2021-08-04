@@ -480,10 +480,10 @@ class Draw(object):
         y = array([calc_eff(p0 * n, n) for p0, n in [[p.GetBinContent(ibin), p.GetBinEntries(ibin)] for ibin in range(1, p.GetNbinsX() + 1)]])
         return self.graph(x, y, title, lm=lm, show=show, y_tit='Efficiency [%]', **kwargs)
 
-    def pull(self, h, binning=None, **kwargs):
-        x = get_hist_vec(h)
-        self.distribution(x, choose(binning, find_bins, values=x[x != 0], lfac=.2, rfac=.2, n=2), x_tit=h.GetYaxis().GetTitle(), **kwargs)
-        return mean_sigma(x[x != 0])
+    def pull(self, h, binning=None, ret_h=False, **kwargs):
+        x = get_graph_y(h, err=False) if is_graph(h) else get_hist_vec(h, err=False)
+        th = self.distribution(x, choose(binning, find_bins, values=x[x != 0], lfac=.5, rfac=.5, n=2), x_tit=h.GetYaxis().GetTitle(), **kwargs)
+        return th if ret_h else mean_sigma(x[x != 0])
 
     def stack(self, histos, title, leg_titles, scale=False, draw_opt='nostack', show=True, fill=None, w=.2, *args, **kwargs):
         s = THStack(Draw.get_name('s'), title)

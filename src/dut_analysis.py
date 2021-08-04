@@ -356,15 +356,12 @@ class DUTAnalysis(Analysis):
     # endregion SIZES
     # ----------------------------------------
 
-    def draw_ph_pull(self, *args, **kwargs):
-        return self._draw_ph_pull(*args, **kwargs)
-
-    def _draw_ph_pull(self, evts_per_bin=None, fit=True, bin_width=.5, binning=None, show=True, save=True):
-        p = self.draw_pulse_height(evts_per_bin, show=False, save=False)[0]
-        h = Draw.pull(p, choose(binning, Bins.get_pad_ph(bin_width)), title=f'Signal Bin{Bins.get_size(evts_per_bin)} Distribution')
-        format_histo(h, x_tit='Pulse Height [au]', y_tit='Entries', y_off=1.5, fill_color=Draw.FillColor, draw_first=True)
-        set_statbox(all_stat=True, fit=fit)
-        self.Draw(h, 'SignalBin{0}Disto'.format(Bins.get_size(evts_per_bin)), save=save, lm=.12, show=show, stats=True)
+    def draw_ph_pull(self, bin_size=None, fit=True, binning=None, **kwargs):
+        p = self.draw_pulse_height(bin_size, show=False, save=False)[0]
+        h = self.Draw.pull(p, binning, ret_h=True, title=f'Signal Bin{Bins.get_size(bin_size)} Distribution', **prep_kw(kwargs))
+        format_statbox(h, all_stat=True, fit=fit)
+        h.Fit('gaus', f'qs{"" if fit else 0}')
+        self.Draw.save_plots(h.GetTitle().replace(" ", ""))
         return h
 
     def draw_track_length(self, show=True):
