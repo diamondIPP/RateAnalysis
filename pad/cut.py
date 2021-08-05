@@ -52,9 +52,6 @@ class PadCut(Cut):
 
     def get_ped_sigma(self, sigma=None):
         return choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
-
-    def get_align_var(self):
-        return 'aligned'
     # endregion GET
     # ----------------------------------------
 
@@ -165,9 +162,9 @@ class PadCut(Cut):
         Draw.box(*array([x[0], y[0], x[1], y[1]]) * 10, show=show, width=2)
         return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
 
+    @save_pickle('BeamStops', suf_args='all')
     def find_beam_interruptions(self, bin_width=100, thresh=.2):
         """ Looking for the beam interruptions by investigating the pulser rate. """
-        t = self.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
         x, y = self.get_tree_vec(var=['Entry$', 'pulser'], dtype='i4')
         rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
         rates = rates[:, 1] / bin_width
@@ -176,7 +173,6 @@ class PadCut(Cut):
         not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
         interruptions = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
-        self.add_to_info(t)
         return array(interruptions, 'i4')
 
     @save_pickle('B2Fit', print_dur=True, low_rate=True)

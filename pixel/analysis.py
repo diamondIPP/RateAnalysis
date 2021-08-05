@@ -4,15 +4,14 @@
 # created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from collections import Counter
 
-from ROOT import TFormula, THStack, TProfile2D, TPie, gRandom, TH3F, TMultiGraph
-from numpy import genfromtxt
+from numpy import insert, sum
 
-from src.dut_analysis import *
-from pixel.cut import CutPix
+from pixel.calibration import Calibration
+from pixel.cut import PixCut
 from pixel.run import PixelRun
 from src.dut import Plane
+from src.dut_analysis import *
 
 
 class PixAnalysis(DUTAnalysis):
@@ -21,18 +20,10 @@ class PixAnalysis(DUTAnalysis):
         DUTAnalysis.__init__(self, run_number, dut, test_campaign, load_tree, verbose, prnt)
 
         # Main
-        self.Dut = dut + 3
+        self.N = self.DUT.Number + self.Run.NTelPlanes - 1
 
         if self.Tree.Hash():
-            self.Cut = CutPix.from_parent(self.Cut)
-            self.IsAligned = self.check_alignment()
-
-            # Pulse Height Calibrations
-            self.Fit = TF1('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
-            if self.check_calibration_files():
-                self.Parameters = self.load_calibration_fitpars()
-                self.Vcals = self.load_vcals()
-                self.Points = self.load_calibration_points()
+            self.Calibration = Calibration(self)
 
         self.print_finished(prnt=prnt)
 
@@ -42,72 +33,33 @@ class PixAnalysis(DUTAnalysis):
     def init_run(run_number, testcampaign, load_tree, verbose):
         return PixelRun(run_number, testcampaign, load_tree, verbose)
 
+    def init_cut(self):
+        return PixCut(self)
+
     def update_config(self):
         self.Config.read(join(self.Dir, 'config', self.TCString, 'PixelConfig.ini'))
 
-    def load_calibration_files(self, fits=False):
-        calibration_list_dir = join(self.Run.Converter.TrackingDir, 'calibration_lists', 'GKCalibrationList_Telescope{n}.txt'.format(n=self.Run.Converter.TelescopeID))
-        with open(calibration_list_dir) as f:
-            calibration_dir = join(self.Run.Converter.TrackingDir, f.readline().strip('./\n'))
-            return [join(calibration_dir, line.strip('\n ') if fits else 'phCalibration_C{}.dat'.format(i)) for i, line in enumerate(f.readlines())]
-
-    def check_calibration_files(self):
-        files = concatenate([self.load_calibration_files(), self.load_calibration_files(fits=True)])
-        for f in files:
-            if not file_exists(f):
-                warning('Calibration file {} does not exist...'.format(basename(f)))
-                return False
-        return True
-
-    def load_calibration_fitpars(self, redo=False):
-        def f():
-            self.check_calibration_files()
-            split_at = arange(self.Bins.NRows, self.Bins.NCols * self.Bins.NRows, self.Bins.NRows)  # split at every new column (after n_rows)
-            return array([split(genfromtxt(filename, skip_header=3, usecols=arange(4)), split_at) for filename in self.load_calibration_files(fits=True)])
-        return do_pickle(self.make_pickle_path('Calibration', 'Pars', run=self.Run.Converter.TelescopeID), f, redo=redo)
-
-    def load_vcals(self, redo=False):
-        def func():
-            return array([concatenate([genfromtxt(f, 'i2', skip_header=1, max_rows=1)[2:], 7 * genfromtxt(f, 'i2', skip_header=2, max_rows=1)[2:]]) for f in self.load_calibration_files()])
-        return do_pickle(self.make_pickle_path('Calibration', 'Vcal', run=self.Run.Converter.TelescopeID), func, redo=redo)
-
-    def load_calibration_points(self, redo=False):
-        def func():
-            split_at = arange(self.Bins.NRows, self.Bins.NCols * self.Bins.NRows, self.Bins.NRows)
-            return [array(split(genfromtxt(f, 'i2', skip_header=4, usecols=arange(self.Vcals[i].size)), split_at)) for i, f in enumerate(self.load_calibration_files())]
-        return do_pickle(self.make_pickle_path('Calibration', 'Points', run=self.Run.Converter.TelescopeID), func, redo=redo)
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region GET
-    def get_ph_var(self, ped=None):
-        return 'cluster_charge[{}]'.format(self.Dut)
+    def get_ph_var(self, plane=None):
+        return f'cluster_charge[{choose(plane, self.N)}]'
 
-    def get_pulse_height(self, bin_size=None, cut=None, redo=False, corr=None):
-        suffix = '{bins}_{c}'.format(bins=self.Bins.Size if bin_size is None else bin_size, c=self.Cut(cut).GetName())
-        picklepath = self.make_pickle_path('Ph_fit', 'Fit', self.Run.Number, self.DUT.Number, suf=suffix)
-
-        def f():
-            p, fit_pars = self.draw_pulse_height(bin_size=bin_size, cut=self.Cut(cut), show=False)
-            return fit_pars
-
-        return fit2u(do_pickle(picklepath, f, redo=redo), par=0)
-
-    def get_thresholds(self, cols=None, pix=None, vcal=True):
-        columns, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
-        columns = array([cols]).flatten() if cols is not None else columns
-        columns, rows = (full(2, pix[0]), full(2, pix[1])) if pix is not None else (columns, rows)
-        dic = {}
-        for col in range(columns[0], columns[1] + 1):
-            for row in range(rows[0], rows[1] + 1):
-                self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
-                dic[(col, row)] = self.Fit.GetX(0) * (self.Bins.VcalToEl if not vcal else 1)
-        return dic
+    @save_pickle('Fit', sub_dir='PH', suf_args='all')
+    def get_pulse_height(self, bin_size=None, cut=None, _redo=False):
+        return self.draw_pulse_height(bin_size, cut, show=False)[1][0]
 
     def get_vcal(self, redo=False):
         h = self.draw_vcal_distribution(show=False, redo=redo)
         return ufloat(h.GetMean(), h.GetMeanError())
+
+    def get_nhits(self, cut=None):
+        return self.get_tree_vec(f'n_hits[{self.N}]', self.Cut(cut), dtype='u2')
+
+    def get_track_vars(self, mm=True, local=False):
+        return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local)
     # endregion GET
     # ----------------------------------------
 
@@ -115,171 +67,89 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', show=True):
         """ draw hitmap or cluster map """
-        name = self.DUT.Name if roc is None else name
-        roc = self.Dut if roc is None else roc
-        return super(PixAnalysis, self).Tel.draw_occupancy(roc, name, cluster, tel_coods, cut, show)
+        return self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show)
 
-    def draw_time_occupancy(self, cut=None, fid=False, binning=None, show=True, show_vid=False):
-        self.Bins.set_bin_size(binning)
-        cut_string = self.Cut.generate_custom(exclude='fiducial' if not fid else [], cluster=False) if cut is None else TCut(cut)
-        h = TH3F('h_to', 'to', *(self.Bins.get_time() + self.Bins.get_pixel()))
-        self.Tree.Draw('row:col:{}>>h_to'.format(self.get_t_var()), cut_string, 'goff')
-        format_histo(h, y_tit='col', z_tit='row')
-        gx, gy = [Draw.make_tgrapherrors('g_to{}'.format(i), 'Mean {}'.format(i.title())) for i in ['x', 'y']]
-        for ibin in range(h.GetNbinsX() - 1):
-            h.GetXaxis().SetRange(ibin, ibin + 1)
-            t = h.GetXaxis().GetBinCenter(ibin)
-            p = h.Project3D('zy')
-            px, py = p.ProfileX(), p.ProfileY()
-            for g, p in zip([gx, gy], [px, py]):
-                g.SetPoint(ibin, t, p.GetMean())
-                g.SetPointError(ibin, 0, p.GetMeanError())
-            if show_vid:
-                self.Draw(p, draw_opt='colz') if not ibin else p.Draw('samecolz')
-                c = gROOT.GetListOfCanvases()[-1]
-                c.Update()
-                c.Modified()
-                sleep(.5)
-        set_root_output(show)
-        c = Draw.canvas('Hit Map Evolution', x=2, divide=(2, 1))
-        for i, g in enumerate([gx, gy], 1):
-            p = c.cd(i)
-            p.SetLeftMargin(.13)
-            format_histo(g, x_tit='Time [hh:mm]', y_tit='Pixel Position', t_ax_off=0, y_off=1.8)
-            g.Draw('ap')
-        return h
-
+    def draw_occupancy_trend(self, cut=None, fid=False, bin_size=None, **kwargs):
+        cut = self.Cut.generate_custom(exclude='fiducial' if not fid else []) if cut is None else self.Cut(cut)
+        x, y, zz = self.get_tree_vec([self.get_t_var()] + self.Tel.get_hit_vars(self.N), cut)
+        h = self.Draw.histo_3d(x, y, zz, self.Bins.get_time(bin_size) + self.Bins.get_pixel(), y_tit='col', z_tit='row')
+        x, px, py = get_3d_profiles(h, 'zy')
+        y0, y1 = [[ufloat(ip.GetMean(), ip.GetMeanError()) for ip in p] for p in [px, py]]
+        g = [self.Draw.graph(x, y, x_tit='Time [hh:mm]', y_tit='Mean Pixel Pos', show=False) for y in [y0, y1]]
+        return self.Draw.multigraph(g, 'Hit Position Trend', ['Column', 'Row'], t_ax_off=0, **kwargs)
     # endregion OCCUPANCY
     # ----------------------------------------
 
     # ----------------------------------------
     # region DISTRIBUTIONS
-    def draw_adc_distribution(self, cut=None, show=True, col=None, pix=None):
-        h = TH1I('h_adc', 'ADC Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_adc())
-        cut_string = self.Cut(cut) + self.Cut.generate_masks(col=col, pixels=pix, exclude=False)()
-        format_statbox(h, entries=True)
-        self.Tree.Draw('adc>>h_adc', cut_string, 'goff')
-        format_histo(h, x_tit='adc', y_tit='Number of Entries', y_off=1.4, fill_color=Draw.FillColor)
-        self.Draw(h, 'ADCDisto', show, lm=.13, logy=True)
-        return h
+    def draw_adc_distribution(self, cut=None, col=None, row=None, pix=None, **kwargs):
+        x = self.get_tree_vec('adc', self.Cut(cut) + self.Cut.generate_masks(col, row, pix, exclude=False).Value + self.Cut.get_plane(), 'i2')
+        return self.Draw.distribution(x, Bins.get_adc(), 'ADC Distribution', **prep_kw(kwargs, logy=True))
 
-    def draw_vcal_distribution(self, cut=None, mcol=None, mpix=None, vcal=True, show=True, redo=False):
-        def f():
-            h1 = TH1F('h_vcal', 'vcal Distribution {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
-            cut_string = self.Cut(cut) + self.Cut.generate_masks(col=mcol, pixels=mpix, exclude=False)() + TCut('n_hits[{}] == 1'.format(self.Dut))
-            n = self.Tree.Draw('col:row:adc', cut_string, 'goff')
-            cols, rows, adcs = self.Run.get_root_vecs(n, 3, dtype=int)
-            for i, (col, row, adc) in enumerate(zip(cols, rows, adcs)):
-                self.Fit.SetParameters(*self.Parameters[self.Dut][col][row])
-                h1.Fill(self.Fit.GetX(adc) * (self.Bins.VcalToEl if not vcal else 1))
-            return h1
-        h = do_pickle(self.make_simple_pickle_path(sub_dir='VCAL'), f, redo=redo)
+    @save_pickle('VcalDisto', suf_args='all')
+    def get_vcal_disto(self, cut=None, col=None, row=None, pix=None, vcal=True, _redo=False):
+        cut = self.Cut(cut) + self.Cut.generate_masks(col, row, pix, exclude=False).Value + self.Cut.get_ncluster()
+        n, v = self.get_nhits(cut), self.Calibration.get_vcals(*self.get_tree_vec(['col', 'row', 'adc'], cut + self.Cut.get_plane(), dtype='i2'))
+        v = sum(insert(v, cumsum(n).astype('i').repeat(max(n) - n), 0).reshape(n.size, max(n)), axis=1)  # fill arrays with zeros where there are less than max hits
+        v *= (1 if vcal else Bins.Vcal2El)
+        return self.Draw.distribution(v, title='Pulse Height Distribution', x_tit=f'Pulse Height [{"VCAL" if vcal else "e"}]', show=False)
+
+    def draw_vcal_distribution(self, cut=None, col=None, row=None, pix=None, vcal=True, redo=False, **kwargs):
+        h = self.get_vcal_disto(cut, col, row, pix, vcal, _redo=redo)
+        return self.Draw.distribution(h, **kwargs, filename=f'PHDisto{"V" if vcal else "E"}')
+
+    @save_pickle('PH', suf_args='all')
+    def get_signal_disto(self, roc=None, cut=None, vcal=False, _redo=False):
+        x = self.get_tree_vec(self.get_ph_var(roc), self.Cut(cut)) / (Bins.Vcal2El if vcal else 1)
+        return self.Draw.distribution(x, title='Pulse Height Distribution', x_tit=f'Pulse Height [{"VCAL" if vcal else "e"}]', show=False)
+
+    def draw_threshold(self, x=1500, y0=0, y1=1, show=True):
         if show:
-            format_statbox(h, all_stat=True)
-            format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.4, fill_color=Draw.FillColor)
-            self.Draw(h, '{p}Disto'.format(p='Ph' if not vcal else 'Vcal'), show, lm=0.13)
-        return h
+            return self.Draw.y_axis(x, y0, y1, f'threshold #approx {x}e', off=.3, line=True, opt='-L')
 
-    def draw_signal_distribution(self, cut=None, show=True, prnt=True, roc=None, vcal=False, redo=False, draw_thresh=False):
-        roc = self.Dut if roc is None else roc
-        cut_string = self.Cut.generate_custom(exclude='masks') if cut is None else TCut(cut)
-        pickle_path = self.make_pickle_path('PulseHeight', run=self.Run.Number, suf='{}_{}_{}'.format(roc, cut_string.GetName(), int(vcal)))
+    def draw_signal_distribution(self, roc=None, cut=None, vcal=False, redo=False, draw_thresh=False, **kwargs):
+        h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
+        t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
+        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t))
 
-        def f():
-            set_root_output(False)
-            h1 = TH1F('h_phd', 'Pulse Height Distribution - {d}'.format(d=self.DUT.Name), *self.Bins.get_ph(vcal))
-            self.Tree.Draw('cluster_charge[{d}]{v}>>h_phd'.format(d=self.Dut, v='/{}'.format(self.Bins.VcalToEl) if vcal else ''), cut_string, 'goff')
-            return h1
+    def draw_ncluster_disto(self, n=1, cut=None, redo=False, **kwargs):
+        return self.draw_signal_distribution(cut=self.Cut.make(f'{n}cl', self.Cut(cut) + self.Cut.get_ncluster(n)), redo=redo, **kwargs)
 
-        h = do_pickle(pickle_path, f, redo=redo)
-        x_range = [h.GetXaxis().GetXmin(), h.GetBinCenter(h.FindLastBinAbove(2)) * 1.2]
-        format_statbox(h, all_stat=True, w=.25)
-        format_histo(h, x_tit='Pulse Height [{u}]'.format(u='vcal' if vcal else 'e'), y_tit='Number of Entries', y_off=1.8, fill_color=Draw.FillColor, x_range=x_range)
-        self.Draw(h, show=show, lm=.13, rm=.06)
-        if draw_thresh:
-            self.Draw.y_axis(1500, h.GetYaxis().GetXmin(), h.GetMaximum(), 'threshold #approx {}e  '.format(1500), off=.3, line=True, opt='-L')
-        self.Draw.save_plots('PulseHeightDisto', prnt=prnt)
-        return h
+    def draw_nhit_disto(self, n=1, cut=None, redo=False, **kwargs):
+        return self.draw_signal_distribution(cut=self.Cut.make(f'{n}hit', self.Cut(cut) + self.Cut.get_ncluster(1) + self.Cut.get_nhit(n)), redo=redo, **kwargs)
 
-    def draw_cluster_disto(self, n=1, cut=None, redo=False, show=True, prnt=True):
-        cut_string = TCut(str(n), 'n_clusters[{r}] == {n}'.format(r=self.Dut, n=n)) + self.Cut(cut)
-        return self.draw_signal_distribution(cut=cut_string, redo=redo, show=show, prnt=prnt)
-
-    def draw_cluster_ph_distos(self, cut=None, redo=False, show=True):
-        hs = OrderedDict([(str(n), self.draw_cluster_disto(n, redo=redo, show=False, prnt=False)) for n in range(1, 4)])
-        hs['>3'] = self.draw_signal_distribution(cut=TCut('g3', 'n_clusters[{r}] > 3'.format(r=self.Dut)) + self.Cut(cut), show=False, prnt=False, redo=redo)
-        stack = THStack('h_cph', 'Pulser Height per Cluster Size')
-        l1 = Draw.make_legend(y2=.88, nentries=5, x1=.7)
-        for i, (name, h) in enumerate(hs.items()):
-            format_histo(h, color=Draw.Colors[i], normalise=True, fill_color=Draw.Colors[i], fill_style=3002, rebin=5)
-            l1.AddEntry(h, name, 'fl')
-            stack.Add(h)
-        x_max = max(h.GetBinCenter(h.FindLastBinAbove(0)) for h in hs.values())
-        format_histo(stack, x_tit='Pulse Height [e]', y_tit='Number of Entries', y_off=1.4, draw_first=True, x_range=[self.Bins.MinPH, x_max])
-        self.Draw(stack, 'ClusterPulseHeight', show, lm=.13, leg=l1, draw_opt='nostackhist', gridy=True)
-        return hs
+    def draw_nhit_distos(self, nmax=4, cut=None, redo=False, **kwargs):
+        h = [self.draw_nhit_disto(n, cut, redo, show=False) for n in range(1, nmax + 1)]
+        return self.Draw.stack(h, 'NHit Distributions', ['1 hit'] + [f'{n} hits' for n in range(2, nmax + 1)], **kwargs)
     # endregion DISTRIBUTIONS
     # ----------------------------------------
 
     # ----------------------------------------
     # region PULSE HEIGHT
-    def draw_pulse_height(self, cut=None, bin_size=30000, show=True, adc=False):
+    def draw_pulse_height(self, bin_size=30000, cut=None, **kwargs):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
-        h = TProfile('hpht', '{} -  {}'.format('ADC' if adc else 'Pulse Height', self.DUT.Name), *self.Bins.get_time(bin_size))
-        format_statbox(h, fit=True, w=.3)
-        self.Tree.Draw('{}:{} >> hpht'.format(self.get_ph_var() if not adc else 'adc', self.get_t_var()), self.Cut(cut), 'goff')
-        self.Draw(h, show=show)
-        fit_par = h.Fit('pol0', 'qs')
-        format_histo(h, name='Fit Result', y_off=1.9, y_tit='Pulse Height [e]', x_tit='Time [hh:mm]', markersize=.6, t_ax_off=self.Run.StartTime)
-        self.Draw(h, '{}Time'.format('ADC' if adc else 'PulseHeight'), show, lm=.16, draw_opt='e1', save=show, canvas=get_last_canvas())
-        return h, FitRes(fit_par)
-
-    def draw_ph_pull(self, event_bin_width=None, fit=True, bin_width=100, save=True, show=True, adc=False):
-        return self._draw_ph_pull(event_bin_width, fit, bin_width, binning=self.Bins.get_ph(adc=adc, bin_width=bin_width), show=show, save=save)
-
-    def draw_adc_vs_event(self, cut=None, show=True):
-        return self.draw_pulse_height(cut, show=show, adc=True)
-
-    def draw_adc_pull(self, event_bin_width=None, fit=True, save=True, show=True):
-        return self.draw_ph_pull(event_bin_width, fit, show=show, save=save, adc=True)
-
+        (x, y), bins = self.get_tree_vec([self.get_t_var(), self.get_ph_var()], self.Cut(cut)), self.Bins.get_time(bin_size)
+        h = self.Draw.profile(x, y, bins, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [e]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
+        fit = FitRes(h.Fit('pol0', 'qs'))
+        self.Draw.save_plots(f'PulseHeight{bin_size}')
+        return h, fit
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
     # ----------------------------------------
     # region 2D DISTRIBUTIONS
-    def get_2d_coods(self, roc=None, global_=False, native=False, mm=True):
-        fac = '*10' if mm else ''
-        coods = 'cluster_ypos_tel[{r}-4]{f}:cluster_xpos_tel[{n}-4]{f}' if global_ else 'row:col' if native else 'dia_track_y_local[{r}]{f}:dia_track_x_local[{r}]{f}'
-        return coods.format(r=self.Dut if roc is None else roc, f=fac)
+    def draw_adc_map(self, cut=None, **kwargs):
+        x, y, zz = self.get_tree_vec(['col', 'row', 'adc'], self.Cut(cut) + self.Cut.get_plane())
+        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit='ADC'))
 
-    def draw_adc_map(self, show=True, cut=None, zero_ratio=False):
-        cut_string = self.Cut(cut) + self.Cut.generate_masks(cluster=False)()
-        set_root_output(False)
-        h = TProfile2D('p_am', 'ADC Map', *self.Bins.get_pixel())
-        self.Tree.Draw('adc{}:row:col >> p_am'.format('<0' if zero_ratio else ''), cut_string, 'goff')
-        format_statbox(h, x2=.81, entries=True)
-        format_histo(h, x_tit='col', y_tit='row', z_tit='ADC', y_off=1.3, z_off=1.5, z_range=[0, 1] if zero_ratio else None)
-        self.Draw(h, 'ADCMap', show, rm=.17, lm=.13, draw_opt='colz')
+    def draw_threshold_map(self, vcal=True, cols=None, rows=None, pix=None, **kwargs):
+        x, y, zz = self.Calibration.get_thresholds(cols, rows, pix, vcal).T
+        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), 'Artificial Threshold Map', **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit=f'0Treshold [{"VCAL" if vcal else "ke"}]'))
 
-    def draw_threshold_map(self, vcal=True, cols=None, show=True):
-        h = TProfile2D('p_tm', 'Artificial Threshold Map', *self.Bins.get_pixel())
-        for (col, row), thresh in self.get_thresholds(cols, vcal=vcal).items():
-            h.Fill(col, row, thresh if vcal else thresh / 1000.)
-        format_histo(h, x_tit='col', y_tit='row', z_tit='Artificial Treshold [{u}]'.format(u='vcal' if vcal else 'ke'), y_off=1.3, z_off=1.7, stats=0)
-        self.Draw(h, 'ThresholdMap', show, rm=.17, lm=.13, draw_opt='colz')
-        return h
-
-    def draw_adc_fixed_vcal_map(self, roc=None, vcal=200, show=True):
-        roc = self.Dut if roc is None else roc
-        h = TProfile2D('p_pm', 'ADC Map for Vcal {v}'.format(v=vcal), *self.Bins.get_pixel())
-        cols, rows = split(array(self.Cut.CutConfig['local_fiducial']), 2) if self.Cut.CutConfig['local_fiducial'] is not None else [0, self.Bins.NCols - 1], [0, self.Bins.NRows - 1]
-        for col in range(cols[0], cols[1] + 1):
-            for row in range(rows[0], rows[1] + 1):
-                self.Fit.SetParameters(*self.Parameters[roc][col][row])
-                h.Fill(col, row, self.Fit(vcal))
-        format_histo(h, x_tit='col', y_tit='row', z_tit='Pulse Height [adc]', y_off=1.3, z_off=1.5, stats=0)
-        self.Draw(h, 'ADCMap{v}'.format(v=vcal), show, rm=.17, lm=.13, draw_opt='colz')
+    def draw_adc_fixed_vcal_map(self, vcal=200, **kwargs):
+        cols, rows = self.Cut.get_fid_lines()
+        x, y, zz = array([[col, row, self.Calibration.get_adc(col, row, vcal)] for col in cols for row in rows]).T
+        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), f'ADC Map (VCAL={vcal}', **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit='ADC'))
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
@@ -287,399 +157,103 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
-    # region CALIBRATION
-    def draw_calibration_fit(self, col, row, show=True, roc=None):
-        roc = self.Dut if roc is None else roc
-        self.Fit.SetParameters(*self.Parameters[roc][col][row])
-        format_histo(self.Fit, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4, color=632, lw=2)
-        gr = TGraph(len(self.Vcals[roc]), array(self.Vcals[roc], 'd'), array(self.Points[roc][col][row], 'd'))
-        format_histo(gr, marker=20, name='gr_fp', title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row), x_tit='vcal', y_tit='adc', y_off=1.4)
-        self.Draw(gr, lm=.12, draw_opt='ap')
-        self.Fit.Draw('same')
-        self.Draw.save_plots('CalFit{c}{r}'.format(c=col, r=row), show=show)
-
-    def fit_erf(self, col, row, roc=None, show=True):
-        roc = self.Dut if roc is None else roc
-        # fit.SetParameters(*self.Parameters[roc][col][row])
-        points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row])}.items()))
-        good_points = OrderedDict(sorted({vcal: value for vcal, value in zip(self.Vcals, self.Points[roc][col][row]) if value}.items()))
-        start = 0
-        for vcal, value in points.items():
-            if value:
-                start = vcal
-                break
-        if len(good_points) > 3:
-            fit = deepcopy(self.Fit)
-            fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
-        else:
-            fit = TF1('fit', 'pol1', 0, 3000)
-        if len(good_points) > 1:
-            gr = TGraph(len(points), array(points.keys(), 'd'), array(points.values(), 'd'))
-            gr.Fit(fit, 'q', '', start, 3000 if len(good_points) > 3 else 1000)
-            format_histo(gr, marker=20, x_tit='vcal', y_tit='adc', y_off=1.3, title='Calibration Fit for Pix {c} {r}'.format(c=col, r=row))
-            self.Draw(gr, draw_opt='ap', show=show, lm=.12)
-            return fit
-    # endregion CALIBRATION
-    # ----------------------------------------
-
-    # ----------------------------------------
     # region EFFICIENCY
     def get_efficiency_cut(self, trig_phase=True):
-        return self.Cut.generate_custom(include=['fiducial', 'rhit', 'tracks', 'chi2_x', 'chi2_y', 'aligned', 'event range', 'beam stops'] + (['trigger_phase'] if trig_phase else []))
+        return self.Cut.generate_custom(exclude=None if trig_phase else 'trigger_phase', prnt=False)
 
-    def get_hit_efficiency(self, roc=None, cut=None):
-        cut_string = self.get_efficiency_cut() if cut is None else TCut(cut)
-        roc = self.Dut if roc is None else roc
-        n = self.Tree.Draw('n_hits[{r}]>0'.format(r=roc), cut_string, 'goff')
-        values = self.Run.get_tree_vec(n, dtype=bool)
-        return calc_eff(values=values)
+    def get_eff_var(self, plane=None):
+        return f'n_hits[{choose(plane, self.N)}] > 0'
 
-    def draw_eff_vs_chi2(self, step=10, show=True):
-        g = Draw.make_tgrapherrors('gec2', 'Efficiency vs Chi2')
-        for i, chi2 in enumerate(arange(step, 100 + step / 100., step)):
-            self.Cut.set_chi2(chi2)
-            eff = self.get_hit_efficiency()
-            g.SetPoint(i, chi2, eff.n)
-            g.SetPointError(i, 0, eff.s)
-        format_histo(g, x_tit='#chi^{2} [%quantile]', y_tit='Efficiency [%]', y_off=1.3)
-        self.Draw(g, draw_opt='ap', lm=.12, show=show)
+    def get_hit_efficiency(self, plane=None, cut=None):
+        return calc_eff(values=self.get_tree_vec(self.get_eff_var(plane), choose(cut, self.get_efficiency_cut()), dtype=bool))
 
-    def draw_hit_efficiency(self, save=True, cut=None, vs_time=True, bin_width=5000, n=1e9, start=0, show=True):
-        set_root_output(False)
-        h = TProfile('h_he', 'Hit Efficiency {s}'.format(s=self.Dut), *self.Bins.get(bin_width, vs_time))
-        cut_string = self.Cut.generate_custom(exclude=['masks']) if cut is None else TCut(cut)
-        x_var = self.get_t_var() if vs_time else 'event_number'
-        self.Tree.Draw('(n_hits[{r}]>0)*100:{x} >> h_he'.format(r=self.Dut, x=x_var), cut_string, 'goff', int(n), start)
-        g = Draw.make_graph_from_profile(h)
-        fit = fix_chi2(g, .01, show)
-        format_histo(g, x_tit='Time [hh:mm]' if vs_time else 'Event Number', y_tit='Efficiency [%]', y_off=1.4, y_range=[-5, 115], stats=0,
-                     t_ax_off=self.Run.StartTime if vs_time else None, markersize=1.2, draw_first=True)
-        self.Draw(g, show=show, lm=.13, gridy=True, draw_opt='apz', bm=.2)
+    def draw_eff_vs_chi2(self, **kwargs):
+        x, e = self.get_tree_vec(['chi2_tracks', self.get_eff_var()], self.get_efficiency_cut())
+        self.Draw.efficiency(x, e, find_bins(x, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(kwargs, x_tit='#chi^{2}'))
+
+    def draw_hit_efficiency(self, cut=None, bin_size=None, rel_time=False, **kwargs):
+        (x, e), bins = self.get_tree_vec([self.get_t_var(), self.get_eff_var()], choose(cut, self.get_efficiency_cut())), self.Bins.get_time(bin_size, cut)
+        g = self.Draw.efficiency(x, e, bins, 'Hit Efficiency', **prep_kw(kwargs, **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz'))
+        fit = FitRes(g.Fit('pol0', 'qs'))
         self.Draw.stats(fit, width=.35, y2=.35, names=['Efficiency'])
         self.Draw.preliminary()
-        self.Draw.save_plots('HitEfficiencyROC{n}'.format(n=self.Dut), save=save, show=show)
+        self.Draw.save_plots('HitEfficiency', **kwargs)
         return fit if fit.Parameter(0) is not None else 0
 
-    def draw_efficiency_map(self, res=None, nsigma=1, cut='all', show=True):
-        cut_string = TCut(cut) + self.Cut.CutStrings['tracks']
-        cut_string = self.Cut.generate_custom(exclude=['masks', 'fiducial']) if cut == 'all' else cut_string
-        p = TProfile2D('p_em', 'Efficiency Map {d}'.format(d=self.DUT.Name), *self.Bins.get_global(res_fac=res, mm=True))
-        self.Tree.Draw('(n_hits[{r}]>0)*100:{}:{}>>p_em'.format(r=self.Dut, *self.Cut.get_track_vars(self.Dut - 4, mm=True)), cut_string, 'goff')
-        format_statbox(p, entries=True, x2=.81)
-        format_histo(p, x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
-        self.Draw(p, 'Efficiency Map', show, lm=.13, rm=.17, draw_opt='colz')
-        self.draw_fid_cut(scale=10)
+    def draw_efficiency_map(self, res=None, fid=False, **kwargs):
+        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut() if fid else self.Cut.generate_custom('fiducial'))
+        tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
+        self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
         self.Draw.preliminary()
+        self.draw_fid_cut()
         self.Draw.save_plots('Efficiency Map')
 
     def get_fiducial_cell(self, n):
         x1, x2, y1, y2 = self.Cut.CutConfig['fiducial']
         nx = int(round((x2 - x1) / Plane.PX))
-        # ny = int(round((y2 - y1) / .010))
         return round(x1 + Plane.PX * (n % nx), 4), round(y1 + Plane.PY * (n / nx), 4)
 
-    def draw_cell_efficiency(self, cell=0, res=2, show=True):
-        # x, y = self.get_fiducial_cell(cell)
-        cut_string = self.Cut.generate_custom(exclude=['masks'])
-        p = TProfile2D('pce', 'Efficiency for Fiducial Cell {}'.format(cell), res, 0, Plane.PX, res, 0, Plane.PY)
-        n = self.Tree.Draw('(n_hits[{r}]>0)*100:dia_track_y_local[{r1}]:dia_track_x_local[{r1}]>>pce'.format(r=self.Dut, r1=self.Dut - 4), cut_string, 'goff')
-        effs = [self.Tree.GetV1()[i] for i in range(n)]
-        x_vals = [self.Tree.GetV3()[i] for i in range(n)]
-        y_vals = [self.Tree.GetV2()[i] for i in range(n)]
-        for e, x, y in zip(effs, x_vals, y_vals):
-            p.Fill(x % Plane.PX, y % Plane.PY, e)
-        format_statbox(p, entries=True, x2=.81)
-        format_histo(p, x_tit='Track x [cm]', y_tit='Track y [cm]', z_tit='Efficiency [%]', y_off=1.4, z_off=1.5)
-        self.Draw(p, show=show, lm=.13, rm=.17, draw_opt='colz')
+    def draw_cell_efficiency(self, nbins=None, **dkw):
+        x, y, e = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut())
+        bins = None if nbins is None else [nbins, 0, Plane.PX, nbins, 0, Plane.PY]
+        self.Draw.prof2d(x % Plane.PX, y % Plane.PY, e * 100, bins, 'Cell Efficiency', **prep_kw(dkw, x_tit='Track X [mm]', y_tit='Track Y [mm]', z_tit='Efficiency [%]'))
 
-    def draw_efficiency_vs_trigphase(self, show=True):
-        n = self.Tree.Draw('n_hits[{}]>0:trigger_phase[1]'.format(self.Dut), self.get_efficiency_cut(trig_phase=False), 'goff')
-        hits, tp = self.Run.get_root_vecs(n, 2)
-        y = [calc_eff(values=hits[where(tp == i)]) for i in arange(10)]
-        g = Draw.make_tgrapherrors('getp', 'Efficiency per Trigger Phase', x=arange(10), y=y)
-        format_histo(g, fill_color=Draw.FillColor, x_tit='Trigger Phase', y_tit='Efficiency [%]', y_off=1.4, x_range=[-1, 10])
-        self.Draw(g, 'EffVsTrigPhase', show, draw_opt='ba', lm=.13)
+    def draw_efficiency_vs_trigphase(self, **kwargs):
+        x, e = self.get_tree_vec(['trigger_phase[1]', self.get_eff_var()], self.get_efficiency_cut(trig_phase=False))
+        return self.Draw.efficiency(x, e, make_bins(-.5, 10), 'Trigger Phase Efficiency', **prep_kw(kwargs, x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
     # endregion EFFICIENCY
     # ----------------------------------------
 
     # ----------------------------------------
     # region TRIGGER PHASE
+    def draw_trigger_phase(self, cut=None, **kwargs):
+        self.Tel.draw_trigger_phase(dut=True, cut=cut, **kwargs)
 
-    def draw_trigphase_offset(self, cut=None, show=True):
-        h = TH1I('h_tp', 'Trigger Phase Offset', 18, -9.5, 8.5)
-        self.Tree.Draw('trigger_phase[1] - trigger_phase[0]>>h_tp', self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
-        format_statbox(h, entries=True, y2=.88)
-        format_histo(h, x_tit='Trigger Phase', y_tit='Number of Entries', y_off=1.8, fill_color=Draw.FillColor, ndivx=20)
-        self.Draw(h, 'TPOff', show, lm=.16)
+    def draw_trigger_phase_offset(self, cut=None, **dkw):
+        x, y = self.get_tree_vec([f'trigger_phase[{i}]' for i in [1, 0]], choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
+        return self.Draw.distribution(x - y, make_bins(-9.5, 10), **prep_kw(dkw, ndivx=20, x_tit='#Delta Trigger Phase', stats=set_entries()))
 
-    def draw_trigphase_off_time(self, bin_width=30000, cut=None, show=True):
-        h = TProfile('htpot', 'Trigger Phase vs Time', *self.Bins.get(bin_width, vs_time=True))
-        self.Tree.Draw('(trigger_phase[1] - trigger_phase[0]):{}>>htpot'.format(self.get_t_var()), self.Cut.generate_custom(exclude='trigger_phase') if cut is None else cut, 'goff')
-        format_statbox(h, entries=True, y2=0.88)
-        format_histo(h, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.Run.StartTime)
-        self.Draw(h, 'TPOffTime', show, lm=.16)
+    def draw_tphase_offset_trend(self, bin_width=None, cut=None, **dkw):
+        t, y0, y1 = self.get_tree_vec([self.get_t_var()] + [f'trigger_phase[{i}]' for i in [1, 0]], choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
+        return self.Draw.profile(t, y0 - y1, self.Bins.get_time(bin_width, cut), 'Trigger Phase vs Time', **prep_kw(dkw, graph=True, y_tit='Trigger Phase', y_range=[-9, 9], **self.get_t_args()))
     # endregion TRIGGER PHASE
     # ----------------------------------------
 
     # ----------------------------------------
-    # region ARTIFICIAL THRESHOLD
-    def find_landau(self, aver=10, m1=2500, m2=5000, s1=500, s2=1600):
-        seed = self.draw_signal_distribution(show=False)
-        h = deepcopy(seed)
-        m_range = range(m1, m2 + 1, 100)
-        s_range = range(s1, s2 + 1, 50)
-        p = TProfile2D('g_fl', 'Find Landau', len(m_range) - 1, m_range[0], m_range[-1], len(s_range) - 1, s_range[0], s_range[-1])
-        self.PBar.start(len(m_range) * len(s_range) * aver)
-        i = 0
-        r_min, r_max = .5, 1.5
-        for _ in range(aver):
-
-            for m in m_range:
-                for s in s_range:
-                    i += 1
-                    self.PBar.update(i)
-                    if r_min < m / 4. / s < r_max:
-                        delta = self.model_landau(seed, h, m, s, show=False, thresh=True)
-                        p.Fill(m, s, delta)
-        self.PBar.finish()
-        format_statbox(h, entries=True, x2=.82)
-        format_histo(p, x_tit='MPV [e]', y_tit='Sigma [e]', z_tit='#chi^{2} to Seed Function', y_off=1.7, z_off=1.3)
-        self.Draw(p, draw_opt='colz', lm=.13, rm=0.16)
-        self.draw_ms_ratios(r_min, r_max, m1, m2, s1, s2)
-        self.Draw.save_plots('FindLandau')
-        self.find_working_point(p)
-
-    @staticmethod
-    def draw_ms_ratios(r_min, r_max, m1, m2, s1, s2, step=.1):
-        ratios = arange(r_min, r_max + step, step)
-        off = .01
-        for i, ratio in enumerate(ratios):
-            cut = TCutG('ms{n}'.format(n=i), 2, array([0, 20000], 'd'), array([0, 20000 / ratio / 4]))
-            x_pos = m1 if m1 / ratio / 4 > s1 else 4 * ratio * s1
-            y_pos = m1 / ratio / 4 if m1 / ratio / 4 > s1 else s1
-            Draw.tlatex(x_pos + off * (m2 - m1), y_pos + off * (s2 - s1), text='{0:3.1f}'.format(ratio), size=.02, align=11)
-            cut.Draw('same')
-            Draw.add(cut)
-
-    @staticmethod
-    def find_working_point(h):
-        ps = [h.ProfileY(), h.ProfileX()]
-        fits = [TF1('f{n}'.format(n=i), 'pol2', 0, 10000) for i in range(2)]
-        for fit, p in zip(fits, ps):
-            p.Fit(fit, 'qs0')
-        mins = [fit.GetMinimumX() for fit in fits]
-        print(mins, mins[1] / mins[0] / 4)
-
-    def model_landau(self, seed=None, h=None, m=10000, s=1000, show=True, thresh=False):
-        seed = self.draw_signal_distribution(show=False) if seed is None else seed
-        h = deepcopy(seed) if h is None else h
-        h.SetName('h_ml')
-        n = seed.GetEntries()
-        h.Reset()
-        thresholds = [47 * i for i in [150, 160, 170]]
-        for _ in range(int(n)):
-            v = gRandom.Landau(m, s)
-            threshold = thresholds[int(gRandom.Rndm() * len(thresholds))]
-            h.Fill(v if v > threshold else 0 if thresh else v)
-            # h.Fill(v if v > 11421 else 0 if thresh else v)
-        delta = mean([(h.GetBinContent(i) - seed.GetBinContent(i)) ** 2 for i in range(h.GetNbinsX()) if i is not h.FindBin(0)])
-        seed.SetFillColor(2)
-        h.SetFillColor(Draw.FillColor)
-        seed.SetFillStyle(3017)
-        h.SetFillStyle(3018)
-        l1 = Draw.make_legend(y2=.76)
-        l1.AddEntry(h, 'Simulation', 'f')
-        l1.AddEntry(seed, 'Original', 'f')
-        self.Draw(h, show=show, leg=l1)
-        self.Draw(seed, show=show, draw_opt='same', canvas=gROOT.GetListOfCanvases()[-1])
-        seed.Draw('same')
-        return delta
-
-    def landau_vid(self, save=False, mpv=5000, sigma=820):
-        h = self.draw_signal_distribution()
-        h.GetYaxis().SetRangeUser(0, 2500)
-        zero_bin = h.FindBin(0)
-        zero_entries = int(h.GetBinContent(zero_bin))
-        entries = int(h.GetEntries())
-        print(entries)
-        c = gROOT.GetListOfCanvases()[-1]
-        thresholds = self.get_thresholds(vcal=False)
-        for i in range(entries):
-            h.SetBinContent(zero_bin, zero_entries)
-            v = gRandom.Landau(mpv, sigma)
-            threshold = thresholds[int(rand() * self.Bins.NCols), int(rand() * self.Bins.NRows)]
-            if v < threshold:
-                h.Fill(v)
-                zero_entries -= 1
-            if i % 100 == 0:
-                c.Update()
-                c.Modified()
-            if i % 100 == 0 and save:
-                self.Draw.save_plots(f'l{i:04d}', show=False, print_names=False)
-    # endregion ARTIFICIAL THRESHOLD
-    # ----------------------------------------
-
-    # ----------------------------------------
     # region ALIGNMENT
-    def draw_alignment(self, plane1=2, plane2=None, mode='y', binning=5000, chi2=1, show=True, vs_time=True, redo=False):
-        plane2 = self.Dut if plane2 is None else plane2
-        picklepath = self.make_pickle_path('Alignment', run=self.Run.Number, suf='{m}_{p1}{p2}_{b}_{t}'.format(m=mode, p1=plane1, p2=plane2, b=binning, t='Time' if vs_time else 'EvtNr'))
+    def get_alignment(self):
+        from pixel.alignment import PixAlignment
+        return PixAlignment
 
-        def func():
-            start = self.info('Checking for alignment between plane {p1} and {p2} ... '.format(p1=plane1, p2=plane2), endl=False)
-            h = TH3F('hpa', 'pa', *(self.Bins.get(binning, vs_time=vs_time) + 2 * self.Bins.get_global_cood(mode, res=sqrt(12))))
-            y, z_ = ('cluster_{m}pos_tel[{r}]'.format(m=mode, r=plane) for plane in [plane1, plane2])
-            cut_string = TCut('n_clusters[{p1}]==1 && n_clusters[{p2}]==1'.format(p1=plane1, p2=plane2)) + self.Cut.generate_chi2(mode, chi2)()
-            self.Tree.Draw('{z}:{y}:{x}>>hpa'.format(z=z_, y=y, x=self.get_t_var() if vs_time else 'Entry$'), cut_string, 'goff')
-            g = Draw.make_tgrapherrors('g_pa', 'Plane Correlation {p1} {p2}'.format(p1=plane1, p2=plane2), marker_size=.5)
-            for ibin in range(h.GetNbinsX() - 1):
-                h.GetXaxis().SetRange(ibin, ibin + 1)
-                p = h.Project3D('yz')
-                g.SetPoint(ibin, h.GetXaxis().GetBinCenter(ibin), p.GetCorrelationFactor())
-            format_histo(g, x_tit='Time [hh::mm]' if vs_time else 'Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[0, 1], t_ax_off=self.Run.StartTime if vs_time else None)
-            self.add_to_info(start)
-            return g
-
-        gr = do_pickle(picklepath, func, redo=redo)
-        self.Draw(gr, 'PixelAligment', show, draw_opt='alp', lm=.13, prnt=show)
-        return gr
-
-    @save_pickle(sub_dir='Alignment')
-    def get_alignment(self, _redo=False):
-        return mean_sigma(get_graph_y(self.draw_alignment(show=False)))
-
-    def check_alignment(self, redo=False):
-        m, s = self.get_alignment(_redo=redo)
-        if m < .4:
-            warning('Planes are not correlated!')
-        elif s > .05:
-            warning('Large fluctuations in correlation!')
-        return m > .4
-
-    def draw_correlation(self, plane1=2, plane2=None, mode='y', chi2=None, res=.7, start=0, evts=int(1e10), cut=None, show=True):
-        old_chi2 = self.Cut.get_chi2(mode)
-        self.Cut.set_chi2(old_chi2 if chi2 is None else chi2)
-        plane2 = self.Dut if plane2 is None else plane2
-        h = TH2F('h_pc', 'Plane Correlation', *self.Bins.get_global(res_fac=res))
-        cut = self.Cut(cut)
-        self.Tree.Draw('cluster_{m}pos_tel[{p1}]:cluster_{m}pos_tel[{p2}]>>h_pc'.format(m=mode, p1=plane1, p2=plane2), cut, 'goff', evts, start)
-        self.info('Correlation Factor: {f:4.3f}'.format(f=h.GetCorrelationFactor()))
-        format_histo(h, x_tit='{m} Plane {p}'.format(p=plane1, m=mode), y_tit='{m} Plane {p}'.format(p=plane2, m=mode), y_off=1.5, stats=0, z_tit='Number of Entries', z_off=1.5)
-        self.Draw(h, 'PlaneCorrelation{m}{p1}{p2}'.format(m=mode.title(), p1=plane1, p2=plane2), show, lm=.13, draw_opt='colz', rm=.17)
-        self.Cut.set_chi2(old_chi2)
-
-    def draw_event_offsets(self, evnts=1000, start=0, pnts=None, rnge=1, show=True):
-        pnts = int(ceil(self.Run.NEvents / evnts)) if pnts is None else pnts
-        n_graphs = 2 * rnge + 1
-        graphs = [Draw.make_tgrapherrors('g_to{i}'.format(i=i), '', color=self.Draw.get_color(), marker_size=.5) for i in range(n_graphs)]
-        l1 = Draw.make_legend(x1=.8, y2=.5, nentries=n_graphs - 1)
-        self.PBar.start(pnts * evnts - start)
-        p1 = self.Dut
-        p2 = 2
-        for k in range(pnts):
-            x, y = OrderedDict(), OrderedDict()
-            n = self.Tree.Draw('plane:row:event_number', 'n_hits[2]==1 || n_hits[{p1}]==1'.format(p1=p1), 'goff', evnts, start + k * evnts)
-            planes = [int(self.Tree.GetV1()[i]) for i in range(n)]
-            rows = [int(self.Tree.GetV2()[i]) for i in range(n)]
-            nrs = Counter([int(self.Tree.GetV3()[i]) for i in range(n)])
-            for ev, size in sorted(nrs.items()):
-                self.PBar.update(ev + 1 - start)
-                plane = [planes.pop(0) for _ in range(size)]
-                row = [rows.pop(0) for _ in range(size)]
-                if plane.count(p1) == 1:
-                    x[ev] = row[plane.index(p1)]
-                if plane.count(p2) == 1:
-                    y[ev] = row[plane.index(p2)]
-            xts = [[] for _ in range(n_graphs)]
-            yts = [[] for _ in range(n_graphs)]
-            for i in range(-rnge, rnge + 1):
-                j = i + rnge
-                for ev, row in x.items():
-                    if ev + i in y:
-                        xts[j].append(row)
-                        yts[j].append(y[ev + i])
-                corr = corrcoef(xts[j], yts[j])[0][1]
-                graphs[j].SetPoint(k, k * evnts + start, corr)
-        self.PBar.finish()
-        mg = TMultiGraph('m_eo', 'Correlations')
-        for i, gr in enumerate(graphs):
-            l1.AddEntry(gr, 'offset: {i}'.format(i=i - rnge), 'pl')
-            mg.Add(gr, 'pl')
-        format_histo(mg, x_tit='Event Number', y_tit='Correlation Factor', y_off=1.5, y_range=[-.2, 1], draw_first=True)
-        self.Draw(mg, 'EventOffsets', show, draw_opt='ap', leg=l1, lm=.13)
-        self.Draw.reset_colors()
+    def draw_correlation(self, tel_plane=None, offset=0, bin_size=200):
+        self.get_alignment()(self.Run.Converter, tel_plane).draw_correlation(offset, bin_size)
     # endregion ALIGNMENT
     # ----------------------------------------
 
     # ----------------------------------------
     # region DRAW
-    def draw_dut_hits(self, dut1=4, dut2=5, cut=None, show=True):
-        h = TH2F('h_hd', 'Number of Hits', 40, 0, 40, 40, 0, 40)
-        self.Tree.Draw('n_hits[{}]:n_hits[{}]>>h_hd'.format(dut2, dut1), self.Cut(cut), 'goff')
-        format_statbox(h, entries=True, x2=.81)
-        x_tit, y_tit = ('Number of Hits in {}'.format(self.Run.DUT.Names[dut - 4]) for dut in [dut1, dut2])
-        format_histo(h, x_tit=x_tit, y_tit=y_tit, y_off=1.3, z_tit='Number of Entries', z_off=1.4, x_range=[0, h.FindLastBinAbove(0, 1) + 1], y_range=[0, h.FindLastBinAbove(0, 2) + 1])
-        self.Draw(h, 'HitsDiaSil', show, draw_opt='colz', rm=0.17, lm=.13, logz=True)
+    def draw_dut_hits(self, dut2=None, cut=None, **dkw):
+        duts = [self.get_next_dut(dut2), self.DUT]
+        x, y = self.get_tree_vec([f'n_hits[{dut.Number + self.Run.NTelPlanes - 1}]' for dut in duts], self.Cut(cut))
+        x_tit, y_tit = [f'Number of Hits in {dut.Name}' for dut in duts]
+        return self.Draw.histo_2d(x, y, [w for i in [x, y] for w in make_bins(*find_range(i, 0, 1.5))], **prep_kw(dkw, x_tit=x_tit, y_tit=y_tit, logz=True))
 
-    def draw_hit_pie(self, d2=5):
-        zero, dia, dut2, both = (self.Tree.GetEntries(s.format(d2)) for s in ['n_hits[4]==0&&n_hits[{}]==0', 'n_hits[4]>0&&n_hits[{}]==0', 'n_hits[4]==0&&n_hits[{}]>0', 'n_hits[4]>0&&n_hits[{}]>0'])
-        names = ['No Hits', '{} Hit'.format(self.DUT.Name), '{} Hit'.format(self.Run.DUT.Names[d2 - 4]), 'Both Hits']
-        pie = TPie('pie', 'Hit Contributions', 4, array([zero, dia, dut2, both], 'f'), array(self.Draw.get_colors(4), 'i'))
-        for i, label in enumerate(names):
-            pie.SetEntryRadiusOffset(i, .05)
-            pie.SetEntryLabel(i, label.title())
-        format_pie(pie, h=.04, r=.2, text_size=.025, angle3d=70, angle_off=250)
-        self.Draw(pie, draw_opt='3drsc')
-        self.Draw.reset_colors()
+    def draw_hit_pie(self, dut2=None):
+        duts = [self.get_next_dut(dut2), self.DUT]
+        x, y = self.get_tree_vec([f'n_hits[{dut.Number + self.Run.NTelPlanes - 1}]' for dut in duts])
+        labels = ['No Hits'] + [f'{dut.Name} Hit' for dut in duts] + ['Both Hits']
+        e = [count_nonzero(i) for i in [(x == 0) & (y == 0), (x > 0) & (y == 0), (x == 0) & (y > 0), (x > 0) & (y > 0)]]
+        self.Draw.pie(labels, e, offset=.05, h=.04, r=.2, text_size=.025, angle3d=70, angle_off=250, label_format='%txt (%perc)')
 
     def draw_cluster_size(self, cut='', show=True):
-        return self.Tel.draw_cluster_size(self.Dut, self.DUT.Name, cut, show)
+        return self.Tel.draw_cluster_size(self.N, self.DUT.Name, cut, show)
 
-    def draw_residuals(self, mode=None, cut=None, show=True, x_range=None):
-        return self.Tracks.draw_residuals(self.Dut, mode=mode, cut=cut, show=show, x_range=x_range)
-
-    def draw_slope(self, show=True):
-        with open(join(self.Dir, 'data', 'vcalCalibration.txt')) as f:
-            d = load(f)
-            h = TH1F('ho', 'Vcal Calibration Slopes', 30, 35, 65)
-            for value in d['slope']:
-                h.Fill(value)
-            format_statbox(h, fit=True, all_stat=True, w=.3)
-            format_histo(h, x_tit='Slope [e]', y_tit='Number of Entries', y_off=1.2, fill_color=Draw.FillColor)
-            self.Draw(h, show=show)
-            h.Fit('gaus', 'q')
-
-    def draw_offset(self, show=True):
-        with open(join(self.Dir, 'data', 'vcalCalibration.txt')) as f:
-            d = load(f)
-            h = TH1F('ho', 'Vcal Calibration Offsets', 15, -200, 400)
-            for value in d['offset']:
-                h.Fill(value)
-            format_statbox(h, fit=True, all_stat=True, w=.3)
-            format_histo(h, x_tit='Offset [e]', y_tit='Number of Entries', y_off=1.2, fill_color=Draw.FillColor)
-            format_statbox(h, fit=True, all_stat=True)
-            self.Draw(h, show=show)
-            h.Fit('gaus', 'q')
+    def draw_residual(self, mode=None, cut=None, **dkw):
+        return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **dkw)
     # endregion DRAW
     # ----------------------------------------
 
-    def do_analysis(self, do_cut_dist=False, do_res_ana=False, do_cut_ana=False, do_occupancy=True, do_pulse_height=True):
-        """ Does automatic analysis with the selected options """
-        TFormula.SetMaxima(1000000, 10000, 10000000)  # (1000,1000,1000)
-
-        if do_cut_dist:
-            self.Cut.do_cuts_distributions()
-        if do_res_ana:
-            self.Cut.do_res_analysis()
-        if do_cut_ana:
-            self.do_cuts_analysis(do_occupancy, do_pulse_height, True)
-
-    def do_cuts_analysis(self, do_occupancy, do_pulse_height, normalize_ph_plots=False):
-        """ Calls do_cut_analysis in the Cut method """
-        self.Cut.do_cuts_analysis(do_occupancy, do_pulse_height, normalize_ph_plots)
-
 
 if __name__ == '__main__':
-
     pargs = init_argparser(run=139, tc='201810', dut=1, has_verbose=True, tree=True)
     z = PixAnalysis(pargs.run, pargs.dut, pargs.testcampaign, pargs.tree)
