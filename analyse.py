@@ -57,10 +57,13 @@ if __name__ == '__main__':
         z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             if pargs.tree:
-                p = z.Peaks
-                pul = z.Pulser
-                ped = z.Pedestal
-                w = z.Waveform
+                if z.Run.Type == 'pixel':
+                    cal = z.Calibration
+                else:
+                    p = z.Peaks
+                    pul = z.Pulser
+                    ped = z.Pedestal
+                    w = z.Waveform
                 tr = z.Tracks
                 t = z.Tel
             c = z.Run.Converter
