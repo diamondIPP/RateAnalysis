@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, quantile
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad
 from src.sub_analysis import SubAnalysis
 from helpers.draw import *
 from scipy.stats import norm
@@ -175,12 +175,12 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region RESIDUALS
-    def draw_residual(self, roc, mode='x', cut='', x_range=None, fit=False, ret_res=False, show=True):
-        x = self.get_tree_vec(var='residuals{}[{}]'.format('_{}'.format(mode.lower()) if mode else '', roc), cut=self.Cut(cut)) * 1e4  # convert to [um]
-        tit = '{} Residuals for Plane {}'.format(mode.title(), roc)
-        h = self.Draw.distribution(x, make_bins(-1000, 1000, 2), tit, y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=False, normalise=True)
+    def draw_residual(self, roc, mode='x', cut='', fit=False, ret_res=False, **dkw):
+        x = self.get_tree_vec(f'residuals{"_{}".format(mode.lower()) if mode else ""}[{roc}]', self.Cut(cut)) * 1e4  # convert to [um]
+        tit = f'{mode.title() if mode else ""} Residuals for Plane {roc}'
+        h = self.Draw.distribution(x, show=False, **prep_kw(dkw, title=tit, x_tit='Distance [#mum]', normalise=True))
         res = self.fit_residual(h, show=fit)
-        self.Draw(h, '{}ResidualsRoc{}'.format(mode.title(), roc), show, lm=.14, stats=set_statbox(fit=fit, all_stat=True))
+        self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', y_off=2.0, lm=.14, stats=set_statbox(fit=fit, all_stat=True)))
         return res if ret_res else h
 
     def draw_unbiased_residual(self, roc=0, mode='x', cut='', x_range=None, fit=False, show=True):
