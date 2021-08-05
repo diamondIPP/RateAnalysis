@@ -3,10 +3,12 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut
+from numpy import delete
+
 from helpers.draw import *
 from src.binning import Bins
-from src.sub_analysis import SubAnalysis
 from src.dut import Plane
+from src.sub_analysis import SubAnalysis
 
 
 class Cut(SubAnalysis):
@@ -32,6 +34,9 @@ class Cut(SubAnalysis):
     def __getitem__(self, name):
         return self.get(name)
 
+    def __repr__(self):
+        return f'{self.__class__.__name__} of {self.Run}'
+
     def has(self, name):
         return bool(self.get(name, warn=False).GetTitle())
 
@@ -56,6 +61,10 @@ class Cut(SubAnalysis):
             return make_box_args(-1, -1, 1, 1)
         self.HasFid = True
         return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
+
+    def load_pixel_fid(self):
+        fid = self.load_fiducial('pixel fiducial')
+        return fid if fid[0][0] != -1 else make_box_args(0, 0, Plane.NCols - 1, Plane.NRows - 1)
 
     def load_dut_config(self, option, warn=True):
         if option not in self.Config.options('CUT') or self.Ana.DUT.Name not in self.Config.get_list('CUT', option):
@@ -119,20 +128,11 @@ class Cut(SubAnalysis):
         return self.get_max_event() - self.get_min_event()
 
     @staticmethod
-    def get_track_var(num, mode, mm=False):
-        return 'dia_track_{m}_local[{n}]{s}'.format(m=mode, n=num, s=' * 10' if mm else '')
+    def get_track_var(n, mode, mm=False, local=True):
+        return f'dia_track_{mode}{"_local" if local else ""}[{n}]{" * 10" if mm else ""}'
 
-    def get_track_vars(self, num, mm=False):
-        return [self.get_track_var(num, v, mm) for v in ['x', 'y']]
-
-    def get_beam_interruptions(self):
-        """ :returns: list of raw interruptions, type [list[tup]]"""
-        return do_pickle(self.make_simple_pickle_path('', sub_dir='BeamStops'), self.find_beam_interruptions)
-
-    def get_interruptions_ranges(self):
-        """ :returns: list of interruptions including safety margin from the AnalysisConfig. """
-        pickle_path = self.make_simple_pickle_path('BeamStops', self.Config.get_value('CUT', 'exclude around jump', dtype=list))
-        return do_pickle(pickle_path, self.create_interruption_ranges, interruptions=self.get_beam_interruptions())
+    def get_track_vars(self, num, mm=False, local=True):
+        return [self.get_track_var(num, v, mm, local) for v in ['x', 'y']]
 
     def get_fiducial_area(self):
         return poly_area(*self.load_fiducial())
@@ -149,9 +149,6 @@ class Cut(SubAnalysis):
 
     def get_raw_pulse_height(self):
         return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
-
-    def get_align_var(self):
-        return ''
     # endregion GET
     # ----------------------------------------
 
@@ -239,10 +236,10 @@ class Cut(SubAnalysis):
 
     def generate_beam_interruptions(self):
         """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
-        interruptions = self.get_interruptions_ranges()
+        interruptions = self.create_interruption_ranges()
         cut_string = TCut('')
         for interr in interruptions:
-            cut_string += TCut('event_number<{low}||event_number>{high}'.format(low=interr[0], high=interr[1]))
+            cut_string += TCut('event_number<{} || event_number>{}'.format(*interr))
         description = '{} ({:.1f}% of the events excluded)'.format(len(interruptions), 100. * sum(j - i for i, j in interruptions) / self.Run.NEvents)
         return CutString('beam stops', cut_string, description)
 
@@ -251,14 +248,14 @@ class Cut(SubAnalysis):
         if not self.has_branch('aligned') or self.Tree.GetBranch('aligned').ClassName() == 'TBranchElement':
             return CutString()
         description = '{:.1f}% of the events excluded'.format(100. * self.find_n_misaligned() / self.Run.NEvents) if self.find_n_misaligned() else ''
-        return CutString('aligned', self.get_align_var() if self.find_n_misaligned() else '', description)
+        return CutString('aligned', 'aligned' if self.find_n_misaligned() else '', description)
 
-    def generate_fiducial(self, center=False, n_planes=0, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
+    def generate_fiducial(self, center=False, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
         x = choose(x, self.load_fiducial(fid_name)[0]) + (Plane.PX / 20 if center else 0)
         y = choose(y, self.load_fiducial(fid_name)[1]) + (Plane.PY / 20 if center else 0)
         cut = Draw.polygon(x, y, line_color=2, width=3, name=choose(name, 'fid{}'.format(self.Run.Number)), show=False)
-        cut.SetVarX(choose(xvar, self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'x')))
-        cut.SetVarY(choose(yvar, self.get_track_var(self.Ana.DUT.Number - 1 - n_planes, 'y')))
+        cut.SetVarX(choose(xvar, self.get_track_var(self.Ana.DUT.Number - 1, 'x', mm=False)))
+        cut.SetVarY(choose(yvar, self.get_track_var(self.Ana.DUT.Number - 1, 'y', mm=False)))
         description = 'x: {}, y: {}, area: {:.1f} mm2'.format(x * 10, y * 10, poly_area(x, y) * 100)
         return CutString(choose(name, 'fiducial'), TCut(cut.GetName()) if cut is not None else '', description)
 
@@ -269,7 +266,7 @@ class Cut(SubAnalysis):
     def generate_jump_cut(self):
         cut_string = ''
         start_event = self.get_min_event()
-        for tup in self.get_beam_interruptions():
+        for tup in self.find_beam_interruptions():
             if tup[1] > start_event:
                 low = start_event if tup[0] < start_event else tup[0]
                 cut_string += '&&' if cut_string else ''
@@ -306,37 +303,20 @@ class Cut(SubAnalysis):
         return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(x[i_break - 1])
 
     def find_beam_interruptions(self):
-        return self.find_pixel_beam_interruptions()
+        return [[]]
 
-    def find_pixel_beam_interruptions(self, bin_width=10, threshold=.4):
-        """ Finding beam interruptions by incestigation the event rate. """
-        t_start = self.Ana.info('Searching for beam interruptions of run {r} ...'.format(r=self.Run.Number), endl=False)
-        bin_values, time_bins = histogram(self.Run.Time / 1000, bins=self.Bins.get_raw_time(bin_width)[1])
-        m = mean(bin_values[bin_values.argsort()][-20:-10])  # take the mean of the 20th to the 10th highest bin to get an estimate of the plateau
-        deviating_bins = where(abs(1 - bin_values / m) > threshold)[0]
-        times = time_bins[deviating_bins] + bin_width / 2 - self.Run.Time[0] / 1000  # shift to the center of the bin
-        not_connected = where(concatenate([[False], deviating_bins[:-1] != deviating_bins[1:] - 1]))[0]  # find the bins that are not consecutive
-        times = split(times, not_connected)
-        interruptions = [[self.Ana.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times] if len(times[0]) else []
-        self.Ana.add_to_info(t_start)
-        return interruptions
-
-    def create_interruption_ranges(self, interruptions):
-        ranges = []
-        low, high = self.Config.get_value('CUT', 'exclude around jump', dtype=list)
-        for i, tup in enumerate(interruptions):
-            t_start = max(0, self.Run.get_time_at_event(tup[0]) - self.Run.StartTime - low)
-            t_stop = self.Run.get_time_at_event(tup[1]) - self.Run.StartTime + high
-            # if interruptions overlay just set the last stop to the current stop
-            if i and t_start <= (ranges[-1][1]) + 10:
-                ranges[-1][1] = t_stop
-                continue
-            ranges.append([t_start, t_stop])
-        return [[self.Run.get_event_at_time(t) for t in tup] for tup in ranges]
+    @save_pickle('BeamStopRange', print_dur=True)
+    def create_interruption_ranges(self, _redo=False):
+        low, high = self.Config.get_list('CUT', 'exclude around jump')
+        x = (array([[self.Run.get_time_at_event(ev) for ev in tup] for tup in self.find_beam_interruptions()]) - self.Run.StartTime + [-low, high]).flatten()
+        x[x < 0] = 0  # time cannot be smaller than 0
+        i = where(diff(x) < 10)[0]  # find all indices where the start of the next beam interruption is earlier than the end of the previous
+        x = array([self.Run.get_event_at_time(t) for t in delete(x, concatenate([i, i + 1]))])  # remove the last stop and the next start if overlap
+        return x.reshape((x.size // 2, 2))
 
     @save_pickle('Align')
     def find_n_misaligned(self, _redo=False):
-        return where(self.get_tree_vec(self.get_align_var(), dtype=bool) == 0)[0].size
+        return where(self.get_tree_vec('aligned', dtype=bool) == 0)[0].size
     # endregion COMPUTE
     # ----------------------------------------
 
@@ -379,7 +359,8 @@ class Cut(SubAnalysis):
 
     @staticmethod
     def invert(cut):
-        return TCut('!({})'.format(Cut.to_string(cut)))
+        cut = Cut.to_string(cut)
+        return TCut(f'!({cut})' if cut else '')
 
     @staticmethod
     def to_string(cut):
@@ -512,7 +493,7 @@ def low_rate(func, high=False):
     def wrapper(*args, **kwargs):
         ana, run = args[0], args[0].Run.get_high_rate_run(high)
         if run != ana.Run.Number:
-            from src.pad_analysis import PadAnalysis
+            from pad.analysis import PadAnalysis
             return getattr(PadAnalysis(run, ana.DUT.Number, ana.TCString, prnt=False).Cut, func.__name__)(*args[1:], **kwargs)
         return func(*args, **kwargs)
     return wrapper
