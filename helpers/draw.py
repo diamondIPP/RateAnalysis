@@ -612,7 +612,7 @@ class Draw(object):
     @staticmethod
     def make_graph_from_profile(p):
         x, y = get_hist_vecs(p)
-        return Draw.make_tgrapherrors(x[y != 0], y[y != 0], x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
+        return Draw.make_tgrapherrors(x[y != 0], y[y != 0], title=p.GetTitle(), x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
     def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, d=.01, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False, bottom=False, left=False):
