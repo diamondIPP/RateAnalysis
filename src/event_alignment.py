@@ -3,14 +3,16 @@
 #       general class for event alignment
 # created on October 18th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
+from ROOT import TFile
+from helpers.utils import *
+from helpers.draw import set_root_output
+from numpy import invert, ones, append
 
-from utils import *
-from ROOT import TFile, vector
-from numpy import split, cumsum
+MAX_SIZE = 255
 
 
-class EventAligment:
-    def __init__(self, converter, verbose=True):
+class EventAligment(object):
+    def __init__(self, converter=None):
 
         # Time
         self.StartTime = time()
@@ -18,6 +20,7 @@ class EventAligment:
         # Converter
         self.Converter = converter
         self.Run = converter.Run
+        self.Draw = self.Run.Draw
 
         # ROOT Files and Trees
         self.InFile = self.load_file()
@@ -26,23 +29,23 @@ class EventAligment:
         self.NewTree = None
 
         # Info
-        self.Verbose = verbose
+        self.HitVar = 'n_hits_tot' if bool(self.InTree.GetBranch('n_hits_tot')) else '@col.size()'
         self.NEntries = int(self.InTree.GetEntries())
-        self.MaxOffset = 5
-        self.AtEntry = -1
-        self.IsAligned = self.check_alignment_fast()
+        self.InTree.SetEstimate(self.NEntries)
+        self.IsAligned = self.check_alignment()
+        self.Aligned = ones(self.NEntries, dtype='?')
+        self.Offsets = {}
+        self.FirstOffset = 0
+        self.FinalOffset = 0
 
         # Branches
         self.Branches = self.init_branches()
-        self.Variables = None
         self.NHits = None
+        self.NTot = None
+        self.Variables = None
 
         # Progress Bar
-        self.PBar = PBar()
-
-    def __del__(self):
-        self.InFile.Close()
-        print_elapsed_time(self.StartTime, 'Pad Alignment', show=self.Verbose)
+        self.PBar = PBar(counter=True, t='s')
 
     def __call__(self):
         self.run()
@@ -51,68 +54,81 @@ class EventAligment:
         if not self.IsAligned:
             self.print_start()
             self.NHits = self.load_n_hits()
+            self.NTot = self.load_n_tot()
             self.Variables = self.load_variables()
-            self.update_variables()
-            if not self.check_alignment():  # make detailed check
-                self.write_aligned_tree()
-                if file_exists(self.Converter.ErrorFile):
-                    remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
+            self.write_aligned_tree()
+            if file_exists(self.Converter.ErrorFile):
+                remove(self.Converter.ErrorFile)  # file is not needed anymore and just gets appended otherwise
+            eff = calc_eff(values=self.get_aligned(self.NewTree))[0]
+            print_banner(f'{__class__.__name__} of run {self.Run.Number} finished in {get_elapsed_time(self.StartTime)} ({eff:.1f}% aligned)', color='green')
+
+    def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
+        return get_tree_vec(self.InTree, var, cut, dtype, nentries, firstentry)
+
+    def show_event(self, ev):
+        print(f'NHits: {self.NHits[ev]}')
+        for i, name in enumerate(self.get_tel_branches()):
+            print(f'{name}: {self.Variables[i][self.NTot[ev]:self.NTot[ev + 1]]}')
+        print(f'Trigger Phase: {self.Variables[-1][[2 * ev, 2 * ev + 1]]}')
 
     # ----------------------------------------
     # region INIT
     def print_start(self):
-        pass
+        print_banner(f'STARTING {self.__class__.__name__[:3].title()} EVENT ALIGNMENT OF RUN {self.Run.Number}')
 
     def load_file(self):
         f_name = self.Converter.get_eudaqfile_path()
-        f_name = self.Converter.Run.RootFilePath if not file_exists(f_name) else f_name
-        return TFile(f_name)
+        return TFile(self.Converter.Run.RootFilePath if not file_exists(f_name) else f_name)
 
-    def check_alignment(self):
-        return self.IsAligned
+    def check_alignment(self, *args, **kwargs):
+        v = self.get_aligned(*args, **kwargs)
+        self.Run.info(f'{calc_eff(values=invert(v))[0]:.1f}% of the events are misaligned :-(' if not all(v) else f'Run {self.Run.Number} is perfectly aligned :-)')
+        return all(v)
 
-    def check_alignment_fast(self):
-        pass
+    def get_aligned(self, *args, **kwargs):
+        return array([])
 
     @staticmethod
     def init_branches():
-        dic = OrderedDict()
-        dic['plane'] = vector('unsigned short')()
-        dic['col'] = vector('unsigned short')()
-        dic['row'] = vector('unsigned short')()
-        dic['adc'] = vector('short')()
-        dic['charge'] = vector('unsigned int')()
-        return dic
+        return {'n_hits_tot': (zeros(1, 'u1'), 'n_hits_tot/b'),
+                'plane': (zeros(MAX_SIZE, 'u1'), 'plane[n_hits_tot]/b'),
+                'col': (zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
+                'row': (zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
+                'adc': (zeros(MAX_SIZE, 'i2'), 'adc[n_hits_tot]/S'),
+                'charge': (zeros(MAX_SIZE, 'float32'), 'charge[n_hits_tot]/F'),
+                'trigger_phase': (zeros(2, 'u1'), 'trigger_phase[2]/b'),
+                'aligned': (zeros(1, '?'), 'aligned/O')}
+
+    @staticmethod
+    def get_tel_branches():
+        return ['plane', 'col', 'row', 'adc', 'charge']
 
     def load_n_hits(self, n_entries=None, first_entry=0):
-        n = self.InTree.Draw('@plane.size()', '', 'goff', self.NEntries if n_entries is None else n_entries, first_entry)
-        return get_root_vec(self.InTree, n, dtype='u1')
+        self.InTree.SetEstimate(self.NEntries)
+        return get_tree_vec(self.InTree, self.HitVar, '', 'u1', choose(n_entries, self.NEntries), first_entry)
+
+    def load_n_tot(self):
+        return append(0, cumsum(self.NHits, dtype='i8'))
 
     def load_variables(self):
         """ get all the telescope branches in vectors"""
-        t = self.Run.info('Loading information from tree ... ', next_line=False)
-        n_hits = self.InTree.Draw('plane', '', 'goff')
-        self.InTree.SetEstimate(n_hits)
-        self.InTree.Draw('plane:col:row:adc:charge', '', 'paragoff')
-        plane, column, row, adc, charge = get_root_vecs(self.InTree, n_hits, 5, dtype=int)
+        t = self.Run.info('Loading information from tree ... ', endl=False)
+        self.InTree.SetEstimate(self.NTot[-1])
+        data = self.get_tree_vec(['plane', 'col', 'row', 'adc', 'charge'], dtype=['u1', 'u1', 'u1', 'i2', 'f2'])
+        data += [self.get_tree_vec('trigger_phase', dtype='u1')]
         self.Run.add_to_info(t)
-        return split(array([plane, column, row, adc, charge]), cumsum(self.NHits), axis=1)
+        return data
 
     def reload(self):
         self.NHits = self.load_n_hits()
+        self.NTot = self.load_n_tot()
         self.Variables = self.load_variables()
-        self.update_variables()
-
-    def update_variables(self):
-        """ get additional vectors"""
-        pass
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region OFFSETS
-
-    def find_start_offset(self):
+    def find_first_offset(self):
         return 0
 
     def find_final_offset(self):
@@ -120,34 +136,19 @@ class EventAligment:
 
     def load_error_offsets(self):
         self.Run.info('Using decoding errors to get the event alignment offsets')
-        zero_offset = [(0, self.find_start_offset())] if self.find_start_offset() else []
+        zero_offset = [(0, self.find_first_offset())] if self.find_first_offset() else []
         return OrderedDict(zero_offset + [(event_number, 1) for event_number in self.Converter.DecodingErrors])
 
-    def find_manual_offsets(self):
-        return {}
+    def find_all_offsets(self, *args, **kwargs):
+        return
 
-    def find_offsets(self):
-        use_decoding_errors = (self.find_final_offset() == len(self.Converter.DecodingErrors) + self.find_start_offset()) and self.Converter.DecodingErrors.size
-        errors = self.load_error_offsets() if use_decoding_errors else self.find_manual_offsets()
-        info('Found {n} offsets'.format(n=len(errors)))
-        return errors
-
+    def set_aligned(self, bin_size=None):
+        return
     # endregion OFFSETS
     # ----------------------------------------
 
     # ----------------------------------------
     # region WRITE TREE
-    def get_next_event(self):
-        self.AtEntry += 1
-        if self.AtEntry == self.NEntries:
-            return False
-        self.InTree.GetEntry(self.AtEntry)
-        return True
-
-    def set_branch_addresses(self):
-        for name, branch in self.Branches.iteritems():
-            self.NewTree.SetBranchAddress(name, branch)
-
     def save_tree(self):
         self.NewFile.cd()
         self.NewTree.Write()
@@ -157,33 +158,29 @@ class EventAligment:
         self.NewFile.Write()
         self.Run.info('successfully aligned the tree and saved it to {}'.format(self.NewFile.GetName()))
 
-    def clear_vectors(self):
-        for vec in self.Branches.itervalues():
-            vec.clear()
-
-    def show_branches(self):
-        for i, j in self.Branches.iteritems():
-            print i, list(j)
-
-    def fill_branches(self, offset):
+    def fill_branches(self, ev, offset):
         pass
 
     def write_aligned_tree(self):
-        offsets = self.find_offsets()
+        set_root_output(False)
+        self.find_all_offsets()
+        self.set_aligned()
+        for name in self.Branches:  # remove old branches
+            self.InTree.SetBranchStatus(name, 0)
         self.NewFile = TFile(self.Converter.get_eudaqfile_path(), 'RECREATE')
         self.NewTree = self.InTree.CloneTree(0)
-        self.set_branch_addresses()
-        self.PBar.start(self.NEntries)
-        offset = 0
-        while self.get_next_event():
-            print self.NEntries, self.AtEntry
-            self.PBar.update(self.AtEntry)
-            self.clear_vectors()
-            if self.AtEntry in offsets:
-                offset += offsets[self.AtEntry]
-            if self.AtEntry > self.NEntries - abs(offset) - 1:
+        for name, (br, leaf) in self.Branches.items():  # set new branches
+            self.NewTree.Branch(name, br, leaf)
+        info('STEP 2: Writing the TTree ...')
+        self.PBar.start(self.NEntries, counter=False)
+        offset = self.FirstOffset
+        for ev, t in enumerate(self.InTree):
+            self.PBar.update()
+            if ev in self.Offsets:
+                offset = self.Offsets[ev]
+            if ev > self.NEntries - abs(offset) - 1:
                 break
-            self.fill_branches(offset)
+            self.fill_branches(ev, offset)
             self.NewTree.Fill()
         self.PBar.finish()
         self.save_tree()
@@ -193,9 +190,10 @@ class EventAligment:
 
 if __name__ == '__main__':
 
-    from pad_run import PadRun
+    from src.run import Run
     from converter import Converter
 
-    args = init_argparser(run=23, tc='201908')
-    zrun = PadRun(args.run, test_campaign=args.testcampaign, tree=False, verbose=True)
+    # examples: (201508-442, ...)
+    pargs = init_argparser(run=442)
+    zrun = Run(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
     z = EventAligment(Converter(zrun))

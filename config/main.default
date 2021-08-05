@@ -1,0 +1,52 @@
+[MAIN]
+default test campaign = 201908
+;hv config file = ''
+;hv data path = ''
+
+[BEAM]
+# [MeV/c]
+momentum = 260
+# [m]
+path length = 23.1
+# [MHz]
+frequency = 50.63
+
+[SAVE]
+waveforms = False
+pickle directory = metadata
+activate title = True
+git hash = True
+info legend = True
+save = True
+date = True
+server mount directory = ~/mounts/psi
+
+[MISC]
+run plan path = Runinfos/run_plans.json
+runplan selection file = Runinfos/selection.json
+irradiation file = Runinfos/irradiation.json
+plane errors = False
+
+[PLANE]
+name = cmspixel
+# [x [mm], y [mm]]
+pitch = [0.15, 0.10]
+# [columns, row]
+pixel = [52, 80]
+clock frequency = 40e6
+
+[Directories]
+data = ...
+software = ~/<eudaq and tracking directory>
+eudaq = eudaq-drs4
+converter config = converter_waveform_integrals.conf
+tracking = TrackingTelescope
+eudaq prefix = test
+
+[PLOTS]
+bin size = 5000
+palette = 55
+contours = 255
+flux range = [1, 40000]
+fill color = 821
+legend font = 42

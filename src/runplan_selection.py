@@ -4,25 +4,21 @@
 # created on June 24th 2016 by M. Reichmann
 # --------------------------------------------------------
 
-from __future__ import print_function
-from analysis import *
-from collections import Counter
-from json import load, dump
-
-from ROOT import TMultiGraph, TH2F, TH1F, TGraph2DErrors
+from json import dump
 from re import split as splitname
-
-from pad_collection import AnalysisCollection, PadCollection
-from run import Run
-from run_selection import RunSelection
-from selector import collection_selector
-from functools import partial
-from binning import Bins
+from ROOT import TMultiGraph
+from src.binning import Bins
+from src.pad_collection import AnalysisCollection, PadCollection
+from src.run_selection import RunSelector
+from src.analysis import *
+from analyse import collection_selector
+from helpers.draw import format_statbox, get_graph_y, scale_graph, ax_range, markers
+from inspect import signature
 
 
 class DiaScans(Analysis):
     def __init__(self, selection_name=None, verbose=False):
-        Analysis.__init__(self, verbose=verbose)
+        Analysis.__init__(self, verbose=verbose, results_dir='Selections', sub_dir=selection_name if selection_name is not None else '')
 
         self.print_start(run=selection_name, tc=False, prnt=verbose)
 
@@ -32,21 +28,15 @@ class DiaScans(Analysis):
         self.Selection = self.load_selection(selection_name)
 
         # Config
-        self.DUTParser = load_parser(join(self.Dir, 'Configuration', 'DiamondAliases.ini'))
+        self.DUTParser = load_parser(join(self.Dir, 'config', 'DiamondAliases.ini'))
 
         # Info
-        self.RS = RunSelection()  # dummy for information
+        self.RS = RunSelector()  # dummy for information
         self.DUTName = self.load_dut_name()
         self.RunPlans = self.load_runplans()
         self.TestCampaigns = self.load_test_campaigns()
-        self.RunSelections = self.load_run_selections()
-        self.RunInfos = self.load_run_infos()
         self.Info = self.load_selection_info()
         self.NPlans = len(self.Info) if self.Info else None
-
-        self.Colors = get_color_gradient(self.NPlans) if self.Info else None
-
-        self.set_results_dir(join('Results', 'selections', '' if self.Name is None else self.Name))
 
         self.print_finished(prnt=verbose)
 
@@ -60,7 +50,7 @@ class DiaScans(Analysis):
         if name is None:
             return
         if name not in self.Selections.keys():
-            warning('"{} does not exist in:\n{} '.format(name, sorted(self.Selections.iterkeys())))
+            warning('"{} does not exist in:\n{} '.format(name, sorted(self.Selections.keys())))
             self.Name = None
             return
         return self.Selections[name]
@@ -85,30 +75,25 @@ class DiaScans(Analysis):
             return load(f, object_pairs_hook=OrderedDict)
 
     def load_test_campaigns(self):
-        return sorted(self.RunPlans.iterkeys() if self.Name is None else list(set(self.Selection.iterkeys())))
-
-    def load_run_selections(self):
-        return OrderedDict((tc, RunSelection(tc)) for tc in self.TestCampaigns)
-
-    def load_run_infos(self):
-        return OrderedDict((tc, rs.RunInfos) for tc, rs in self.RunSelections.iteritems())
+        return sorted(self.RunPlans.keys() if self.Name is None else list(set(self.Selection.keys())))
 
     def load_selection_info(self):
         selections = []
         if self.Selection is None:
             return
-        for tc, rps in self.Selection.iteritems():
-            for rp, dut_nrs in rps.iteritems():
+        for tc, rps in self.Selection.items():
+            for rp, dut_nrs in rps.items():
                 for dut_nr in array([dut_nrs]).flatten():
-                    selections.append(SelectionInfo(self.RunSelections[tc].select_runs_from_runplan(rp, dut_nr, unselect=True)))
+                    selections.append(SelectionInfo(RunSelector(tc).select_runs_from_runplan(rp, dut_nr, unselect=True)))
         return selections
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region GET
-    def get_rp_diamonds(self, tc, rp):
-        sel = self.RunSelections[tc].select_runs_from_runplan(rp, unselect=True)
+    @staticmethod
+    def get_rp_diamonds(tc, rp):
+        sel = RunSelector(tc).select_runs_from_runplan(rp, unselect=True)
         return sel.get_dut_names()
 
     def get_first_run(self, tc, rp):
@@ -118,74 +103,98 @@ class DiaScans(Analysis):
         return self.RunPlans[tc][rp]['runs']
 
     def get_dut_names(self):
-        return [sel.DUT for sel in self.Info]
+        return [sel.DUTName for sel in self.Info]
 
     def get_run_types(self):
         return [sel.Type.lower() for sel in self.Info]
 
     def get_irradiations(self, string=True):
-        return [make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info]
+        return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info])
 
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
 
     def get_rp_values(self, sel, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
-        pickle_path = self.make_pickle_path(pickle_info.SubDir, pickle_info.Name, sel.RunPlan, sel.DUTNr, pickle_info.Suffix, sel.TCString) if pickle_info else ''
+        pickle_path = pickle_info.path(sel) if pickle_info else ''
         if file_exists(pickle_path) and not redo:
-            with open(pickle_path) as f:
-                return pickle.load(f)
+            return do_pickle(pickle_path, do_nothing())
         self.info('Did not find {}'.format(pickle_path), prnt=pickle_path)
         ana = collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree)
-        try:
+        if 'redo' in signature(f).parameters:
             pf = partial(f, ana, redo=redo, *args, **kwargs)
             return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
-        except TypeError:
+        else:
             pf = partial(f, ana, *args, **kwargs)
             return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
 
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
-    def get_pulse_heights(self, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', 10000), redo=redo)
+    def get_pulse_heights(self, avrg=False, redo=False):
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', f'{avrg:d}'), redo=redo, avrg=avrg)
+
+    def get_rate_dependcies(self, redo=False):
+        return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
+
+    def print_rate_dependencies(self):
+        for i, (s1, s2) in zip(self.Info, self.get_rate_dependcies()):
+            print(i)
+            print('  Rel STD:    {:2.1f}'.format(s1.n * 100))
+            print('  Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
+
+    def get_rp_pulse_heights(self, sel, corr=True, redo=False):
+        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
 
     def get_pedestals(self, redo=False):
         return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
 
+    def get_noise_spread(self, redo=False):
+        noise = array(self.get_pedestals(redo), object)[:, 1]
+        return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
+
     def get_rel_errors(self, flux=105, redo=False):
-        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, show=False, flux=flux)
+        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, flux=flux)
 
-    def get_mean_uniformities(self, redo=False, low=False, high=False):
-        return self.get_values(AnalysisCollection.get_mean_uniformity, PickleInfo('Uniformity', '', '{}{}'.format(int(low), int(high))), redo=redo, high_flux=high, low_flux=low)
+    def get_mean_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
+        pickle_info = PickleInfo('Uniformity', '', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
+        return self.get_values(AnalysisCollection.get_mean_uniformity, pickle_info, redo=redo, high_flux=high, low_flux=low)
 
-    def get_uniformities(self, redo=False, low=False, high=False):
-        return self.get_values(AnalysisCollection.get_uniformities, PickleInfo('Uniformity', 'SMSTD', '{}{}'.format(int(low), int(high))), redo=redo, high_flux=high, low_flux=low)
+    def get_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
+        pickle_info = PickleInfo('Uniformity', 'SMSTD', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
+        return self.get_values(AnalysisCollection.get_uniformities, pickle_info, redo=redo, high_flux=high, low_flux=low, use_fcw=use_fcw)
 
     def get_currents(self):
         return self.get_values(AnalysisCollection.get_currents, PickleInfo('Currents', 'Vals'))
 
-    def get_fluxes(self):
-        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals'))
+    def get_fluxes(self, avrg=False, redo=False):
+        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals', suf='{}'.format(int(avrg)) if avrg else ''), avrg=avrg, redo=redo)
 
     def get_all_infos(self):
-        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc)]
+        return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
 
     def get_dia_infos(self, dut_name):
         dut_name = self.RS.Run.translate_dia(dut_name)
-        return [sel for tc in self.RunPlans.iterkeys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUT]
+        return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc) if dut_name == sel.DUTName]
 
     def get_tc_infos(self, tc):
-        rs = self.RunSelections[tc] if tc in self.RunSelections else RunSelection(tc)
-        return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in xrange(rs.get_n_duts(run_plan=rp))]
+        rs = RunSelector(tc)
+        return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in range(rs.get_n_duts(run_plan=rp))]
 
     def get_bias_str(self):
         return ' at {bias} V'.format(bias=self.Info[0].Bias) if len(set(self.get_bias_voltages())) == 1 else ''
 
     def get_all_ana_strings(self, dut=None, tc=None, redo=False):
         selections = self.get_all_infos() if dut is None and tc is None else self.get_dia_infos(dut) if tc is None else self.get_tc_infos(tc)
-        selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUT] if dut is not None else selections
+        selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUTName] if dut is not None else selections
         redo = ' -rd' if redo else ''
         return '_'.join(['analyse {} {} -c -tc {} -d{}'.format(sel.RunPlan, sel.DUTNr, sel.TCString, redo) for sel in selections])
+
+    def get_savename(self, name):
+        return '{}{}'.format(name, self.Name.title().replace('-', '').replace('_', ''))
+
+    def get_signal_maps(self, fid=False, res=.2, square=True, scale=True, redo=False):
+        pickle_info = PickleInfo('Maps', 'SM', make_suffix(self, [fid, res, square, scale]))
+        return self.get_values(AnalysisCollection.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -195,7 +204,7 @@ class DiaScans(Analysis):
         header = ['Name', 'Diamond', 'Campaigns']
         rows = []
         old_sel = deepcopy(self.Name)
-        for name in self.Selections.iterkeys():
+        for name in self.Selections.keys():
             self.set_selection_name(name)
             row = [name, self.load_dut_name(), ', '.join(str(tc) for tc in self.load_test_campaigns())]
             rows.append(row)
@@ -204,24 +213,24 @@ class DiaScans(Analysis):
 
     def show_selection(self):
         """ Gives detailed information about the chosen selection """
-        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type']) if self.Info else warning('Selection is empty!')
+        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type', 'Irrad']) if self.Info else warning('Selection is empty!')
 
     def show_all_runplans(self):
         old_sel = deepcopy(self.Name)
         self.set_selection(None)
-        for tc, runplans in sorted(self.RunPlans.iteritems()):
+        for tc, runplans in sorted(self.RunPlans.items()):
             if runplans:
                 print_small_banner(tc, color='yellow')
                 header = ['Runplan', 'Runs', 'Diamonds']
                 rows = []
-                for rp, dic in sorted(runplans.iteritems()):
+                for rp, dic in sorted(runplans.items()):
                     runs = dic['runs']
                     rows.append([rp, '{:03d}-{:03d}'.format(runs[0], runs[-1]), ', '.join(self.get_rp_diamonds(tc, rp))])
                 print_table(rows, header)
         self.set_selection_name(old_sel)
 
     def show_pulse_heights(self):
-        rows = [[sel.TCString, sel.RunPlan] + ['{:2.2f}'.format(i) for i in mean_sigma([dic['ph'] for dic in phs.itervalues()])] for phs, sel in zip(self.get_pulse_heights(), self.Info)]
+        rows = [[sel.TCString, sel.RunPlan] + ['{:2.2f}'.format(i) for i in mean_sigma([dic['ph'] for dic in phs.values()])] for phs, sel in zip(self.get_pulse_heights(), self.Info)]
         print_table(rows, header=['Test Campaign', 'Run Plan', 'PH [mv]', 'STD [mV]'])
     # endregion SHOW
     # ----------------------------------------
@@ -234,9 +243,8 @@ class DiaScans(Analysis):
         self.DUTName = self.load_dut_name()
         self.Selection = self.load_selection(name)
         self.TestCampaigns = self.load_test_campaigns()
-        self.RunSelections = self.load_run_selections()
-        self.RunInfos = [rs.RunInfos for rs in self.RunSelections.itervalues()]
-        self.set_results_dir(join('Results', 'selections', self.Name)) if name else do_nothing()
+        self.Info = self.load_selection_info()
+        self.Draw.set_results_dir(join('Results', 'selections', self.Name)) if name else do_nothing()
 
     def set_selection_name(self, name):
         self.Name = name
@@ -253,7 +261,7 @@ class DiaScans(Analysis):
                 self.Selection[tc] = {}
             self.Selection[tc][rp] = dut
         else:
-            log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
+            warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
     def unselect_runplan(self, runplan, testcampaign=None):
         rp = make_runplan_string(runplan)
@@ -261,27 +269,27 @@ class DiaScans(Analysis):
         try:
             self.Selection[tc].pop(rp)
         except KeyError:
-            log_warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
+            warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
     def add_selection(self):
-        name = raw_input('Enter the name of the selection: ')
+        name = input('Enter the name of the selection: ')
         self.clear_selection()
         self.Selections[name] = {} if name not in self.Selections else self.Selections[name]
-        run_plan = raw_input('Enter test campaign, run plan number, channel: ')
+        run_plan = input('Enter test campaign, run plan number, channel: ')
         while run_plan:
             tc, rp, ch = [string.strip(' ') for string in run_plan.split(',')]
             self.select_runplan(rp, int(ch), tc)
-            run_plan = raw_input('Enter test campaign, run plan number, channel (leave blank to finish): ')
+            run_plan = input('Enter test campaign, run plan number, channel (leave blank to finish): ')
         self.save_selection(name)
 
     def save_selection(self, name=None):
-        name = raw_input('Enter the name of the selection: ') if name is None else name
+        name = input('Enter the name of the selection: ') if name is None else name
         if not self.Selection:
             warning('Selection is empty!')
             return
         with open(join(self.Dir, self.MainConfig.get('MISC', 'runplan selection file')), 'w') as f:
             if name in self.Selections:
-                query = raw_input('{} does already exist. Do you want to overwrite it? (y/n) '.format(name))
+                query = input('{} does already exist. Do you want to overwrite it? (y/n) '.format(name))
                 if query.lower().strip() in ['no', 'n']:
                     return
             self.Selections[name] = self.Selection
@@ -292,170 +300,91 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region DRAWING
-    def draw_collimator_settings(self, show=True):
-        h = TH2F('h_cs', 'Collimator Settings', 125, 50, 300, 75, 0, 150)
-        for tc in self.TestCampaigns:
-            for run, data in self.RunInfos[tc].iteritems():
-                try:
-                    h.Fill(data['fs11'], data['fs13'])
-                except KeyError:
-                    pass
-        format_histo(h, x_tit='fs11', y_tit='fsh13', y_off=1.3, stats=0, z_off=1.1, z_tit='Number of Entries', z_range=[0, 80])
-        self.save_histo(h, 'CollimatorSettings', show, draw_opt='colz', lm=.12, rm=.16)
-
-    def draw_flux_vs_collimators(self, show=True):
-        gr = TGraph2DErrors()
-        gr.SetNameTitle('gr_fc', 'Flux Vs. Collimators')
-        col_settings = Counter([(data['fs11'], data['fs13']) for tc in self.TestCampaigns for data in self.RunInfos[tc].itervalues() if 'fs11' in data and data['fs11'] > 0])
-        i = 0
-        for col, nr in col_settings.iteritems():
-            if nr > 10:
-                flux_fit = self.draw_flux_distribution(col[0], col[1], show=False)
-                if flux_fit is not None:
-                    gr.SetPoint(i, col[0], col[1], flux_fit.Parameter(1))
-                    gr.SetPointError(i, 0, 0, flux_fit.Parameter(2))
-                    i += 1
-        self.draw_histo(gr, 'FluxVsCollimators', show, draw_opt='surf1', lm=.15, phi=17, theta=35)
-        format_histo(gr, x_tit='fs11', x_off=1.3, y_tit='fsh13', y_off=1.9, stats=0, z_off=1.9, z_tit='Flux kHz/cm^{2}', markersize=2, y_range=[0, 130])
-        self.save_plots('FluxVsCollimators', show=show, prnt=False)
-        h = gr.Clone()
-        h.Draw('samep')
-        self.Objects.append(h)
-        self.save_plots('FluxVsCollimators', show=show)
-
-    def draw_flux_variations(self, show=True, rel_sigma=False):
-        gr = self.make_tgrapherrors('gr_fd', 'Flux Deviations')
-        col_settings = Counter([(data['fs11'], data['fs13']) for tc in self.TestCampaigns for data in self.RunInfos[tc].itervalues() if 'fs11' in data and data['fs11'] > 0])
-        i = 0
-        for col, nr in sorted(col_settings.iteritems()):
-            if nr > 30:
-                flux_fit = self.draw_flux_distribution(col[0], col[1], show=False)
-                if flux_fit is not None:
-                    gr.SetPoint(i, flux_fit.Parameter(1), flux_fit.Parameter(2) if not rel_sigma else flux_fit.Parameter(2) / flux_fit.Parameter(1))
-                    yerr = flux_fit.ParError(2) + .5 * flux_fit.Parameter(2)
-                    if rel_sigma:
-                        yerr = flux_fit.Parameter(2) / flux_fit.Parameter(1) * sqrt(sum([((flux_fit.ParError(j) + .5 * flux_fit.Parameter(2) if rel_sigma else 0) / flux_fit.Parameter(j)) ** 2
-                                                                                         for j in xrange(1, 3)]))
-                    gr.SetPointError(i, flux_fit.ParError(1), yerr)
-                    l1 = self.draw_tlatex(gr.GetX()[i] * 1.05, gr.GetY()[i], '{0}/{1}'.format(make_col_str(col[0]), make_col_str(col[1])), color=1, align=10, size=.03)
-                    gr.GetListOfFunctions().Add(l1)
-                    i += 1
-        format_histo(gr, x_tit='Mean Flux [au]', y_tit='{0}Sigma [au]'.format('Relative ' if rel_sigma else ''), y_off=1.3)
-        self.draw_histo(gr, 'FluxVariations', show, draw_opt='alp', logx=True, logy=not rel_sigma, lm=.12)
-        gr.GetXaxis().SetLimits(gr.GetX()[0] / 2, gr.GetX()[gr.GetN() - 1] * 4)
-        self.save_plots('FluxVariations{0}'.format('Rel' if rel_sigma else ''), show=show)
-
-    def draw_flux_distribution(self, fs11, fsh13, tc=None, do_fit=True, show=True, run_thr=None):
-        values = []
-        for tc in self.TestCampaigns if tc is None else [tc]:
-            for run, data in sorted(self.RunInfos[tc].iteritems()):
-                info_run = Run(run_number=run, test_campaign=tc, tree=False)
-                if run_thr is not None:
-                    if run_thr > 0 and int(run) < run_thr:
-                        continue
-                    elif run_thr < 0 and int(run) > abs(run_thr):
-                        continue
-                try:
-                    if data['fs11'] == fs11 and data['fs13'] == fsh13:
-                        flux = info_run.Flux
-                        # print tc, run, flux
-                        values.append(flux) if flux > 1 else do_nothing()
-                except KeyError:
-                    pass
-        if not values:
-            return
-        spread = max(values) - min(values)
-        set_root_output(False)
-        h = TH1F('h_fd', 'Flux Distribution for {0}/{1}'.format(fs11, fsh13), int(sqrt(len(values))) + 5, min(values) - .2 * spread, max(values) + .2 * spread)
-        for val in values:
-            h.Fill(val)
-        self.format_statbox(only_fit=True, w=.25) if do_fit else do_nothing()
-        format_histo(h, x_tit='Flux in kHz/cm^{2}', y_tit='Number of Entries', y_off=1.3, stats=0 if not do_fit else 1)
-        self.draw_histo(h, '', show)
-        fit = None
-        if do_fit:
-            h.SetName('Fit Results')
-            set_root_output(show)
-            fit = h.Fit('gaus', 'qs')
-        self.save_plots('FluxDistribution{0}_{1}'.format(int(fs11), int(fsh13)), show=show)
-        return fit
-
-    def draw_dia_rate_scans(self, redo=False):
+    def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', 10000), redo=redo, show=False, prnt=False)
+        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', '10000_{}'.format(corr)), redo=redo, show=False)
         for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
             for g in mgi.GetListOfGraphs():
-                format_histo(g, color=self.Colors[i], markersize=1.5, lw=2)
+                format_histo(g, color=self.Draw.get_color(self.NPlans, i), markersize=1.5, lw=2)
                 if g.GetName() == 'gFirst':
                     format_histo(g, color=1, marker=26, markersize=2)
                 elif g.GetName() == 'gLast':
                     format_histo(g, color=1, marker=23, markersize=2)
             mg.Add(mgi)
-        legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs])
+        legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs], irr)
         y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
-        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y.max().n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
-        self.save_histo(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True)
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y.max().n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
+        self.Draw(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True)
 
-    def draw_pedestals(self, redo=False, show=True):
+    def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
         mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
         for i, (values, sel, fluxes) in enumerate(zip(self.get_pedestals(redo), self.Info, self.get_fluxes())):
-            pedestals = [make_ufloat(*tup) for tup in array(values).T]
-            g = self.make_tgrapherrors('gp{}'.format(i), '', x=fluxes.values(), y=pedestals, color=self.Colors[i])
-            mg.Add(g, 'pl')
-        legend = self.make_full_legend(mg.GetListOfGraphs())
-        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins().FluxRange)
-        self.save_histo(mg, '{}Pedestals'.format(self.Name), draw_opt='a', logx=True, leg=legend, x=1.6, lm=.092, bm=.12, gridy=True, show=show)
+            pedestals = array([make_ufloat(*tup) for tup in array(values).T])
+            if rel:
+                pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).values()]) * .01
+            g = Draw.make_tgrapherrors(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
+            mg.Add(g)
+        legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
+        self.Draw(mg, '{}Pedestals'.format(self.Name), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True, show=show)
 
-    def make_full_legend(self, graphs):
+    def make_full_legend(self, graphs, irr=True):
         same_bias = len(set(self.get_bias_voltages())) == 1
-        legend = self.make_legend(.75, .4, w=.4, nentries=4, clean=True, cols=3 if not same_bias else 2)
+        cols = 1 + (not same_bias) + irr
+        legend = Draw.make_legend(y2=.4, w=.12 * cols, nentries=4, cols=cols)
         for i, (g, sel) in enumerate(zip(graphs, self.Info)):
-            legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString)), 'lp')
-            legend.AddEntry(0, make_irr_string(sel.Irradiation), '')
+            legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString, long_=False)), 'lp')
+            legend.AddEntry(0, make_irr_string(sel.Irradiation), '') if irr else do_nothing()
             legend.AddEntry(0, get_bias_root_string(sel.Bias), '') if not same_bias else do_nothing()
         return legend
 
     def draw_title_pad(self, h, x0, lm, c_height):
-        if self.Title:
+        if Draw.Title:
             biases = list(set(self.get_bias_voltages()))
             bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(biases) == 1 else ''
-            self.draw_tpad('p0', 'p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
-            self.draw_tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
+            Draw.tpad('p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
+            Draw.tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1):
-        title_height = pad_height / 2 if self.Title else .03  # half of a pad for title
+    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, avrg=False):
+        data = zip(self.get_pulse_heights(avrg=avrg), self.get_fluxes(avrg=avrg), Draw.get_colors(self.NPlans))
+        title_height = pad_height / 2 if Draw.Title else .03  # half of a pad for title
         c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
         c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
-        c = self.make_canvas(name='csr', x=c_width, y=c_height, transp=True, logx=True, gridy=True)
+        c = Draw.canvas(w=c_width, h=c_height, transp=True, logx=True, gridy=True)
         lm, rm, x0, size = .07, .02, .08, .22
-
         self.draw_title_pad(title_height, x0, lm, c_height)
-        self.draw_tpad('p1', 'p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
-        self.draw_tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
+        Draw.tpad('p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
+        Draw.tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
         c.cd()
 
-        for i, (ph, error, color) in enumerate(zip(self.get_pulse_heights(), self.get_rel_errors(), get_color_gradient(self.NPlans))):
+        for i, (ph, flux, color) in enumerate(data):
+            c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
-            p = self.draw_tpad('p{i}'.format(i=i + 3), '', pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            y_values = [make_ufloat((v.n, v.s + error * v.n)) for v in [dic['ph'] for dic in ph.itervalues()]]
-            g = self.make_tgrapherrors('gsph{}'.format(i), '', x=[dic['flux'] for dic in ph.itervalues()], y=y_values)
+            p = Draw.tpad('p{i}'.format(i=i + 3), pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
+            g = Draw.make_tgrapherrors(flux, ph, title=' ', color=color, marker=markers(i), markersize=1.5)
             scale_graph(g, val=scale) if scale else do_nothing()
-            format_histo(g, title=' ', color=color, x_range=Bins().FluxRange, y_range=[1 - y_range, 1 + y_range], marker=markers(i), lab_size=size, ndivy=505, markersize=1.5, tick_size=.05)
-            self.draw_histo(g, draw_opt='ap', canvas=p)
+            format_histo(g, x_range=Bins.FluxRange, y_range=[1 - y_range, 1 + y_range], lab_size=size, ndivy=505, x_ticks=.15)
+            self.Draw(g, draw_opt='ap', canvas=p, logx=True, gridy=True)
             self.draw_legend(i, g, irr, rm)
             c.cd()
 
-        self.draw_tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
-        self.draw_x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', Bins().FluxRange, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
-        self.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
+        Draw.tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
+        Draw.x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', Bins.FluxRange, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
+        self.Draw.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
+
+    def draw_scaled_distribution(self, excluded=None):
+        values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights()) if i not in make_list(excluded)]))
+        format_statbox(all_stat=1)
+        self.Draw.distribution(values, [40, .9, 1.1], 'Scaled Pulse Height Distribution', x_tit='Scaled Pulse Height')
+        return values
 
     def make_plots(self, name, f, irr_pad=None, canvas=None, **kwargs):
         for sel in self.Info:
             self.info('Creating {} Plots for {}'.format(name, sel.TCString))
             self.get_rp_values(sel, f, **kwargs)
-            self.draw_irradiation(make_irr_string(sel.Irradiation), irr_pad, left=False) if irr_pad is not None else do_nothing()
-            self.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.RunPlan, sel.DUTNr), canvas=get_object(canvas))
+            Draw.irradiation(make_irr_string(sel.Irradiation), irr_pad, left=False) if irr_pad is not None else do_nothing()
+            self.Draw.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.RunPlan, sel.DUTNr), canvas=get_object(canvas))
 
     def make_pulse_height_plots(self, y_range=None):
         self.make_plots('PH', AnalysisCollection.draw_pulse_heights, show=False, y_range=y_range, irr_pad=get_object('p1'))
@@ -468,23 +397,23 @@ class DiaScans(Analysis):
 
     def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
-        legend = self.make_legend(nentries=len(self.RunSelections), w=.4, x2=.52)
-        currents = [c.values() for c in self.get_currents()]
-        fluxes = [f.values() for f in self.get_fluxes()]
+        legend = Draw.make_legend(nentries=self.NPlans, w=.4, x2=.52)
+        currents = self.get_currents()
+        fluxes = self.get_fluxes()
         for i, (x, y) in enumerate(zip(fluxes, currents)):
-            g = self.make_tgrapherrors('gf', 'gf', x=x, y=y)
+            g = Draw.make_tgrapherrors(x, y)
             if align:
                 fit = g.Fit('pol1', 'qs0')
-                g = self.make_tgrapherrors('gc{}'.format(i), '', y=array(currents[i]) - fit.Parameter(0) + .1, x=fluxes[i])
-            format_histo(g, color=self.get_color())
+                g = Draw.make_tgrapherrors(fluxes[i], array(currents[i]) - fit.Parameter(0) + .1)
+            format_histo(g, color=self.Draw.get_color(self.NPlans))
             legend.AddEntry(g, '{tc} - {hv}'.format(tc=self.Info[i].TCString, hv=self.get_rp_values(self.Info[i], AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
-            mg.Add(g, 'p')
-        format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, array(currents).max().n * 2], x_range=Bins().FluxRange)
-        self.save_histo(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='a', logx=True, logy=True, leg=legend, bm=.17, show=show)
+            mg.Add(g)
+        format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, max(concatenate(currents)).n * 2], x_range=Bins.FluxRange)
+        self.Draw(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='ap', logx=True, logy=True, leg=legend, bm=.17, show=show)
 
     def get_titles(self, irr=False):
         if len(set(self.get_dut_names())) > 1:
-            return self.get_dut_names()
+            return [f'{dut}{" - " if irr else ""}{irr}' for dut, irr in zip(self.get_dut_names(), self.get_irradiations() if irr else [''] * self.NPlans)]
         tits = self.get_irradiations() if irr else [make_tc_str(tc) for tc in self.TestCampaigns]
         if any(['rand' in word for word in self.get_run_types()]):
             for i, sel in enumerate(self.Info):
@@ -496,7 +425,7 @@ class DiaScans(Analysis):
         tits = self.get_titles(irr)
         biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
         x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
-        legend = self.make_legend(x1, 1, x2=1 - rm, nentries=.8, scale=6)
+        legend = Draw.make_legend(x1, 1, x2=1 - rm, nentries=1.2, scale=5)
         legend.AddEntry(gr, tits[ind], 'pe')
         if add_bias:
             legend.SetNColumns(2)
@@ -507,71 +436,123 @@ class DiaScans(Analysis):
         for i, sel in enumerate(self.Info):
             h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TCString, 0), sel.RunPlan))
 
-    def draw_mean_pedestals(self, redo=False, show=True):
-        y = array([make_ufloat(mean(tc_values, axis=1)) for tc_values in self.get_pedestals(redo)])
-        g = self.make_tgrapherrors('gmp', 'Mean Pedestals', x=arange(y.size), y=y)
-        format_histo(g, x_tit='Run Plan', y_tit='Pulse Height [mV]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5)
-        self.set_bin_labels(g)
-        self.save_histo(g, 'PedestalMeans{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+    def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
+        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
+        x = self.get_irradiations(string=False) / 1e14 if irr else arange(y.size)
+        g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
+        format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
+        self.set_bin_labels(g) if not irr else do_nothing()
+        self.Draw(g, self.get_savename('PedestalMeans'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
+
+    def draw_mean_noise(self, irr=False, redo=False, show=True):
+        self.draw_mean_pedestals(True, irr, redo, show)
 
     def draw_means(self, y_range=None, show=True):
-        y = array([make_ufloat(mean_sigma([dic['ph'] for dic in ph.itervalues()])) for ph in self.get_pulse_heights()])
-        g = self.make_tgrapherrors('gms', 'Pulse Height Evolution', x=arange(y.size), y=y)
-        format_histo(g, x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5, y_range=y_range)
+        y = array([make_ufloat(mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
+        g = Draw.make_tgrapherrors(arange(y.size), y, title='Pulse Height Evolution', x_tit='Run Plan', y_tit='Mean Pulse Height [mV]')
+        format_histo(g, y_off=1.2, x_range=ax_range(0, y.size - 1, .3, .3), x_off=2.5, y_range=y_range)
         self.set_bin_labels(g)
-        self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+        self.Draw(g, self.get_savename('Means'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
 
     def draw_sigmas(self, y_range=None, show=True):
-        mean_sigmas = [mean_sigma([dic['ph'] for dic in ph.itervalues()]) for ph in self.get_pulse_heights()]
-        y = array([make_ufloat((0, 100 * s / m)) for m, s in mean_sigmas])
-        g = self.make_tgrapherrors('gms', 'Pulse Height STD Evolution', x=arange(y.size), y=y)
-        format_histo(g, x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]', y_off=1.2, x_range=increased_range([0, y.size - 1], .3, .3), x_off=2.5, y_range=y_range)
+        y = array([mean_sigma(ph_list)[1] for ph_list in self.get_pulse_heights()])
+        g = Draw.make_tgrapherrors(arange(y.size), y=y, title='Pulse Height STD Evolution', x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]')
+        format_histo(g, y_off=1.2, x_range=ax_range(0, y.size - 1, .3, .3), x_off=2.5, y_range=y_range)
         self.set_bin_labels(g)
-        self.save_histo(g, 'Means{}'.format(self.Name.title().replace('-', '').replace('_', '')), show, draw_opt='ap', bm=.2, x=1.5, y=.75, gridy=True)
+        self.Draw(g, self.get_savename('Sigmas'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
 
-    def draw_uniformity(self, arg=2, redo=False, low=False, high=False):
-        y_values = [v[arg] for v in self.get_mean_uniformities(redo=redo, low=low, high=high)]
-        x_values = [make_ufloat((v, v * .2)) for v in self.get_irradiations(string=False)]
-        g = self.make_tgrapherrors('gu', 'Uniformity', x=x_values, y=y_values)
-        format_histo(g, x_tit='Irradiation [n/cm^{2}]', y_tit='FWHM/MPV', y_off=1.3)
-        self.draw_histo(g, draw_opt='ap')
+    def draw_uniformity(self, arg=2, use_fcw=True, redo=False, low=False, high=False):
+        ph_var = 'FWC' if use_fcw else 'Mean'
+        var, unit, tit = [ph_var, 'FWHM', 'FWHM/{}'.format(ph_var)][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
+        y_values = [v[arg][0] for v in self.get_mean_uniformities(redo=redo, low=low, high=high)]
+        x_values = array([ufloat(v, v * .2) for v in self.get_irradiations(string=False)]) / 1e15
+        return self.Draw.graph(x_values, y_values, title=tit, x_tit='Irradiation [10^{15}n/cm^{2}]', y_tit='{}{}'.format(var, unit), draw_opt='ap', x_off=1.2)
+
+    def draw_peak_flux(self, show=True):
+        leg = Draw.make_legend(x2=.45, w=.3)
+        mg = TMultiGraph('mgph', 'Peak Flux vs. FAST-OR Flux')
+        values_list = self.get_values(AnalysisCollection.get_peak_flux, PickleInfo('Peaks', 'Flux'))
+        flux_list = self.get_fluxes()
+        for sel, values, fluxes in zip(self.Info, values_list, flux_list):
+            g = Draw.make_tgrapherrors('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
+            format_histo(g, color=self.Draw.get_color())
+            leg.AddEntry(g, '{} @ {:+1.0f}V'.format(sel.DUTName, sel.Bias), 'pl')
+            mg.Add(g, 'p')
+        x, y = concatenate(flux_list), concatenate(values_list)
+        x_range, y_range = [.5 * min(x).n, 1.2 * max(x).n], [.5 * min(y).n, 1.2 * max(y).n]
+        format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
+        self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region PULSER
+    def get_pulser_pulse_heights(self, avrg=False, redo=False):
+        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('Pulser', 'PH', f'{avrg:d}'), redo=redo, avrg=avrg)
+
+    def get_pulser_stability(self):
+        """ returns: relative standard deviation of the pulser """
+        d = [s / m * 100 for m, s in [mean_sigma(v) for v in self.get_pulser_pulse_heights()]]
+        for i, v in enumerate(d):
+            print(f'Pulser stability for {self.Info[i]}: {v:.3f}')
+        return d
+
+    def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01):
+        data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg))
+        g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **AnalysisCollection.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **AnalysisCollection.get_x_args(), y_range=1 + array([-ym, ym]))
+    # endregion PULSER
+    # ----------------------------------------
+
+    def draw_bucket_ratios(self, avrg=False, redo=False, **kwargs):
+        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('Bucket', 'Ratio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
+        mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **AnalysisCollection.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **prep_kw(kwargs, **AnalysisCollection.get_x_args()))
+
 
 class SelectionInfo:
-    def __init__(self, sel):
+    def __init__(self, sel: RunSelector):
+        self.Run = sel.Run
         self.TCString = sel.TCString
         self.RunPlan = sel.SelectedRunplan
         self.DUT = sel.SelectedDUT
-        self.DUTNr = sel.SelectedDUTNr
+        self.DUTName = self.DUT.Name
+        self.DUTNr = self.DUT.Number
         self.Verbose = sel.Run.Verbose
-        self.Bias = sel.SelectedBias
-        self.Irradiation = sel.get_irradiation()
+        self.Bias = self.DUT.Bias
+        self.Irradiation = self.DUT.get_irradiation(self.TCString)
         self.Type = sel.SelectedType.lower()
         self.Runs = sel.get_selected_runs()
+        self.PulserType = sel.PulserType
 
     def __str__(self):
-        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUT)
+        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUTName)
 
     def __repr__(self):
         return self.__str__()
 
     def __call__(self):
-        return [self.TCString, self.RunPlan, self.DUT, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type]
+        return [self.TCString, self.RunPlan, self.DUTName, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
 
 
 class PickleInfo:
-    def __init__(self, sub_dir, name, suf=None):
+    def __init__(self, sub_dir=None, name=None, suf=None):
         self.SubDir = sub_dir
-        self.Name = name
-        self.Suffix = '' if suf is None else str(suf)
+        self.Name = name if name else None
+        self.Suffix = None if suf is None else str(suf)
+
+    def __call__(self, *args, **kwargs):
+        return self.SubDir is not None
+
+    def path(self, sel: SelectionInfo):
+        return sel.Run.make_pickle_path(self.SubDir, self.Name, sel.RunPlan, sel.DUT.Number, self.Suffix, sel.TCString) if self() else ''
 
 
 if __name__ == '__main__':
 
     aparser = ArgumentParser()
-    aparser.add_argument('sel', nargs='?', default=None, help='name of the selection')
+    aparser.add_argument('sel', nargs='?', default='test-a', help='name of the selection')
     aparser.add_argument('-d', nargs='?', default=None, help='dut')
     aparser.add_argument('-tc', nargs='?', default=None, help='test campaign')
     aparser.add_argument('-v', '--verbose', action='store_false')

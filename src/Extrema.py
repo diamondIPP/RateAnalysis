@@ -23,7 +23,7 @@ class Extrema2D:
 
     def find_thresholds(self):
         dic = {}
-        xq = array([i / 100. for i in xrange(5, 100, 10)])
+        xq = array([i / 100. for i in range(5, 100, 10)])
         nq = len(xq)
         thresh = zeros(nq)
         self.MeanHisto.GetQuantiles(nq, thresh, xq)
@@ -32,20 +32,20 @@ class Extrema2D:
         return dic
 
     def horizontal_scan(self):
-        for row in xrange(self.rows):
-            for col in xrange(self.cols):
+        for row in range(self.rows):
+            for col in range(self.cols):
                 self.__add_local_extrema(col, row, mode='horizontal')
 
     def vertical_scan(self):
-        for col in xrange(self.cols):
-            for row in xrange(self.rows):
+        for col in range(self.cols):
+            for row in range(self.rows):
                 self.__add_local_extrema(col, row, mode='vertical')
 
     def sw_ne_scan(self):
-        rows = [row for row in xrange(self.rows - 2, 0, -1)]
+        rows = [row for row in range(self.rows - 2, 0, -1)]
         cols = [0] * (self.rows - 2)
         rows += [0] * (self.cols - 1)
-        cols += [col for col in xrange(self.cols - 1)]
+        cols += [col for col in range(self.cols - 1)]
         for row, col in zip(rows, cols):
             while row < self.rows and col < self.cols:
                 self.__add_local_extrema(col, row, mode='swne')
@@ -53,19 +53,19 @@ class Extrema2D:
                 col += 1
 
     def nw_se_scan(self):
-        rows = [row for row in xrange(1, self.rows - 1)]
+        rows = [row for row in range(1, self.rows - 1)]
         cols = [0] * (self.rows - 2)
-        print len(rows), len(cols)
+        print(len(rows), len(cols))
         rows += [self.rows - 1] * (self.cols - 1)
-        cols += [col for col in xrange(self.cols - 1)]
-        print len(rows), len(cols)
+        cols += [col for col in range(self.cols - 1)]
+        print(len(rows), len(cols))
         for row, col in zip(rows, cols):
             while row >= 0 and col < self.cols:
-                print col, row,
+                print(col, row, end=' ')
                 self.__add_local_extrema(col, row, mode='nwse')
                 row -= 1
                 col += 1
-            print
+            print()
 
     def make_all_line_scans(self):
         self.horizontal_scan()
@@ -75,8 +75,8 @@ class Extrema2D:
         self.show_voting_histos()
 
     def region_scan(self):
-        for col in xrange(self.cols):
-            for row in xrange(self.rows):
+        for col in range(self.cols):
+            for row in range(self.rows):
                 for threshold in self.Thresholds['max']:
                     if self.SignalHisto.GetBinContent(col, row) > threshold:
                         old_content = self.VotingHistos['max'].GetBinContent(col, row)
@@ -88,10 +88,10 @@ class Extrema2D:
 
     def square_scan(self, size=1, histo=None):
         fill_histos = self.VotingHistos if histo is None else histo
-        rows = [i for i in xrange(-size, size + 1)] * (2 * size + 1)
+        rows = [i for i in range(-size, size + 1)] * (2 * size + 1)
         cols = sorted(rows)
-        for col in xrange(1, self.cols - 1):
-            for row in xrange(1, self.rows - 1):
+        for col in range(1, self.cols - 1):
+            for row in range(1, self.rows - 1):
                 square = [self.SignalHisto.GetBinContent(col + x, row + y) for x, y in zip(cols, rows)]
                 if max(square) == self.SignalHisto.GetBinContent(col, row) and max(square) > self.Thresholds['max'][0]:
                     old_content = fill_histos['max'].GetBinContent(col, row)
@@ -114,7 +114,7 @@ class Extrema2D:
         start = self.SignalHisto.GetBinContent(cols[0], rows[0])
         center = self.SignalHisto.GetBinContent(cols[1], rows[1])
         end = self.SignalHisto.GetBinContent(cols[2], rows[2])
-        print start, center, end
+        print(start, center, end)
         if start <= center >= end and center > self.Thresholds['max'][0]:
             old_content = self.VotingHistos['max'].GetBinContent(col, row)
             self.VotingHistos['max'].SetBinContent(col, row, old_content + 1)
@@ -134,7 +134,7 @@ class Extrema2D:
         c.Divide(2, 1)
         # new_pal = ar.array('i', [kYellow, kYellow, kOrange, kOrange - 3, kOrange + 7, kRed])
         ex = [TExec('ex1', 'gStyle->SetPalette(56);'), TExec('ex2', 'gStyle->SetPalette(51)')]
-        for i, histo in enumerate(self.VotingHistos.itervalues(), 1):
+        for i, histo in enumerate(self.VotingHistos.values(), 1):
             c.cd(i)
             histo.Draw('col')
             ex[i - 1].Draw()
@@ -144,5 +144,5 @@ class Extrema2D:
         return c
 
     def clear_voting_histos(self):
-        for histo in self.VotingHistos.itervalues():
+        for histo in self.VotingHistos.values():
             histo.Reset()
