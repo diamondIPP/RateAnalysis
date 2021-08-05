@@ -227,6 +227,9 @@ class DUTAnalysis(Analysis):
 
     def get_split_ph(self, m=2):
         return get_2d_hist_vec(self.split_signal_map(m, show=0)[0])
+
+    def get_next_dut(self, dut_nr=None):
+        return next((dut for dut in self.Run.DUTs if dut.Number != self.DUT.Number), 1) if dut_nr is None else self.Run.DUTs[dut_nr - 1]
     # endregion GET
     # ----------------------------------------
 
@@ -391,7 +394,7 @@ class DUTAnalysis(Analysis):
     @save_pickle('SM', sub_dir='Maps', print_dur=True, suf_args='all')
     def get_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, _redo=False):
         self.Tree.SetEstimate(self.Run.NEvents)
-        var, bins = self.get_track_vars() + [self.get_ph_var()],  Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
+        var, bins = self.get_track_vars() + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
         x, y, zz = self.get_tree_vec(var, self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut))
         tit, (xtit, ytit), ztit = 'Pulse Height Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Pulse Height [mV]'
         return self.Draw.prof2d(x, y, zz, bins, tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, z_range=self.find_sm_range(res, square, m, n), show=False, pal=53)

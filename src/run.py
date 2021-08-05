@@ -357,9 +357,6 @@ class Run(Analysis):
 
     def get_low_rate_run(self):
         return self.get_high_rate_run(high=False)
-
-    def get_next_dutnr(self):
-        return next((dut.Number for dut in self.DUTs if dut.Number != self.Number), 1)
     # endregion GET
     # ----------------------------------------
 
