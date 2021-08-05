@@ -438,7 +438,7 @@ class Draw(object):
         if y is None:
             p = x
         else:
-            dflt_bins = make_bins(min(x), max(x), sqrt(len(x))) + make_bins(min(y), max(y), sqrt(len(y))) if binning is None else None
+            dflt_bins = find_bins(x) + find_bins(y) if binning is None else None
             p = TProfile2D(Draw.get_name('p2'), title, *choose(binning, dflt_bins))
             fill_hist(p, x, y, uarr2n(zz))
         p = self.rotate_2d(p, rot)
@@ -516,7 +516,7 @@ class Draw(object):
         return m
 
     def pie(self, labels, values=None, colors=None, title='', offset=0, show=True, flat=False, draw_opt=None, **kwargs):
-        labels, (values, colors) = (labels.keys(), array(list(labels.values())).T) if values is None else (labels, values, colors)
+        labels, (values, colors) = (labels.keys(), array(list(labels.values())).T) if values is None else (labels, (values, choose(colors, Draw.get_colors(len(labels)))))
         pie = TPie(self.get_name('pie'), title, len(labels), array(values, 'f'), array(colors, 'i'))
         for i, label in enumerate(labels):
             pie.SetEntryRadiusOffset(i, offset)
