@@ -140,6 +140,10 @@ class Draw(object):
     @staticmethod
     def get_name(string='a'):
         return '{}{}'.format(string, Draw.get_count(string))
+
+    @staticmethod
+    def get_margins(c):
+        return [getattr(c, f'Get{n}Margin')() for n in ['Left', 'Right', 'Bottom', 'Top']] if c is not None else None
     # endregion GET
     # ----------------------------------------
 
@@ -264,7 +268,7 @@ class Draw(object):
         p = TPad(Draw.get_name('pd'), tit, *pos)
         p.SetFillColor(fill_col)
         margins = margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]
-        Draw.set_pad_margins(p, *full(4, .1) if margins is None else margins)
+        Draw.set_pad_margins(p, *margins if margins is not None else full(4, .1) if c is None else Draw.get_margins(c))
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
@@ -796,6 +800,11 @@ def format_frame(frame):
 
 
 def fill_hist(h, x, y=None, zz=None):
+    if is_ufloat(x[0]):
+        for i, v in enumerate(x, 1):
+            h.SetBinContent(i, v.n)
+            h.SetBinError(i, v.s)
+        return
     x, y, zz = array(x).astype('d'), array(y).astype('d'), array(zz).astype('d')
     if len(x.shape) > 1:
         y = array(x[:, 1])
