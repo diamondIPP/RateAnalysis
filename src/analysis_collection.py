@@ -240,7 +240,8 @@ class AnalysisCollection(Analysis):
     @quiet
     def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
-        pbar = choose(pbar, 'redo' in kwargs and kwargs['redo'] or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
+        redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
+        pbar = choose(pbar, redo or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
         self.info(f'Generating {what} ...', prnt=pbar)
         self.PBar.start(len(runs), counter=True) if pbar else do_nothing()
         values = [self.get_value(f, ana, **kwargs) for ana in self.get_analyses(runs)]
@@ -396,30 +397,20 @@ class AnalysisCollection(Analysis):
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
         return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None))
 
-    def draw_full_pulse_height(self, bin_width=10000, show=True, rel_t=True, redo=False, with_flux=True):
-        """ Shows the pulse heights bins of all runs vs time. """
-        def f():
-            self.info('Getting pulse heights ...')
-            # add a zero at the end for the time in between runs
-            ph = concatenate([append(get_hist_vec(ana.draw_pulse_height(bin_width, corr=True, redo=redo, show=False, save=False)[0]), ufloat(0, 0)) for ana in self.get_analyses()])
-            h0 = Draw.make_histo('Full Pulse Height', self.get_time_bins(bin_width))
-            for i, v in enumerate(ph, 1):
-                h0.SetBinContent(i, v.n)
-                h0.SetBinError(i, v.s)
-            return format_histo(h0, title='Full Pulse Height', x_tit='Time [hh:mm]', y_tit='Mean Pulse Height [mV]', fill_color=Draw.FillColor, y_off=.8)
+    @save_pickle('Full', sub_dir='PH', suf_args='all')
+    def get_full_ph(self, bin_size=None, _redo=False):
+        g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, bin_size=bin_size, _redo=_redo, picklepath=self.get_pickle_path('Trend', make_suffix(self, [bin_size, 1]), 'PH'))
+        ph = concatenate([append(get_graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
+        return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit='Mean Pulse Height [mV]', show=False)
 
-        h1 = do_pickle(self.make_simple_pickle_path('Full', bin_width, 'PulseHeight'), f, redo=redo)
-        format_histo(h1, y_range=[0, h1.GetMaximum() * 1.05], t_ax_off=self.get_tax_off(True, rel_t), stats=0)
-        c = self.Draw(h1, show=show, draw_opt='hist', w=1.5, h=.75, lm=.065, gridy=True, rm=.1 if with_flux else None)
+    def draw_full_pulse_height(self, bin_size=None, rel_t=True, with_flux=True, redo=False, **dkw):
+        """ Shows the pulse heights bins of all runs vs time. """
+        h = self.get_full_ph(bin_size, _redo=redo)
+        self.Draw.distribution(h, **prep_kw(dkw, y_range=[0, h.GetMaximum() * 1.05], **self.get_x_args(True, rel_t, draw=True), stats=0, **Draw.mode(2), rm=.1 if with_flux else None))
         if with_flux:
-            h2 = self.draw_flux(rel_time=rel_t, show=False)
-            c.cd()
-            Draw.tpad('pr', margins=[.065, .1, c.GetBottomMargin(), .1], transparent=True, logy=True)
-            x_range = [h2.GetXaxis().GetXmin(), h2.GetXaxis().GetXmax()]
-            format_histo(h2, title=' ', fill_color=2, fill_style=3002, lw=1, y_range=[1, h2.GetMaximum() * 1.2], stats=0, y_off=1.05, x_range=x_range)
-            self.Draw(h2, canvas=c, draw_opt='histy+same', rm=.1)
+            self.draw_flux(rel_time=rel_t, canvas=self.Draw.tpad(c=get_last_canvas(), transparent=True, logy=True), fill_color=2, fill_style=3002, draw_opt='histy+same', rm=.1, x_off=10, l_off_x=10)
         self.Draw.save_plots('FullPulseHeight')
-        return h1
+        return h
 
     def draw_splits(self, m=2, show=True, normalise=False):
         x, y = self.get_x_var(), self.get_values('split pulse heights', DUTAnalysis.get_split_ph, m=m).T
@@ -589,13 +580,9 @@ class AnalysisCollection(Analysis):
 
     @save_pickle('Prof', sub_dir='Flux', suf_args='[0]')
     def get_flux_prof(self, bin_width=5, _redo=False):
-        h = TH1F('hff', 'Flux Profile', *self.get_raw_time_bins(bin_width))
-        values = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
-        values = concatenate([append(run_values, ufloat(0, 0)) for run_values in values])  # add extra zero for time bin between runs
-        for i, value in enumerate(values, 1):
-            h.SetBinContent(i, value.n)
-            h.SetBinError(i, value.s)
-        return h
+        x = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
+        x = concatenate([append(run_values, ufloat(0, 0)) for run_values in x])  # add extra zero for time bin between runs
+        return self.Draw.distribution(x, self.get_raw_time_bins(bin_width), 'Flux Profile', **self.get_x_args(True), y_tit='Flux [kHz/cm^{2}]', show=False)
 
     def draw_flux(self, bin_width=5, rel_time=True, redo=False, **kwargs):
         h = self.get_flux_prof(bin_width, _redo=redo)
