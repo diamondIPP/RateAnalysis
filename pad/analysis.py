@@ -62,16 +62,6 @@ class PadAnalysis(DUTAnalysis):
         return [self.get_flux(), self.get_current(), self.get_pulse_height(), self.get_pedestal(), self.get_pedestal(par=2), self.Pulser.get_pulse_height(),
                 self.Pulser.get_sigma(), self.get_pedestal(pulser=True), self.get_pedestal(pulser=True, par=2), ufloat(self.get_n_entries(), 0)]
 
-    def save_data(self, data=None):
-        if self.Draw.server_is_mounted():
-            data = choose(data, self.get_data())
-            with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
-                if self.TCString not in f:
-                    f.create_group(self.TCString)
-                if str(self.DUT.Number) not in f[self.TCString]:
-                    f[self.TCString].create_dataset(str(self.DUT.Number), data=zeros((self.Run.get_max_run() + 1, len(data), 2), 'd'))
-                f[self.TCString][str(self.DUT.Number)][self.Run.Number] = array([[v.n, v.s] for v in data], 'd')
-
     # ----------------------------------------
     # region INFO
     def show_integral_names(self):

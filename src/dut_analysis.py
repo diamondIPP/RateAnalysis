@@ -103,6 +103,16 @@ class DUTAnalysis(Analysis):
     def get_data(self):
         return []
 
+    def save_data(self, data=None):
+        if self.Draw.server_is_mounted():
+            data = choose(data, self.get_data())
+            with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
+                if self.TCString not in f:
+                    f.create_group(self.TCString)
+                if str(self.DUT.Number) not in f[self.TCString]:
+                    f[self.TCString].create_dataset(str(self.DUT.Number), data=zeros((self.Run.get_max_run() + 1, len(data), 2), 'd'))
+                f[self.TCString][str(self.DUT.Number)][self.Run.Number] = array([[v.n, v.s] for v in data], 'd')
+
     @reload_tree
     @quiet
     def save_plots(self):
@@ -289,6 +299,9 @@ class DUTAnalysis(Analysis):
 
     def draw_flux(self, *args, **kwargs):
         return self.Tel.draw_flux(*args, **kwargs)
+
+    def get_pulse_height_trend(self, *args):
+        return TProfile()
 
     def draw_pulse_height(self, *args, **kwargs):
         return TProfile()
