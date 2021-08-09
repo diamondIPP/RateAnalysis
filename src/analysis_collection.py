@@ -403,14 +403,14 @@ class AnalysisCollection(Analysis):
         ph = concatenate([append(get_graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
         return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit='Mean Pulse Height [mV]', show=False)
 
-    def draw_full_pulse_height(self, bin_size=None, rel_t=True, with_flux=True, redo=False, **dkw):
+    def draw_full_pulse_height(self, bin_size=None, rel_t=True, with_flux=True, redo=False, show=True, **dkw):
         """ Shows the pulse heights bins of all runs vs time. """
-        h = self.get_full_ph(bin_size, _redo=redo)
-        self.Draw.distribution(h, **prep_kw(dkw, y_range=[0, h.GetMaximum() * 1.05], **self.get_x_args(True, rel_t, draw=True), stats=0, **Draw.mode(2), rm=.1 if with_flux else None))
         if with_flux:
-            self.draw_flux(rel_time=rel_t, canvas=self.Draw.tpad(c=get_last_canvas(), transparent=True, logy=True), fill_color=2, fill_style=3002, draw_opt='histy+same', rm=.1, x_off=10, l_off_x=10)
-        self.Draw.save_plots('FullPulseHeight')
-        return h
+            self.draw_flux(rel_time=rel_t, fill_color=2, fill_style=3002, draw_opt='histy+', rm=.1, x_off=10, l_off_x=10, y_range=Bins.FluxRange, show=show)
+        c = self.Draw.tpad(transparent=True, c=get_last_canvas()) if with_flux else None
+        h = self.get_full_ph(bin_size, _redo=redo)
+        return self.Draw.distribution(h, canvas=c, **prep_kw(dkw, y_range=[0, h.GetMaximum() * 1.05], **self.get_x_args(True, rel_t, draw=True), stats=0, **Draw.mode(2),
+                                      rm=.1 if with_flux else None, fill_style=3002, file_name=f'FullPulseHeight{"Flux" if with_flux else""}'))
 
     def draw_splits(self, m=2, show=True, normalise=False):
         x, y = self.get_x_var(), self.get_values('split pulse heights', DUTAnalysis.get_split_ph, m=m).T
