@@ -37,6 +37,7 @@ class Draw(object):
     Colors = get_color_gradient()
     Objects = []
     Dir = get_base_dir()
+    Show = True
 
     Title = True
     Legend = False
@@ -58,6 +59,7 @@ class Draw(object):
         Draw.Legend = Draw.Config.get_value('SAVE', 'info legend', default=False)
         Draw.FillColor = Draw.Config.get_value('PLOTS', 'fill color', default=821)
         Draw.Font = Draw.Config.get_value('PLOTS', 'legend font', default=42)
+        Draw.Show = Draw.Config.get_value('SAVE', 'show', default=True)
 
         Draw.setup()
 
@@ -107,6 +109,10 @@ class Draw(object):
         Draw.set_margin(c, 'Right', r, default=.02)
         Draw.set_margin(c, 'Bottom', b, default=.115, off=.06 if Draw.Legend else 0)
         Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title else 0)
+
+    @staticmethod
+    def set_show(status=ON):
+        set_root_output(status and Draw.Show)
     # endregion SET
     # ----------------------------------------
 
@@ -151,7 +157,7 @@ class Draw(object):
     # region DRAWING
     @staticmethod
     def canvas(title='c', x=None, y=None, w=1., h=1., logx=None, logy=None, logz=None, gridx=None, gridy=None, transp=None, divide=None, show=True):
-        set_root_output(show)
+        Draw.set_show(show)
         c0 = get_last_canvas(warn=False)
         x = x if x is not None else 0 if c0 is None else c0.GetWindowTopX() + 50
         y = y if y is not None else 0 if c0 is None else c0.GetWindowTopY() + 20
@@ -376,7 +382,7 @@ class Draw(object):
               leg=None, canvas=None, sumw2=None, stats=False, **kwargs):
         w += .16 if not Draw.Title and w == 1 else 0  # rectify if there is no title
         th.Sumw2(sumw2) if hasattr(th, 'Sumw2') and sumw2 is not None else do_nothing()
-        set_root_output(show)
+        Draw.set_show(show)
         c = Draw.canvas(th.GetTitle().split(';')[0], None, None, w, h, logx, logy, logz, gridx or grid, gridy or grid, show=show) if canvas is None else canvas
         Draw.set_pad_margins(c, *[lm, rm, bm, tm] if m is None else m)
         do([c.SetLogx, c.SetLogy, c.SetLogz], [logx, logy, logz])
@@ -387,7 +393,7 @@ class Draw(object):
             update_canvas()
             for i_leg in make_list(leg):
                 i_leg.Draw('same')
-        set_root_output(True)
+        Draw.set_show(True)
         if stats or stats is None:
             for i in (th.GetListOfGraphs() if 'Multi' in th.ClassName() else [th]):
                 format_statbox(i, **Draw.Stats if stats else Draw.DefaultStats)
@@ -656,9 +662,9 @@ def format_histo(histo, name=None, title=None, x_tit=None, y_tit=None, z_tit=Non
     _ = kwargs
     h = histo
     if draw_first:
-        set_root_output(False)
+        Draw.set_show(False)
         h.Draw('nostack' if h.ClassName() == 'THStack' else 'a')
-        set_root_output(True)
+        Draw.set_show(True)
     do(h.SetTitle, title)
     do(h.SetName, name)
     set_palette(*make_list(pal) if pal is not None else [])

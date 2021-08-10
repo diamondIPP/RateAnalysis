@@ -20,6 +20,7 @@ info legend = True
 save = True
 date = True
 server mount directory = ~/mounts/psi
+show = True
 
 [MISC]
 run plan path = Runinfos/run_plans.json

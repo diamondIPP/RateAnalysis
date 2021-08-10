@@ -95,12 +95,12 @@ class SaveDraw(Draw):
         ensure_dir(dirname(file_path))
         info('saving plot: {}'.format(file_name), prnt=prnt and self.Verbose)
         canvas.Update()
-        set_root_output(show)  # needs to be in the same batch so that the pictures are created, takes forever...
+        Draw.set_show(show)  # needs to be in the same batch so that the pictures are created, takes forever...
         set_root_warnings(False)
         for f in choose(make_list(ftype), default=['pdf'], decider=ftype):
             canvas.SaveAs('{}.{}'.format(file_path, f.strip('.')))
         self.save_on_server(canvas, file_name, save=full_path is None)
-        set_root_output(True)
+        Draw.set_show(True)
 
     def save_on_server(self, canvas, file_name, save=True):
         if self.ServerDir is not None and save:
