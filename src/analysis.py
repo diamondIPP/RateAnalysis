@@ -68,7 +68,7 @@ class Analysis(object):
 
     @staticmethod
     def find_testcampaign(default=None):
-        return next((tc for tc in sorted(Analysis.get_test_campaigns(), reverse=True) if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), default)
+        return next((tc for tc in sorted(Analysis.get_test_campaigns(), reverse=True) if f'psi_{tc[:4]}_{tc[4:]}' in getcwd()), default) if default is None else default
 
     def load_tc_directory(self, data_dir=None):
         return join(choose(data_dir, default=self.DataDir), 'psi_{y}_{m}'.format(y=self.TCString[:4], m=self.TCString[4:]))
