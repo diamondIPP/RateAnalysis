@@ -353,7 +353,7 @@ class AnalysisCollection(Analysis):
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit='Pulse Height [mV]')
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
-        graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg else [])
+        graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend:
             mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True, d=.05))
@@ -390,12 +390,13 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
+    def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
         """ Shows the pulse heights of the runs. """
-        mg = self.make_pulse_height_graph(bin_width, vs_time, show_first_last, redo, corr=corr, err=err, avrg=avrg, peaks=peaks)
+        mg = self.make_pulse_height_graph(bin_width, vs_time, show_first_last, redo, legend, corr, err, avrg, peaks)
         mg.GetListOfGraphs()[0].Fit('pol0', f'qs') if fit else do_nothing()
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
-        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None))
+        m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
+        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None, **m))
 
     @save_pickle('Full', sub_dir='PH', suf_args='all')
     def get_full_ph(self, bin_size=None, _redo=False):
