@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 from ROOT import THStack, TF1, TMath
 from numpy import sort, log, argmin, argmax
+from uncertainties.umath import sqrt as usqrt
 
 from src.analysis import Analysis
 from src.currents import Currents
@@ -296,6 +297,11 @@ class AnalysisCollection(Analysis):
     def get_repr_error(self, flux=None, peaks=False, redo=False):
         values = self.get_signal_spread(peaks, redo)
         return self.get_low_flux_std(flux) if values is None else mean_sigma(values, err=False)[1]
+
+    def get_rel_sys_error(self):
+        x = self.get_pulse_heights(err=False)
+        e_stat, (m, e_full) = mean_sigma([v.s for v in x])[0], mean_sigma(x)
+        return usqrt(e_full ** 2 - e_stat ** 2) / m
 
     @save_pickle('LowFlux', sub_dir='Errors', suf_args=0)
     def get_low_flux_std(self, flux, _redo=False):
