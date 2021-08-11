@@ -106,6 +106,11 @@ class SaveDraw(Draw):
         if self.ServerDir is not None and save:
             canvas.SetName('c')
             canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.root'))
+
+    @staticmethod
+    def save_last(canvas=None, ext='pdf'):
+        filename = input(f'Enter the name of the {ext}-file: ')
+        choose(canvas, get_last_canvas()).SaveAs(f'{filename.split(".")[0]}.{ext}')
     # endregion SAVE
     # ----------------------------------------
 
