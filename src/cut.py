@@ -308,7 +308,8 @@ class Cut(SubAnalysis):
     @save_pickle('BeamStopRange', print_dur=True)
     def create_interruption_ranges(self, _redo=False):
         low, high = self.Config.get_list('CUT', 'exclude around jump')
-        x = (array([[self.Run.get_time_at_event(ev) for ev in tup] for tup in self.find_beam_interruptions()]) - self.Run.StartTime + [-low, high]).flatten()
+        x = array([[self.Run.get_time_at_event(ev) for ev in tup] for tup in self.find_beam_interruptions()]) - self.Run.StartTime
+        x = (x + [-low, high] if x.size else x).flatten()  # extend range and flatten array
         x[x < 0] = 0  # time cannot be smaller than 0
         i = where(diff(x) < 10)[0]  # find all indices where the start of the next beam interruption is earlier than the end of the previous
         x = array([self.Run.get_event_at_time(t) for t in delete(x, concatenate([i, i + 1]))])  # remove the last stop and the next start if overlap
