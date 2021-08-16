@@ -772,7 +772,7 @@ class RunSelector(object):
     @update_pbar
     def copy_raw_file(self, run_number):
         self.Run.Converter.set_run(run_number)
-        self.Run.Converter.copy_raw_file()
+        self.Run.Converter.copy_raw_file(out=False)
 
     def copy_raw_files(self, sel=False):
         runs = self.get_selected_runs() if sel else self.get_runplan_runs()
