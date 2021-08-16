@@ -298,7 +298,10 @@ class AnalysisCollection(Analysis):
         values = self.get_signal_spread(peaks, redo)
         return self.get_low_flux_std(flux) if values is None else mean_sigma(values, err=False)[1]
 
-    def get_rel_sys_error(self):
+    def get_sys_error(self):
+        return self.MainConfig.get_value('MAIN', 'systematic error', dtype=float)
+
+    def calc_rel_sys_error(self):
         x = self.get_pulse_heights(err=False)
         e_stat, (m, e_full) = mean_sigma([v.s for v in x])[0], mean_sigma(x)
         return usqrt(e_full ** 2 - e_stat ** 2) / m

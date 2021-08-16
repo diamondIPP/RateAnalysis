@@ -1,5 +1,6 @@
 [MAIN]
 default test campaign = 201908
+systematic error = .00316
 ;hv config file = ''
 ;hv data path = ''
 
