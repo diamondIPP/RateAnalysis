@@ -294,13 +294,14 @@ class Cut(SubAnalysis):
         return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
 
     @save_pickle('EventMax', print_dur=True)
-    def find_signal_drops(self, _redo=False):
+    def find_signal_drops(self, thresh=.6, _redo=False):
         ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
-        x, y = get_hist_vecs(self.Ana.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
-        i_start = next(i for i, v in enumerate(y) if v) + 1  # find the index of the first bin that is not zero
-        ph = abs(mean(y[i_start:i_start + min(1, y.size // 10)]))  # take the mean of the first 10% of the bins
-        i_break = next((i + i_start for i, v in enumerate(y[i_start:]) if abs(v) < .2 * ph and v), None)
-        return None if ph < 10 or i_break is None else self.Ana.get_event_at_time(x[i_break - 1])
+        x, y = get_hist_vecs(self.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
+        x, y = x[y != 0], self.Ana.Polarity * y[y != 0]
+        averages = cumsum(y) / (arange(y.size) + 1)
+        j = next((i for i, is_bad in enumerate(y[2:] < thresh * averages[1:-1], 2) if is_bad), None)  # find next entry that is below the average of the previous
+        sleep(.05)  # otherwise j is not initialised yet...
+        return None if averages[min(1, y.size // 10)] < 10 or j is None else self.get_event_at_time(x[j - 2], rel=False)
 
     def find_beam_interruptions(self):
         return [[]]
