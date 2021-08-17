@@ -264,10 +264,10 @@ class DUTAnalysis(Analysis):
 
     def draw_alignment(self, bin_size=1000, **kwargs):
         """ draw the aligment of telescope and DUT events """
-        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_aligned(bin_size)
+        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_aligned(bin_size=bin_size)
         x, y = (bins[1][:-1] + diff(bins[1]))[:y.size].repeat(y + 1), full(sum(y + 1), 1)
         h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
-                               draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03))
+                               draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03, z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
         self.Draw.save_plots('EventAlignment')
         return h
