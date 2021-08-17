@@ -350,7 +350,7 @@ class PadAnalysis(DUTAnalysis):
             j = next((i for i, is_bad in enumerate(y[2:] < thresh * averages[1:-1], 2) if is_bad), None)  # find next entry that is below the average of the previous
             if j is not None:
                 warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * j / y.size:2.0f}%')
-                return x[j - 1]
+                return x[j - 2]
         return x[-1] + 1000
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
