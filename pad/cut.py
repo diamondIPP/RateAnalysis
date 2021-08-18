@@ -141,6 +141,9 @@ class PadCut(Cut):
 
     # ----------------------------------------
     # region COMPUTE
+    def find_signal_drops(self, thresh=.6, pol=None, _redo=False):
+        return super(PadCut, self).find_signal_drops(thresh, choose(pol, self.Ana.get_polarity()), _redo=_redo)
+
     def find_n_pulser(self, cut, redo=False):
         return do_pickle(self.make_simple_pickle_path('NPulser', dut=''), self.Tree.GetEntries, None, redo, self(cut).GetTitle())
 
