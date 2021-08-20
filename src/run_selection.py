@@ -674,6 +674,8 @@ class RunSelector(object):
 
     def get_high_rate_run(self, run, high=True):
         runplans = [dic for dic in self.RunPlan.values() if run in dic['runs']]
+        if not runplans:
+            return run
         runs = array(next((dic['runs'] for dic in runplans if dic['type'] == 'up scan'), runplans[0]['runs']))
         fluxes = array([self.get_flux(run) for run in runs])
         return runs[fluxes.argmax() if high else fluxes.argmin()]
