@@ -837,9 +837,9 @@ def set_2d_ranges(h, dx, dy):
     format_histo(h, x_range=[xmid - dx, xmid + dx], y_range=[ymid - dy, ymid + dx])
 
 
-def find_bins(values, lfac=.2, rfac=.2, q=.02, n=1, lq=None):
-    width, (xmin, xmax) = freedman_diaconis(values) * n, find_range(values, lfac, rfac, q, lq)
-    bins = arange(xmin, xmax + width, width)
+def find_bins(values, lfac=.2, rfac=.2, q=.02, n=1, lq=None, w=None, x0=None):
+    width, (xmin, xmax) = choose(w, freedman_diaconis(values) * n), find_range(values, lfac, rfac, q, lq)
+    bins = arange(choose(x0, xmin), xmax + width, width)
     return [bins.size - 1, bins]
 
 
