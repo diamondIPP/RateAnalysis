@@ -249,6 +249,7 @@ class Converter(object):
             parser.set(section, 'max_event_number', str(max_events))
 
         # write changes
+        ensure_dir(dirname(self.NewConfigFile))
         with open(self.NewConfigFile, 'w') as f:
             parser.write(f)
         self.format_converter_configfile()
