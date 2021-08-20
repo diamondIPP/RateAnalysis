@@ -269,12 +269,9 @@ class Run(Analysis):
             self.Info[key] = self.translate_dia(value)
 
     def translate_dia(self, dia):
-        if dia is None or dia.lower() in ['unknown', 'none']:
-            return
         parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
-        if dia in parser.get_values('ALIASES'):
-            return dia
-        return parser.get('ALIASES', dia.lower()) if dia.lower() in parser.options('ALIASES') else critical(f'Please add {dia} to config/DiamondAliases.ini!')
+        name, suf = dia.split('_')[0].lower(), '_'.join(dia.split('_')[1:])
+        return '_'.join([parser.get('ALIASES', name)] + ([suf] if suf else [])) if name in parser.options('ALIASES') else critical(f'Please add {dia} to config/DiamondAliases.ini!')
 
     def reload_run_config(self, run_number):
         self.Number = run_number

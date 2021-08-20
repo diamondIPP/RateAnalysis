@@ -15,11 +15,12 @@ class DUT:
         # Info
         self.Number = 1 if number is None else number
         self.Name = run_info['dia{}'.format(self.Number)]
+        self.Key = self.Name.split('_')[0]
         self.Bias = float(run_info['dia{}hv'.format(self.Number)])
         self.Attenuator = run_info['att_dia{}'.format(self.Number)] if 'att_dia{}'.format(self.Number) in run_info else None
 
         # Specs
-        self.Specs = load_json(join(self.Config.get('Directories', 'data'), 'dia_info.json'))[self.Name.upper()]
+        self.Specs = load_json(join(self.Dir, 'Runinfos', 'dia_info.json'))[self.Key]
         self.Irradiation = self.load_spec('irradiation')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
@@ -37,10 +38,10 @@ class DUT:
     def load_irradiation(self):
         with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
             data = load(f)
-            return OrderedDict([(key, dic[self.Name]) for key, dic in sorted(data.items()) if self.Name in dic])
+            return OrderedDict([(key, dic[self.Key]) for key, dic in sorted(data.items()) if self.Key in dic])
 
     def get_irradiation(self, tc):
-        return self.Irradiation[tc] if tc in self.Irradiation else critical('Please make an irradiation entry in the dia_info.json for "{}" in {}'.format(self.Name, tc))
+        return self.Irradiation[tc] if tc in self.Irradiation else critical(f'Please make an irradiation entry in the dia_info.json for "{self.Key}" in {tc}')
 
     def load_spec(self, section, typ=None, lst=False, error=None, default=None):
         if section not in self.Specs or self.Specs[section] == 'None':
