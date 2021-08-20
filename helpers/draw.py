@@ -806,7 +806,7 @@ def format_frame(frame):
 
 
 def fill_hist(h, x, y=None, zz=None):
-    if is_ufloat(x[0]):
+    if len(x) and is_ufloat(x[0]):
         for i, v in enumerate(x, 1):
             h.SetBinContent(i, v.n)
             h.SetBinError(i, v.s)
