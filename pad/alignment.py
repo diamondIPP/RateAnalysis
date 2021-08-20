@@ -40,7 +40,7 @@ class PadAlignment(EventAligment):
         return data
 
     def get_xbins(self, bin_size):
-        return append(arange(0, self.NEntries, bin_size), self.NEntries if self.NEntries % bin_size else [])
+        return append(arange(0, self.NEntries, bin_size), self.NEntries if self.NEntries % bin_size else []).astype('i4')
 
     def get_aligned(self, tree=None, bin_size=1000, data=None):
         x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.HitVar], cut='pulser'))
@@ -137,8 +137,10 @@ class PadAlignment(EventAligment):
             return
         x, y = self.Pulser, self.NHits
         ev = array(([0] if self.FirstOffset else []) + [*self.Offsets])
-        offs = append(-1 if self.FirstOffset < 0 else [], diff(append(self.FirstOffset, [*self.Offsets.values()])))
-        x, y = delete(x, ev[where(offs == -1)]), delete(y, ev[where(offs == 1)])
+        offs = append(-1 if self.FirstOffset < 0 else [], diff(append(self.FirstOffset, [*self.Offsets.values()]))).astype('i')
+        noffs, poffs = abs(offs[offs < 0]), offs[offs > 0]
+        x = delete(x, ev[offs < 0].repeat(noffs) + concatenate([arange(i) for i in noffs])) if noffs.size else x  # delete n consecutive events for offset of n events
+        y = delete(y, ev[offs > 0].repeat(poffs) + concatenate([arange(i) for i in poffs])) if poffs.size else y
         s = min(x.size, y.size)
         x, y = where(x[:s])[0], y[x[:s]]
         aligned = self.get_aligned(bin_size=bin_size, data=(x, y)).repeat(diff(self.get_xbins(bin_size)))
