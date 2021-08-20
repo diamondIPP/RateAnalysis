@@ -120,19 +120,17 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region HITS
-    def draw_cluster_size(self, roc, name=None, cut='', show=True):
-        values = self.get_tree_vec(var='cluster_size[{}]'.format(roc), cut=self.Cut(cut))
-        h = self.Draw.distribution(values, Bins.make(0, 50), 'Cluster Size {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
-        format_histo(h, x_tit='Cluster Size', y_off=1.3, fill_color=Draw.FillColor, x_range=[0, h.FindLastBinAbove(5)])
-        self.Draw.save_plots('ClusterSize{}'.format(roc), show=show)
-        return h
+    def draw_cluster_size(self, roc=0, name=None, cut='', **dkw):
+        x, tit = self.get_tree_vec(f'cluster_size[{roc}]', self.Cut(cut)), f'Cluster Size {f"ROC {roc}" if name is None else name}'
+        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
 
-    def draw_n_clusters(self, roc=0, name=None, cut='', y_range=None, x_range=None, show=True):
-        values = self.get_tree_vec(var='n_clusters[{}]'.format(roc), cut=self.Cut(cut))
-        h = self.Draw.distribution(values, Bins.make(0, 50), 'Number of Clusters {d}'.format(d='ROC {n}'.format(n=roc) if name is None else name), logy=True, stats=set_entries())
-        format_histo(h, x_tit='Number of Clusters', y_off=1.3, fill_color=Draw.FillColor, x_range=choose(x_range, [0, h.FindLastBinAbove(2) + 1]), y_range=y_range)
-        self.Draw.save_plots('NClusters{}'.format(roc), show=show)
-        return h
+    def draw_n_clusters(self, roc=0, name=None, cut='', **dkw):
+        x, tit = self.get_tree_vec(f'n_clusters[{roc}]', self.Cut(cut)), f'Number of Clusters {f"ROC {roc}" if name is None else name}'
+        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=1), tit, **prep_kw(dkw, logy=True, file_name=f'NClusters{roc}'))
+
+    def draw_tot_clusters(self, cut='', **dkw):
+        x = self.get_tree_vec(f'total_clusters', self.Cut(cut))
+        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=1), 'Total Number of Clusters', **prep_kw(dkw, logy=True, file_name='TotClusters'))
 
     def draw_event(self, event, show=True, grid=True):
         x, y, p = self.get_tree_vec(self.get_hit_vars(0, cluster=False) + ['plane'], nentries=1, firstentry=event)
