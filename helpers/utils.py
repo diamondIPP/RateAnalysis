@@ -41,12 +41,14 @@ OFF = False
 ON = True
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
 COUNT = 0
+Dir = dirname(dirname(realpath(__file__)))
 
 M_PI = 139.57018  # MeV/c^2
 M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
 M_E = constants.m_e / constants.e * constants.c**2 / 1e6
 M_P = constants.m_p / constants.e * constants.c**2 / 1e6
 TAU_PI = 26.033  # ns
+
 
 
 # ==============================================
@@ -887,6 +889,10 @@ class Config(ConfigParser):
             for option in section:
                 print('{} = {}'.format(option, self.get(key, option)))
             print()
+
+    def write(self, file_name=None, space_around_delimiters=True):
+        with open(choose(file_name, self.FileName), 'a+') as f:
+            super(Config, self).write(f, space_around_delimiters)
 # endregion CLASSES
 # ----------------------------------------
 
@@ -1012,6 +1018,11 @@ def parallelise_instance(instances, method, args, timeout=60 * 60):
 def call_it(instance, name, *args, **kwargs):
     """indirect caller for instance methods and multiprocessing"""
     return getattr(instance, name)(*args, **kwargs)
+
+
+def get_input(msg, default='None'):
+    txt = input(f'{msg} (press enter for default: {default}): ')
+    return txt if txt else default
 
 
 def do_nothing():

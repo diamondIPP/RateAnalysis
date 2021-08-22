@@ -4,6 +4,7 @@ from numpy import inf, log
 from src.analysis import Analysis
 from src.converter import *
 from src.dut import DUT, Plane
+from json import dump
 
 
 class Run(Analysis):
@@ -268,10 +269,52 @@ class Run(Analysis):
         for key, value in [(key, value) for key, value in self.Info.items() if key.startswith('dia') and key[-1].isdigit()]:
             self.Info[key] = self.translate_dia(value)
 
+    def register_new_dut(self):
+        if input('Do you want to add a new diamond? [y,n] ').lower() in ['y', 'yes']:
+            dut_type = int(input('Enter the DUT type (1 for pCVD, 2 for scCVD, 3 for silicon): ')) - 1
+            dut_name = input('Enter the name of the DUT (no "_"): ')
+            alias = input(f'Enter the alias (no "_", for default {dut_name.lower()} press enter): ')
+            self.add_alias(alias, dut_name, dut_type)
+            self.add_dut_info(dut_name)
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def add_alias(alias, dut_name, dut_type):
+        alias_file = join(Dir, 'config', 'DiamondAliases.ini')
+        with open(alias_file, 'r+') as f:
+            lines = [line.strip(' \n') for line in f.readlines()]
+            i0 = lines.index(['# pCVD', '# scCVD', '# Silicon'][dut_type])
+            i = next(i for i, line in enumerate(lines[i0:], i0) if line.strip() == '')
+            lines.insert(i, f'{(alias if alias else dut_name).lower()} = {dut_name}')
+            f.seek(0)
+            f.writelines([f'{line}\n' for line in lines])
+            info(f'added entry: {(alias if alias else dut_name).lower()} = {dut_name} in {alias_file}')
+
+    def add_dut_info(self, dut_name):
+        dia_info_file = join(Dir, 'Runinfos', 'dia_info.json')
+        data = load_json(dia_info_file)
+        if dut_name in data:
+            return warning('The entered DUT name already exists!')
+        tc = get_input(f'Enter the beam test [YYYYMM]', self.TCString)
+        data[dut_name] = {'irradiation': {tc: get_input(f'Enter the irradiation for {tc}', '0')},
+                          'boardnumber': {tc: get_input(f'Enter the board number for {tc}')},
+                          'thickness': get_input('Enter the thickness'),
+                          'size': get_input('Enter the lateral size ([x, y])'),
+                          'manufacturer': get_input('Enter the manufacturer')}
+        with open(dia_info_file, 'w') as f:
+            dump(data, f, indent=2)
+        info(f'added {dut_name} to {dia_info_file}')
+
     def translate_dia(self, dia):
-        parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
         name, suf = dia.split('_')[0].lower(), '_'.join(dia.split('_')[1:])
-        return '_'.join([parser.get('ALIASES', name)] + ([suf] if suf else [])) if name in parser.options('ALIASES') else critical(f'Please add {dia} to config/DiamondAliases.ini!')
+        if name not in Config(join(self.Dir, 'config', 'DiamondAliases.ini')).options('ALIASES'):
+            warning(f'{dia} was not found in config/DiamondAliases.ini!')
+            if not self.register_new_dut():
+                critical(f'unknown diamond {dia}')
+        parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
+        return '_'.join([parser.get('ALIASES', name)] + ([suf] if suf else []))
 
     def reload_run_config(self, run_number):
         self.Number = run_number
