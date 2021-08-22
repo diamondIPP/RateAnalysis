@@ -747,5 +747,21 @@
     "thickness": "500",
     "size": "[2.0, 2.0]",
     "manufacturer": "elementsix"
+  },
+  "Si-CMS-34252-24": {
+    "types": ["analog", "digital"],
+    "irradiation": {"202108": "0" },
+    "boardnumber": {"202108": "CalypsoC-?"},
+    "thickness": "500",
+    "size": "[2.0, 2.0]",
+    "manufacturer": "CMS"
+  },
+  "ET-02": {
+    "types": ["UR_analog", "UR_digital", "UL_analog", "UL_digital"],
+    "irradiation": {"202108": "0" },
+    "boardnumber": {"202108": "CalypsoC-?"},
+    "thickness": "500",
+    "size": "[2.0, 2.0]",
+    "manufacturer": "II-VI"
   }
 }
