@@ -891,7 +891,7 @@ class Config(ConfigParser):
             print()
 
     def write(self, file_name=None, space_around_delimiters=True):
-        with open(choose(file_name, self.FileName), 'a+') as f:
+        with open(choose(file_name, self.FileName), 'w') as f:
             super(Config, self).write(f, space_around_delimiters)
 # endregion CLASSES
 # ----------------------------------------

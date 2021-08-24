@@ -250,8 +250,7 @@ class Converter(object):
 
         # write changes
         ensure_dir(dirname(self.NewConfigFile))
-        with open(self.NewConfigFile, 'w') as f:
-            parser.write(f)
+        parser.write(self.NewConfigFile)
         self.format_converter_configfile()
 
     def format_converter_configfile(self):
