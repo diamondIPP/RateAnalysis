@@ -20,7 +20,6 @@ class Telescope(SubAnalysis):
 
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
         self.verify_mask()
-        self.Draw.ServerDir = analysis.Draw.ServerDir
 
     def verify_mask(self):
         """ verify that the mask file is in the right order. """

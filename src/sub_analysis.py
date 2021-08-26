@@ -25,6 +25,7 @@ class SubAnalysis(Analysis):
             pass
         super().__init__(analysis.TCString, sub_dir=choose(sub_dir, analysis.Draw.SubDir), pickle_dir=pickle_dir)
         self.Config = analysis.Config
+        self.Draw.ServerDir = analysis.Draw.ServerDir
 
     def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
         return self.Run.get_tree_vec(var, cut, dtype, nentries, firstentry)
