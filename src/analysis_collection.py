@@ -193,7 +193,7 @@ class AnalysisCollection(Analysis):
     def get_values(self, what, f, runs=None, pbar=True, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
         redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
-        if all(file_exists(picklepath.format(run)) for run in runs) and not redo:
+        if picklepath is not None and all(file_exists(picklepath.format(run)) for run in runs) and not redo:
             values = [load_pickle(picklepath.format(run)) for run in runs]
         else:
             self.info(f'Generating {what} ...', prnt=pbar)
