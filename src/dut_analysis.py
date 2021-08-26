@@ -20,12 +20,12 @@ from src.binning import Bins
 from functools import wraps
 
 
-def reload_tree(func):
-    @wraps(func)
-    def my_func(*args, **kwargs):
-        DUTAnalysis.reload_tree_(args[0])
-        return func(*args, **kwargs)
-    return my_func
+def reload_tree(f):
+    @wraps(f)
+    def inner(ana, *args, **kwargs):
+        ana.reload_tree_()
+        return f(ana, *args, **kwargs)
+    return inner
 
 
 class DUTAnalysis(Analysis):
@@ -455,7 +455,7 @@ class DUTAnalysis(Analysis):
         self.Draw.graph(x, y, title='Split Means', x_tit='Division', y_tit='Pulse Height [mV]', draw_opt='ap')
 
     def get_ph_bins(self, n=10, pmin=90, pmax=95, show=True):
-        h = self.split_signal_map(n, n, show=show, grid=False)[0]
+        h = self.split_signal_map(n, n, show=show, grid=False)
         (x, y), v = get_2d_vecs(h)
         wx, wy = diff(x)[0] / 2, diff(y)[0] / 2
         points = array(meshgrid(x, y)).T[where((v >= pmin) & (v < pmax))]
@@ -463,11 +463,11 @@ class DUTAnalysis(Analysis):
             Draw.box(ix - wx, iy - wy, ix + wx, iy + wy, line_color=840, width=4, show=show)
         return points, wx, wy
 
-    def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, x_range=None, show=True):
+    def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, **dkw):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
-        return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(Bins.find_width(ph[cut])), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
+        return self.Draw.distribution(ph[cut], tit=f'Pulse Height of Areas in [{pmin}, {pmax}] mV', **prep_kw(dkw, x_tit='Pulse Height [mV]'))
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
