@@ -50,7 +50,6 @@ M_P = constants.m_p / constants.e * constants.c**2 / 1e6
 TAU_PI = 26.033  # ns
 
 
-
 # ==============================================
 # UTILITY FUNCTIONS
 # ==============================================
@@ -828,6 +827,11 @@ class PBar(object):
         self.Step += 1
         if i == self.PBar.maxval - 1:
             self.finish()
+
+    def set_last(self):
+        if self.PBar:
+            self.PBar.currval = self.N
+            self.PBar.finished = True
 
     def finish(self):
         self.PBar.finish()
