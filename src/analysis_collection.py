@@ -5,9 +5,11 @@ from uncertainties.umath import sqrt as usqrt
 
 from src.analysis import Analysis
 from src.currents import Currents
-from src.dut_analysis import DUTAnalysis, Bins
+from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
 from helpers.draw import *
+
+PBAR = PBar()
 
 
 class AnalysisCollection(Analysis):
@@ -98,10 +100,19 @@ class AnalysisCollection(Analysis):
         self.draw_currents(show=False, fname='Currents')
         self.draw_pulse_heights(show=False)
 
-    def parallel(self, f, *args):
+    @staticmethod
+    @reload_tree
+    def prep_f(ana, i, *args, f, **kwargs):
+        PBAR.update(i) if PBAR.PBar and not PBAR.is_finished() else do_nothing()
+        return f(ana, *args, **kwargs)
+
+    @quiet
+    def parallel(self, f, *args, runs=None, pbar=True, **kwargs):
+        PBAR.start(self.NRuns if runs is None else len(runs)) if pbar else do_nothing()
         with Pool() as pool:
-            res = pool.starmap(f, [(ana, *args) for ana in self.Analyses])
-        return res
+            res = pool.starmap(partial(self.prep_f, f=f, **kwargs), [(ana, i, *args) for i, ana in enumerate(self.get_analyses(runs))])
+            PBAR.set_last()
+            return res
 
     def test_anas(self, f=None, *args, **kwargs):
         for ana in self.Analyses:
@@ -178,6 +189,18 @@ class AnalysisCollection(Analysis):
     def get_hv_name(self):
         return self.Currents.Name
 
+    @quiet
+    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
+        runs = choose(runs, self.Runs)
+        redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
+        pbar = choose(pbar, redo or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
+        self.info(f'Generating {what} ...', prnt=pbar)
+        values = self.parallel(f, runs=runs, pbar=pbar, **kwargs)
+        return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
+
+    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, **kwargs):
+        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, **kwargs)
+
     def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=None, rel=False, redo=False):
         picklepath = self.get_pickle_path(f'Flux', f'{choose(plane, 1)}_1', 'Telescope', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
@@ -233,23 +256,6 @@ class AnalysisCollection(Analysis):
 
     def get_currents(self):
         return [ana.Currents.get() for ana in self.Analyses]
-
-    @update_pbar
-    def get_value(self, f, ana, **kwargs):
-        return f(ana, **kwargs)
-
-    @quiet
-    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
-        runs = choose(runs, self.Runs)
-        redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
-        pbar = choose(pbar, redo or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
-        self.info(f'Generating {what} ...', prnt=pbar)
-        self.PBar.start(len(runs), counter=True) if pbar else do_nothing()
-        values = [self.get_value(f, ana, **kwargs) for ana in self.get_analyses(runs)]
-        return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
-
-    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, **kwargs):
-        return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, **kwargs)
 
     @staticmethod
     def get_mode(vs_time):
@@ -657,9 +663,6 @@ class AnalysisCollection(Analysis):
         g = Draw.make_tgrapherrors(x_values, y_values, title='STD of the Signal Map')
         format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='rel. STD', y_off=1.3, t_ax_off=0 if vs_time else None)
         self.Draw(g, 'STDSigMap', show, lm=.12, logx=not vs_time)
-
-    def find_sm_correlation(self, sm1, sm2):
-        return self.FirstAnalysis.find_best_sm_correlation([sm1, sm2])
     # endregion SIGNAL MAP
     # ----------------------------------------
 
