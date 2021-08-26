@@ -674,6 +674,11 @@ def prep_suffix(f, args, kwargs, suf_args):
     return make_suffix(args[0], suf_vals)
 
 
+def load_pickle(file_name):
+    with open(file_name, 'rb') as f:
+        return pickle.load(f)
+
+
 def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
     def inner(func):
         @wraps(func)
