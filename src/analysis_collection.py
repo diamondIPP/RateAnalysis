@@ -190,12 +190,14 @@ class AnalysisCollection(Analysis):
         return self.Currents.Name
 
     @quiet
-    def get_values(self, what, f, runs=None, pbar=None, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
+    def get_values(self, what, f, runs=None, pbar=True, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
         redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
-        pbar = choose(pbar, redo or (True if picklepath is None else not all(file_exists(picklepath.format(run)) for run in runs)))
-        self.info(f'Generating {what} ...', prnt=pbar)
-        values = self.parallel(f, runs=runs, pbar=pbar, **kwargs)
+        if all(file_exists(picklepath.format(run)) for run in runs) and not redo:
+            values = [load_pickle(picklepath.format(run)) for run in runs]
+        else:
+            self.info(f'Generating {what} ...', prnt=pbar)
+            values = self.parallel(f, runs=runs, pbar=pbar, **kwargs)
         return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
 
     def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, **kwargs):
