@@ -62,16 +62,8 @@ class DUTAnalysis(Analysis):
     def __repr__(self):
         return self.__str__()
 
-    def reload_tree_(self):
-        self.Tree = self.Run.load_rootfile(prnt=False)
-        for field in self.__dict__.values():
-            if hasattr(field, 'Tree'):
-                field.Tree = self.Tree
-
-    def set_tree(self, tree):
-        self.Tree = tree
-        self.Run.Tree = tree
-
+    # ----------------------------------------
+    # region INIT
     @staticmethod
     def init_run(run_number, testcampaign, load_tree, verbose):
         return Run(run_number, testcampaign, load_tree, verbose)
@@ -88,21 +80,14 @@ class DUTAnalysis(Analysis):
 
     def show_information(self, header=True, prnt=True, ret_row=False):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
-        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        if ret_row:
+            return rows[0]
+        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+    # endregion INIT
+    # ----------------------------------------
 
-    def set_verbose(self, status: bool):
-        self.Verbose = status
-        for field in self.__dict__.values():
-            if hasattr(field, 'Verbose'):
-                field.Verbose = status
-            if hasattr(field, '__dict__'):
-                for subfield in field.__dict__.values():
-                    if hasattr(subfield, 'Verbose'):
-                        subfield.Verbose = status
-
-    def get_data(self):
-        return []
-
+    # ----------------------------------------
+    # region SAVE
     def save_data(self, data=None):
         if self.Draw.server_is_mounted():
             data = choose(data, self.get_data())
@@ -123,8 +108,32 @@ class DUTAnalysis(Analysis):
         self.draw_flux(save=self.has_branch('rate'), show=False)
         self.draw_pulse_height(show=False)
 
+    def save_tree(self, cut=None):
+        f = TFile('test.root', 'RECREATE')
+        t = self.Tree.CloneTree(0)
+        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
+        good_events = self.Run.get_tree_vec(n, dtype='i4')
+        self.PBar.start(n)
+        for i, ev in enumerate(good_events):
+            self.Tree.GetEntry(ev)
+            t.Fill()
+            self.PBar.update(i)
+        f.cd()
+        t.Write()
+        macro = self.Run.RootFile.Get('region_information')
+        if macro:
+            macro.Write()
+        f.Write()
+        f.Close()
+        self.info('successfully saved tree with only cut events.')
+    # endregion SAVE
+    # ----------------------------------------
+
     # ----------------------------------------
     # region GET
+    def get_data(self):
+        return []
+
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
 
@@ -578,28 +587,23 @@ class DUTAnalysis(Analysis):
         format_histo(g, title='Number of Filled Traps vs Flux', x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
         self.Draw(g, draw_opt='ap', lm=.13, logx=True)
 
-    @staticmethod
-    def decay(n, t):
-        return count_nonzero(rand(n) <= exp(-1. / t))
+    # ----------------------------------------
+    # region HELPERS
+    def reload_tree_(self):
+        self.Tree = self.Run.load_rootfile(prnt=False)
+        for field in self.__dict__.values():
+            if hasattr(field, 'Tree'):
+                field.Tree = self.Tree
 
-    def save_tree(self, cut=None):
-        f = TFile('test.root', 'RECREATE')
-        t = self.Tree.CloneTree(0)
-        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
-        good_events = self.Run.get_tree_vec(n, dtype='i4')
-        self.PBar.start(n)
-        for i, ev in enumerate(good_events):
-            self.Tree.GetEntry(ev)
-            t.Fill()
-            self.PBar.update(i)
-        f.cd()
-        t.Write()
-        macro = self.Run.RootFile.Get('region_information')
-        if macro:
-            macro.Write()
-        f.Write()
-        f.Close()
-        self.info('successfully saved tree with only cut events.')
+    def set_verbose(self, status: bool):
+        self.Verbose = status
+        for field in self.__dict__.values():
+            if hasattr(field, 'Verbose'):
+                field.Verbose = status
+            if hasattr(field, '__dict__'):
+                for subfield in field.__dict__.values():
+                    if hasattr(subfield, 'Verbose'):
+                        subfield.Verbose = status
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=False) if h is None and hasattr(self, 'draw_signal_distribution') else h
@@ -616,6 +620,12 @@ class DUTAnalysis(Analysis):
         Draw.reset_count('langau')
         self.Draw.add(fit)
         return fit
+
+    @staticmethod
+    def decay(n, t):
+        return count_nonzero(rand(n) <= exp(-1. / t))
+    # endregion HELPERS
+    # ----------------------------------------
 
 
 if __name__ == '__main__':

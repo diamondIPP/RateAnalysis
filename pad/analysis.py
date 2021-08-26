@@ -78,7 +78,9 @@ class PadAnalysis(DUTAnalysis):
         peak_int = f'{self.PeakIntegral} ({remove_letters(self.PeakIntegralName)})'
         region = f'{self.SignalRegion} ({self.SignalRegionName.split("_")[-1]})'
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, f'{self.Run.Flux.n:14.1f}', f'{self.DUT.Bias:+5.0f}', region, peak_int]]
-        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        if ret_row:
+            return rows[0]
+        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
     # endregion INFO
     # ----------------------------------------
 
