@@ -139,6 +139,9 @@ class PadCollection(AnalysisCollection):
     def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
         y = [self.compare_signal_vs_peak_height(0, i, show=False) for i in range(1, self.NRuns)]
         self.Draw.graph(self.get_fluxes()[1:], y, title='Signal Ratio Vs Flux', y_tit='Signal Ratio', y_range=array([-ym, ym]) + 1, **self.get_x_args(False), gridy=True, show=show)
+
+    def find_sm_correlation(self, sm1, sm2):
+        return self.FirstAnalysis.find_best_sm_correlation([sm1, sm2])
     # endregion SIGNAL/PEDESTAL
     # ----------------------------------------
 

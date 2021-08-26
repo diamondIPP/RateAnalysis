@@ -326,6 +326,9 @@ class DUTAnalysis(Analysis):
 
     def get_efficiency(self, *args, **kwargs):
         pass
+
+    def draw_beam_profile(self, *args, **kwargs):
+        return self.Tracks.draw_beam_profile(*args, **kwargs)
     # endregion ALIASES
     # ----------------------------------------
 
