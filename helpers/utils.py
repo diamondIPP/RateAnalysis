@@ -689,8 +689,7 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
             pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args)))
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
-                with open(pickle_path, 'rb') as f:
-                    return pickle.load(f)
+                return load_pickle(pickle_path)
             prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
             t = (args[0].info if hasattr(args[0], 'info') else info)(f'{args[0].__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
             value = func(*args, **kwargs)
