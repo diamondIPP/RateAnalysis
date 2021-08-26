@@ -99,16 +99,16 @@ class SaveDraw(Draw):
         set_root_warnings(False)
         for f in choose(make_list(ftype), default=['pdf'], decider=ftype):
             canvas.SaveAs('{}.{}'.format(file_path, f.strip('.')))
-        self.save_on_server(canvas, file_name, save=full_path is None)
+        self.save_on_server(canvas, file_name, save=full_path is None, prnt=prnt)
         Draw.set_show(True)
 
-    def save_on_server(self, canvas, file_name, save=True):
+    def save_on_server(self, canvas, file_name, save=True, prnt=True):
         if self.ServerDir is not None and save:
             canvas.SetName('c')
             fname = join(self.ServerDir, f'{basename(file_name)}.root')
             canvas.SaveAs(fname)
-            if not Draw.Show:
-                print(join('https://diamond.ethz.ch', 'psi2', fname[len(self.ServerMountDir) + 1:].replace('.root', '.html')))
+            link = join('https://diamond.ethz.ch', 'psi2', fname[len(self.ServerMountDir) + 1:].replace('.root', '.html'))
+            info(link, prnt=prnt and self.Verbose and not Draw.Show)
 
     @staticmethod
     def save_last(canvas=None, ext='pdf'):
