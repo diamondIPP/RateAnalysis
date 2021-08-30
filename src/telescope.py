@@ -61,6 +61,7 @@ class Telescope(SubAnalysis):
         flux = self.calculate_flux(plane, use_eff, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
         if flux == 0:
             warning('Could not determine flux from TU rates ...')
+            remove_files(self.make_simple_pickle_path('Flux', suf='*'), prnt=False, wildcard=True)
             flux = self.Run.get_flux(plane, use_eff)
         return flux * (self.get_flux_scale(full_size, redo=redo) if corr else ufloat(1, .1))
 
