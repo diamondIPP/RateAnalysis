@@ -36,6 +36,7 @@ from queue import Queue
 from json import load, loads
 from inspect import signature
 from types import FunctionType, MethodType
+from glob import glob
 
 OFF = False
 ON = True
@@ -550,6 +551,11 @@ def remove_file(file_path, prnt=True):
     if file_exists(file_path):
         warning('removing {}'.format(file_path), prnt=prnt)
         remove(file_path)
+
+
+def remove_files(paths, prnt=True, wildcard=False):
+    for name in (glob(paths) if wildcard else paths):
+        remove_file(name, prnt)
 
 
 def get_running_time(t):
