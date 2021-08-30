@@ -210,12 +210,11 @@ class Telescope(SubAnalysis):
         self.Draw.save_plots('BeamCurrent{}'.format(h.ClassName()[1]), show=show, save=save)
         return h
 
-    def draw_plane_rate(self, plane=1, flux=False, rel_t=True, show=True):
+    def draw_plane_rate(self, plane=1, bin_size=10, rel_t=True, **dkw):
         """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
-        rate, t = self.get_tree_vec(var=[self.get_rate_var(plane, flux), self.get_t_var()], cut='beam_current < 10000 && rate[{}]<1e9'.format(plane + 1))
-        g = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([rate, [0]]), title='Rate of Plane {n}'.format(n=plane), draw_opt='afp', lm=.08, w=1.5, h=.75, show=show)
-        format_histo(g, x_tit='Time [hh:mm]', y_tit='{} [Hz]'.format('Flux' if flux else 'Rate'), fill_color=Draw.FillColor, markersize=.4, t_ax_off=self.StartTime if rel_t else 0)
-        update_canvas()
+        t, y = self.get_tree_vec([self.get_t_var(), self.get_rate_var(plane)], cut=f'beam_current < 10000 && {self.get_rate_var(plane)} < 1e9')
+        return self.Draw.profile(t, y, self.Bins.get_raw_time(bin_size), **prep_kw(dkw, title=f'Rate of Plane {plane}', **self.Draw.mode(2), y_tit='Rate [Hz]',
+                                 y_range=[0, find_range(y)[1]], **self.get_t_args(rel_t), file_name=f'Plane{plane}Rate', draw_opt='hist'))
 
     def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True, save=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
