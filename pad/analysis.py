@@ -78,7 +78,9 @@ class PadAnalysis(DUTAnalysis):
         peak_int = f'{self.PeakIntegral} ({remove_letters(self.PeakIntegralName)})'
         region = f'{self.SignalRegion} ({self.SignalRegionName.split("_")[-1]})'
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, f'{self.Run.Flux.n:14.1f}', f'{self.DUT.Bias:+5.0f}', region, peak_int]]
-        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        if ret_row:
+            return rows[0]
+        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
     # endregion INFO
     # ----------------------------------------
 
@@ -180,9 +182,8 @@ class PadAnalysis(DUTAnalysis):
         return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=_redo)[1][0]
 
     @update_pbar
-    def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, sys_err=0, peaks=False, corr_ph=True, redo=False):
-        ph = self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, _redo=redo), cut, corr_ph)
-        return ufloat(ph.n, sqrt(ph.s ** 2 + (sys_err * ph.n) ** 2))
+    def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, peaks=False, corr_ph=True, redo=False):
+        return self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, _redo=redo), cut, corr_ph)
 
     def correct_ph(self, ph=None, cut=None, corr=True):
         ph = choose(ph, self._get_pulse_height, cut=self.Cut.get_tp())

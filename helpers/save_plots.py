@@ -93,19 +93,22 @@ class SaveDraw(Draw):
         file_path = join(choose(res_dir, self.ResultsDir), choose(sub_dir, self.SubDir), file_name) if full_path is None else full_path
         file_name = basename(file_path)
         ensure_dir(dirname(file_path))
-        info('saving plot: {}'.format(file_name), prnt=prnt and self.Verbose)
+        info(f'saving plot: {file_name}', prnt=prnt and self.Verbose)
         canvas.Update()
         Draw.set_show(show)  # needs to be in the same batch so that the pictures are created, takes forever...
         set_root_warnings(False)
         for f in choose(make_list(ftype), default=['pdf'], decider=ftype):
             canvas.SaveAs('{}.{}'.format(file_path, f.strip('.')))
-        self.save_on_server(canvas, file_name, save=full_path is None)
+        self.save_on_server(canvas, file_name, save=full_path is None, prnt=prnt)
         Draw.set_show(True)
 
-    def save_on_server(self, canvas, file_name, save=True):
+    def save_on_server(self, canvas, file_name, save=True, prnt=True):
         if self.ServerDir is not None and save:
             canvas.SetName('c')
-            canvas.SaveAs(join(self.ServerDir, f'{basename(file_name)}.root'))
+            fname = join(self.ServerDir, f'{basename(file_name)}.root')
+            canvas.SaveAs(fname)
+            link = join('https://diamond.ethz.ch', 'psi2', fname[len(self.ServerMountDir) + 1:].replace('.root', '.html'))
+            info(link, prnt=prnt and self.Verbose and not Draw.Show)
 
     @staticmethod
     def save_last(canvas=None, ext='pdf'):

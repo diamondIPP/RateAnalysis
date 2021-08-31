@@ -20,12 +20,12 @@ from src.binning import Bins
 from functools import wraps
 
 
-def reload_tree(func):
-    @wraps(func)
-    def my_func(*args, **kwargs):
-        DUTAnalysis.reload_tree_(args[0])
-        return func(*args, **kwargs)
-    return my_func
+def reload_tree(f):
+    @wraps(f)
+    def inner(ana, *args, **kwargs):
+        ana.reload_tree_()
+        return f(ana, *args, **kwargs)
+    return inner
 
 
 class DUTAnalysis(Analysis):
@@ -62,16 +62,8 @@ class DUTAnalysis(Analysis):
     def __repr__(self):
         return self.__str__()
 
-    def reload_tree_(self):
-        self.Tree = self.Run.load_rootfile(prnt=False)
-        for field in self.__dict__.values():
-            if hasattr(field, 'Tree'):
-                field.Tree = self.Tree
-
-    def set_tree(self, tree):
-        self.Tree = tree
-        self.Run.Tree = tree
-
+    # ----------------------------------------
+    # region INIT
     @staticmethod
     def init_run(run_number, testcampaign, load_tree, verbose):
         return Run(run_number, testcampaign, load_tree, verbose)
@@ -88,21 +80,14 @@ class DUTAnalysis(Analysis):
 
     def show_information(self, header=True, prnt=True, ret_row=False):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
-        return rows[0] if ret_row else print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        if ret_row:
+            return rows[0]
+        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+    # endregion INIT
+    # ----------------------------------------
 
-    def set_verbose(self, status: bool):
-        self.Verbose = status
-        for field in self.__dict__.values():
-            if hasattr(field, 'Verbose'):
-                field.Verbose = status
-            if hasattr(field, '__dict__'):
-                for subfield in field.__dict__.values():
-                    if hasattr(subfield, 'Verbose'):
-                        subfield.Verbose = status
-
-    def get_data(self):
-        return []
-
+    # ----------------------------------------
+    # region SAVE
     def save_data(self, data=None):
         if self.Draw.server_is_mounted():
             data = choose(data, self.get_data())
@@ -123,8 +108,32 @@ class DUTAnalysis(Analysis):
         self.draw_flux(save=self.has_branch('rate'), show=False)
         self.draw_pulse_height(show=False)
 
+    def save_tree(self, cut=None):
+        f = TFile('test.root', 'RECREATE')
+        t = self.Tree.CloneTree(0)
+        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
+        good_events = self.Run.get_tree_vec(n, dtype='i4')
+        self.PBar.start(n)
+        for i, ev in enumerate(good_events):
+            self.Tree.GetEntry(ev)
+            t.Fill()
+            self.PBar.update(i)
+        f.cd()
+        t.Write()
+        macro = self.Run.RootFile.Get('region_information')
+        if macro:
+            macro.Write()
+        f.Write()
+        f.Close()
+        self.info('successfully saved tree with only cut events.')
+    # endregion SAVE
+    # ----------------------------------------
+
     # ----------------------------------------
     # region GET
+    def get_data(self):
+        return []
+
     def has_branch(self, branch):
         return self.Run.has_branch(branch)
 
@@ -317,6 +326,9 @@ class DUTAnalysis(Analysis):
 
     def get_efficiency(self, *args, **kwargs):
         pass
+
+    def draw_beam_profile(self, *args, **kwargs):
+        return self.Tracks.draw_beam_profile(*args, **kwargs)
     # endregion ALIASES
     # ----------------------------------------
 
@@ -405,15 +417,15 @@ class DUTAnalysis(Analysis):
         return ax_range(get_2d_hist_vec(self.Draw.prof2d(*self.get_tree_vec(var, self.Cut()), bins, show=False)), thresh=4)
 
     @save_pickle('SM', sub_dir='Maps', print_dur=True, suf_args='all')
-    def get_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, _redo=False):
+    def get_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, _redo=False):
         self.Tree.SetEstimate(self.Run.NEvents)
-        var, bins = self.get_track_vars() + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
+        var, bins = self.get_track_vars(local=local) + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
         x, y, zz = self.get_tree_vec(var, self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut))
         tit, (xtit, ytit), ztit = 'Pulse Height Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Pulse Height [mV]'
-        return self.Draw.prof2d(x, y, zz, bins, tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, z_range=self.find_sm_range(res, square, m, n), show=False, pal=53)
+        return self.Draw.prof2d(x, y, zz, bins, tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
 
-    def draw_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, scale=False, redo=False, **kwargs):
-        h = self.get_signal_map(res, cut, fid, square, m, n, _redo=redo)
+    def draw_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, scale=False, redo=False, **kwargs):
+        h = self.get_signal_map(res, cut, fid, square, m, n, local, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         rz = array([h.GetMinimum(), h.GetMaximum()]) * 1 / self.get_pulse_height().n if scale else None
         h = self.Draw.prof2d(h, **prep_kw(kwargs, centre=4, ncont=50, ndivy=510, ndivx=510, pal=53, z_tit='Relative Pulse Height' if scale else None, z_range=rz))
@@ -455,7 +467,7 @@ class DUTAnalysis(Analysis):
         self.Draw.graph(x, y, title='Split Means', x_tit='Division', y_tit='Pulse Height [mV]', draw_opt='ap')
 
     def get_ph_bins(self, n=10, pmin=90, pmax=95, show=True):
-        h = self.split_signal_map(n, n, show=show, grid=False)[0]
+        h = self.split_signal_map(n, n, show=show, grid=False)
         (x, y), v = get_2d_vecs(h)
         wx, wy = diff(x)[0] / 2, diff(y)[0] / 2
         points = array(meshgrid(x, y)).T[where((v >= pmin) & (v < pmax))]
@@ -463,11 +475,11 @@ class DUTAnalysis(Analysis):
             Draw.box(ix - wx, iy - wy, ix + wx, iy + wy, line_color=840, width=4, show=show)
         return points, wx, wy
 
-    def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, x_range=None, show=True):
+    def draw_ph_bin_disto(self, n=10, pmin=90, pmax=95, **dkw):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
         points, wx, wy = self.get_ph_bins(n, pmin, pmax, show=False)
         cut = any([(x > ix - wx) & (x < ix + wx) & (y > iy - wy) & (x < iy + wy) for ix, iy in points], axis=0)
-        return self.Draw.distribution(ph[cut], self.Bins.get_pad_ph(Bins.find_width(ph[cut])), 'Pulse Height of Areas in [{}, {}] mV'.format(pmin, pmax), x_tit='Pulse Height [mV]', show=show, x_range=x_range)
+        return self.Draw.distribution(ph[cut], tit=f'Pulse Height of Areas in [{pmin}, {pmax}] mV', **prep_kw(dkw, x_tit='Pulse Height [mV]'))
 
     def draw_normal_distribution(self, m=20, n=30, show=True):
         ph, x, y = self.get_tree_vec(var=[self.get_ph_var()] + self.get_track_vars(), cut=self.Cut())
@@ -578,28 +590,23 @@ class DUTAnalysis(Analysis):
         format_histo(g, title='Number of Filled Traps vs Flux', x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
         self.Draw(g, draw_opt='ap', lm=.13, logx=True)
 
-    @staticmethod
-    def decay(n, t):
-        return count_nonzero(rand(n) <= exp(-1. / t))
+    # ----------------------------------------
+    # region HELPERS
+    def reload_tree_(self):
+        self.Tree = self.Run.load_rootfile(prnt=False)
+        for field in self.__dict__.values():
+            if hasattr(field, 'Tree'):
+                field.Tree = self.Tree
 
-    def save_tree(self, cut=None):
-        f = TFile('test.root', 'RECREATE')
-        t = self.Tree.CloneTree(0)
-        n = self.Tree.Draw('Entry$', self.Cut(cut), 'goff')
-        good_events = self.Run.get_tree_vec(n, dtype='i4')
-        self.PBar.start(n)
-        for i, ev in enumerate(good_events):
-            self.Tree.GetEntry(ev)
-            t.Fill()
-            self.PBar.update(i)
-        f.cd()
-        t.Write()
-        macro = self.Run.RootFile.Get('region_information')
-        if macro:
-            macro.Write()
-        f.Write()
-        f.Close()
-        self.info('successfully saved tree with only cut events.')
+    def set_verbose(self, status: bool):
+        self.Verbose = status
+        for field in self.__dict__.values():
+            if hasattr(field, 'Verbose'):
+                field.Verbose = status
+            if hasattr(field, '__dict__'):
+                for subfield in field.__dict__.values():
+                    if hasattr(subfield, 'Verbose'):
+                        subfield.Verbose = status
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=False) if h is None and hasattr(self, 'draw_signal_distribution') else h
@@ -616,6 +623,12 @@ class DUTAnalysis(Analysis):
         Draw.reset_count('langau')
         self.Draw.add(fit)
         return fit
+
+    @staticmethod
+    def decay(n, t):
+        return count_nonzero(rand(n) <= exp(-1. / t))
+    # endregion HELPERS
+    # ----------------------------------------
 
 
 if __name__ == '__main__':

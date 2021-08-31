@@ -158,11 +158,11 @@ class Tracks(SubAnalysis):
         format_histo(f, x_tit='Track Angle [deg]', y_tit='Relative Signal', y_off=1.6, y_range=[1, 1.01])
         self.Draw(f, lm=.121)
 
-    def draw_beam_profile(self, mode='x', fit=True, res=.7, show=True, prnt=True):
-        p = getattr(self.Ana.draw_hitmap(res, show=False, prnt=prnt), f'Projection{mode.title()}')()
+    def draw_beam_profile(self, mode='x', fit=True, res=.7, **dkw):
+        p = getattr(self.Ana.draw_hitmap(res, show=False, prnt=False), f'Projection{mode.title()}')()
         self.fit_beam_profile(p, show=fit)
-        format_histo(p, title='Profile {}'.format(mode.title()), name=self.Draw.get_name('p'), y_off=1.3, y_tit='Number of Tracks', fill_color=Draw.FillColor)
-        return self.Draw(p, f'BeamProfile{mode.title()}',  lm=.13, show=show, stats=set_statbox(all_stat=True, fit=fit), draw_opt='', prnt=prnt)
+        format_histo(p, title=f'Profile {mode.title()}', name=self.Draw.get_name('p'), y_tit='Number of Tracks')
+        return self.Draw(p, **prep_kw(dkw, file_name=f'BeamProfile{mode.title()}', stats=set_statbox(all_stat=True, fit=fit), draw_opt=''))
 
     @staticmethod
     def fit_beam_profile(p, show=True):

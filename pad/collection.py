@@ -61,12 +61,11 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region GET
-    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=None, avrg=False, peaks=False, flux_sort=False):
-        error = self.get_sys_error() if err else 0
-        picklepath = self.get_pickle_path('Fit', int(corr), 'PH')
+    def get_pulse_heights(self, bin_width=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False, peaks=False, flux_sort=False):
+        picklepath = None if peaks else self.get_pickle_path('Fit', int(corr), 'PH')
         pbar = False if peaks else pbar
-        return self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo and not err, corr=corr,
-                               sys_err=error, peaks=peaks, flux_sort=flux_sort)
+        x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bin_size=bin_width, redo=redo, corr=corr, peaks=peaks, flux_sort=flux_sort)
+        return array([ufloat(ph.n, sqrt(ph.s ** 2 + ((self.get_sys_error() if err else 0) * ph.n) ** 2)) for ph in x])
 
     def get_pedestals(self, runs=None, sigma=False, flux_sort=False, avrg=False, redo=False):
         picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')
@@ -139,6 +138,9 @@ class PadCollection(AnalysisCollection):
     def compare_all_sig_vs_peakheight(self, ym=.05, show=True):
         y = [self.compare_signal_vs_peak_height(0, i, show=False) for i in range(1, self.NRuns)]
         self.Draw.graph(self.get_fluxes()[1:], y, title='Signal Ratio Vs Flux', y_tit='Signal Ratio', y_range=array([-ym, ym]) + 1, **self.get_x_args(False), gridy=True, show=show)
+
+    def find_sm_correlation(self, sm1, sm2):
+        return self.FirstAnalysis.find_best_sm_correlation([sm1, sm2])
     # endregion SIGNAL/PEDESTAL
     # ----------------------------------------
 

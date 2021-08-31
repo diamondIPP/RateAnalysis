@@ -172,7 +172,7 @@ class Converter(object):
                     self.Run.info('Plane errors already added')
                     return
                 print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.Run.Number))
-                self.tracking_tel(action='2')
+                self.tracking_tel(action=2)
 
     def remove_pickle_files(self):
         files = glob(join(self.Run.Dir, 'metadata', '*', '*{tc}*_{run}*'.format(run=self.Run.Number, tc=self.Run.TCString)))
@@ -225,6 +225,16 @@ class Converter(object):
 
     def remove_decodingfile(self):
         remove_file(f'decoding_{self.Run.Number}.root')
+
+    def clean_files(self):
+        self.remove_final_file()
+        self.remove_decodingfile()
+        self.remove_new_configfile()
+        remove_file(self.get_trackingfile_path())
+        remove_file(self.ErrorFile)
+        remove_file(join(self.Run.RootFileDir, 'MyGainCal.dat'))
+        for f in glob(join(self.Run.RootFileDir, 'AutoDict*')):
+            remove_file(f, prnt=False)
 
     def set_converter_configfile(self, tree=None, max_events=None):
         filename = self.NewConfigFile if file_exists(self.NewConfigFile) else self.load_filename(join(self.EudaqDir, 'conf'), 'converter config')

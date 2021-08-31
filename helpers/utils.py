@@ -18,7 +18,7 @@ from time import time, sleep
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
 from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile
-from os import makedirs, _exit, remove, devnull, stat, getenv
+from os import makedirs, remove, devnull, stat, getenv
 from os import path as pth
 from os.path import dirname, realpath, join
 from pytz import timezone, utc
@@ -36,6 +36,7 @@ from queue import Queue
 from json import load, loads
 from inspect import signature
 from types import FunctionType, MethodType
+from glob import glob
 
 OFF = False
 ON = True
@@ -48,7 +49,6 @@ M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c*
 M_E = constants.m_e / constants.e * constants.c**2 / 1e6
 M_P = constants.m_p / constants.e * constants.c**2 / 1e6
 TAU_PI = 26.033  # ns
-
 
 
 # ==============================================
@@ -65,7 +65,7 @@ def warning(msg, prnt=True):
 
 def critical(msg):
     print(prepare_msg(msg, 'CRITICAL', 'red'))
-    _exit(1)
+    quit()
 
 
 def prepare_msg(msg, head, color=None, attrs=None, blank_lines=0):
@@ -553,6 +553,11 @@ def remove_file(file_path, prnt=True):
         remove(file_path)
 
 
+def remove_files(paths, prnt=True, wildcard=False):
+    for name in (glob(paths) if wildcard else paths):
+        remove_file(name, prnt)
+
+
 def get_running_time(t):
     now = datetime.fromtimestamp(time() - t) - timedelta(hours=1)
     return now.strftime('%H:%M:%S')
@@ -675,6 +680,11 @@ def prep_suffix(f, args, kwargs, suf_args):
     return make_suffix(args[0], suf_vals)
 
 
+def load_pickle(file_name):
+    with open(file_name, 'rb') as f:
+        return pickle.load(f)
+
+
 def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
     def inner(func):
         @wraps(func)
@@ -685,8 +695,7 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
             pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args)))
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
-                with open(pickle_path, 'rb') as f:
-                    return pickle.load(f)
+                return load_pickle(pickle_path)
             prnt = print_dur and (kwargs['prnt'] if 'prnt' in kwargs else True)
             t = (args[0].info if hasattr(args[0], 'info') else info)(f'{args[0].__class__.__name__}: {func.__name__.replace("_", " ")} ...', endl=False, prnt=prnt)
             value = func(*args, **kwargs)
@@ -828,6 +837,11 @@ class PBar(object):
         self.Step += 1
         if i == self.PBar.maxval - 1:
             self.finish()
+
+    def set_last(self):
+        if self.PBar:
+            self.PBar.currval = self.N
+            self.PBar.finished = True
 
     def finish(self):
         self.PBar.finish()
