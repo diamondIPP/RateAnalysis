@@ -18,7 +18,7 @@ from time import time, sleep
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
 from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile
-from os import makedirs, remove, devnull, stat, getenv
+from os import makedirs, remove, devnull, stat, getenv, _exit
 from os import path as pth
 from os.path import dirname, realpath, join
 from pytz import timezone, utc
@@ -65,7 +65,7 @@ def warning(msg, prnt=True):
 
 def critical(msg):
     print(prepare_msg(msg, 'CRITICAL', 'red'))
-    quit()
+    _exit(5)
 
 
 def prepare_msg(msg, head, color=None, attrs=None, blank_lines=0):
