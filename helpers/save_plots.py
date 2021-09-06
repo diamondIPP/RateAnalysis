@@ -4,9 +4,12 @@
 # created on September 25th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from os.path import expanduser, basename
+from os.path import expanduser, basename, isfile
 from helpers.info_legend import InfoLegend
 from helpers.draw import *
+import helpers.html as html
+from pathlib import Path
+from ROOT import TFile
 
 
 class SaveDraw(Draw):
@@ -15,6 +18,8 @@ class SaveDraw(Draw):
 
     ServerMountDir = None
     MountExists = None
+    File = None
+    Dummy = TFile('dummy.root', 'RECREATE')
 
     def __init__(self, analysis=None, results_dir=None, sub_dir=''):
         super(SaveDraw, self).__init__(analysis.MainConfig.FileName)
@@ -32,8 +37,30 @@ class SaveDraw(Draw):
         SaveDraw.server_is_mounted()
         self.ServerDir = SaveDraw.load_server_save_dir(analysis)
 
+    def __del__(self):
+        if isfile('dummy.root'):
+            remove_file('dummy.root', prnt=False)
+
     # ----------------------------------------
     # region SET
+    def open_file(self):
+        if SaveDraw.File is None:
+            info('opening ROOT file on server ...')
+            f = TFile(join(self.ServerDir, 'plots.root'), 'UPDATE')
+            data = {key.GetName(): f.Get(key.GetName()) for key in f.GetListOfKeys()}
+            f = TFile(join(self.ServerDir, 'plots.root'), 'RECREATE')
+            for key, c in data.items():
+                if c:
+                    c.Write(key)
+            f.Write()
+            SaveDraw.File = f
+
+    def create_overview(self):
+        if self.ServerDir is not None:
+            p = Path(self.ServerDir, 'plots.root')
+            if not p.with_suffix('.html').exists():
+                html.create_root_overview(p)
+
     def set_sub_dir(self, name):
         self.SubDir = name
 
@@ -104,11 +131,18 @@ class SaveDraw(Draw):
 
     def save_on_server(self, canvas, file_name, save=True, prnt=True):
         if self.ServerDir is not None and save:
-            canvas.SetName('c')
-            fname = join(self.ServerDir, f'{basename(file_name)}.root')
-            canvas.SaveAs(fname)
-            link = join('https://diamond.ethz.ch', 'psi2', fname[len(self.ServerMountDir) + 1:].replace('.root', '.html'))
-            info(link, prnt=prnt and self.Verbose and not Draw.Show)
+            self.open_file()
+            p = Path(self.ServerDir, f'{basename(file_name)}.html')
+            if file_name in SaveDraw.File.GetListOfKeys():
+                SaveDraw.File.Delete(f'{file_name};1')
+            else:
+                html.create_root(p, title=p.parent.name, pal=53 if 'SignalMap' in file_name else 55)
+            SaveDraw.File.cd()
+            canvas.Write(file_name)
+            SaveDraw.File.Write()
+            SaveDraw.Dummy.cd()
+            info(join('https://diamond.ethz.ch', 'psi2', p.relative_to(Path(self.ServerMountDir))), prnt=prnt and self.Verbose and not Draw.Show)
+            self.create_overview()
 
     @staticmethod
     def save_last(canvas=None, ext='pdf'):
@@ -116,9 +150,3 @@ class SaveDraw(Draw):
         choose(canvas, get_last_canvas()).SaveAs(f'{filename.split(".")[0]}.{ext}')
     # endregion SAVE
     # ----------------------------------------
-
-
-if __name__ == '__main__':
-
-    from src.analysis import Analysis
-    z = SaveDraw(Analysis(), join(Draw.Dir, 'config', 'main.ini'))
