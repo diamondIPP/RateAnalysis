@@ -442,8 +442,12 @@ def int_to_roman(integer):
     return result
 
 
-def remove_letters(string):
-    return ''.join(x for x in string if x.isdigit())
+def add_spaces(s):
+    return ''.join(f' {s[i]}' if i and (s[i].isupper() or s[i].isdigit()) and not s[i - 1].isdigit() and not s[i - 1].isupper() else s[i] for i in range(len(s)))
+
+
+def remove_letters(s):
+    return ''.join(filter(str.isdigit, s))
 
 
 def remove_digits(string):
