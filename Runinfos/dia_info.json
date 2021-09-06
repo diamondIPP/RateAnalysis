@@ -741,7 +741,7 @@
     "manufacturer": "PSI"
   },
   "LSC-03": {
-    "types": ["analog", "digitial"],
+    "types": ["analog", "digital"],
     "irradiation": {"202108": "0" },
     "boardnumber": {"202108": "CalypsoC-?"},
     "thickness": "500",

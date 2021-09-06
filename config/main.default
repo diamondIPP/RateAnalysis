@@ -41,7 +41,7 @@ clock frequency = 40e6
 data = ...
 software = ~/<eudaq and tracking directory>
 eudaq = eudaq-drs4
-converter config = converter_waveform_integrals.conf
+converter config = converter.ini
 tracking = TrackingTelescope
 eudaq prefix = test
 
