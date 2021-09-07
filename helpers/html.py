@@ -8,6 +8,7 @@ from os.path import basename, isfile, isdir
 from pytz import timezone, utc
 from pathlib import Path
 from typing import Any
+from subprocess import Popen
 
 
 def tag(name, txt, *opts_):
@@ -82,7 +83,11 @@ def make_root_html():
     return f
 
 
-def create_root_overview(p: Path):
+def create_tree(p: Path):
+    Popen(f'tree {p.parent} -H . --charset utf-8 -P "*.html" -o {p}', shell=True)
+
+
+def create_root_overview(p: Path, x=3, y=2):
     f = File(str(p.with_suffix('.html')))
     head = File()
     head.add_line('<meta charset="UTF-8">')
@@ -91,13 +96,14 @@ def create_root_overview(p: Path):
     head.add_line(script('https://root.cern/js/latest/scripts/JSRoot.core.js', 'type="text/javascript"'))
     f.set_header(head.get_text())
     body = File()
-    body.add_line(div('', *make_opt('id', 'simpleGUI'), style_(('top', 0), ('bottom', 0), ('left', 0), ('right', 0), ('position', 'absolute'))))
+    body.add_line(heading(link(p.with_name('index.html'), 'Directory Tree', new_tab=True), 3, style_(('top', '-15px'), ('position', 'relative'))))
+    body.add_line(div('', *make_opt('id', 'simpleGUI'), style_(('top', '30px'), ('bottom', 0), ('left', 0), ('right', 0), ('position', 'absolute'))))
     inner = File()
     inner.add_line("JSROOT.require('hierarchy').then(() => {")
     inner.add_line('let h = new JSROOT.HierarchyPainter("PSITest")', ind=1)
     inner.add_line('h.no_select = true;  // suppress selection elements', ind=1, new_lines=1)
     inner.add_line('h.show_overflow = true;  // let enable scrollbars for hierarchy content, otherwise only HTML resize can be use to see elements', ind=1)
-    inner.add_line('h.prepareGuiDiv("simpleGUI", "grid3x2");  // one also can specify "grid2x2" or "flex" or "tabs"', ind=1, new_lines=1)
+    inner.add_line(f'h.prepareGuiDiv("simpleGUI", "grid{x}x{y}");  // one also can specify "grid2x2" or "flex" or "tabs"', ind=1, new_lines=1)
     inner.add_line('h.createBrowser("fix")', ind=1, new_lines=1)
     inner.add_line(f'.then(() => h.openRootFile("{p.name}"))', ind=2)
     for plot in ['SignalMap2D', 'HitMap', 'Current', 'PulseHeight5000', 'SignalDistribution', 'PedestalDistributionFitAllCuts']:
@@ -127,9 +133,12 @@ def path(*dirs):
     return join('/psi2', *dirs) if 'http' not in dirs[0] else dirs[0]
 
 
-def link(target, name, active=False, center=False, new_tab=False, use_name=True, colour: Any = None, right=False, warn=True):
-    target = join(target, '') if isdir(join(Dir, target)) else target
-    if isfile(join(Dir, target)) or isfile(join(Dir, target, 'index.html')) and target.endswith('/') or 'http' in target:
+def link(target: Path, name, active=False, center=False, new_tab=False, use_name=True, colour: Any = None, right=False, warn=True):
+    from helpers.save_plots import SaveDraw
+    d = SaveDraw.ServerMountDir
+    target = str(target.relative_to(d) if target.is_absolute() else target)
+    target = join(target, '') if isdir(join(d, target)) else target
+    if isfile(join(d, target)) or isfile(join(d, target, 'index.html')) and target.endswith('/') or 'http' in target:
         return a(name, style(center, right, colour=colour), *opts(active=active, new_tab=new_tab), *make_opt('href', path(target)))
     warning('The file {} does not exist!'.format(target), prnt=warn)
     return name if use_name else ''
