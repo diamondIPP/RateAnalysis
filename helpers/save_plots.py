@@ -55,11 +55,12 @@ class SaveDraw(Draw):
             f.Write()
             SaveDraw.File = f
 
-    def create_overview(self):
+    def create_overview(self, x=4, y=3, redo=True):
         if self.ServerDir is not None:
             p = Path(self.ServerDir, 'plots.root')
-            if not p.with_suffix('.html').exists():
-                html.create_root_overview(p)
+            html.create_tree(p.with_name('index.html'))
+            if not p.with_suffix('.html').exists() or redo:
+                html.create_root_overview(p, x, y)
 
     def set_sub_dir(self, name):
         self.SubDir = name
@@ -142,7 +143,7 @@ class SaveDraw(Draw):
             SaveDraw.File.Write()
             SaveDraw.Dummy.cd()
             info(join('https://diamond.ethz.ch', 'psi2', p.relative_to(Path(self.ServerMountDir))), prnt=prnt and self.Verbose and not Draw.Show)
-            self.create_overview()
+            self.create_overview(redo=False)
 
     @staticmethod
     def save_last(canvas=None, ext='pdf'):
