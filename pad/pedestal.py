@@ -17,8 +17,9 @@ class PedestalAnalysis(PadSubAnalysis):
         self.RawName = self.get_signal_name(peak_int=1)
         self.Region = self.Ana.get_region('pedestal')[0]
 
-    def __call__(self, err=False):
-        return (self.get_mean(), self.get_noise()) if err else (self.get_mean().n, self.get_noise().n)
+    def __call__(self, err=False, redo=False):
+        m, s = self.get_mean(redo=redo), self.get_noise()
+        return (m, s) if err else (m.n, s.n)
 
     # ----------------------------------------
     # region GET
@@ -157,7 +158,7 @@ class PedestalAnalysis(PadSubAnalysis):
     def draw_trend(self, signal_name=None, bin_size=None, sigma=False, fit=False, rel_t=False, redo=False, **kwargs):
         g = self.get_trend(signal_name, bin_size, sigma, _redo=redo)
         g.Fit('pol0', f'qs{"" if fit else "0"}')
-        return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit, form='.2f'))
+        return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit, form='.2f'), file_name=f'Pedestal{"Sigma" if sigma else ""}Trend')
 
     def fit_trend(self, signal_name=None, show=True, sigma=False):
         g = self.draw_trend(signal_name, show=False, sigma=sigma)
