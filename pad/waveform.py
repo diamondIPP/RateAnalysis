@@ -231,17 +231,12 @@ class Waveform(PadSubAnalysis):
         return do_hdf5(self.make_simple_hdf5_path('LFits'), f)
 
     def draw_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=True):
-        h = self.draw_all_average(show=show, cut=ind, x_range=x_range, y_range=y_range)
-        maxval = h.GetBinContent(h.GetMaximumBin()) - self.Ana.get_pedestal().n
-        bins = [h.FindFirstBinAbove(ip * maxval) for ip in [1 - p, p]]
-        coods = [(h.GetBinCenter(ib), h.GetBinContent(ib), h.GetBinCenter(ib - 1), h.GetBinContent(ib - 1), ib) for ib in bins]
-        f1, f2 = [interpolate_two_points(*icood) for icood in coods]
-        Draw.add(f1, f2)
-        Draw.vertical_line(f1.GetX((1 - p) * maxval), -100, 1e4)
-        Draw.vertical_line(f2.GetX(p * maxval), -100, 1e4)
-        f1.Draw('same')
-        f2.Draw('same')
-        return f1.GetX((1 - p) * maxval) - f2.GetX(p * maxval)
+        x, y = get_graph_vecs(self.draw_all_average(show=show, cut=ind, x_range=x_range, y_range=y_range))
+        ymax = max(y).n - self.Ana.get_pedestal().n
+        i0, i1 = [next(i for i, v in enumerate(y) if v > ip * ymax) for ip in [p, 1 - p]]
+        x0, x1 = [get_x(x[i - 1], x[i], y[i - 1], y[i], ip * ymax) for i, ip in [(i0, p), (i1, 1 - p)]]
+        [Draw.vertical_line(x.n) for x in [x0, x1]]
+        return x1 - x0
 
     def compare_averages(self, ind1=None, ind2=None, cut=None, x_range=None, normalise=False, show=True):
         """Compare the average waveform at two subsets, choose index ranges acordingly."""

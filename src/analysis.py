@@ -1,5 +1,3 @@
-
-from glob import glob
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
