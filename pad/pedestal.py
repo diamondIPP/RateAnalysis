@@ -114,6 +114,7 @@ class PedestalAnalysis(PadSubAnalysis):
 
     @save_pickle('Disto', print_dur=True, suf_args='all')
     def get_distribution(self, sig=None, bin_scale=None, cut=None, _redo=False):
+        self.Run.set_estimate()
         x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
         bins = self.get_bins(max(.1, self.Bins.find_width(x)) * choose(bin_scale, 1))
         return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5))
