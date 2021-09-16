@@ -173,6 +173,7 @@ class Cut(SubAnalysis):
 
     def remove(self, name):
         self.CutStrings.remove(name)
+        self.Ana.Bins.remove_pickle()
 
     def set_chi2(self, value):
         self.update('chi2_x', self.generate_chi2('x', value).Value)
