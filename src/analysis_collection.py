@@ -230,7 +230,7 @@ class AnalysisCollection(Analysis):
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
-        return array([mean(lst) for lst in split(values, self.get_flux_splits())])  # split into sub-lists of similar flux and take average
+        return array([mean(lst, axis=0) for lst in split(values, self.get_flux_splits())])  # split into sub-lists of similar flux and take average
 
     def get_times(self, runs=None):
         return self.get_values('times', DUTAnalysis.get_time, runs, pbar=False)
@@ -319,10 +319,10 @@ class AnalysisCollection(Analysis):
         x = self.get_pulse_heights(runs=self.get_runs_below_flux(flux), redo=_redo, err=False)
         return 0 if not x.size else .01 if x.size == 1 else mean_sigma(x, err=False)[1]
 
-    def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, redo=False):
+    def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, avrg=False, redo=False):
         runs = self.get_runs_below_flux(110) if low_flux else self.get_runs_above_flux(2000) if high_flux else self.Runs
         picklepath = self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal', run='{}')
-        return self.get_values('uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, _redo=redo, use_fwc=use_fwc)
+        return self.get_values('uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, _redo=redo, use_fwc=use_fwc, avrg=avrg)
 
     def get_mean_uniformity(self, use_fwc=True, redo=False, low_flux=False, high_flux=False):
         values = self.get_uniformities(use_fwc, redo, low_flux, high_flux)
@@ -364,9 +364,15 @@ class AnalysisCollection(Analysis):
     def draw_legend(graphs, x=.17):
         return Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l' if i < 2 else 'p' for i in range(len(graphs))], x1=x, y1=.21, w=.2)
 
-    def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False):
-        ph0 = self.get_pulse_heights(bin_width, redo, corr=corr, err=False, avrg=avrg, peaks=peaks)
-        x, ph = self.get_x_var(vs_time, avrg=avrg), self.get_pulse_heights(bin_width, corr=corr, err=err, avrg=avrg, peaks=peaks)
+    def scale_ph(self, x, avrg):
+        """ scale the ph to the mean of the pulse heights in the 'min flux range' """
+        f, (fmin, fmax) = self.get_fluxes(avrg=avrg), self.MainConfig.get_list('MAIN', 'min flux range')
+        x0 = x[where((f >= fmin) & (f <= fmax))]
+        return x / mean_sigma(x0, err=False)[0]  # no error to keep correct errors of single measurements
+
+    def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False):
+        x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
+        ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit='Pulse Height [mV]')
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
@@ -397,14 +403,13 @@ class AnalysisCollection(Analysis):
         self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
-    def draw_scaled_pulse_heights(self, scale=1, binning=None, vs_time=False, show=True, y_range=None, redo=False, scale_to_low=False, avrg=False, peaks=False):
+    def draw_scaled_pulse_heights(self, binning=None, vs_time=False, redo=False, avrg=False, peaks=False, **dkw):
         """ Shows the scaled pulse heights of the single runs. """
-        mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks)
-        scale_multigraph(mg, scale, scale_to_low)
-        self.Draw(mg, show=show, lm=.14, draw_opt='ap', **self.get_x_draw(vs_time), gridy=True, bm=.18)
+        mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks, scale=True)
+        m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
+        self.Draw(mg, **self.get_x_args(vs_time, draw=True), **prep_kw(dkw, gridy=True, y_tit='Scaled Pulse Height', y_range=[.95, 1.05], ndivx=503, color=None, **m))
         Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
-        format_histo(mg, y_tit='Scaled Pulse Height', y_off=1.75, y_range=choose(y_range, [.95, 1.05]), ndivx=503, center_y=True, **self.get_x_args(vs_time))
-        self.Draw.save_plots('ScaledPulseHeights{}'.format('Time' if vs_time else 'Flux'))
+        self.Draw.save_plots(f'ScaledPulseHeights{"Time" if vs_time else "Flux"}')
         return mg.GetListOfGraphs()[0]
 
     def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
@@ -428,7 +433,7 @@ class AnalysisCollection(Analysis):
         c = self.Draw.tpad(transparent=True, c=get_last_canvas()) if with_flux else None
         h = self.get_full_ph(bin_size, _redo=redo)
         return self.Draw.distribution(h, canvas=c, **prep_kw(dkw, y_range=[0, h.GetMaximum() * 1.05], **self.get_x_args(True, rel_t, draw=True), stats=0, **Draw.mode(2),
-                                      rm=.1 if with_flux else None, fill_style=3002, file_name=f'FullPulseHeight{"Flux" if with_flux else""}'))
+                                      rm=.1 if with_flux else None, fill_style=3002, file_name=f'FullPulseHeight{"Flux" if with_flux else""}', y_tit='Pulse Height [mV]'))
 
     def draw_splits(self, m=2, show=True, normalise=False):
         x, y = self.get_x_var(), self.get_values('split pulse heights', DUTAnalysis.get_split_ph, m=m).T
@@ -480,20 +485,20 @@ class AnalysisCollection(Analysis):
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return values
 
-    def draw_fwhm(self, arg=1, vs_time=False, vs_irrad=False, use_fwc=True, redo=False, **kwargs):
-        x, y = self.get_x_var(vs_time, vs_irrad), self.get_uniformities(use_fwc, redo)[:, arg]
+    def draw_fwhm(self, arg=1, vs_time=False, vs_irrad=False, use_fwc=True, avrg=False, redo=False, **kwargs):
+        x, y = self.get_x_var(vs_time, vs_irrad, avrg), self.get_uniformities(use_fwc, redo, avrg=avrg)[:, arg]
         ph_var = 'FWC' if use_fwc else 'Mean'
-        var, unit, tit = [ph_var, 'FWHM', 'FWHM/{}'.format(ph_var)][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
-        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad), file_name=var))
+        var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
+        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad, draw=True), file_name=var))
 
-    def draw_means(self, vs_time=False, vs_irrad=False, redo=False, **kwargs):
-        return self.draw_fwhm(0, vs_time, vs_irrad, False, redo, **kwargs)
+    def draw_means(self, vs_time=False, vs_irrad=False, avrg=False, redo=False, **kwargs):
+        return self.draw_fwhm(0, vs_time, vs_irrad, False, avrg, redo, **kwargs)
 
-    def draw_fwc(self, vs_time=False, vs_irrad=False, redo=False, **kwargs):
-        return self.draw_fwhm(0, vs_time, vs_irrad, True, redo, **kwargs)
+    def draw_fwc(self, vs_time=False, vs_irrad=False, avrg=False, redo=False, **kwargs):
+        return self.draw_fwhm(0, vs_time, vs_irrad, True, avrg, redo, **kwargs)
 
-    def draw_uniformity(self, vs_time=False, vs_irrad=False, use_fwc=True, redo=False, **kwargs):
-        return self.draw_fwhm(2, vs_time, vs_irrad, use_fwc, redo=redo, **kwargs)
+    def draw_uniformity(self, vs_time=False, vs_irrad=False, use_fwc=True, avrg=False, redo=False, **kwargs):
+        return self.draw_fwhm(2, vs_time, vs_irrad, use_fwc, avrg, redo, **kwargs)
 
     def draw_ph_slope(self, vs_time=False, show=True):
         y = [fit2u(ana.draw_pulse_height(show=False)[0].Fit('pol1', 'qs0'), par=1) * 60 for ana in self.get_analyses()]
