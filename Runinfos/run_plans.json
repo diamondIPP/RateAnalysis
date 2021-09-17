@@ -1222,6 +1222,50 @@
       ],
       "type": "voltage scan"
     },
+    "09.3": {
+      "attenuators": {
+        "dia1": "None",
+        "dia2": "None",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        416,
+        417
+      ],
+      "type": "voltage scan"
+    },
+    "09.4": {
+      "attenuators": {
+        "dia1": "None",
+        "dia2": "None",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        420,
+        421,
+        422,
+        423
+      ],
+      "type": "voltage scan"
+    },
+    "09.5": {
+      "attenuators": {
+        "dia1": "None",
+        "dia2": "None",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        419,
+        420,
+        421,
+        422,
+        423
+      ],
+      "type": "voltage scan"
+    },
     "10": {
       "attenuators": {
         "dia1": "None",
