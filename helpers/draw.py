@@ -977,6 +977,10 @@ def get_hist_vecs(p, err=True, raw=False):
     return get_hist_args(p, err, raw), get_hist_vec(p, err)
 
 
+def get_bin_entries(p):
+    return array([p.GetBinEntries(i) for i in range(1, p.GetNbinsX() + 1)], 'i')
+
+
 def get_h_values(h):
     return get_graph_y(h) if 'Graph' in h.ClassName() else get_hist_vec(h)
 
