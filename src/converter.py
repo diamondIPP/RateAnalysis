@@ -100,6 +100,10 @@ class Converter(object):
     def file_is_valid(self, file_path):
         return False if not file_exists(file_path) else self.Run.rootfile_is_valid(file_path)
 
+    def reconvert(self):
+        self.remove_final_file()
+        self.copy_raw_file()
+
     def convert_run(self):
         if self.file_is_valid(self.Run.RootFilePath):  # check if final root file exists
             self.add_plane_errors()  # add plane errors if set in config file
