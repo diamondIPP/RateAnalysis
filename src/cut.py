@@ -297,8 +297,9 @@ class Cut(SubAnalysis):
     @save_pickle('EventMax', print_dur=True)
     def find_signal_drops(self, thresh=.6, pol=1, _redo=False):
         ph, t = self.Ana.get_tree_vec(var=[self.Ana.get_signal_name(), self.Ana.get_t_var()], cut=self())
-        x, y = get_hist_vecs(self.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=False), err=False)
-        x, y = x[y != 0], pol * y[y != 0]
+        p = self.Draw.profile(t, ph, Bins(self.Ana).get_raw_time(30), show=1)
+        (x, y), n = get_hist_vecs(p, err=False), get_bin_entries(p)
+        x, y = x[(y != 0) & (n > 5)], pol * y[(y != 0) & (n > 5)]
         averages = cumsum(y) / (arange(y.size) + 1)
         j = next((i for i, is_bad in enumerate(y[2:] < thresh * averages[1:-1], 2) if is_bad), None)  # find next entry that is below the average of the previous
         sleep(.05)  # otherwise j is not initialised yet...
