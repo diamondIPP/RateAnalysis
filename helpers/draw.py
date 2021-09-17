@@ -167,7 +167,7 @@ class Draw(object):
     def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
         Draw.set_margin(c, 'Left', l_, default=.13)
         Draw.set_margin(c, 'Right', r, default=.02)
-        Draw.set_margin(c, 'Bottom', b, default=.115, off=.06 if Draw.Legend else 0)
+        Draw.set_margin(c, 'Bottom', b, default=.116, off=.06 if Draw.Legend else 0)
         Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title else 0)
 
     @staticmethod
@@ -1040,17 +1040,6 @@ def get_3d_profiles(h, opt, err=True):
 
 def get_h_entries(h):
     return array([h.GetBinEntries(ibin) for ibin in range(1, h.GetNbinsX() + 1)])
-
-
-def scale_multigraph(mg, val=1, to_low_flux=False):
-    graphs = mg.GetListOfGraphs()
-    first_graph = graphs[0]
-    scale = scale_graph(first_graph, val=val, to_low_flux=to_low_flux)
-    for gr in graphs[1:]:
-        scale_graph(gr, scale)
-    for i, l in enumerate(first_graph.GetListOfFunctions()):
-        y, ey = first_graph.GetY()[i], first_graph.GetErrorY(i)
-        l.SetY(y - ey - .003)
 
 
 def scale_graph(gr, scale=None, val=1, to_low_flux=False):
