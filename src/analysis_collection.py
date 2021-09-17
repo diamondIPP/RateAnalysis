@@ -59,6 +59,13 @@ class AnalysisCollection(Analysis):
         if self.Verbose:
             print('\n good bye... ')
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        from helpers.save_plots import SaveDraw
+        SaveDraw.File = None
+
     def draw_all(self, redo=False):
         pass
 
