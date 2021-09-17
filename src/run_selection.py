@@ -1,4 +1,3 @@
-from glob import glob
 from json import dump
 from os import system
 from os.path import basename
@@ -326,14 +325,13 @@ class RunSelector(object):
                 unselected_runs += 1
         self.Run.info('Unselected all runs and channels if bias is not {bias}V (unselected {nr} runs).'.format(bias=bias, nr=unselected_runs))
 
-    def select_run(self, run_number, unselect=False):
+    def select_run(self, run_number, status=True):
         if run_number not in self.RunNumbers:
-            warning('Run {run} not found in list of run numbers. Check run_log json file!'.format(run=run_number))
-            return
-        self.Selection[run_number] = not unselect
+            return warning(f'Run {run_number} not found in list of run numbers. Check run_log json file!')
+        self.Selection[run_number] = status
 
     def unselect_run(self, run_number):
-        self.select_run(run_number, unselect=True)
+        self.select_run(run_number, status=False)
 
     def unselect_list_of_runs(self, run_list):
         assert type(run_list) is list, 'argument has to be a list of integers'
@@ -349,10 +347,10 @@ class RunSelector(object):
     def select_runs_in_range(self, minrun, maxrun, dut=1):
         self.select_runs([run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut)
 
-    def select_runs(self, run_list, dut=1):
-        for run in run_list:
+    def select_runs(self, *runs, dut=1):
+        for run in runs:
             self.select_run(run)
-        self.SelectedDUT = DUT(dut, self.RunInfos[run_list[0]])
+        self.SelectedDUT = DUT(dut, self.RunInfos[runs[0]])
         self.SelectedType = 'CurrentInfo'
 
     def unselect_unless_in_range(self, minrun, maxrun):
@@ -537,7 +535,7 @@ class RunSelector(object):
         plan = self.make_runplan_string(plan_nr)
         runs = self.RunPlan[plan]['runs']
 
-        self.select_runs(runs, dut=dut)
+        self.select_runs(*runs, dut=dut)
         self.SelectedRunplan = plan
         self.SelectedType = str(self.RunPlan[plan]['type'])
         self.PulserType = self.load_pulser_type()
