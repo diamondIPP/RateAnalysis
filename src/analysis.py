@@ -123,7 +123,8 @@ class Analysis(object):
         runs = self.Runs if hasattr(self, 'Runs') else [self.Run.Number] if hasattr(self, 'Run') else []
         dut_nr = f'_{self.DUT.Number}' if hasattr(self, 'DUT') else ''
         rp_files = glob(join(self.PickleDir, '*', f'*{self.TCString}_{self.RunPlan}{dut_nr}*')) if hasattr(self, 'RunPlan') else []
-        return rp_files + [f for run in runs for f in glob(join(self.PickleDir, '*' if all_ else self.PickleSubDir, f'*{self.TCString}_{run}{dut_nr}*'))]
+        sel_files = [n for i in self.Info for n in glob(join(self.PickleDir, 'selections', f'*{i.TCString}_{i.RunPlan}_{i.DUTNr}*'))] if hasattr(self, 'Info') else []
+        return sel_files + rp_files + [f for run in runs for f in glob(join(self.PickleDir, '*' if all_ else self.PickleSubDir, f'*{self.TCString}_{run}{dut_nr}*'))]
 
     def remove_metadata(self, all_subdirs=False):
         for f in self.get_meta_files(all_subdirs):
