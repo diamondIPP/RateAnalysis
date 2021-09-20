@@ -496,7 +496,7 @@ class PeakAnalysis(PadSubAnalysis):
             data = []
             self.PBar.start(n[n].size)
             rw, rwi = 10 / self.BinWidth, int(10 / self.BinWidth)
-            delay = int(round(self.WF.get_average_rise_time()) / self.BinWidth)
+            delay = int(round(self.WF.get_average_rise_time().n) / self.BinWidth)
             for i in where(n)[0]:
                 v, t = self.WF.get_all()[i], self.WF.get_calibrated_times(tc[i])
                 for pt, ph in peak_info[i]:
