@@ -80,10 +80,14 @@ class SaveDraw(Draw):
 
     @staticmethod
     def load_server_save_dir(ana):
-        if not SaveDraw.MountExists or SaveDraw.ServerMountDir is None or not hasattr(ana, 'DUT'):
-            return
-        run_string = f'RP-{ana.Ensemble.Name.lstrip("0").replace(".", "-")}' if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
-        return join(SaveDraw.ServerMountDir, 'content', 'diamonds', ana.DUT.Name, ana.TCString, run_string)
+        if SaveDraw.MountExists and SaveDraw.ServerMountDir is not None:
+            if hasattr(ana, 'load_selections'):
+                ensure_dir(join(SaveDraw.ServerMountDir, 'content', 'selections', str(ana)))
+                return join(SaveDraw.ServerMountDir, 'content', 'selections', str(ana))
+            if not hasattr(ana, 'DUT'):
+                return
+            run_string = f'RP-{ana.Ensemble.Name.lstrip("0").replace(".", "-")}' if hasattr(ana, 'RunPlan') else str(ana.Run.Number)
+            return join(SaveDraw.ServerMountDir, 'content', 'diamonds', ana.DUT.Name, ana.TCString, run_string)
 
     # ----------------------------------------
     # region SAVE
