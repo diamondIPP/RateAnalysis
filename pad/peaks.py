@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TMath, TGraph
 from ROOT.gRandom import Landau as rLandau
-from numpy import polyfit, argmax, insert, array_split, invert, sum, column_stack, any, sort
+from numpy import polyfit, argmax, insert, invert, sum, column_stack, any, sort
 from numpy.random import normal, rand
 from scipy.signal import find_peaks
 from scipy.stats import poisson
@@ -13,6 +13,7 @@ from uncertainties.umath import log as ulog, sqrt as usqrt
 
 from helpers.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
+from src.dut_analysis import reload_tree
 from helpers.draw import *
 
 
@@ -451,14 +452,17 @@ class PeakAnalysis(PadSubAnalysis):
         fit_peaks = array(fit_peaks) - (self.BunchSpacing / 2. if not center else 0)
         return concatenate([fit_peaks, [fit_peaks[-1] + self.BunchSpacing]])
 
-    def _find_all(self, ind, tc, thresh=None, fit=False):
+    @reload_tree
+    def _find_all(self, i0, i1, thresh=None, fit=False):
         """find peaks for a subset. used for parallelising."""
         f = TF1('lan', 'landau', 0, 512)
-        pbar = PBar(ind.size) if not ind[0] else None
+        pbar = PBar(i1 - i0) if not i0 else None
         values = []
-        for i in ind:
-            values.append(self.find(i, tc[i], thresh, fit=f if fit else False))
-            if i % 100 and not ind[0]:
+        tc = self.WF.get_trigger_cells()[i0:i1]
+        wf = self.WF.get_all()[i0:i1]
+        for i in range(len(tc)):
+            values.append(self.find(wf[i], tc[i], thresh, fit=f if fit else False))
+            if not i0:
                 pbar.update(i)
         if pbar:
             pbar.finish()
@@ -466,16 +470,14 @@ class PeakAnalysis(PadSubAnalysis):
 
     def find_all(self, thresh=None, fit=False, redo=False):
         hdf5_path = self.make_simple_hdf5_path(suf=f'{choose(thresh, self.Threshold):.1f}_{int(fit)}', dut=self.Channel)
-        self.WF.get_all()
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights'], f['n_peaks']
-        if file_exists(hdf5_path):
-            remove_file(hdf5_path)
+        remove_file(hdf5_path)
 
         with Pool() as pool:
-            tc = self.WF.get_trigger_cells()
-            result = pool.starmap(self._find_all, [(i, tc, thresh, fit) for i in array_split(arange(tc.size), cpu_count())])
+            ind = linspace(0, self.Run.NEvents, cpu_count() + 1, dtype='i')
+            result = pool.starmap(self._find_all, [(ind[i], ind[i + 1], thresh, fit) for i in range(ind.size - 1)])
             times = [tup[0] for lst in result for tup in lst]
             heights = [tup[1] for lst in result for tup in lst]
             f = h5py.File(hdf5_path, 'w')
@@ -484,32 +486,36 @@ class PeakAnalysis(PadSubAnalysis):
             f.create_dataset('n_peaks', data=array([ar.size for ar in heights]).astype('u1'))
             return f['times'], f['heights'], f['n_peaks']
 
-    def find(self, i, tc, thresh=None, fit=False):
-        values = self.WF.get_all()[i]
-        peaks = find_peaks(values, height=self.Threshold if thresh is None else thresh, distance=self.Distance, prominence=self.Prominence)
-        return self.fit_landau(values, tc, peaks[0], fit) if fit else ([self.WF.get_calibrated_time(tc, value) for value in peaks[0]], peaks[1]['peak_heights'])
+    def find(self, y, tc, thresh=None, fit=False, excl=5):
+        peaks = find_peaks(y[excl:], height=self.Threshold if thresh is None else thresh, distance=self.Distance, prominence=self.Prominence)
+        return self.fit_landau(y, tc, peaks[0] + excl, fit) if fit else ([self.WF.get_calibrated_time(tc, value) for value in peaks[0] + excl], peaks[1]['peak_heights'])
 
     def find_pars(self, redo=False):
         def f():
             t, h, n = self.get_all(cut=..., fit=True)
             peak_info, tc = split(column_stack([t, h]), cumsum(n)[:-1]), self.WF.get_trigger_cells()
             data = []
-            self.PBar.start(n[n].size)
             rw, rwi = 10 / self.BinWidth, int(10 / self.BinWidth)
             delay = int(round(self.WF.get_average_rise_time().n) / self.BinWidth)
+            wf, tcal = array(self.WF.get_all()), self.WF.get_all_cal_times()
+            self.PBar.start(n[n].size)
             for i in where(n)[0]:
-                v, t = self.WF.get_all()[i], self.WF.get_calibrated_times(tc[i])
+                v, t = wf[i], tcal[tc[i]]
                 for pt, ph in peak_info[i]:
-                    cut = (t > pt - rw) & (t < pt + 1)
-                    iv, it = v[cut], t[cut]
-                    j = where(iv > ph / 2)[0][0]  # find first value above half the peak height
-                    k = where(t > pt)[0][0]  # get peak index
-                    data.append([self.find_width(iv, it, pt, ph, j),
-                                 self.find_slope(iv, it, j),
-                                 self.find_cft(v, t, k, delay),
-                                 self.find_tot(v[k - rwi:k + 2 * rwi], t[k - rwi:k + 2 * rwi], .75 * ph)])
-                if i % 1000:
-                    self.PBar.update(i)
+                    iv = array([])
+                    try:
+                        cut = (t > pt - rw) & (t < pt + 1)
+                        iv, it = v[cut], t[cut]
+                        j = where(iv > ph / 2)[0][0]  # find first value above half the peak height
+                        k = where(t > pt)[0][0]  # get peak index
+                        data.append([self.find_width(iv, it, pt, ph, j),
+                                     self.find_slope(iv, it, j),
+                                     self.find_cft(v, t, k, delay),
+                                     self.find_tot(v[k - rwi:k + 2 * rwi], t[k - rwi:k + 2 * rwi], .75 * ph)])
+                    except Exception as err:
+                        warning(f'Error at event {i} (x: {pt}, y: {ph}, size: {iv.size}: {err}')
+                        data.append([-999] * 4)
+                self.PBar.update(i)
             return array(data).astype('d')
         return do_hdf5(self.make_simple_hdf5_path('Pars'), f, redo)
 
@@ -528,12 +534,12 @@ class PeakAnalysis(PadSubAnalysis):
         v -= roll(v, -delay) * fac  # subtract a shifted reduced waveform
         j = where(v < 0)[0]
         j = j[-1] if j.size else None
-        return -999 if j is None or j >= 3 * delay - 1 else get_x(t[j], t[j + 1], v[j], v[j + 1], 0)  # interpolate the zero crossing
+        return -999 if j is None or j >= 3 * delay - 1 or j == t.size - 1 else get_x(t[j], t[j + 1], v[j], v[j + 1], 0)  # interpolate the zero crossing
 
     @staticmethod
     def find_tot(values, times, thresh):
-        i, j = where(values >= thresh)[0][[0, -1]] if any(values > thresh) else None, None
-        return (times[-1] if j == times.size - 1 else get_x(*times[j:j + 2], *values[j:j + 2], thresh)) - get_x(*times[i:i + 2], *values[i:i + 2], thresh) if i else -999
+        i, j = where(values >= thresh)[0][[0, -1]] if any(values > thresh) else (None, None)
+        return (times[-1] if j == times.size - 1 else get_x(*times[j:j + 2], *values[j:j + 2], thresh)) - get_x(*times[i:i + 2], *values[i:i + 2], thresh) if i is not None else -999
 
     def find_particle_pos(self, h=None, off=0, bin_size=.1):
         h = self.draw_overlayed_times(bin_size, off, show=False) if h is None else h
@@ -668,8 +674,9 @@ class PeakAnalysis(PadSubAnalysis):
     # endregion MODEL
     # ----------------------------------------
 
-    def fit_landau(self, values, tc, peak_indices, f):
+    def fit_landau(self, values, tc, peak_indices, f=None):
         t, h = [], []
+        f = TF1('lan', 'landau', 0, 512) if type(f) is bool else f
         for ip in peak_indices:
             x, y = self.WF.get_calibrated_times(tc)[max(0, ip - 6):ip + 8], values[max(0, ip - 6):ip + 8]
             g = TGraph(len(x), x.astype('d'), y.astype('d'))
