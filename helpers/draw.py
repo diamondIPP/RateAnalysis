@@ -483,11 +483,11 @@ class Draw(object):
         self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
         return f
 
-    def graph(self, x, y=None, title='', c=None, bm=None, show=True, bin_labels=None, **kwargs):
+    def graph(self, x, y=None, title='', bm=None, show=True, bin_labels=None, **kwargs):
         g = x if y is None else Draw.make_tgrapherrors(x, y)
         format_histo(g, title=title, **prep_kw(kwargs, **Draw.mode(), fill_color=Draw.FillColor))
         set_bin_labels(g, bin_labels)
-        self.histo(g, show=show, bm=choose(bm, .24 if bin_labels else None), canvas=c, **kwargs)
+        self.histo(g, show=show, bm=choose(bm, .24 if bin_labels else None), **kwargs)
         return g
 
     def profile(self, x, y=None, binning=None, title='', thresh=.02, graph=False, **kwargs):
@@ -685,10 +685,10 @@ class Draw(object):
         return Draw.make_tgrapherrors(x[y != 0], y[y != 0], title=p.GetTitle(), x_tit=p.GetXaxis().GetTitle(), y_tit=p.GetYaxis().GetTitle())
 
     @staticmethod
-    def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, d=.01, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False, bottom=False, left=False):
+    def make_legend(x2=None, y2=None, w=.25, nentries=2, scale=1, ts=None, d=.01, y1=None, x1=None, clean=False, margin=.25, cols=None, fix=False, bottom=False, left=False, c=None):
         use_margins = y2 is None
         h = nentries * .05 * scale
-        x2, y2 = get_stat_margins(None, x2, y2, d, bottom, left, h, w)
+        x2, y2 = get_stat_margins(c, x2, y2, d, bottom, left, h, w)
         x1 = choose(x1, x2 - w)
         y1 = choose(y1, y2 - h)
         if not use_margins:
@@ -696,6 +696,7 @@ class Draw(object):
             y1 -= .07 if not Draw.Legend and y1 < .3 and not fix else 0
         leg = TLegend(x1, max(y1, 0), x1 + w, min(y1 + h, 1))
         leg.SetName(Draw.get_name('l'))
+        do(leg.SetTextSize, ts)
         leg.SetTextFont(Draw.Font)
         leg.SetMargin(margin)
         do(leg.SetNColumns, cols)
@@ -783,7 +784,7 @@ def set_entries():
 
 def get_stat_margins(c=None, x2=None, y2=None, d=.01, bottom=False, left=False, h=0, w=0):
     c = choose(c, get_last_canvas(warn=False))
-    r = c.GetWindowHeight() / c.GetWindowWidth()
+    r = c.GetWindowHeight() / c.GetWindowWidth() if c.ClassName() == 'TCanvas' else c.GetAbsHNDC() / c.GetAbsWNDC()
     x2 = choose(x2, c.GetLeftMargin() + w + d * r if left else 1 - c.GetRightMargin() - d * r)
     y2 = choose(y2, c.GetBottomMargin() + h + d if bottom else 1 - c.GetTopMargin() - d)
     return x2, y2
