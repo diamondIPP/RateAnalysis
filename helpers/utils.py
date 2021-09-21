@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile
+from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, all
 from os import makedirs, remove, devnull, stat, getenv, _exit
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -711,6 +711,23 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
     return inner
 
 
+def save_hdf5(*pargs, suf_args='[]', **pkwargs):
+    def inner(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            file_path = args[0].make_simple_hdf5_path(*pargs, **prep_kw(pkwargs, suf=prep_suffix(f, args, kwargs, suf_args)))
+            redo = kwargs['_redo'] if '_redo' in kwargs else False
+            if file_exists(file_path) and not redo:
+                return h5py.File(file_path, 'r')['data']
+            remove_file(file_path)
+            data = f(*args, **kwargs)
+            hf = h5py.File(file_path, 'w')
+            hf.create_dataset('data', data=data)
+            return hf['data']
+        return wrapper
+    return inner
+
+
 def print_duration(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -824,7 +841,7 @@ class Config(ConfigParser):
         self.FileName = file_name
         self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
 
-    def get_value(self, section, option, dtype=str, default=None):
+    def get_value(self, section, option, dtype: type = str, default=None):
         dtype = type(default) if default is not None else dtype
         try:
             if dtype is bool:
