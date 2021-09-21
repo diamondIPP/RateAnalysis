@@ -437,8 +437,8 @@ class PeakAnalysis(PadSubAnalysis):
         p = self.Draw.profile(x[cut], y[cut], [bins.size - 1, bins], x_tit='Time [hh:mm]', y_tit='Pulse Height [mV]', t_ax_off=0)
         format_histo(p, y_range=ax_range(get_hist_vec(p), fl=.2, fh=.5))
 
-    def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, **dkw):
-        x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo)
+    def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, cut=None, **dkw):
+        x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo, cut=cut)
         tit = f'Time Over {thresh}{"% Peak Height" if thresh < 1 else " mV"}'
         self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToT [ns]', thresh=.1, file_name='ToT'))
     # endregion DRAW
