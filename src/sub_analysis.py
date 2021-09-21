@@ -51,6 +51,9 @@ class SubAnalysis(Analysis):
     def make_event_cut(self, events):
         return self.Ana.make_event_cut(events)
 
+    def reload_tree_(self):
+        self.Ana.reload_tree_()
+
 
 class PadSubAnalysis(SubAnalysis):
 

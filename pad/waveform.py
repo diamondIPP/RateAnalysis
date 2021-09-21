@@ -95,6 +95,9 @@ class Waveform(PadSubAnalysis):
         pt = self.get_peak_times(cut)
         return t - (pt - mean(pt)).reshape(pt.size, 1)
 
+    def get_all_cal_times(self):
+        return array([self.get_calibrated_times(tc) for tc in range(self.NSamples)])
+
     def get_calibrated_times(self, trigger_cell):
         return self.Run.TCalSum[trigger_cell:trigger_cell + self.Run.NSamples] - self.Run.TCalSum[trigger_cell]
 
