@@ -9,18 +9,19 @@ from numpy import polyfit, argmax, insert, invert, sum, column_stack, any, sort
 from numpy.random import normal, rand
 from scipy.signal import find_peaks
 from scipy.stats import poisson
-from uncertainties.umath import log as ulog, sqrt as usqrt
+from uncertainties.umath import log as ulog, sqrt as usqrt  # noqa
 
 from helpers.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
 from src.dut_analysis import reload_tree
 from helpers.draw import *
+from typing import List
 
 
 class PeakAnalysis(PadSubAnalysis):
 
-    Prominence = 5
-    Distance = 35
+    Prominence = 5  # mV
+    Distance = 35  # bins -> almost one bunch spacing at PSI
 
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
@@ -45,7 +46,7 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_centre(self, b=None):
         return self.Ana.Timing.get_raw().n + (choose(b, 1) - 1) * self.BunchSpacing
 
-    def get_bunch_range(self, b0=None, b_end=None, bins=False):
+    def get_bunch_range(self, b0=None, b_end=None, bins=False) -> List:
         rng = array([self.get_bunch_centre(b0), self.get_bunch_centre(choose(b_end, self.MaxBunch + 1))]) - self.BunchSpacing / 2
         return (rng / self.BinWidth).round().astype('i').tolist() if bins else rng
 
@@ -183,10 +184,14 @@ class PeakAnalysis(PadSubAnalysis):
             npeaks[invert(self.p2ecut(pcut))] = 0
         return npeaks
 
-    def get_bunch_values(self, n, thresh=None, excl=0, cut=None, i=1, fit=False, isolated=True, all_=False, pars=False, peak_cut=False):
+    def get_full_bunch_cut(self, n, thresh=None, cut=None, fit=False, isolated=True, all_=False, peak_cut=False):
         pcut = self.get_isolated_cut(n, thresh, fit, all_) if isolated else self.get_pulser_cut() & self.get_bunch_cut(n, thresh=thresh)
         peak_cut = True if not peak_cut else self.get_time_cut(*[i.n for i in self.get_peak_range(n, fit=fit)], thresh, fit)
-        values = (self.get_pars(i) if pars else self.get(True, thresh, fit, cut=..., i=i))[pcut & (True if cut is None else cut) & peak_cut]
+        return pcut & (True if cut is None else cut) & peak_cut
+
+    def get_bunch_values(self, n, thresh=None, excl=0, cut=None, i=1, fit=False, isolated=True, all_=False, pars=False, peak_cut=False):
+        cut = self.get_full_bunch_cut(n, thresh, cut, fit, isolated, all_, peak_cut)
+        values = (self.get_pars(i) if pars else self.get(True, thresh, fit, cut=..., i=i))[cut]
         return values[int(excl * values.size):]
 
     @update_pbar
@@ -205,7 +210,7 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_times(self, n=1, thresh=None, excl=0, cut=None, fit=False, isolated=True, all_=False, cft=False):
         return self.get_bunch_cfts(n, excl, cut) if cft else self.get_bunch_values(n, thresh, excl, cut, 0, fit, isolated, all_)
 
-    def get_bunch_time(self, n=1, fit=True, cut=None, show=False, par=1, redo=False):
+    def get_bunch_time(self, n=1, fit=True, cut=None, show=False, par: List = 1, redo=False):
         def f():
             return fit_fwhm(self.draw_bunch_times(n, fit=fit, cut=cut, show=show, draw_opt='', bin_width=.1), show=show)
         return do_pickle(self.make_simple_pickle_path(f'BT{n}', int(fit)), f, redo=redo)[par]
@@ -213,8 +218,9 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_cfts(self, n, excl=0, cut=None):
         return self.get_bunch_values(n, None, excl, cut, 2, fit=True, pars=True)
 
-    def get_bunch_tot(self, n, excl=0, cut=None):
-        return self.get_bunch_values(n, None, excl, cut, 3, fit=True, pars=True)
+    def get_bunch_tot(self, n, excl=0, cut=None, fit=True, thresh=.75, redo=False):
+        values = self.find_all_tot(thresh, fit, _redo=redo)[self.get_full_bunch_cut(n, cut=cut)]
+        return values[int(excl * values.size):]
 
     def get_spacings(self, n, cut=None, ecut=True):
         cut = choose(cut, self.get_spacing_cut(n, ecut))
@@ -280,7 +286,7 @@ class PeakAnalysis(PadSubAnalysis):
         return do_pickle(self.make_simple_pickle_path('AllIso', f'{thresh}{int(fit)}'), f)
 
     def get_spacing_cut(self, n, ecut=True):
-        return ecut & (self.get_npeaks() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=1)) & self.p2ecut(self.get_isolated_cut(n, fit=1))
+        return ecut & (self.get_npeaks() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=True)) & self.p2ecut(self.get_isolated_cut(n, fit=True))
     # endregion CUT
     # ----------------------------------------
 
@@ -327,9 +333,9 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_spacings(self, bin_size=.5, show=True):
         t = self.get_times(flat=True)
-        c1, c2 = self.get_bunch_cut(1, fit=1), self.get_bunch_cut(fit=1)
-        ecut = (self.get_npeaks() > 1) & (self.get_n_additional(1, fit=1) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
-        t = t[c2 & self.e2pcut(ecut)] - t[c1 & self.e2pcut(ecut)].repeat(self.get_n_additional(fit=1)[ecut])
+        c1, c2 = self.get_bunch_cut(1, fit=True), self.get_bunch_cut(fit=True)
+        ecut = (self.get_npeaks() > 1) & (self.get_n_additional(1, fit=True) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
+        t = t[c2 & self.e2pcut(ecut)] - t[c1 & self.e2pcut(ecut)].repeat(self.get_n_additional(fit=True)[ecut])
         self.Draw.distribution(t, self.get_binning(bin_size), 'Peak Spacing', x_tit='Peak Spacing [ns]', **Draw.mode(2), show=show, stats=set_statbox(entries=True))
 
     def draw_overlayed_times(self, bin_size=.1, off=0, cut=True, thresh=None, fit=True, **kwargs):
@@ -431,9 +437,9 @@ class PeakAnalysis(PadSubAnalysis):
         p = self.Draw.profile(x[cut], y[cut], [bins.size - 1, bins], x_tit='Time [hh:mm]', y_tit='Pulse Height [mV]', t_ax_off=0)
         format_histo(p, y_range=ax_range(get_hist_vec(p), fl=.2, fh=.5))
 
-    def draw_tot(self, n=1, show=True):
-        x = self.get_bunch_tot(n)
-        self.Draw.distribution(x, title='Time Over 75% Peak Height', x_tit='ToT [ns]', show=show, thresh=.1)
+    def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, **dkw):
+        x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo)
+        self.Draw.distribution(x, **prep_kw(dkw, title=f'Time Over {thresh}% Peak Height', x_tit='ToT [ns]', thresh=.1))
     # endregion DRAW
     # ----------------------------------------
 
@@ -476,8 +482,7 @@ class PeakAnalysis(PadSubAnalysis):
         remove_file(hdf5_path)
 
         with Pool() as pool:
-            ind = linspace(0, self.Run.NEvents, cpu_count() + 1, dtype='i')
-            result = pool.starmap(self._find_all, [(ind[i], ind[i + 1], thresh, fit) for i in range(ind.size - 1)])
+            result = pool.starmap(self._find_all, [(i, j, thresh, fit) for i, j in self.split_indices])
             times = [tup[0] for lst in result for tup in lst]
             heights = [tup[1] for lst in result for tup in lst]
             f = h5py.File(hdf5_path, 'w')
@@ -487,12 +492,12 @@ class PeakAnalysis(PadSubAnalysis):
             return f['times'], f['heights'], f['n_peaks']
 
     def find(self, y, tc, thresh=None, fit=False, excl=5):
-        peaks = find_peaks(y[excl:], height=self.Threshold if thresh is None else thresh, distance=self.Distance, prominence=self.Prominence)
+        peaks = find_peaks(y[excl:], height=choose(thresh, default=self.Threshold), distance=self.Distance, prominence=self.Prominence)
         return self.fit_landau(y, tc, peaks[0] + excl, fit) if fit else ([self.WF.get_calibrated_time(tc, value) for value in peaks[0] + excl], peaks[1]['peak_heights'])
 
-    def find_pars(self, redo=False):
+    def find_pars(self, redo=False, fit=True):
         def f():
-            t, h, n = self.get_all(cut=..., fit=True)
+            t, h, n = self.get_all(cut=..., fit=fit)
             peak_info, tc = split(column_stack([t, h]), cumsum(n)[:-1]), self.WF.get_trigger_cells()
             data = []
             rw, rwi = 10 / self.BinWidth, int(10 / self.BinWidth)
@@ -517,7 +522,29 @@ class PeakAnalysis(PadSubAnalysis):
                         data.append([-999] * 4)
                 self.PBar.update(i)
             return array(data).astype('d')
-        return do_hdf5(self.make_simple_hdf5_path('Pars'), f, redo)
+        return do_hdf5(self.make_simple_hdf5_path('Pars', fit), f, redo)
+
+    @reload_tree
+    def _find_all_tot(self, i0, i1, thresh, fit=True):
+        t, h, n = self.get_all(cut=..., fit=fit)
+        peak_info, tc = split(column_stack([t, h]), cumsum(n)[:-1])[i0:i1], self.WF.get_trigger_cells()[i0:i1]
+        wf, tcal, n = array(self.WF.get_all())[i0:i1], self.WF.get_all_cal_times(), n[i0:i1]
+        w = self.BunchSpacing / 2  # width should be maximum 1 bunch
+        data = []
+        abs_thresh = thresh > 1
+        pbar = PBar(sum(n)) if not i0 else None
+        for i in where(n)[0]:
+            v, t = wf[i], tcal[tc[i]]
+            for pt, ph in peak_info[i]:
+                cut = (t > pt - w) & (t < pt + w)  # select only region around the peak
+                data.append(self.find_tot(t[cut], v[cut], thresh if abs_thresh else ph * thresh))
+                pbar.update() if pbar is not None else do_nothing()
+        return data
+
+    @save_hdf5('ToT', suf_args='all')
+    def find_all_tot(self, thresh=.75, fit=True, _redo=False):
+        with Pool() as pool:
+            return concatenate(pool.starmap(self._find_all_tot, [(i, j, thresh, fit) for i, j in self.split_indices]))
 
     @staticmethod
     def find_width(values, times, pt, ph, i):
@@ -537,9 +564,12 @@ class PeakAnalysis(PadSubAnalysis):
         return -999 if j is None or j >= 3 * delay - 1 or j == t.size - 1 else get_x(t[j], t[j + 1], v[j], v[j + 1], 0)  # interpolate the zero crossing
 
     @staticmethod
-    def find_tot(values, times, thresh):
-        i, j = where(values >= thresh)[0][[0, -1]] if any(values > thresh) else (None, None)
-        return (times[-1] if j == times.size - 1 else get_x(*times[j:j + 2], *values[j:j + 2], thresh)) - get_x(*times[i:i + 2], *values[i:i + 2], thresh) if i is not None else -999
+    def find_tot(x, y, thresh):
+        c = where(y > thresh)[0]
+        if not c.size:
+            return -999
+        i, j = c[0], c[-1]
+        return (x[-1] if j == x.size - 1 else get_x(x[j], x[j + 1], y[j], y[j + 1], thresh)) - (x[0] if i == 0 else get_x(x[i], x[i - 1], y[i], y[i - 1], thresh))
 
     def find_particle_pos(self, h=None, off=0, bin_size=.1):
         h = self.draw_overlayed_times(bin_size, off, show=False) if h is None else h
@@ -694,3 +724,9 @@ class PeakAnalysis(PadSubAnalysis):
                 times += rand(times.size) * width - width / 2 if width else 0
                 times[::n] += normal(0, width / 2, times.size // 5 + 1)[:times[::n].size] if width else 0
         return times
+
+    @property
+    def split_indices(self):
+        """ :returns event number tuples after events are split into <n_cpus> parts. """
+        ind = linspace(0, self.Run.NEvents, cpu_count() // 2 + 1, dtype='i')
+        return [(ind[i], ind[i + 1]) for i in range(ind.size - 1)]
