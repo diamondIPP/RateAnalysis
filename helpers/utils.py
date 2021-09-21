@@ -194,7 +194,7 @@ def mean_sigma(values, weights=None, err=True):
         errors = array([v.s for v in values])
         weights = full(errors.size, 1) if all(errors == errors[0]) else [1 / e if e else 0 for e in errors]
         values = array([v.n for v in values], 'd')
-    if all(weight == 0 for weight in weights):
+    if all(weights == 0):
         return [0, 0]
     avrg = average(values, weights=weights)
     sigma = sqrt(average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
