@@ -439,7 +439,8 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, **dkw):
         x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo)
-        self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=f'Time Over {thresh}% Peak Height', x_tit='ToT [ns]', thresh=.1, file_name='ToT'))
+        tit = f'Time Over {thresh}{"% Peak Height" if thresh < 1 else " mV"}'
+        self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToT [ns]', thresh=.1, file_name='ToT'))
     # endregion DRAW
     # ----------------------------------------
 
