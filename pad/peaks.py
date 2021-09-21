@@ -518,11 +518,10 @@ class PeakAnalysis(PadSubAnalysis):
                         k = where(t > pt)[0][0]  # get peak index
                         data.append([self.find_width(iv, it, pt, ph, j),
                                      self.find_slope(iv, it, j),
-                                     self.find_cft(v, t, k, delay),
-                                     self.find_tot(v[k - rwi:k + 2 * rwi], t[k - rwi:k + 2 * rwi], .75 * ph)])
+                                     self.find_cft(v, t, k, delay)])
                     except Exception as err:
                         warning(f'Error at event {i} (x: {pt}, y: {ph}, size: {iv.size}: {err}')
-                        data.append([-999] * 4)
+                        data.append([-999] * 3)
                 self.PBar.update(i)
             return array(data).astype('d')
         return do_hdf5(self.make_simple_hdf5_path('Pars', fit), f, redo)
@@ -532,14 +531,14 @@ class PeakAnalysis(PadSubAnalysis):
         t, h, n = self.get_all(cut=..., fit=fit)
         peak_info, tc = split(column_stack([t, h]), cumsum(n)[:-1])[i0:i1], self.WF.get_trigger_cells()[i0:i1]
         wf, tcal, n = array(self.WF.get_all())[i0:i1], self.WF.get_all_cal_times(), n[i0:i1]
-        w = self.BunchSpacing / 2  # width should be maximum 1 bunch
+        lw, rw = self.BunchSpacing / 2, self.BunchSpacing  # width should be maximum 1 bunch
         data = []
         abs_thresh = thresh > 1
         pbar = PBar(sum(n)) if not i0 else None
         for i in where(n)[0]:
             v, t = wf[i], tcal[tc[i]]
             for pt, ph in peak_info[i]:
-                cut = (t > pt - w) & (t < pt + w)  # select only region around the peak
+                cut = (t > pt - lw) & (t < pt + rw)  # select only region around the peak
                 data.append(self.find_tot(t[cut], v[cut], thresh if abs_thresh else ph * thresh))
                 pbar.update() if pbar is not None else do_nothing()
         return data
