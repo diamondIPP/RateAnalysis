@@ -51,14 +51,13 @@ class Waveform(PadSubAnalysis):
     def get(self, i):
         return self.get_all()[i]
 
-    def get_all(self, channel=None, redo=False):
+    @save_hdf5()
+    def get_all(self, _redo=False):
         """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
-        def f():
-            with Pool() as pool:
-                self.info('Saving signal waveforms to hdf5 ...')
-                result = pool.starmap(self._get_all, [(i, channel) for i in array_split(arange(self.Run.NEvents), cpu_count())])
-                return concatenate(result)
-        return do_hdf5(self.make_simple_hdf5_path(dut=choose(channel, self.Channel)), f, redo=redo)
+        with Pool() as pool:
+            self.info('Saving signal waveforms to hdf5 ...')
+            result = pool.starmap(self._get_all, [(i, ) for i in array_split(arange(self.Run.NEvents), cpu_count())])
+            return concatenate(result)
 
     def _get_all(self, ind, ch=None):
         var = f'{"-" if self.Ana.Polarity < 0 else ""}wf{choose(ch, self.Channel)}'
@@ -72,10 +71,10 @@ class Waveform(PadSubAnalysis):
                 pbar.update(ev)
         return get_tree_vec(t, var, '', 'f2', 1, ev)
 
-    def get_values(self, cut=None, channel=None, n=None):
+    def get_values(self, cut=None, n=None):
         cut = self.get_cut(cut, n)
         imax = max(where(cut)[0]) + 1
-        return array(self.get_all(channel)[:imax])[cut[:imax]].flatten()
+        return array(self.get_all()[:imax])[cut[:imax]].flatten()
 
     def get_times(self, signal_corr=True, cut=None, n=None, raw=False):
         cut = self.get_cut(cut, n)
@@ -146,9 +145,9 @@ class Waveform(PadSubAnalysis):
         self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
         return h, self.Count - start_count
 
-    def draw_all(self, signal_corr=False, raw=False, n=None, x_range=None, y_range=None, cut=None, channel=None, **kwargs):
+    def draw_all(self, signal_corr=False, raw=False, n=None, x_range=None, y_range=None, cut=None, **kwargs):
         n = choose(n, 100000)
-        y, x, bins = self.get_values(cut, channel, n), self.get_times(signal_corr, cut, n, raw), self.get_binning() + make_bins(-512, 512.1, .5)
+        y, x, bins = self.get_values(cut, n), self.get_times(signal_corr, cut, n, raw), self.get_binning() + make_bins(-512, 512.1, .5)
         rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
         h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **Draw.mode(3), **kwargs, x_range=rx, y_range=ry, stats=False, grid=True, logz=True, draw_opt='col', file_name='WaveForms100k')
         return h, n

@@ -475,13 +475,15 @@ class PeakAnalysis(PadSubAnalysis):
         return values
 
     def find_all(self, thresh=None, fit=False, redo=False):
-        hdf5_path = self.make_simple_hdf5_path(suf=f'{choose(thresh, self.Threshold):.1f}_{int(fit)}', dut=self.Channel)
+        hdf5_path = self.make_simple_hdf5_path(suf=f'{choose(thresh, self.Threshold):.1f}_{int(fit)}')
+        self.WF.get_all()  # to guarantee that wf are there!
         if file_exists(hdf5_path) and not redo:
             f = h5py.File(hdf5_path, 'r')
             return f['times'], f['heights'], f['n_peaks']
         remove_file(hdf5_path)
 
         with Pool() as pool:
+            self.info('Finding peaks in waveforms ...')
             result = pool.starmap(self._find_all, [(i, j, thresh, fit) for i, j in self.split_indices])
             times = [tup[0] for lst in result for tup in lst]
             heights = [tup[1] for lst in result for tup in lst]
@@ -543,7 +545,9 @@ class PeakAnalysis(PadSubAnalysis):
 
     @save_hdf5('ToT', suf_args='all')
     def find_all_tot(self, thresh=.75, fit=True, _redo=False):
+        self.find_all(fit=fit, redo=_redo)  # to guarantee that peaks are there!
         with Pool() as pool:
+            self.info('calculating time over threshold ...')
             return concatenate(pool.starmap(self._find_all_tot, [(i, j, thresh, fit) for i, j in self.split_indices]))
 
     @staticmethod
