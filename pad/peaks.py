@@ -27,7 +27,8 @@ class PeakAnalysis(PadSubAnalysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
         self.WF = self.Ana.Waveform
         if self.WF.Exists:
-            self.NoiseThreshold = self.calc_noise_threshold()
+            # self.NoiseThreshold = self.calc_noise_threshold()
+            self.NoiseThreshold = 50
             self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
             self.BinWidth = self.DigitiserBinWidth
             self.BunchSpacing = self.Ana.BunchSpacing
@@ -440,7 +441,7 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, cut=None, **dkw):
         x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo, cut=cut)
         tit = f'Time Over {thresh}{"% Peak Height" if thresh < 1 else " mV"}'
-        self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToT [ns]', thresh=.1, file_name='ToT'))
+        self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToT [ns]', file_name='ToT'))
     # endregion DRAW
     # ----------------------------------------
 
