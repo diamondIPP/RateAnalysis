@@ -328,6 +328,9 @@ class RunSelector(object):
             warning(f'Run {run} was not selected ... ', prnt=run not in self.get_selected_runs())
             self.unselect_run(run)
 
+    def unselect_below(self, run):
+        self.Selection[arange(run)] = False
+
     def select_runs_in_range(self, minrun, maxrun, dut=1):
         self.select_runs([run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut)
 
