@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF2
-from numpy import delete, all, prod
+from numpy import delete, prod
 from uncertainties.umath import log as ulog
 from src.binning import Bins
 from helpers.draw import *
@@ -104,17 +104,32 @@ class Telescope(SubAnalysis):
         return [self.get_area(pl) for pl in [1, 2]]
 
     @save_pickle('Flux', suf_args='[0, 1]')
-    def calculate_flux_(self, plane, corr, _redo=False):
-        rates = array(self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4')).T
-        if rates.size < 3:
+    def calculate_flux_(self, plane, corr, show=False, _redo=False):
+        h = self.draw_rate_disto(plane, show=show)
+        if h.GetEntries() < 3:
             return ufloat(0, 0)
-        rates = rates[rates < 1e9]
-        fit = FitRes(self.Draw.distribution(rates, thresh=.1, show=False, draw_opt='', x_tit='Flux [kHz/cm^{2}]').Fit('gaus', 'qs'))
-        rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else (mean_sigma(rates)[0] + ufloat(0, mean(rates) * .05))
-        return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / 1000 / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
+        fit = FitRes(h.Fit('gaus', 'qs'))
+        rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else ufloat(*h.GetMean() * array([1, .05]))
+        return -ulog(1 - rate / Plane.Frequency) * Plane.Frequency / self.get_area(plane) / (self.Run.load_plane_efficiency(plane) if corr else ufloat(1, .05))
 
     def calculate_flux(self, plane=None, corr=True, redo=False):
         return mean([self.calculate_flux(pl, corr, redo) for pl in [1, 2]]) if plane is None else self.calculate_flux_(plane, corr, _redo=redo)
+
+    def draw_rate_disto(self, plane=1, **dkw):
+        x = self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4') / 1000
+        return self.Draw.distribution(x[x < 1e9], **prep_kw(dkw, draw_opt='', x_tit='Plane Rate [kHz]', file_name=f'Plane{plane}Rate'))
+
+    def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True, save=True):
+        cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
+        if self.has_branch('rate'):
+            flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in [1, 2]] + [self.get_t_var()], cut=cut)
+            flux = mean([flux1, flux2], axis=0)[1:] / 1000
+        else:
+            t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
+        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', draw_opt='hist', **Draw.mode(2), show=show)
+        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_time else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
+        self.Draw.save_plots('FluxProfile', prnt=prnt, show=show, save=save)
+        return p
     # endregion FLUX
     # ----------------------------------------
 
@@ -216,18 +231,6 @@ class Telescope(SubAnalysis):
         t, y = self.get_tree_vec([self.get_t_var(), self.get_rate_var(plane)], cut=f'beam_current < 10000 && {self.get_rate_var(plane)} < 1e9')
         return self.Draw.profile(t, y, self.Bins.get_raw_time(bin_size), **prep_kw(dkw, title=f'Rate of Plane {plane}', **self.Draw.mode(2), y_tit='Rate [Hz]',
                                  y_range=[0, find_range(y)[1]], **self.get_t_args(rel_t), file_name=f'Plane{plane}Rate', draw_opt='hist'))
-
-    def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True, save=True):
-        cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
-        if self.has_branch('rate'):
-            flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in [1, 2]] + [self.get_t_var()], cut=cut)
-            flux = mean([flux1, flux2], axis=0)[1:] / 1000
-        else:
-            t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
-        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', draw_opt='hist', **Draw.mode(2), show=show)
-        format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_time else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
-        self.Draw.save_plots('FluxProfile', prnt=prnt, show=show, save=save)
-        return p
 
     def draw_bc_vs_rate(self, cut='', show=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
