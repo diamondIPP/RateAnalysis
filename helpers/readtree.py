@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F, TBrowser
+from ROOT import TFile, gROOT, TGraph, TH2F, gStyle, TCanvas, TCut, TH1F, TBrowser  # noqa
 from sys import argv
 from src.run import Run
 from src.binning import Bins
 from os import chdir, system
 from helpers.draw import *
 from numpy import genfromtxt, polyfit, polyval, quantile, delete, all
+from pathlib import Path
 
 widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
 plot = Draw()
@@ -26,6 +27,11 @@ def draw_occupancies():
 def draw_hitmap(dut=1, res=None):
     x, y = get_tree_vec(t, [f'dia_track_{i}_local[{dut - 1}]' for i in ['x', 'y']])
     plot.histo_2d(x * 10, y * 10, Bins.get_global(res), 'HitMap', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]')
+
+
+def draw_chi2(m='x', dut=1):
+    x = get_tree_vec(t, f'chi2_{m.lower()}[{dut - 1}]')
+    plot.distribution(x[x > -900], title=f'Chi2 in {m.title()}', x_tit=f'#chi^{{2}} {m.title()}')
 
 
 def trig_edges(nwf=None):
@@ -395,14 +401,14 @@ if __name__ == '__main__':
                 run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
             elif 'Tracked' in argv[1]:
                 run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
-                tc = remove_letters(args.run.split('/')[3]).replace('_', '')
+                tc = remove_letters(Path(args.run).absolute().parts[3]).replace('_', '')
             else:
                 run = None
 
         try:
-            z = Run(run, testcampaign=tc, load_tree=False)
+            z = Run(run, testcampaign=tc)
         except ValueError:
-            run = Run(2, testcampaign='201807', load_tree=False)
+            run = Run(2, testcampaign='201807')
 
         channels = read_macro(rootfile)
         t = rootfile.Get('tree')
