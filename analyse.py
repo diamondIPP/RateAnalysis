@@ -51,12 +51,14 @@ if __name__ == '__main__':
     aparser.add_argument('-cmd', '--command', nargs='?', help='method to be executed')
     aparser.add_argument('-kw', '--kwargs', nargs='?', help='key word arguments as dict {"show": 1}', default='{}')
     pargs = aparser.parse_args()
-    pargs.tree = False if pargs.remove or pargs.reconvert else pargs.tree  # don't load tree if only metadata should be removed
+    pargs.tree = False if pargs.remove else pargs.tree  # don't load tree if only metadata should be removed
 
     from src.analysis import Analysis
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
     if not pargs.collection and isint(pargs.runplan):
+        if pargs.reconvert:
+            analysis_selector(pargs.runplan, pargs.dut, this_tc, False, pargs.verbose).Run.Converter.reconvert()
         z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             if pargs.tree:
@@ -86,7 +88,3 @@ if __name__ == '__main__':
     if pargs.remove:
         z.remove_metadata(all_subdirs=True)
         critical(f'Removed all pickles for {z}')
-
-    if pargs.reconvert:
-        z.Run.Converter.reconvert()
-        z = analysis_selector(pargs.runplan, pargs.dut, this_tc, True, pargs.verbose)
