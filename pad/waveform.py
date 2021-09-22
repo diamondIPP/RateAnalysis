@@ -157,7 +157,7 @@ class Waveform(PadSubAnalysis):
             g, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
         else:
             x, y = arange(self.NSamples) if raw else self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
-            g = self.Draw.graph(x, y, 'Single Waveform', **Draw.mode(3), grid=grid, gridy=True, draw_opt=draw_opt, show=show)
+            g = self.Draw.graph(x, y, 'Single Waveform', **Draw.mode(3), grid=grid, gridy=True, draw_opt=draw_opt, show=show, file_name='WFSingle')
         if show_noise:
             self.__draw_noise()
         return g
