@@ -164,11 +164,11 @@ class Draw(object):
         do(getattr(c, f'Set{side}Margin'), None if round(getattr(c, f'Get{side}Margin')(), 2) != .1 and value is None else max(choose(value, default) + off, 0))
 
     @staticmethod
-    def set_pad_margins(c=None, l_=None, r=None, b=None, t=None):
+    def set_pad_margins(c=None, l_=None, r=None, b=None, t=None, fix=False):
         Draw.set_margin(c, 'Left', l_, default=.13)
         Draw.set_margin(c, 'Right', r, default=.02)
-        Draw.set_margin(c, 'Bottom', b, default=.116, off=.06 if Draw.Legend else 0)
-        Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title else 0)
+        Draw.set_margin(c, 'Bottom', b, default=.116, off=.06 if Draw.Legend and not fix else 0)
+        Draw.set_margin(c, 'Top', t, default=.02, off=.08 if Draw.Title and not fix else 0)
 
     @staticmethod
     def set_show(status=ON):
@@ -328,13 +328,13 @@ class Draw(object):
         return Draw.add(ar)
 
     @staticmethod
-    def tpad(tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None, c=None):
+    def tpad(tit='', pos=None, fill_col=0, gridx=None, gridy=None, margins=None, transparent=False, logy=None, logx=None, logz=None, lm=None, rm=None, bm=None, tm=None, c=None, fix=False):
         c.cd() if c is not None else do_nothing()
         pos = [0, 0, 1, 1] if pos is None else pos
         p = TPad(Draw.get_name('pd'), tit, *pos)
         p.SetFillColor(fill_col)
-        margins = margins if all(m is None for m in [lm, rm, bm, tm]) else [lm, rm, bm, tm]
-        Draw.set_pad_margins(p, *margins if margins is not None else full(4, .1) if c is None else Draw.get_margins(c))
+        margins = margins if all([m is None for m in [lm, rm, bm, tm]]) else [lm, rm, bm, tm]
+        Draw.set_pad_margins(p, *margins if margins is not None else full(4, .1) if c is None else Draw.get_margins(c), fix=fix)
         do([p.SetLogx, p.SetLogy, p.SetLogz], [logx, logy, logz])
         do([p.SetGridx, p.SetGridy], [gridx, gridy])
         make_transparent(p) if transparent else do_nothing()
