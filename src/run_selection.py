@@ -133,7 +133,7 @@ class RunSelector(object):
         self.MaxDuts = self.get_max_duts()
 
         # Selection
-        self.Selection = self.init_selection()
+        self.Selection = zeros(max(self.RunNumbers) + 1, '?')
         self.SelectedRunplan = None
         self.SelectedType = None
         self.SelectedDUT = None
@@ -142,10 +142,10 @@ class RunSelector(object):
         self.select_runs_from_runplan(runplan, dut_nr)
         self.PBar = PBar()
 
-    def __str__(self):
+    def __repr__(self):
         if self.SelectedRunplan is None:
-            return 'RunSelection for {}, {} runs in total.'.format(tc_to_str(self.TCString, short=False), self.RunNumbers.size)
-        return 'RunSelection with RunPlan {} of {} taken in {}'.format(self.SelectedRunplan, self.SelectedDUT, tc_to_str(self.TCString, short=False))
+            return f'RunSelection for {tc_to_str(self.TCString, short=False)}, {self.RunNumbers.size} runs in total.'
+        return f'RunSelection with RunPlan {self.SelectedRunplan} of {self.SelectedDUT} taken in {tc_to_str(self.TCString, short=False)}'
 
     # ----------------------------------------
     # region INIT
@@ -153,10 +153,7 @@ class RunSelector(object):
         return OrderedDict((int(key), value) for key, value in sorted(self.Run.load_run_info_file().items(), key=lambda item: int(item[0])))
 
     def load_runs(self):
-        return array(list(self.load_run_infos().keys()), 'i2')
-
-    def init_selection(self):
-        return {run: False for run in self.RunNumbers}
+        return array([*self.load_run_infos().keys()], 'i2')
 
     def load_runplan(self):
         with open(self.RunPlanPath) as f:
@@ -221,13 +218,8 @@ class RunSelector(object):
 
     def get_selected_runs(self):
         """ :return: list of selected run numbers. """
-        selected = []
-        for run in self.RunNumbers.tolist():
-            if self.Selection[run]:
-                selected.append(run)
-        if not selected:
-            warning('No runs selected!')
-        return sorted(selected)
+        warning('No runs selected!', prnt=not any(self.Selection))
+        return where(self.Selection)[0]
 
     def get_last_selected_run(self):
         return self.get_selected_runs()[-1]
@@ -245,17 +237,15 @@ class RunSelector(object):
 
     # ----------------------------------------
     # region SELECT
+    @property
     def has_selected_runs(self):
-        return any(list(self.Selection.values()))
+        return any(self.Selection)
 
     def reset_selection(self):
-        """ Creates a dict of bools to store the selection, which is filled with False (no run selected). Resets the logs. """
-        for run in self.RunNumbers:
-            self.Selection[run] = False
+        self.Selection[:] = False
 
     def select_all_runs(self):
-        for run in self.RunNumbers:
-            self.Selection[run] = True
+        self.Selection[self.RunNumbers] = True
         self.Run.info('selected all runs')
 
     def unselect_all_runs(self, prnt=True):
@@ -333,16 +323,10 @@ class RunSelector(object):
     def unselect_run(self, run_number):
         self.select_run(run_number, status=False)
 
-    def unselect_list_of_runs(self, run_list):
-        assert type(run_list) is list, 'argument has to be a list of integers'
-        unselected_runs = 0
-        selected_runs = self.get_selected_runs()
-        for run in run_list:
-            if run in selected_runs:
-                self.unselect_run(run)
-                unselected_runs += 1
-            else:
-                warning('{run} was not selected'.format(run=run))
+    def unselect_runs(self, *runs):
+        for run in runs:
+            warning(f'Run {run} was not selected ... ', prnt=run not in self.get_selected_runs())
+            self.unselect_run(run)
 
     def select_runs_in_range(self, minrun, maxrun, dut=1):
         self.select_runs([run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut)
@@ -543,24 +527,13 @@ class RunSelector(object):
 
     def add_selection_to_runplan(self, plan_nr, run_type=None):
         """ Saves all selected runs as a run plan with name 'plan_nr'. """
-        if not self.Selection:
-            warning('You did not select any run!')
-            return
+        if not self.has_selected_runs:
+            return warning('You did not select any run!')
         plan_nr = self.make_runplan_string(plan_nr)
-        self.RunPlan[plan_nr] = {'runs': self.get_selected_runs(), 'type': self.get_run_type(run_type)}
-        attenuators = self.get_attenuators_from_runcofig()
-        if attenuators:
-            self.RunPlan[plan_nr]['attenuators'] = attenuators
+        self.RunPlan[plan_nr] = {'runs': self.get_selected_runs().tolist(), 'type': self.get_run_type(run_type)}
         self.save_runplan()
         self.add_amplifier(plan_nr)
         self.unselect_all_runs()
-
-    def get_attenuators_from_runcofig(self):
-        dic = {}
-        for i in range(1, len(self.get_diamond_names(sel=True)) + 1):
-            dic['dia{}'.format(i)] = self.get_attenuator('att_dia{}'.format(i))
-            dic['pulser{}'.format(i)] = self.get_attenuator('att_pul{}'.format(i))
-        return dic
 
     def delete_runplan(self, plan_nr):
         plan = self.make_runplan_string(plan_nr)
@@ -578,6 +551,7 @@ class RunSelector(object):
         self.save_runinfo()
 
     def test_runs(self, dut=1):
+        # TODO try to catch all output
         from analyse import analysis_selector
         for run in self.get_selected_runs():
             try:
@@ -585,7 +559,7 @@ class RunSelector(object):
                 if file_exists(self.Run.RootFilePath):
                     print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
             except Exception as err:
-                print(run, err)
+                return run, err
 
     def save_data(self, rp, dut_nr, redo=False, verbose=False):
         from analyse import collection_selector
@@ -659,7 +633,7 @@ class RunSelector(object):
     def get_runinfo_values(self, key, sel=False):
         """ returns all different runinfos for a specified key of the selection or the full run plan """
         run_infos = self.RunInfos if not sel else self.get_selection_runinfo()
-        if all(key in data for data in run_infos.values()):
+        if all([key in data for data in run_infos.values()]):
             return sorted(list(set(data[key] for data in run_infos.values())))
         return []
 
