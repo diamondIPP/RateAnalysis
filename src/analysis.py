@@ -212,7 +212,7 @@ class Analysis(object):
 if __name__ == '__main__':
     aparser = ArgumentParser()
     aparser.add_argument('tc')
-    aparser.add_argument('pix', action='store_true')
+    aparser.add_argument('-pix', action='store_true')
     pargs = aparser.parse_args()
 
     Analysis.go2data(pargs.tc, not pargs.pix)
