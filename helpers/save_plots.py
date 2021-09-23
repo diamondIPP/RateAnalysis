@@ -152,6 +152,6 @@ class SaveDraw(Draw):
     @staticmethod
     def save_last(canvas=None, ext='pdf'):
         filename = input(f'Enter the name of the {ext}-file: ')
-        choose(canvas, get_last_canvas()).SaveAs(f'{filename.split(".")[0]}.{ext}')
+        choose(canvas, get_last_canvas()).SaveAs(join(Dir, f'{filename.split(".")[0]}.{ext}'))
     # endregion SAVE
     # ----------------------------------------
