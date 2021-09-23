@@ -58,31 +58,34 @@ class PadCut(Cut):
     # ----------------------------------------
     # region GENERATE
     def generate_dut(self):
+        try:
+            # -- WAVEFORM --
+            self.CutStrings.register(self.generate_pulser(), 2)
+            self.CutStrings.register(self.generate_saturated(), level=3)
 
-        # -- WAVEFORM --
-        self.CutStrings.register(self.generate_pulser(), 2)
-        self.CutStrings.register(self.generate_saturated(), level=3)
+            # -- SIGNAL --
+            self.CutStrings.register(self.generate_pedestal_bucket(), 29)
+            self.CutStrings.register(self.generate_pedestal_sigma(), 30)
+            # self.CutStrings.register(self.generate_threshold(), 31)
+            # self.CutStrings.register(self.generate_timing(), 35)
+            # self.CutStrings.register(self.generate_cft(), 36)
 
-        # -- SIGNAL --
-        self.CutStrings.register(self.generate_pedestal_bucket(), 29)
-        self.CutStrings.register(self.generate_pedestal_sigma(), 30)
-        # self.CutStrings.register(self.generate_threshold(), 31)
-        # self.CutStrings.register(self.generate_timing(), 35)
-        # self.CutStrings.register(self.generate_cft(), 36)
+            # -- FIDUCIAL --
+            self.CutStrings.register(self.generate_fiducial(), 23)
 
-        # -- FIDUCIAL --
-        self.CutStrings.register(self.generate_fiducial(), 23)
+            # --BUCKET --
+            if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
+                self.CutStrings.register(self.generate_bucket(), 91)
+                if not self.Run.is_volt_scan() or self.Ana.DUT.Bias < 10:
+                    self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+            else:
+                self.CutStrings.register(self.generate_trigger_phase(), 91)
 
-        # --BUCKET --
-        if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
-            self.CutStrings.register(self.generate_bucket(), 91)
-            if not self.Run.is_volt_scan() or self.Ana.DUT.Bias < 10:
-                self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
-        else:
-            self.CutStrings.register(self.generate_trigger_phase(), 91)
-
-        # --SIGNAL DROPS--
-        self.update('event range', self.generate_event_range(None, self.find_signal_drops()).Value)  # update event range if drop is found
+            # --SIGNAL DROPS--
+            self.update('event range', self.generate_event_range(None, self.find_signal_drops()).Value)  # update event range if drop is found
+        except Exception as err:
+            self.show_contributions(redo=True)
+            critical(err)
 
     def generate_saturated(self):
         cut_string = '!is_saturated[{ch}]'.format(ch=self.Channel)
