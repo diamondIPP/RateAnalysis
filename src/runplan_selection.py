@@ -8,22 +8,23 @@ from json import dump
 from re import split as splitname
 from ROOT import TMultiGraph
 from src.binning import Bins
-from src.pad_collection import AnalysisCollection, PadCollection
+from pad.collection import AnalysisCollection, PadCollection
 from src.run_selection import RunSelector
 from src.analysis import *
 from analyse import collection_selector
-from helpers.draw import format_statbox, get_graph_y, scale_graph, ax_range, markers
+from helpers.draw import get_graph_y, ax_range, markers
 from inspect import signature
 
 
 class DiaScans(Analysis):
     def __init__(self, selection_name=None, verbose=False):
-        Analysis.__init__(self, verbose=verbose, results_dir='Selections', sub_dir=selection_name if selection_name is not None else '')
+
+        self.Name = selection_name
+        Analysis.__init__(self, verbose=verbose, results_dir='selections', sub_dir=selection_name if selection_name is not None else '')
 
         self.print_start(run=selection_name, tc=False, prnt=verbose)
 
         # Main
-        self.Name = selection_name
         self.Selections = self.load_selections()
         self.Selection = self.load_selection(selection_name)
 
@@ -39,6 +40,9 @@ class DiaScans(Analysis):
         self.NPlans = len(self.Info) if self.Info else None
 
         self.print_finished(prnt=verbose)
+
+    def __str__(self):
+        return self.Name
 
     # ----------------------------------------
     # region INIT
@@ -118,23 +122,23 @@ class DiaScans(Analysis):
         pickle_path = pickle_info.path(sel) if pickle_info else ''
         if file_exists(pickle_path) and not redo:
             return do_pickle(pickle_path, do_nothing())
-        self.info('Did not find {}'.format(pickle_path), prnt=pickle_path)
-        ana = collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree)
-        if 'redo' in signature(f).parameters:
-            pf = partial(f, ana, redo=redo, *args, **kwargs)
-            return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
-        else:
-            pf = partial(f, ana, *args, **kwargs)
-            return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
+        self.info(f'Did not find {pickle_path}', prnt=pickle_path)
+        with collection_selector(sel.RunPlan, sel.DUTNr, sel.TCString, load_tree) as ana:
+            if 'redo' in signature(f).parameters:
+                pf = partial(f, ana, redo=redo, *args, **kwargs)
+                return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
+            else:
+                pf = partial(f, ana, *args, **kwargs)
+                return do_pickle(pickle_path, pf, redo=redo) if pickle_info else pf()
 
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
     def get_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', f'{avrg:d}'), redo=redo, avrg=avrg)
+        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
     def get_rate_dependcies(self, redo=False):
-        return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('Ph_fit', 'RD'), redo=redo)
+        return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('PHRD'), redo=redo)
 
     def print_rate_dependencies(self):
         for i, (s1, s2) in zip(self.Info, self.get_rate_dependcies()):
@@ -143,31 +147,28 @@ class DiaScans(Analysis):
             print('  Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
-        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('Ph_fit', 'PhVals', '10000_{}'.format(corr)), redo=redo, corr=corr)
+        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
 
     def get_pedestals(self, redo=False):
-        return self.get_values(PadCollection.get_pedestals, PickleInfo('Pedestal', 'Values'), redo=redo)
+        return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals'), redo=redo)
 
     def get_noise_spread(self, redo=False):
         noise = array(self.get_pedestals(redo), object)[:, 1]
         return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
 
-    def get_rel_errors(self, flux=105, redo=False):
-        return self.get_values(AnalysisCollection.get_repr_error, PickleInfo('Errors', 'Repr', flux), redo=redo, flux=flux)
-
     def get_mean_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
-        pickle_info = PickleInfo('Uniformity', '', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
+        pickle_info = PickleInfo('Uni', low, high, use_fcw)
         return self.get_values(AnalysisCollection.get_mean_uniformity, pickle_info, redo=redo, high_flux=high, low_flux=low)
 
     def get_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
-        pickle_info = PickleInfo('Uniformity', 'SMSTD', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
+        pickle_info = PickleInfo('Uniformity', 'UniSMSTD', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
         return self.get_values(AnalysisCollection.get_uniformities, pickle_info, redo=redo, high_flux=high, low_flux=low, use_fcw=use_fcw)
 
     def get_currents(self):
-        return self.get_values(AnalysisCollection.get_currents, PickleInfo('Currents', 'Vals'))
+        return self.get_values(AnalysisCollection.get_currents, PickleInfo('CurrentsVals'))
 
     def get_fluxes(self, avrg=False, redo=False):
-        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('Flux', 'Vals', suf='{}'.format(int(avrg)) if avrg else ''), avrg=avrg, redo=redo)
+        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -193,18 +194,18 @@ class DiaScans(Analysis):
         return '{}{}'.format(name, self.Name.title().replace('-', '').replace('_', ''))
 
     def get_signal_maps(self, fid=False, res=.2, square=True, scale=True, redo=False):
-        pickle_info = PickleInfo('Maps', 'SM', make_suffix(self, [fid, res, square, scale]))
+        pickle_info = PickleInfo('SM', make_suffix(self, [fid, res, square, scale]))
         return self.get_values(AnalysisCollection.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region SHOW
-    def show_selections(self):
+    def show_selections(self, dut=None):
         header = ['Name', 'Diamond', 'Campaigns']
         rows = []
         old_sel = deepcopy(self.Name)
-        for name in self.Selections.keys():
+        for name in [key for key in self.Selections if dut is None or dut.lower() in key.lower()]:
             self.set_selection_name(name)
             row = [name, self.load_dut_name(), ', '.join(str(tc) for tc in self.load_test_campaigns())]
             rows.append(row)
@@ -302,7 +303,7 @@ class DiaScans(Analysis):
     # region DRAWING
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('Ph_fit', 'MG', '10000_{}'.format(corr)), redo=redo, show=False)
+        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('PHMG', '10000_{}'.format(corr)), redo=redo, show=False)
         for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
             for g in mgi.GetListOfGraphs():
                 format_histo(g, color=self.Draw.get_color(self.NPlans, i), markersize=1.5, lw=2)
@@ -313,7 +314,7 @@ class DiaScans(Analysis):
             mg.Add(mgi)
         legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs], irr)
         y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
-        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, y.max().n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, max(y).n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
         self.Draw(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True)
 
     def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
@@ -346,27 +347,23 @@ class DiaScans(Analysis):
             Draw.tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, scale=1, avrg=False):
-        data = zip(self.get_pulse_heights(avrg=avrg), self.get_fluxes(avrg=avrg), Draw.get_colors(self.NPlans))
-        title_height = pad_height / 2 if Draw.Title else .03  # half of a pad for title
-        c_height = (self.NPlans + .5) * pad_height + title_height  # half of a pad for the x-axis
-        c_width = 1.3 * pad_height / .2  # keep aspect ratio for standard pad_height
+    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, avrg=False, **dkw):
+        title_height = pad_height / 2 if Draw.Title else .03        # half of a pad for title
+        c_height = (self.NPlans + .5) * pad_height + title_height   # half of a pad for the x-axis
+        c_width = 1.3 * pad_height / .2                             # keep aspect ratio for standard pad_height
         c = Draw.canvas(w=c_width, h=c_height, transp=True, logx=True, gridy=True)
         lm, rm, x0, size = .07, .02, .08, .22
         self.draw_title_pad(title_height, x0, lm, c_height)
         Draw.tpad('p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
         Draw.tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
-        c.cd()
 
-        for i, (ph, flux, color) in enumerate(data):
+        for i, g in enumerate(self.get_values(AnalysisCollection.draw_scaled_pulse_heights, PickleInfo('PHScaledGraph', avrg), avrg=avrg, show=False)):
             c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
-            p = Draw.tpad('p{i}'.format(i=i + 3), pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True)
-            g = Draw.make_tgrapherrors(flux, ph, title=' ', color=color, marker=markers(i), markersize=1.5)
-            scale_graph(g, val=scale) if scale else do_nothing()
-            format_histo(g, x_range=Bins.FluxRange, y_range=[1 - y_range, 1 + y_range], lab_size=size, ndivy=505, x_ticks=.15)
-            self.Draw(g, draw_opt='ap', canvas=p, logx=True, gridy=True)
-            self.draw_legend(i, g, irr, rm)
+            p = Draw.tpad(pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True, fix=True)
+            self.Draw(g, title=' ', **prep_kw(dkw, draw_opt='ap', canvas=p, logx=True, gridy=True, color=self.Draw.get_color(self.NPlans), marker=markers(i), markersize=1.5,
+                      y_range=[1 - y_range, 1 + y_range], lab_size=size, ndivy=504, x_ticks=.15, x_range=Bins.FluxRange))
+            self.draw_legend(i, g, irr, p)
             c.cd()
 
         Draw.tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
@@ -375,25 +372,8 @@ class DiaScans(Analysis):
 
     def draw_scaled_distribution(self, excluded=None):
         values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights()) if i not in make_list(excluded)]))
-        format_statbox(all_stat=1)
         self.Draw.distribution(values, [40, .9, 1.1], 'Scaled Pulse Height Distribution', x_tit='Scaled Pulse Height')
         return values
-
-    def make_plots(self, name, f, irr_pad=None, canvas=None, **kwargs):
-        for sel in self.Info:
-            self.info('Creating {} Plots for {}'.format(name, sel.TCString))
-            self.get_rp_values(sel, f, **kwargs)
-            Draw.irradiation(make_irr_string(sel.Irradiation), irr_pad, left=False) if irr_pad is not None else do_nothing()
-            self.Draw.save_plots('{}{}_{}_{}'.format(name, sel.TCString, sel.RunPlan, sel.DUTNr), canvas=get_object(canvas))
-
-    def make_pulse_height_plots(self, y_range=None):
-        self.make_plots('PH', AnalysisCollection.draw_pulse_heights, show=False, y_range=y_range, irr_pad=get_object('p1'))
-
-    def make_current_plots(self, c_range=None):
-        self.make_plots('Currents', AnalysisCollection.draw_currents, show=False, c_range=c_range, draw_opt='al')
-
-    def make_current_flux_plots(self, c_range=None):
-        self.make_plots('CF', AnalysisCollection.draw_currents, show=False, c_range=c_range, draw_opt='al', with_flux=True, canvas='cc')
 
     def draw_currents(self, align=False, show=True):
         mg = TMultiGraph('mgc', 'Leakage Current vs. Flux')
@@ -418,19 +398,12 @@ class DiaScans(Analysis):
         if any(['rand' in word for word in self.get_run_types()]):
             for i, sel in enumerate(self.Info):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
-        return tits
+        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else make_bias_str(bias)) for t, bias in zip(tits, self.get_bias_voltages())]
 
-    def draw_legend(self, ind, gr, irr, rm):
-        add_bias = len(set(self.get_bias_voltages())) > 1
+    def draw_legend(self, i, gr, irr, c):
         tits = self.get_titles(irr)
-        biases = [make_bias_str(bias) for bias in self.get_bias_voltages()] if add_bias else [''] * len(tits)
-        x1 = 1 - max([(12 if irr else len(tit)) + len(bias) for tit, bias in zip(tits, biases)]) * .022
-        legend = Draw.make_legend(x1, 1, x2=1 - rm, nentries=1.2, scale=5)
-        legend.AddEntry(gr, tits[ind], 'pe')
-        if add_bias:
-            legend.SetNColumns(2)
-            legend.AddEntry('', biases[ind], '')
-        legend.Draw()
+        w = max([sum(len(t) for t in tit) for tit in tits]) * (.011 if irr else .022)
+        Draw.legend([gr] + ([] if len(tits[i]) == 1 else ['']), tits[i], ['pe', ''], w=w, ts=.22, d=0, nentries=1.2, scale=5, c=c, cols=len(tits[i]))
 
     def set_bin_labels(self, h):
         for i, sel in enumerate(self.Info):
@@ -471,7 +444,7 @@ class DiaScans(Analysis):
     def draw_peak_flux(self, show=True):
         leg = Draw.make_legend(x2=.45, w=.3)
         mg = TMultiGraph('mgph', 'Peak Flux vs. FAST-OR Flux')
-        values_list = self.get_values(AnalysisCollection.get_peak_flux, PickleInfo('Peaks', 'Flux'))
+        values_list = self.get_values(PadCollection.get_peak_fluxes, PickleInfo('PeakFlux'))
         flux_list = self.get_fluxes()
         for sel, values, fluxes in zip(self.Info, values_list, flux_list):
             g = Draw.make_tgrapherrors('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
@@ -488,7 +461,7 @@ class DiaScans(Analysis):
     # ----------------------------------------
     # region PULSER
     def get_pulser_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('Pulser', 'PH', f'{avrg:d}'), redo=redo, avrg=avrg)
+        return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('PulserPH', f'{avrg:d}'), redo=redo, avrg=avrg)
 
     def get_pulser_stability(self):
         """ returns: relative standard deviation of the pulser """
@@ -506,7 +479,7 @@ class DiaScans(Analysis):
     # ----------------------------------------
 
     def draw_bucket_ratios(self, avrg=False, redo=False, **kwargs):
-        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('Bucket', 'Ratio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
+        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
         mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **AnalysisCollection.get_x_args(draw=True), wleg=.3)
         format_histo(mg, **prep_kw(kwargs, **AnalysisCollection.get_x_args()))
 
@@ -537,10 +510,10 @@ class SelectionInfo:
 
 
 class PickleInfo:
-    def __init__(self, sub_dir=None, name=None, suf=None):
-        self.SubDir = sub_dir
+    def __init__(self, name=None, *suf):
+        self.SubDir = 'selections'
         self.Name = name if name else None
-        self.Suffix = None if suf is None else str(suf)
+        self.Suffix = '_'.join(str(int(i) if type(i) is bool else i) for i in suf) if suf else None
 
     def __call__(self, *args, **kwargs):
         return self.SubDir is not None
@@ -559,13 +532,15 @@ if __name__ == '__main__':
     aparser.add_argument('-p', action='store_true', help='print analysis strings')
     aparser.add_argument('-r', action='store_true', help='redo')
     aparser.add_argument('-s', action='store_true', help='activate show single selection')
-    aparser.add_argument('-sa', action='store_true', help='active show all selections')
+    aparser.add_argument('-la', action='store_true', help='active show all selections')
+    aparser.add_argument('-ls', default=None, help='active show all selections for given DUT')
     pargs = aparser.parse_args()
 
-    z = DiaScans(pargs.sel, pargs.verbose)
+    z = DiaScans(pargs.sel, pargs.verbose and not (pargs.ls or pargs.la))
     if pargs.p:
         print(z.get_all_ana_strings(pargs.d, pargs.tc, pargs.r))
     if pargs.s:
         z.show_selection()
-    if pargs.sa:
-        z.show_selections()
+    if pargs.ls or pargs.la:
+        z.show_selections(pargs.ls)
+        critical('finish')
