@@ -2,7 +2,8 @@ from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
 from os.path import getsize
-from os import getcwd
+from os import getcwd, chdir
+from subprocess import check_call
 
 
 class Analysis(object):
@@ -202,7 +203,16 @@ class Analysis(object):
             leg.AddEntry(f, str(p), 'l')
         leg.Draw()
 
+    @staticmethod
+    def go2data(tc, pad=True):
+        chdir(join(Analysis.DataDir, f'psi_{tc[:4]}_{tc[4:]}', 'root', 'pads' if pad else 'pixel'))
+        check_call('/bin/bash')
+
 
 if __name__ == '__main__':
-    pargs = init_argparser(has_verbose=True)
-    z = Analysis(pargs.testcampaign, verbose=pargs.verbose)
+    aparser = ArgumentParser()
+    aparser.add_argument('tc')
+    aparser.add_argument('pix', action='store_true')
+    pargs = aparser.parse_args()
+
+    Analysis.go2data(pargs.tc, not pargs.pix)

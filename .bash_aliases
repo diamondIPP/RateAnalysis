@@ -9,5 +9,7 @@ alias ShowSelection='python $RATEDIR/src/runplan_selection.py -s -v'
 alias ShowSelections='python $RATEDIR/src/runplan_selection.py -sa -v'
 alias RunSelection='ipython -i $RATEDIR/src/run_selection.py -- $@'
 alias DiaSelection='ipython -i $RATEDIR/src/runplan_selection.py -- $@'
+alias go2tc='python3 $RATEDIR/src/analysis.py '
+
 source $RATEDIR/../root6/rootinstall/bin/thisroot.sh
 source $RATEDIR/venv/bin/activate
