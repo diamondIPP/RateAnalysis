@@ -200,7 +200,7 @@ class AnalysisCollection(Analysis):
     def get_values(self, what, f, runs=None, pbar=True, avrg=False, picklepath=None, flux_sort=False, plots=False, **kwargs):
         runs = choose(runs, self.Runs)
         redo = 'redo' in kwargs and kwargs['redo'] or '_redo' in kwargs and kwargs['_redo']
-        if picklepath is not None and all(file_exists(picklepath.format(run)) for run in runs) and not redo:
+        if picklepath is not None and all([file_exists(picklepath.format(run)) for run in runs]) and not redo:
             values = [load_pickle(picklepath.format(run)) for run in runs]
         else:
             self.info(f'Generating {what} ...', prnt=pbar)
@@ -375,7 +375,7 @@ class AnalysisCollection(Analysis):
         """ scale the ph to the mean of the pulse heights in the 'min flux range' """
         f, (fmin, fmax) = self.get_fluxes(avrg=avrg), self.MainConfig.get_list('MAIN', 'min flux range')
         x0 = x[where((f >= fmin) & (f <= fmax))]
-        return x / mean_sigma(x0, err=False)[0]  # no error to keep correct errors of single measurements
+        return x / mean(x0).n  # no error to keep correct errors of single measurements
 
     def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False):
         x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
