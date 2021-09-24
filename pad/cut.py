@@ -63,15 +63,16 @@ class PadCut(Cut):
             self.CutStrings.register(self.generate_pulser(), 2)
             self.CutStrings.register(self.generate_saturated(), level=3)
 
+            # -- FIDUCIAL --
+            self.CutStrings.register(self.generate_fiducial(), 23)
+
             # -- SIGNAL --
             self.CutStrings.register(self.generate_pedestal_bucket(), 29)
+            self.show()
             self.CutStrings.register(self.generate_pedestal_sigma(), 30)
             # self.CutStrings.register(self.generate_threshold(), 31)
             # self.CutStrings.register(self.generate_timing(), 35)
             # self.CutStrings.register(self.generate_cft(), 36)
-
-            # -- FIDUCIAL --
-            self.CutStrings.register(self.generate_fiducial(), 23)
 
             # --BUCKET --
             if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
@@ -203,7 +204,7 @@ class PadCut(Cut):
     @save_pickle('Pedestal', print_dur=True)
     def calc_pedestal_(self, _redo=False):
         x = self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self())
-        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=False)
+        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=1)
         return fit_fwhm(h0, show=False).get_pars(err=False)[1:]
 
     def calc_pedestal(self, n_sigma, redo=False):
