@@ -149,15 +149,15 @@ class PedestalAnalysis(PadSubAnalysis):
         y_range = ax_range(y, 0, .2, .2)
         return self.Draw.histo_2d(x, y, self.Bins.get_time() + self.get_bins(.5), 'Pedestal vs. Time', y_tit='Pedestal [mV]', pal=53, show=show, y_range=y_range, **self.get_t_args(rel_t))
 
-    @save_pickle('Trend', suf_args='[0, 1, 2]')
-    def get_trend(self, signal_name=None, bin_size=None, sigma=False, _redo=False):
-        (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut()), self.Bins.get_time(bin_size)[-1]
+    @save_pickle('Trend', suf_args='all')
+    def get_trend(self, signal_name=None, bin_size=None, sigma=False, cut=None, _redo=False):
+        (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut(cut)), self.Bins.get_time(bin_size)[-1]
         x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
         name = 'Sigma' if sigma else 'Pedestal'
         return self.Draw.graph(x, y, title=f'{name} Trend', y_tit=f'{name} [mV]', show=False)
 
-    def draw_trend(self, signal_name=None, bin_size=None, sigma=False, fit=False, rel_t=False, redo=False, **kwargs):
-        g = self.get_trend(signal_name, bin_size, sigma, _redo=redo)
+    def draw_trend(self, signal_name=None, bin_size=None, sigma=False, fit=False, rel_t=False, cut=None, redo=False, **kwargs):
+        g = self.get_trend(signal_name, bin_size, sigma, cut, _redo=redo)
         g.Fit('pol0', f'qs{"" if fit else "0"}')
         return self.Draw.graph(g, **self.get_t_args(rel_t), **kwargs, stats=set_statbox(fit=fit, form='.2f'), file_name=f'Pedestal{"Sigma" if sigma else ""}Trend')
 
