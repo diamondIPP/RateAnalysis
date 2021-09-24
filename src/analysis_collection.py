@@ -220,14 +220,14 @@ class AnalysisCollection(Analysis):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
 
     @save_pickle('Splits', sub_dir='Flux')
-    def get_flux_splits(self, corr=True, _redo=False):
-        return self.draw_flux_splits(corr, show=False)
+    def get_flux_splits(self, corr=True, width=.1, _redo=False):
+        return self.draw_flux_splits(corr, width, show=False)
 
-    def draw_flux_splits(self, corr=True, **kwargs):
+    def draw_flux_splits(self, corr=True, width=.1, **kwargs):
         x = sort([flux.n for flux in self.get_fluxes(corr=corr)])
         stats = set_statbox(entries=True, w=.2)
         h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True), filename='FluxSplits', stats=stats))
-        split_bins = histogram(x, self.find_flux_binning(h))[0]
+        split_bins = histogram(x, self.find_flux_binning(h, width))[0]
         return cumsum(split_bins[where(split_bins > 0)])[:-1]
 
     def find_flux_binning(self, h, width=.1):
@@ -289,14 +289,14 @@ class AnalysisCollection(Analysis):
     def get_efficiencies(self, suf='3', redo=False):
         return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.make_simple_pickle_path(suf=suf, sub_dir='Efficiency', run='{}'), redo=redo)
 
-    def get_rate_dependence(self, redo=False, values=None):
-        values = choose(values, self.get_pulse_heights(redo=redo, pbar=False))
+    def get_rate_dependence(self, redo=False, values=None, avrg=False):
+        values = choose(values, self.get_pulse_heights(redo=redo, pbar=False, avrg=avrg))
         return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
 
-    def print_rate_dependence(self, values=None):
-        s1, s2 = self.get_rate_dependence(values=values)
-        print('Rel STD:    {:2.1f}'.format(s1.n * 100))
-        print('Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
+    def print_rate_dependence(self, values=None, avrg=False, latex=False):
+        s1, s2 = array(self.get_rate_dependence(values=values, avrg=avrg)) * 100
+        print('Rel STD:   ' + f'\\SI{{{s1.n:3.1f}}}{{\\percent}}' if latex else f'{s1.n:3.1f}')
+        print(f'Rel Spread: {s2:3.1f}')
 
     def get_runs_below_flux(self, flux):
         return self.Runs[self.get_fluxes() <= flux]
