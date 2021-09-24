@@ -68,7 +68,6 @@ class PadCut(Cut):
 
             # -- SIGNAL --
             self.CutStrings.register(self.generate_pedestal_bucket(), 29)
-            self.show()
             self.CutStrings.register(self.generate_pedestal_sigma(), 30)
             # self.CutStrings.register(self.generate_threshold(), 31)
             # self.CutStrings.register(self.generate_timing(), 35)
