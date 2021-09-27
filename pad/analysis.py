@@ -529,8 +529,9 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region SNR
     @update_pbar
-    def calc_snr(self, region=None, peak_int=None, redo=False):
-        return self.get_pulse_height(sig=self.get_signal_name(region=region, peak_int=peak_int), redo=redo) / self.Pedestal.get_noise(self.Pedestal.get_signal_name(peak_int=peak_int), redo=redo)
+    @save_pickle('SNR', sub_dir='PH', suf_args='all')
+    def calc_snr(self, region=None, peak_int=None, _redo=False):
+        return self.get_pulse_height(sig=self.get_signal_name(region=region, peak_int=peak_int), redo=_redo) / self.Pedestal.get_noise(self.Pedestal.get_signal_name(peak_int=peak_int), redo=_redo)
 
     def get_snrs(self, region=None, redo=False):
         peak_ints = self.Run.PeakIntegrals[self.DUT.Number - 1]

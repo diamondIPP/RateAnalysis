@@ -81,6 +81,12 @@ class PadCollection(AnalysisCollection):
 
     def get_pulser_pulse_heights(self, avrg=False, redo=False):
         return self.Pulser.get_pulse_heights(avrg=avrg, redo=redo)
+
+    def get_snrs(self, avrg=False):
+        return self.get_values('SNRs', self.Analysis.calc_snr, picklepath=self.get_pickle_path('SNR', sub_dir='PH'), avrg=avrg)
+
+    def get_snr(self):
+        return mean_sigma(self.get_snrs(avrg=False))
     # endregion GET
     # ----------------------------------------
 
@@ -117,9 +123,9 @@ class PadCollection(AnalysisCollection):
         x = self.get_pedestals(sigma=True, redo=redo)
         return self.Draw.distribution([(v - mean(x)).n for v in x], Bins.make(-.3, .3, n=20), 'Relative Noise Spread', file_name='NoiseSpread', x_tit='Relative Noise', show=show)
 
-    def draw_snrs(self, vs_time=False, show=True):
-        x, y = self.get_x_var(vs_time), self.get_values('', self.Analysis.calc_snr, pbar=False)
-        self.Draw.graph(x, y, title='Signal to Noise Rations', y_tit='SNR', **self.get_x_args(vs_time), show=show, y_range=ax_range(y, rnd=True), logx=not vs_time)
+    def draw_snrs(self, vs_time=False, avrg=False, **dkw):
+        x, y = self.get_x_var(vs_time, avrg=avrg), self.get_snrs(avrg=avrg)
+        self.Draw.graph(x, y, **prep_kw(dkw, title='Signal to Noise Ratios', y_tit='SNR', **self.get_x_args(vs_time), y_range=ax_range(y, rnd=True), logx=not vs_time, file_name='SNRs'))
 
     def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.055, cft=False, show=True, redo=False):
         """draws the pulse height ratio of two runs vs the peak time. """
