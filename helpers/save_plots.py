@@ -134,6 +134,9 @@ class SaveDraw(Draw):
         self.save_on_server(canvas, file_name, save=full_path is None, prnt=prnt)
         Draw.set_show(True)
 
+    def print_http(self, file_name, prnt=True, force_print=False):
+        info(join('https://diamond.ethz.ch', 'psi2', Path(self.ServerDir, file_name).relative_to(self.ServerMountDir)), prnt=force_print or prnt and self.Verbose and not Draw.Show)
+
     def save_on_server(self, canvas, file_name, save=True, prnt=True):
         if self.ServerDir is not None and save:
             self.open_file()
@@ -146,7 +149,7 @@ class SaveDraw(Draw):
             canvas.Write(file_name)
             SaveDraw.File.Write()
             SaveDraw.Dummy.cd()
-            info(join('https://diamond.ethz.ch', 'psi2', p.relative_to(Path(self.ServerMountDir))), prnt=prnt and self.Verbose and not Draw.Show)
+            self.print_http(p.name, prnt)
             self.create_overview(redo=False)
 
     @staticmethod
