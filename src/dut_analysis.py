@@ -107,6 +107,7 @@ class DUTAnalysis(Analysis):
         self.Currents.draw(show=False, fname='Current')
         self.draw_flux(save=self.has_branch('rate'), show=False)
         self.draw_pulse_height(show=False)
+        self.Draw.print_http('plots.html', force_print=True)
 
     def save_tree(self, cut=None):
         f = TFile('test.root', 'RECREATE')
