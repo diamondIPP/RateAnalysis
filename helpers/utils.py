@@ -221,7 +221,7 @@ def make_latex_table(header, rows, hlines=False):
 
 def si(v, f='.1f', unit=None):
     unit = '' if unit is None else f'\\{unit}'
-    return f'\\SI{{{v:{f}}}}{{{unit}}}'
+    return f'\\SI{{{v:{f}}}}{{{unit}}}'.replace('/', '')
 
 
 def make_dia_str(dia):

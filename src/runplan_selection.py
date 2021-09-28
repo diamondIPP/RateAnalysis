@@ -140,6 +140,11 @@ class DiaScans(Analysis):
     def get_rate_dependencies(self, redo=False):
         return array(self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('PHRD'), redo=redo))
 
+    def print_mean_rd(self, latex=False):
+        s, r = [mean_sigma(i)[0] * 100 for i in self.get_rate_dependencies().T]
+        info(f'Mean rel STD:    {si(s, unit="percent") if latex else f"{s:.1f} %"}')
+        info(f'Mean rel Spread: {si(r, unit="percent") if latex else f"{r:.1f} %"}')
+
     def print_rate_dependencies(self):
         for i, (s1, s2) in zip(self.Info, self.get_rate_dependencies() * 100):
             print(i)
@@ -149,7 +154,7 @@ class DiaScans(Analysis):
     def print_rd_table(self):
         data = 100 * self.get_rate_dependencies().reshape((self.NPlans // 2, 4))
         rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [si(r, '.1f') for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
-        print(make_latex_table([], rows).replace('/', ''))
+        print(make_latex_table([], rows))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
