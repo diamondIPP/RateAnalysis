@@ -148,7 +148,7 @@ class DiaScans(Analysis):
 
     def print_rd_table(self):
         data = 100 * self.get_rate_dependencies().reshape((self.NPlans // 2, 4))
-        rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [f'\\SI{{{r:.1f}}}{{}}' for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
+        rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [si(r, '.1f') for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
         print(make_latex_table([], rows).replace('/', ''))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):

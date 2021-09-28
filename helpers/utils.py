@@ -219,6 +219,11 @@ def make_latex_table(header, rows, hlines=False):
     return f'{make_latex_table_row(header, hline=True)}\n{rows}'
 
 
+def si(v, f='.1f', unit=None):
+    unit = '' if unit is None else f'\\{unit}'
+    return f'\\SI{{{v:{f}}}}{{{unit}}}'
+
+
 def make_dia_str(dia):
     dia = dia.replace('-', '')
     return '{0}{1}'.format(dia[0].title(), dia[1:])
