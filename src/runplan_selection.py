@@ -137,14 +137,19 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
-    def get_rate_dependcies(self, redo=False):
-        return self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('PHRD'), redo=redo)
+    def get_rate_dependencies(self, redo=False):
+        return array(self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('PHRD'), redo=redo))
 
     def print_rate_dependencies(self):
-        for i, (s1, s2) in zip(self.Info, self.get_rate_dependcies()):
+        for i, (s1, s2) in zip(self.Info, self.get_rate_dependencies() * 100):
             print(i)
-            print('  Rel STD:    {:2.1f}'.format(s1.n * 100))
-            print('  Rel Spread: {:2.1f} \\pm {:0.1f}'.format(s2.n * 100, s2.s * 100))
+            print(f'  Rel STD:    {s1.n:.1f} %')
+            print(f'  Rel Spread: {s2:.1f} %')
+
+    def print_rd_table(self):
+        data = 100 * self.get_rate_dependencies().reshape((self.NPlans // 2, 4))
+        rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [f'\\SI{{{r:.1f}}}{{}}' for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
+        print(make_latex_table([], rows))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
@@ -500,7 +505,7 @@ class SelectionInfo:
         self.PulserType = sel.PulserType
 
     def __str__(self):
-        return 'Selection instance: {} {} {}'.format(self.TCString, self.RunPlan, self.DUTName)
+        return f'Selection instance: {self.TCString:<8} {self.RunPlan:<4} {self.DUTName}, {make_bias_str(self.Bias)}'
 
     def __repr__(self):
         return self.__str__()
