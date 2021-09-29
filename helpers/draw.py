@@ -525,8 +525,7 @@ class Draw(object):
             th = x
         else:
             x, y = array(x, dtype='d'), array(y, dtype='d')
-            dflt_bins = make_bins(min(x), max(x), sqrt(x.size)) + make_bins(min(y), max(y), sqrt(x.size)) if binning is None else None
-            th = TH2F(Draw.get_name('h2'), title, *choose(binning, dflt_bins))
+            th = TH2F(Draw.get_name('h2'), title, *find_bins(x) + find_bins(y) if binning is None else binning)
             fill_hist(th, x, y)
         th = self.rotate_2d(th, rot)
         th = self.flip_2d(th, mirror)

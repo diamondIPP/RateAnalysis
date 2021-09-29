@@ -43,17 +43,20 @@ class SaveDraw(Draw):
 
     # ----------------------------------------
     # region SET
-    def open_file(self):
-        if SaveDraw.File is None:
-            info('opening ROOT file on server ...')
+    def open_file(self, *exclude, prnt=False):
+        if SaveDraw.File is None or exclude:
+            info('opening ROOT file on server ...', prnt=prnt)
             f = TFile(join(self.ServerDir, 'plots.root'), 'UPDATE')
             data = {key.GetName(): f.Get(key.GetName()) for key in f.GetListOfKeys()}
             f = TFile(join(self.ServerDir, 'plots.root'), 'RECREATE')
             for key, c in data.items():
-                if c:
+                if c and key not in exclude:
                     c.Write(key)
             f.Write()
             SaveDraw.File = f
+
+    def remove_plots(self, *exclude):
+        self.open_file(*exclude, prnt=False)
 
     def create_overview(self, x=4, y=3, redo=True):
         if self.ServerDir is not None:
