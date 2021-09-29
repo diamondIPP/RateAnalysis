@@ -27,8 +27,8 @@ class PeakAnalysis(PadSubAnalysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
         self.WF = self.Ana.Waveform
         if self.WF.Exists:
-            # self.NoiseThreshold = self.calc_noise_threshold()
-            self.NoiseThreshold = 50
+            self.IsDigital = 'digital' in self.DUT.Name
+            self.NoiseThreshold = self.calc_noise_threshold()
             self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
             self.BinWidth = self.DigitiserBinWidth
             self.BunchSpacing = self.Ana.BunchSpacing
@@ -42,7 +42,7 @@ class PeakAnalysis(PadSubAnalysis):
     # region INIT
     def calc_noise_threshold(self):
         """ return peak threshold, 5 times the raw noise + mean of the noise. """
-        return abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
+        return 50 if self.IsDigital else abs(self.Ana.Pedestal.get_raw_mean() + 5 * self.Ana.Pedestal.get_raw_noise()).n
 
     def get_bunch_centre(self, b=None):
         return self.Ana.Timing.get_raw().n + (choose(b, 1) - 1) * self.BunchSpacing
