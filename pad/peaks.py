@@ -219,8 +219,8 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_cfts(self, n, excl=0, cut=None):
         return self.get_bunch_values(n, None, excl, cut, 2, fit=True, pars=True)
 
-    def get_bunch_tot(self, n, excl=0, cut=None, fit=True, thresh=.75, redo=False):
-        values = self.find_all_tot(thresh, fit, _redo=redo)[self.get_full_bunch_cut(n, cut=cut)]
+    def get_bunch_tot(self, n, excl=0, cut=None, fit=True, thresh=.75, redo=False, toa=False):
+        values = (self.find_all_toa if toa else self.find_all_tot)(thresh, fit, _redo=redo)[self.get_full_bunch_cut(n, cut=cut)]
         return values[int(excl * values.size):]
 
     def get_spacings(self, n, cut=None, ecut=True):
@@ -442,6 +442,18 @@ class PeakAnalysis(PadSubAnalysis):
         x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo, cut=cut)
         tit = f'Time Over {thresh}{"% Peak Height" if thresh < 1 else " mV"}'
         self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToT [ns]', file_name=f'ToT{thresh}{"All" if cut is None else ""}'))
+
+    def draw_toa(self, n=1, fit=True, thresh=.5, cut=None, redo=False, **dkw):
+        x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo, cut=cut, toa=True)
+        tit = f'Time of Arrival at {thresh}{"% Peak Height" if thresh < 1 else " mV"}'
+        self.Draw.distribution(x[x != -999], **prep_kw(dkw, title=tit, x_tit='ToA [ns]', file_name=f'ToA{thresh}{"All" if cut is None else ""}', lf=1, rf=1))
+
+    def draw_tot_vs_toa(self, n=1, fit=True, t0=.75, t1=.5, cut=None, redo=False, **dkw):
+        x, y = [self.get_bunch_tot(n, fit=fit, thresh=t, redo=redo, cut=cut, toa=not i) for i, t in enumerate([t0, t1])]
+        tit = 'Time over Threshold vs Time of Arrival'
+        bins = find_bins(x, .5, .5) + find_bins(y, 1, 1, .001)
+        self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='ToA [ns]', y_tit='ToT [ns]', file_name=f'ToT{t0}-ToA{t1}{"All" if cut is None else ""}'))
+
     # endregion DRAW
     # ----------------------------------------
 
@@ -527,8 +539,22 @@ class PeakAnalysis(PadSubAnalysis):
             return array(data).astype('d')
         return do_hdf5(self.make_simple_hdf5_path('Pars', fit), f, redo)
 
+    @staticmethod
+    def find_tot(x, y, thresh):
+        c = where(y > thresh)[0]
+        if not c.size or c.size > 1 and any(diff(c) != 1):
+            return -999
+        i, j = c[0], c[-1]
+        return (x[-1] if j == x.size - 1 else get_x(x[j], x[j + 1], y[j], y[j + 1], thresh)) - (x[0] if i == 0 else get_x(x[i], x[i - 1], y[i], y[i - 1], thresh))
+
+    @staticmethod
+    def find_toa(x, y, thresh=.5):
+        """ :returns: time of arrival: time after signal crossed the threshold [thresh]. """
+        i = (y > thresh).argmax()
+        return get_x(x[i - 1], x[i], y[i - 1], y[i], thresh) if i else -999
+
     @reload_tree
-    def _find_all_tot(self, i0, i1, thresh, fit=True):
+    def _find_all_tot(self, i0, i1, thresh, fit=True, toa=False):
         t, h, n = self.get_all(cut=..., fit=fit)
         peak_info, tc = split(column_stack([t, h]), cumsum(n)[:-1])[i0:i1], self.WF.get_trigger_cells()[i0:i1]
         wf, tcal, n = array(self.WF.get_all())[i0:i1], self.WF.get_all_cal_times(), n[i0:i1]
@@ -540,16 +566,23 @@ class PeakAnalysis(PadSubAnalysis):
             v, t = wf[i], tcal[tc[i]]
             for pt, ph in peak_info[i]:
                 cut = (t > pt - lw) & (t < pt + rw)  # select only region around the peak
-                data.append(self.find_tot(t[cut], v[cut], thresh if abs_thresh else ph * thresh))
+                data.append((self.find_toa if toa else self.find_tot)(t[cut], v[cut], thresh if abs_thresh else ph * thresh))
                 pbar.update() if pbar is not None else do_nothing()
         return data
 
     @save_hdf5('ToT', suf_args='all')
     def find_all_tot(self, thresh=.75, fit=True, _redo=False):
-        self.find_all(fit=fit, redo=_redo)  # to guarantee that peaks are there!
+        self.find_all(fit=fit)  # to guarantee that peaks are there!
         with Pool() as pool:
             self.info('calculating time over threshold ...')
             return concatenate(pool.starmap(self._find_all_tot, [(i, j, thresh, fit) for i, j in self.split_indices]))
+
+    @save_hdf5('ToA', suf_args='all')
+    def find_all_toa(self, thresh=.5, fit=True, _redo=False):
+        self.find_all(fit=fit)  # to guarantee that peaks are there!
+        with Pool() as pool:
+            self.info('calculating time of arrival ...')
+            return concatenate(pool.starmap(self._find_all_tot, [(i, j, thresh, fit, True) for i, j in self.split_indices]))
 
     @staticmethod
     def find_width(values, times, pt, ph, i):
@@ -567,14 +600,6 @@ class PeakAnalysis(PadSubAnalysis):
         j = where(v < 0)[0]
         j = j[-1] if j.size else None
         return -999 if j is None or j >= 3 * delay - 1 or j == t.size - 1 else get_x(t[j], t[j + 1], v[j], v[j + 1], 0)  # interpolate the zero crossing
-
-    @staticmethod
-    def find_tot(x, y, thresh):
-        c = where(y > thresh)[0]
-        if not c.size:
-            return -999
-        i, j = c[0], c[-1]
-        return (x[-1] if j == x.size - 1 else get_x(x[j], x[j + 1], y[j], y[j + 1], thresh)) - (x[0] if i == 0 else get_x(x[i], x[i - 1], y[i], y[i - 1], thresh))
 
     def find_particle_pos(self, h=None, off=0, bin_size=.1):
         h = self.draw_overlayed_times(bin_size, off, show=False) if h is None else h
@@ -599,9 +624,9 @@ class PeakAnalysis(PadSubAnalysis):
         x = sort((x[1:] - x[0]) % s)
         f = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(None, p, s)) ** 2), *r)
         y0, p0 = f.GetMinimum(), f.GetMinimumX()
-        ey = sum(i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2).s
+        e: Variable = sum([i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2])
         e_sys = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(self.PathLength + e_pl, p, s)) ** 2), *r).GetMinimumX()
-        return p0, abs(f.GetX(y0 + ey) - p0), abs(e_sys - p0)
+        return p0, abs(f.GetX(y0 + e.s) - p0), abs(e_sys - p0)
     # endregion FIND
     # ----------------------------------------
 
