@@ -1,4 +1,3 @@
-from glob import glob
 from os import getcwd, chdir, rename
 from os.path import expanduser, basename
 from re import sub
