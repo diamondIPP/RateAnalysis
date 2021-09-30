@@ -132,17 +132,16 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region WAVEFORMS
-    def draw(self, n=1, cut=None, t_corr=True, channel=None, show=True, x_range=None, y_range=None, grid=False, x=None, raw=False):
+    def draw(self, n=1, cut=None, t_corr=True, channel=None, y0=None, raw=False, **dkw):
         """ Draws a stack of n waveforms. """
         start_count = deepcopy(self.Count)
         title = '{n}{tc} Waveform{p}'.format(n=n, tc=' Time Corrected' if t_corr else '', p='s' if n > 1 else '')
-        values, times = self.get_tree_values(n, cut, t_corr, channel, raw)
-        values = choose(x, values)
-        h = self.Draw.histo_2d(times, values, [1024, 0, 512, 2048, -512, 512], title, show=False)
-        y_range = ax_range(min(values), max(values), .1, .2) if y_range is None else y_range
-        h = Draw.make_tgrapherrors(times, values, title=title) if n == 1 else h
-        format_histo(h, x_tit='Time [ns]', y_tit='Signal [mV]', y_off=.5, stats=0, tit_size=.07, lab_size=.06, y_range=y_range, markersize=.5, x_range=x_range)
-        self.Draw(h, 'WaveForms{n}'.format(n=n), show, draw_opt='col' if n > 1 else 'apl', lm=.073, rm=.045, bm=.18, w=1.5, h=.5, gridy=grid, gridx=grid)
+        y, times = self.get_tree_values(n, cut, t_corr, channel, raw)
+        y = choose(y0, y)
+        h = self.Draw.histo_2d(times, y, [1024, 0, 512, 2048, -512, 512], title, show=False)
+        h = Draw.make_tgrapherrors(times, y, title=title) if n == 1 else h
+        self.Draw(h, f'WaveForms{n}', x_tit='Time [ns]', y_tit='Signal [mV]', **prep_kw(dkw, y_range=ax_range(y, 0, .1, .2), draw_opt='col' if n > 1 else 'apl', **Draw.mode(3), gridy=True,
+                                                                                        **Draw.mode(3), stats=0, markersize=.5))
         return h, self.Count - start_count
 
     def draw_all(self, signal_corr=False, raw=False, n=None, x_range=None, y_range=None, cut=None, **dkw):
@@ -152,12 +151,12 @@ class Waveform(PadSubAnalysis):
         h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **prep_kw(dkw, **Draw.mode(3), x_range=rx, y_range=ry, stats=False, grid=True, logz=True, draw_opt='col', file_name='WaveForms100k'))
         return h, n
 
-    def draw_single(self, cut=None, ind=None, x_range=None, y_range=None, t_corr=True, grid=True, raw=False, show=True, show_noise=False, draw_opt='ap'):
+    def draw_single(self, cut=None, ind=None, t_corr=True, raw=False, show_noise=False, **dkw):
         if ind is None:
-            g, n = self.draw(n=1, cut=cut, t_corr=t_corr, show=show, grid=grid, x_range=x_range, y_range=y_range)
+            g, n = self.draw(n=1, cut=cut, t_corr=t_corr, **dkw)
         else:
-            x, y = arange(self.NSamples) if raw else self.get_calibrated_times(self.get_trigger_cell(ind)), self.get(ind)
-            g = self.Draw.graph(x, y, 'Single Waveform', **Draw.mode(3), grid=grid, gridy=True, draw_opt=draw_opt, show=show, file_name='WFSingle')
+            x, y = arange(self.NSamples) if raw else self.get_calibrated_times(self.get_trigger_cell(ind)), self[ind]
+            g = self.Draw.graph(x, y, 'Single Waveform', **prep_kw(dkw, **Draw.mode(3), grid=True, draw_opt='ap', file_name='WFSingle'))
         if show_noise:
             self.__draw_noise()
         return g
