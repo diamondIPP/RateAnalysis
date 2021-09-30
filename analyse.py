@@ -16,7 +16,7 @@ def analysis_selector(run, dut, tc, tree, verbose=False, prnt=True):
         return PadAnalysis(int(run), dut, tc, tree, verbose, prnt)
     elif dummy.get_type() == 'pixel':
         from pixel.analysis import PixAnalysis
-        return PixAnalysis(int(run), dut, tc, tree, verbose)
+        return PixAnalysis(int(run), dut, tc, tree, verbose, prnt)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
@@ -51,14 +51,17 @@ if __name__ == '__main__':
     aparser.add_argument('-cmd', '--command', nargs='?', help='method to be executed')
     aparser.add_argument('-kw', '--kwargs', nargs='?', help='key word arguments as dict {"show": 1}', default='{}')
     pargs = aparser.parse_args()
-    pargs.tree = False if pargs.remove else pargs.tree  # don't load tree if only metadata should be removed
 
     from src.analysis import Analysis
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
     if not pargs.collection and isint(pargs.runplan):
         if pargs.reconvert:
-            analysis_selector(pargs.runplan, pargs.dut, this_tc, False, pargs.verbose).Run.Converter.reconvert()
+            analysis_selector(pargs.runplan, pargs.dut, this_tc, False, False, False).Run.Converter.reconvert()
+        if pargs.remove:
+            z = analysis_selector(pargs.runplan, pargs.dut, this_tc, False, False, False)
+            z.remove_metadata(all_subdirs=True)
+            info(f'removed all pickles for {z}', blank_lines=1)
         z = analysis_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             if pargs.tree:
@@ -84,7 +87,3 @@ if __name__ == '__main__':
     else:
         from src.runplan_selection import DiaScans
         z = DiaScans(pargs.runplan, pargs.verbose)
-
-    if pargs.remove:
-        z.remove_metadata(all_subdirs=True)
-        critical(f'Removed all pickles for {z}')
