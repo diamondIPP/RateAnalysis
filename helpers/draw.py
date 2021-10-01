@@ -456,7 +456,7 @@ class Draw(object):
         Draw.set_show(True)
         if stats or stats is None:
             for i in (th.GetListOfGraphs() if 'Multi' in th.ClassName() else [th]):
-                format_statbox(i, **Draw.Stats if stats else Draw.DefaultStats)
+                format_statbox(i, **Draw.Stats if stats else Draw.DefaultStats, c=canvas)
         return Draw.add(c, th, leg)[0]
 
     @staticmethod
@@ -781,9 +781,14 @@ def set_entries():
     return True
 
 
+def get_window_ratio(c=None):
+    c = choose(c, get_last_canvas(warn=False))
+    return c.GetWindowHeight() / c.GetWindowWidth() if c.ClassName() == 'TCanvas' else c.GetAbsHNDC() / c.GetAbsWNDC()
+
+
 def get_stat_margins(c=None, x2=None, y2=None, d=.01, bottom=False, left=False, h=0, w=0):
     c = choose(c, get_last_canvas(warn=False))
-    r = c.GetWindowHeight() / c.GetWindowWidth() if c.ClassName() == 'TCanvas' else c.GetAbsHNDC() / c.GetAbsWNDC()
+    r = get_window_ratio(c)
     x2 = choose(x2, c.GetLeftMargin() + w + d * r if left else 1 - c.GetRightMargin() - d * r)
     y2 = choose(y2, c.GetBottomMargin() + h + d if bottom else 1 - c.GetTopMargin() - d)
     return x2, y2
@@ -798,7 +803,7 @@ def format_statbox(th, x2=None, y2=None, d=.01, h=None, w=.3, entries=False, m=F
         gStyle.SetOptFit(True)
     p = None if 'TF1' in th.ClassName() else next((o for o in th.GetListOfFunctions() if 'Pave' in o.ClassName()), None)
     if p is not None:
-        r = c.GetWindowHeight() / c.GetWindowWidth()
+        r = get_window_ratio(c)
         stats = ones(3, 'i') if all_stat else array([rms, m, entries], 'i')
         fit_pars = f.GetNpar() + 1 if fit and f is not None else 0
         h = choose(h, .05 / r * (stats.nonzero()[0].size + fit_pars))
