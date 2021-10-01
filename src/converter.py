@@ -187,9 +187,9 @@ class Converter(object):
     def rename_tracking_file(self):
         rename(self.get_trackingfile_path(), self.Run.RootFilePath)
 
-    def tracking_tel(self, action=0):
+    def tracking_tel(self, action=0, max_events=None):
         root_file = self.Run.RootFilePath if file_exists(self.Run.RootFilePath) else self.get_eudaqfile_path()
-        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '1']
+        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '1'] + ([str(max_events)] if max_events else [])
         print(' '.join(cmd_list))
         check_call(cmd_list)
 
