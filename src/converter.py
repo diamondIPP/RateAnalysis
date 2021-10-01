@@ -123,7 +123,7 @@ class Converter(object):
         remove(self.get_eudaqfile_path())
         print_banner(f'finished {self.__class__.__name__} of run {self.Run.Number} in {get_elapsed_time(self.Run.InitTime)}', color='green')
 
-    def convert_raw_to_root(self, tree=None, max_events=None):
+    def convert_raw_to_root(self, tree=None, max_events=None, rm_config=True):
         if not file_exists(self.RawFilePath):
             critical('The raw file {} does not exist ...'.format(self.RawFilePath))
         self.remove_pickle_files()
@@ -135,7 +135,8 @@ class Converter(object):
         print_banner('START CONVERTING RAW FILE FOR RUN {0}'.format(self.Run.Number))
         info('{}\n'.format(' '.join(cmd_list)))
         check_call(cmd_list)
-        self.remove_new_configfile()
+        if rm_config:
+            self.remove_new_configfile()
         self.remove_decodingfile()
         chdir(curr_dir)
 
