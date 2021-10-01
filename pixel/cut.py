@@ -23,9 +23,8 @@ class PixCut(Cut):
         self.CutStrings.register(self.generate_fiducial(center=True), 90)
 
     def generate_trigger_phase(self):
-        cmin, cmax = self.Config.get_list('CUT', 'trigger phase')[self.DUT.Name]
-        string = f'trigger_phase[1]>={cmin} && trigger_phase[1]<={cmax}'
-        return CutString('trigger_phase', string, f'{cmin} <= trigger phase <= {cmax}')
+        v = self.load_dut_config('trigger phase')
+        return CutString() if v is None else CutString('trigger_phase', f'trigger_phase[1] >= {v[0]} && trigger_phase[1]<={v[1]}', f'{v[0]} <= trigger phase <= {v[1]}')
 
     @staticmethod
     def generate_hit():  # TODO implement cut! must change tree structure from tracking telescope (hits in the plane)
