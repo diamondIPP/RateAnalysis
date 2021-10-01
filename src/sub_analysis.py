@@ -39,7 +39,7 @@ class SubAnalysis(Analysis):
     def get_t_args(self, rel_time=True):
         return self.Ana.get_t_args(rel_time)
 
-    def get_event_at_time(self, seconds, rel=False):
+    def get_event_at_time(self, seconds, rel=True):
         return self.Run.get_event_at_time(seconds, rel)
 
     def get_attenuator(self):

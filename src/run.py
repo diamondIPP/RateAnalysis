@@ -373,10 +373,9 @@ class Run(Analysis):
 
     def get_event_at_time(self, seconds, rel=True):
         """ Returns the event nunmber at time dt from beginning of the run. Accuracy: +- 1 Event """
-        # return time of last event if input is too large
-        if seconds - (0 if rel else self.StartTime) >= self.TotalTime or seconds == -1:
+        if seconds - (0 if rel else self.StartTime) >= self.TotalTime or seconds == -1:  # return time of last event if input is too large
             return self.NEvents - 1
-        return where(self.Time <= (seconds + (self.StartTime if rel else 0)) * 1000)[0][-1]
+        return where(self.Time <= 1000 * (seconds + (self.StartTime if rel else 0)))[0][-1]
 
     def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
         return get_tree_vec(self.Tree, var, cut, dtype, nentries, firstentry)

@@ -104,7 +104,7 @@ class PixCut(Cut):
         times = time_bins[deviating_bins] + bin_width / 2 - self.Run.Time[0] / 1000  # shift to the center of the bin
         not_connected = where(concatenate([[False], deviating_bins[:-1] != deviating_bins[1:] - 1]))[0]  # find the bins that are not consecutive
         times = split(times, not_connected)
-        interruptions = [[self.Ana.get_event_at_time(v) for v in [t[0], t[0] if t.size == 1 else t[-1]]] for t in times] if len(times[0]) else []
+        interruptions = [[self.get_event_at_time(v, rel=True) for v in [t[0], t[-1]]] for t in times] if len(times[0]) else []
         return interruptions
     # endregion COMPUTE
     # ----------------------------------------
