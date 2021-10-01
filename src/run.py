@@ -10,6 +10,8 @@ from json import dump
 class Run(Analysis):
     """ Run class containing all the information for a single run. """
 
+    NTelPlanes = 4
+
     def __init__(self, number=None, testcampaign=None, load_tree=True, verbose=None):
         """
         :param number: if None is provided it creates a dummy run

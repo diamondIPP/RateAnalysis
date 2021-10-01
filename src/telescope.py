@@ -89,7 +89,7 @@ class Telescope(SubAnalysis):
     @save_pickle('Mask', suf_args='all')
     def find_mask_(self, plane=1, _redo=False):
         self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', dtype='u1', nentries=50000)))
-        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.NRocs)[::-1][plane]), nentries=50000, dtype='u2')
+        x, y = self.get_tree_vec(self.get_hit_vars(arange(self.Run.NTelPlanes)[::-1][plane]), nentries=50000, dtype='u2')
         histos = [self.Draw.distribution(x, Bins.get_pixel_x(), show=False), self.Draw.distribution(y, Bins.get_pixel_y(), show=False)]
         return array([h.GetBinCenter(i) for h in histos for i in [h.FindFirstBinAbove(h.GetMaximum() * .01), h.FindLastBinAbove(h.GetMaximum() * .01)]], 'i')[[0, 2, 1, 3]].tolist()
 
