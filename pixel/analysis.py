@@ -65,9 +65,9 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region OCCUPANCY
-    def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', show=True):
+    def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         """ draw hitmap or cluster map """
-        return self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show)
+        return self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, **dkw)
 
     def draw_occupancy_trend(self, cut=None, fid=False, bin_size=None, **kwargs):
         cut = self.Cut.generate_custom(exclude='fiducial' if not fid else []) if cut is None else self.Cut(cut)

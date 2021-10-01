@@ -159,22 +159,20 @@ class Telescope(SubAnalysis):
         n, x, n, y = Bins.get_pixel()
         Draw.grid(x, y, color=921)
 
-    def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', show=True, prnt=True):
-        name = 'ROC {i}'.format(i=plane) if name is None else name
+    def draw_occupancy(self, plane, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
         self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
-        h = self.Draw.histo_2d(x, y, bins, '{h} Occupancy {n}'.format(n=name, h='Cluster' if cluster else 'Hit'), show=show, draw_opt='colz', z_off=1.4)
-        format_histo(h, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2)
-        self.Draw.save_plots('{}Map{}'.format('Cluster' if cluster else 'Hit', plane), prnt=prnt)
-        return h
+        tit = f'{"Cluster" if cluster else "Hit"} Occupancy {f"ROC {plane}" if name is None else name}'
+        return self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2,
+                                                        file_name=f'{"Cluster" if cluster else "Hit"}Map{plane}'))
 
     def draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
         histos = [self.draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in (range(self.NRocs) if planes is None else planes)]
-        c = self.Draw.canvas('Hitmaps', w=1.5, h=1.5, divide=(2, 2), show=show)
+        c = self.Draw.canvas('Hitmaps', w=.9 * ceil(self.NRocs / 2), h=1.5, divide=(int(ceil(self.NRocs / 2)), 2), show=show)
         for i, h in enumerate(histos, 1):
-            self.Draw(h, canvas=c.cd(i), draw_opt='colz', rm=.15)
+            self.Draw(h, canvas=c.cd(i))
         self.Draw.save_plots('HitMaps', show=show, prnt=prnt)
 
     def draw_hit_efficiency(self, plane=0, cut=None, y_range=None, show=True):
