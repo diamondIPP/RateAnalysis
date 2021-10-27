@@ -491,9 +491,7 @@ def eff2u(eff):
 
 
 def make_ufloat(n, s=0):
-    if is_iter(n):
-        return array([ufloat(*v) for v in array([n, s]).T])
-    return n if is_ufloat(n) else ufloat(n, s)
+    return array([ufloat(*v) for v in array([n, s]).T]) if is_iter(n) else n if is_ufloat(n) else ufloat(n, s)
 
 
 def is_ufloat(value):
