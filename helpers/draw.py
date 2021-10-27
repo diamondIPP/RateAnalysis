@@ -477,10 +477,10 @@ class Draw(object):
         self.histo(th, **prep_kw(kwargs, stats=None))
         return th
 
-    def function(self, f, title='', c=None, bm=None, lm=None, rm=None, show=True, logy=None, w=1, h=1, stats=None, draw_opt=None, grid=None, **kwargs):
+    def function(self, f, title='', c=None, **kwargs):
         format_histo(f, title=title, **prep_kw(kwargs, **Draw.mode()))
-        c = get_last_canvas() if draw_opt and 'same' in draw_opt and c is None else c
-        self.histo(f, show=show, bm=bm, lm=lm, rm=rm, logy=logy, w=w, h=h, stats=stats, draw_opt=draw_opt, canvas=c, grid=grid)
+        c = get_last_canvas() if 'draw_opt' in kwargs and 'same' in kwargs['draw_opt'] and c is None else c
+        self.histo(f, canvas=c, **prep_kw(kwargs))
         return f
 
     def graph(self, x, y=None, title='', bm=None, show=True, bin_labels=None, **kwargs):
