@@ -5,7 +5,7 @@
 from ROOT import TCut
 from numpy import delete
 
-from helpers.draw import *
+from plotting.draw import *
 from src.binning import Bins
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis

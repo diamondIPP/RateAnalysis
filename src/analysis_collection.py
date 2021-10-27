@@ -7,7 +7,7 @@ from src.analysis import Analysis
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
-from helpers.draw import *
+from plotting.draw import *
 
 PBAR = PBar()
 
@@ -63,7 +63,7 @@ class AnalysisCollection(Analysis):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        from helpers.save_plots import SaveDraw
+        from plotting.save import SaveDraw
         SaveDraw.File = None
 
     def draw_all(self, redo=False):

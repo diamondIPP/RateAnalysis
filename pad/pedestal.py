@@ -7,7 +7,7 @@
 from numpy import log
 
 from src.sub_analysis import PadSubAnalysis
-from helpers.save_plots import *
+from plotting.save import *
 
 
 class PedestalAnalysis(PadSubAnalysis):

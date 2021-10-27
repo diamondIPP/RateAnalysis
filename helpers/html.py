@@ -134,7 +134,7 @@ def path(*dirs):
 
 
 def link(target: Path, name, active=False, center=False, new_tab=False, use_name=True, colour: Any = None, right=False, warn=True):
-    from helpers.save_plots import SaveDraw
+    from plotting.save import SaveDraw
     d = SaveDraw.ServerMountDir
     target = str(target.relative_to(d) if target.is_absolute() else target)
     target = join(target, '') if isdir(join(d, target)) else target

@@ -3,7 +3,7 @@
 #       Class do overwrite methods in case of voltage scans
 # created on August 14th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.draw import array, ufloat
+from plotting.draw import array, ufloat
 
 
 def make_volage_scan(base_class):

@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import column_stack, polyfit, argmax
 from src.event_alignment import *
-from helpers.draw import Draw
+from plotting.draw import Draw
 
 
 class PixAlignment(EventAligment):

@@ -11,10 +11,10 @@ from scipy.signal import find_peaks
 from scipy.stats import poisson
 from uncertainties.umath import log as ulog, sqrt as usqrt  # noqa
 
-from helpers.fit import PoissonI, Gauss, Landau
+from plotting.fit import PoissonI, Gauss, Landau
 from src.sub_analysis import PadSubAnalysis
 from src.dut_analysis import reload_tree
-from helpers.draw import *
+from plotting.draw import *
 from typing import List
 
 

@@ -6,7 +6,7 @@
 
 from ROOT import gRandom
 from helpers.utils import deepcopy, arange, array, mean
-from helpers.draw import format_statbox, format_histo, Draw
+from plotting.draw import format_statbox, format_histo, Draw
 from numpy.random import randint
 from src.sub_analysis import SubAnalysis
 from src.dut import Plane

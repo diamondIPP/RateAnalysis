@@ -4,7 +4,7 @@ from sys import argv
 from src.run import Run
 from src.binning import Bins
 from os import chdir, system
-from helpers.draw import *
+from plotting.draw import *
 from numpy import genfromtxt, polyfit, polyval, quantile, delete, all
 from pathlib import Path
 

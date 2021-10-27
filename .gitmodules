@@ -1,0 +1,3 @@
+[submodule "plotting"]
+	path = plotting
+	url = https://github.com/michareichmann/root-plots

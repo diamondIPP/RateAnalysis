@@ -1,6 +1,6 @@
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
-from helpers.save_plots import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
+from plotting.save import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
 from os.path import getsize
 from os import getcwd, chdir
 from subprocess import check_call

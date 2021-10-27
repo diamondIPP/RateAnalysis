@@ -13,9 +13,9 @@ from src.cut import Cut
 from src.run import Run
 from src.tracks import Tracks
 from src.telescope import Telescope
-from helpers.save_plots import *
+from plotting.save import *
 from src.analysis import Analysis
-from helpers.fit import Langau
+from plotting.fit import Langau
 from src.binning import Bins
 from functools import wraps
 

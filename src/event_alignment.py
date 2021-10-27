@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TFile
 from helpers.utils import *
-from helpers.draw import set_root_output
+from plotting.draw import set_root_output
 from numpy import invert, ones, append
 
 MAX_SIZE = 255

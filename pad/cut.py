@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 from ROOT import TCut, TF1
 from src.cut import Cut, CutString, Bins, low_rate, high_rate
-from helpers.draw import *
+from plotting.draw import *
 from numpy import quantile, histogram2d, argmax
 
 
@@ -203,7 +203,7 @@ class PadCut(Cut):
     @save_pickle('Pedestal', print_dur=True)
     def calc_pedestal_(self, _redo=False):
         x = self.get_tree_vec(var=self.Ana.get_pedestal_name(), cut=self())
-        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=1)
+        h0 = self.Draw.distribution(x, Bins.make(-100, 100, max(.1, Bins.find_width(x))), show=False)
         return fit_fwhm(h0, show=False).get_pars(err=False)[1:]
 
     def calc_pedestal(self, n_sigma, redo=False):

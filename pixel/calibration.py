@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from helpers.utils import join, file_exists, save_pickle, choose, prep_kw, deepcopy, warning, is_iter
-from helpers.draw import FitRes
+from plotting.draw import FitRes
 from numpy import genfromtxt, arange, array, concatenate, full
 from src.sub_analysis import SubAnalysis
 from src.dut import Plane

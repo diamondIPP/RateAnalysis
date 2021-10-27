@@ -3,7 +3,7 @@
 # created by Michael Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from src.sub_ana_collection import SubCollection
-from helpers.draw import *
+from plotting.draw import *
 from pad.pulser import PulserAnalysis
 
 

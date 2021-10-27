@@ -7,7 +7,7 @@
 from os import chdir
 from subprocess import check_output
 from ROOT import gROOT
-from helpers.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string, mean
+from plotting.draw import Draw, make_tc_str, timedelta, make_flux_string, make_irr_string, mean
 
 
 class InfoLegend(object):

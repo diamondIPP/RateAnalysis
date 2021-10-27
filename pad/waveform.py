@@ -6,8 +6,8 @@
 from ROOT import TCut, TMultiGraph
 from numpy import fft, argmax, array_split, sum
 from src.sub_analysis import PadSubAnalysis
-from helpers.draw import *
-from helpers.fit import ErfLand
+from plotting.draw import *
+from plotting.fit import ErfLand
 
 
 class Waveform(PadSubAnalysis):
