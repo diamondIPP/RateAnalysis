@@ -4,7 +4,8 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from plotting.draw import make_bins, choose, array, append, load_main_config, diff, save_pickle, freedman_diaconis, remove_file
+from plotting.draw import make_bins, choose, array, append, diff, freedman_diaconis, remove_file
+from helpers.utils import load_main_config, save_pickle
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
 

@@ -5,6 +5,7 @@
 from pad.waveform import Waveform
 from src.sub_analysis import PadSubAnalysis
 from plotting.save import *
+from helpers.utils import do_pickle, partial, fit2u, save_pickle
 
 
 class PulserAnalysis(PadSubAnalysis):
@@ -213,7 +214,7 @@ class PulserAnalysis(PadSubAnalysis):
         self.Draw.stack(histos, 'Comparison of Pulser and Signal Pedestal', ['Signal', 'Pulser'], scale=True, show=show, lw=2, rebin=3)
 
     def draw_hit_efficiency(self, bin_size=200, show=True):
-        from src.pad_alignment import PadAlignment
+        from pad.alignment import PadAlignment
         return PadAlignment(self.Run.Converter).draw(bin_size=bin_size, show=show)
 
     def draw_signal_vs_peaktime(self, bin_size=None, x=None, y=None, show=True):

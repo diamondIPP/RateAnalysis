@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 from ROOT import THStack, TF1, TMath
 from numpy import sort, log, argmin, argmax
-from uncertainties.umath import sqrt as usqrt
+from uncertainties.umath import sqrt as usqrt  # noqa
 
 from src.analysis import Analysis
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
 from plotting.draw import *
+from helpers.utils import *
 
 PBAR = PBar()
 

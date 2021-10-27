@@ -6,7 +6,7 @@
 
 from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort, invert, any
 from numpy.random import rand
-from uncertainties.umath import sqrt as usqrt
+from uncertainties.umath import sqrt as usqrt  # noqa
 
 from src.currents import Currents
 from src.cut import Cut
@@ -14,6 +14,7 @@ from src.run import Run
 from src.tracks import Tracks
 from src.telescope import Telescope
 from plotting.save import *
+from helpers.utils import *
 from src.analysis import Analysis
 from plotting.fit import Langau
 from src.binning import Bins

@@ -4,6 +4,7 @@
 # created on Oct 15th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from plotting.draw import *  # import everything so that methods are available in ipython
+from helpers.utils import isfloat, init_argparser, isint, get_attribute
 from src.binning import Bins
 _ = Bins.Verbose
 
