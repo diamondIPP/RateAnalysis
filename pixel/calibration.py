@@ -42,6 +42,9 @@ class Calibration(SubAnalysis):
     def check_files(self):
         return True if all(file_exists(f, warn=True) for f in self.load_files()) else False
 
+    def verify_fits(self):
+        """ check if fits represent the data. """
+
     @save_pickle('FitPars', run='TelescopeID', dut='', print_dur=True)
     def load_fitpars(self, _redo=False):
         return array([genfromtxt(f, skip_header=3, usecols=arange(4)).reshape((Plane.NCols, Plane.NRows, 4)) for f in self.load_fit_files()])
@@ -65,6 +68,10 @@ class Calibration(SubAnalysis):
     def get_y(self, col, row, plane=None):
         return self.Points[choose(plane, self.N)][col][row]
 
+    def get_points(self, col, row, zero_sup=False):
+        x, y = self.get_x(), self.get_y(col, row)
+        return (x[y != 0], y[y != 0]) if zero_sup else (x, y)
+
     def get_vcal(self, col, row, adc):
         self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
         return self.Fit.GetX(adc)
@@ -72,6 +79,15 @@ class Calibration(SubAnalysis):
     def get_adc(self, col, row, vcal):
         self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
         return self.Fit(vcal)
+
+    def get_chi2(self, col, row):
+        x, y = self.get_points(col, row, zero_sup=True)
+        self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
+        return 999 if y.size < 4 else sum((y - array([self.Fit(ix) for ix in x])) ** 2) / (1 if y.size == 4 else y.size - 4)  # DOF = array size - 4 fit pars
+
+    @save_pickle('Chi2s', run='TelescopeID')
+    def get_chi2s(self, _redo=False):
+        return array([[self.get_chi2(col, row) for row in range(Plane.NRows)] for col in range(Plane.NCols)])
 
     def get_threshold(self, col, row, vcal=True):
         return self.get_vcal(col, row, 0) * (self.Bins.Vcal2Ke if not vcal else 1)
@@ -97,14 +113,18 @@ class Calibration(SubAnalysis):
         self.Fit.SetParameters(*self.Parameters[choose(plane, self.N)][col][row])
         self.Draw.function(self.Fit, f'Calibration Fit for Pix {col} {row}', **prep_kw(kwargs, x_tit='vcal', y_tit='adc', lw=2, color=632, draw_opt='same' if self.HasPoints else None))
 
-    def draw_erf_fit(self, col, row, plane=None, **kwargs):
+    def draw_erf_fit(self, col, row, **kwargs):
         if not self.HasPoints:
             return warning(f'no calibration points found for telescope {self.TelescopeID} ...')
-        x, y = self.get_x(plane), self.get_y(col, row, plane)
-        g = self.Draw.graph(x[y != 0], y[y != 0], f'Calibration Fit for Pix {col} {row}', **prep_kw(kwargs, x_tit='vcal', y_tit='adc'))
+        g = self.Draw.graph(*self.get_points(col, row, zero_sup=True), f'Calibration Fit for Pix {col} {row}', **prep_kw(kwargs, x_tit='vcal', y_tit='adc'))
         self.Fit.SetParameters(309.2062, 112.8961, 1.022439, 35.89524)
         fit = deepcopy(self.Fit) if g.GetN() > 3 else self.Draw.make_f('pol1', 0, 3000)
-        return FitRes(g.Fit(fit, 'qs'))
+        g.Fit(fit, 'q')
+        return FitRes(fit)
+
+    def draw_chi2(self, **dkw):
+        x = self.get_chi2s()
+        self.Draw.distribution(x[x != 999], **prep_kw(dkw, lf=.1, q=.001, x_tit='#chi^{2} / DOF', title='#chi^{2} distribution of the calibration fits'))
     # endregion DRAW
     # ----------------------------------------
 
