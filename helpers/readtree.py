@@ -5,10 +5,10 @@ from src.run import Run
 from src.binning import Bins
 from os import chdir, system
 from plotting.draw import *
+from helpers.utils import *
 from numpy import genfromtxt, polyfit, polyval, quantile, delete, all
 from pathlib import Path
 
-widgets = ['Progress: ', Percentage(), ' ', Bar(marker='>'), ' ', ETA(), ' ', FileTransferSpeed()]
 plot = Draw()
 _ = TBrowser
 
@@ -24,6 +24,13 @@ def draw_occupancies():
         plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0, canvas=c.cd(i + 1))
 
 
+def draw_raw_occupancies():
+    c = plot.canvas('c', w=1.5, h=1.5, divide=(2, 2))
+    for i in range(4):
+        x, y = get_tree_vec(t, ['col', 'row'], cut=f'plane == {i}')
+        plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0, canvas=c.cd(i + 1))
+
+
 def draw_hitmap(dut=1, res=None):
     x, y = get_tree_vec(t, [f'dia_track_{i}_local[{dut - 1}]' for i in ['x', 'y']])
     plot.histo_2d(x * 10, y * 10, Bins.get_global(res), 'HitMap', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]')
@@ -36,7 +43,7 @@ def draw_chi2(m='x', dut=1):
 
 def trig_edges(nwf=None):
     nwf = entries if nwf is None else nwf
-    pbar = ProgressBar(widgets=widgets, maxval=nwf).start()
+    pbar = PBar(nwf)
     h = TH1F('h_te', 'Trigger Edges', 1024, 0, 1024)
     t.Draw('wf8', '', 'goff', nwf, 0)
     buf = t.GetV1()
@@ -409,6 +416,8 @@ if __name__ == '__main__':
             z = Run(run, testcampaign=tc)
         except ValueError:
             run = Run(2, testcampaign='201807')
+        except Exception as err:
+            warning(err)
 
         channels = read_macro(rootfile)
         t = rootfile.Get('tree')
