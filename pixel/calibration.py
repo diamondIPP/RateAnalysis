@@ -20,7 +20,7 @@ class Calibration(SubAnalysis):
         self.Dir = join(self.Run.Converter.TrackingDir, 'data', 'calibrations', f'telescope{self.TelescopeID}')
         self.N = self.Ana.N
 
-        self.Fit = self.Draw.make_f('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -500, 255 * 7)
+        self.Fit = self.Draw.make_f('ErFit', '[3] * (TMath::Erf((x - [0]) / [1]) + [2])', -5000, 255 * 7, npx=100)
         if self.check_fit_files():
             self.Parameters = self.load_fitpars()
         self.HasPoints = self.check_files()
@@ -61,6 +61,13 @@ class Calibration(SubAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region SET
+    def set_parameters(self, col, row):
+        self.Fit.SetParameters(*self.Parameters[self.N][col][row])
+    # endregion SET
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region GET
     def get_x(self, plane=None):
         return self.Vcals[choose(plane, self.N)]
@@ -73,16 +80,16 @@ class Calibration(SubAnalysis):
         return (x[y != 0], y[y != 0]) if zero_sup else (x, y)
 
     def get_vcal(self, col, row, adc):
-        self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
-        return self.Fit.GetX(adc)
+        self.set_parameters(col, row)
+        return -999 if self.get_min(col, row) > adc - 1 else self.Fit.GetX(adc)
 
     def get_adc(self, col, row, vcal):
-        self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
+        self.set_parameters(col, row)
         return self.Fit(vcal)
 
     def get_chi2(self, col, row):
         x, y = self.get_points(col, row, zero_sup=True)
-        self.Fit.SetParameters(*self.Parameters[self.Ana.N][col][row])
+        self.set_parameters(col, row)
         return 999 if y.size < 4 else sum((y - array([self.Fit(ix) for ix in x])) ** 2) / (1 if y.size == 4 else y.size - 4)  # DOF = array size - 4 fit pars
 
     @save_pickle('Chi2s', run='TelescopeID')
@@ -90,11 +97,12 @@ class Calibration(SubAnalysis):
         return array([[self.get_chi2(col, row) for row in range(Plane.NRows)] for col in range(Plane.NCols)])
 
     def get_threshold(self, col, row, vcal=True):
-        return self.get_vcal(col, row, 0) * (self.Bins.Vcal2Ke if not vcal else 1)
+        thresh = self.get_vcal(col, row, 0)
+        return thresh if thresh == -999 else thresh * (self.Bins.Vcal2Ke if not vcal else 1)
 
     def get_thresholds(self, cols=None, rows=None, pix=None, vcal=True):
         cols, rows = self.Cut.get_fid_lines(cols, rows, pix)
-        return array([[col, row, self.get_threshold(col, row, vcal)] for col in cols for row in rows])
+        return array([[col, row, self.get_threshold(col, row, vcal)] for col in cols for row in rows if self.get_threshold(col, row, vcal) != -999])
 
     def get_vcals(self, col, row, adc):
         return array([self.get_vcal(col[i], row[i], adc[i]) for i in range(col.size)])
@@ -102,6 +110,10 @@ class Calibration(SubAnalysis):
     def get_adcs(self, col, row, vcal):
         vcal = vcal if is_iter(vcal) else full(col.size, vcal)
         return array([self.get_vcal(col[i], row[i], vcal[i]) for i in range(col.size)])
+
+    def get_min(self, col, row):
+        _, _, off, scale = self.Parameters[self.N, col, row]
+        return (off - 1) * scale
     # endregion GET
     # ----------------------------------------
 
