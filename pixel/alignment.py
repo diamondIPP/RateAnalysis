@@ -28,7 +28,7 @@ class PixAlignment(EventAligment):
     # ----------------------------------------
     # region INIT
     def find_dut_plane(self, duts):
-        return next((i for i, dut in enumerate(duts, self.NTelPlanes) if 'Si' in dut.Name or 'D' in dut.Name), 0)
+        return next((i for i, dut in enumerate(duts, self.NTelPlanes) if 'Si' in dut.Name or 'D' in dut.Name), self.NTelPlanes)
 
     def load_variables(self):
         data = super().load_variables()
