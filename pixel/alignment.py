@@ -3,9 +3,10 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import column_stack, polyfit, argmax
+from numpy import column_stack, polyfit, argmax, sum
 from src.event_alignment import *
 from plotting.draw import Draw
+from src.binning import Bins
 
 
 class PixAlignment(EventAligment):
@@ -212,10 +213,18 @@ class PixAlignment(EventAligment):
         y = self.get_tree_vec(self.HitVar)
         self.Draw.profile(arange(y.size), y, x_tit='Event Number', y_tit='Total Number of Hits', y_range=[0, 1.5 * mean(y)])
 
+    def draw_x(self, off=0, start=0, end=None, **dkw):
+        x, y = self.get_data(off, start, end)[0].T
+        self.Draw.histo_2d(x, y, Bins.get_pixel_x() * 2, **prep_kw(dkw, x_tit=f'col DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'col Plane {self.TelPlane}'))
+
+    def draw_y(self, off=0, start=0, end=None, **dkw):
+        x, y = self.get_data(off, start, end)[1].T
+        return self.Draw.histo_2d(x, y, Bins.get_pixel_y() * 2, **prep_kw(dkw, x_tit=f'row DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'row Plane {self.TelPlane}'))
+
     def draw_correlation(self, off=0, bin_size=50, **kwargs):
         yx, yy = self.correlate_all(off, bin_size)
         g = [self.Draw.graph(self.get_x(y, off, bin_size), y, x_tit='Event Number', y_tit='Correlation Factor', show=False) for y in [yx, yy]]
-        self.Draw.multigraph(g, 'Correlations', ['xx', 'yy'], **prep_kw(kwargs, draw_opt='l', **Draw.mode(2), y_range=[0, 1.18]))
+        self.Draw.multigraph(g, f'Correlations, Offset = {off}', ['xx', 'yy'], **prep_kw(kwargs, draw_opt='l', **Draw.mode(2), y_range=[0, 1.18]))
 
     def draw(self, off=0, bin_size=50):
         y = invert(self.find_all(off, bin_size))
