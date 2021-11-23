@@ -196,8 +196,8 @@ def mean_sigma(values, weights=None, err=True):
         values = array([v.n for v in values], 'd')
     if all(weights == 0):
         return [0, 0]
-    avrg = average(values, weights=weights)
-    sigma = sqrt(average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
+    n, avrg = values.size, average(values, weights=weights)
+    sigma = sqrt(n / (n - 1) * average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
     m, s = ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
     return (m, s) if err else (m.n, s.n)
 
