@@ -88,11 +88,11 @@ class Bins(SubAnalysis):
     # region TELESCOPE
     @staticmethod
     def get_pixel_x(bin_width=1, aspect_ratio=False):
-        return Bins.make(-Plane.get_xpix(aspect_ratio) - .5, Plane.NCols + Plane.get_xpix(aspect_ratio) - .5, bin_width)
+        return Bins.make(-Plane.get_xpix(aspect_ratio) - .5, Plane.NCols + Plane.get_xpix(aspect_ratio) + .5, bin_width)
 
     @staticmethod
     def get_pixel_y(bin_width=1, aspect_ratio=False):
-        return Bins.make(-Plane.get_ypix(aspect_ratio) - .5, Plane.NRows + Plane.get_ypix(aspect_ratio) - .5, bin_width)
+        return Bins.make(-Plane.get_ypix(aspect_ratio) - .5, Plane.NRows + Plane.get_ypix(aspect_ratio) + .5, bin_width)
 
     @staticmethod
     def get_pixel(bin_width=1, aspect_ratio=False):
