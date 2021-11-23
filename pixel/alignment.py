@@ -46,7 +46,7 @@ class PixAlignment(EventAligment):
     @staticmethod
     def get_e_cut(plane, plane_vec, n):
         """find all events with one hit in [plane]."""
-        events = arange(n.size).repeat(n)[plane_vec == plane]  # events with hits in the plan
+        events = arange(n.size).repeat(n)[plane_vec == plane]  # events with hits in the plane
         dif = append(diff(events).astype('?'), True)
         dif[where(invert(dif))[0] + 1] = False  # select only events with a single hit
         cut = zeros(n.size, '?')
@@ -73,8 +73,8 @@ class PixAlignment(EventAligment):
 
     def set_aligned(self, bin_size=200):
         data = [self.get_data(off, start, end) for (start, off), end in zip(self.Offsets.items(), [*self.Offsets][1:] + [self.NEntries])]
-        e, xydata = concatenate([d[2] for d in data]), concatenate([d[:2] for d in data], axis=1)
-        aligned = invert([self.is_misaligned([ix, iy]) for ix, iy in zip(*PixAlignment.bin_data(*xydata, bin_size))])
+        e, (x, y) = concatenate([d[2] for d in data]), concatenate([d[:2] for d in data], axis=1)
+        aligned = invert([self.is_misaligned([ix, iy]) for ix, iy in zip(*PixAlignment.bin_data(x, y, bin_size))])
         aligned = append(aligned, True if self.NEntries % bin_size else [])  # add last bin
         aligned[roll(invert(aligned), 1) & roll(invert(aligned), -1)] = False  # extend to neighbouring bins
         aligned = aligned.repeat(diff(concatenate([[0], e[::bin_size][1:], [self.NEntries]])))  # calculate how many events are in each bins'
@@ -218,11 +218,13 @@ class PixAlignment(EventAligment):
 
     def draw_x(self, off=0, start=0, end=None, **dkw):
         x, y = self.get_data(off, start, end)[0].T
-        self.Draw.histo_2d(x, y, Bins.get_pixel_x() * 2, **prep_kw(dkw, x_tit=f'col DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'col Plane {self.TelPlane}'))
+        h = self.Draw.histo_2d(x, y, Bins.get_pixel_x() * 2, **prep_kw(dkw, x_tit=f'Column DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'Column Plane {self.TelPlane}'))
+        Draw.info(f'Correlation Coefficent: {h.GetCorrelationFactor():.2f}', size=.03)
 
     def draw_y(self, off=0, start=0, end=None, **dkw):
         x, y = self.get_data(off, start, end)[1].T
-        return self.Draw.histo_2d(x, y, Bins.get_pixel_y() * 2, **prep_kw(dkw, x_tit=f'row DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'row Plane {self.TelPlane}'))
+        h = self.Draw.histo_2d(x, y, Bins.get_pixel_y() * 2, **prep_kw(dkw, x_tit=f'Row DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'Row Plane {self.TelPlane}'))
+        Draw.info(f'Correlation Coefficent: {h.GetCorrelationFactor():.2f}', size=.03)
 
     def draw_correlation(self, off=0, bin_size=50, **kwargs):
         yx, yy = self.correlate_all(off, bin_size)
@@ -232,6 +234,14 @@ class PixAlignment(EventAligment):
     def draw(self, off=0, bin_size=50):
         y = invert(self.find_all(off, bin_size))
         self.Draw.graph(self.get_x(y, off, bin_size), y, f'{off} Alignment', x_tit='Event Number', y_tit='Aligned', draw_opt='al', **Draw.mode(2))
+
+    def draw_off_event(self, off=None, start=0, n=50, **dkw):
+        x, y, e = self.get_data(choose(off, self.FirstOffset), start)
+        i = self.find_next(x, y, n)
+        xi = arange(max(0, int(i - n)), int(i + n))
+        cy = [correlate(*y[i:i + n].T) for i in xi]
+        self.Draw.graph(e[xi], cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor')).Fit('pol1', 'q', '', e[i - n // 3], e[i + n // 3])
+
     # endregion DRAW
     # ----------------------------------------
 
