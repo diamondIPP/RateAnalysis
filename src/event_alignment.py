@@ -50,6 +50,9 @@ class EventAligment(object):
     def __call__(self):
         self.run()
 
+    def __repr__(self):
+        return f'{self.__class__.__name__} of {self.Run}'
+
     def run(self):
         if not self.IsAligned:
             self.print_start()

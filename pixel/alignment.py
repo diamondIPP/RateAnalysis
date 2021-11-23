@@ -26,6 +26,9 @@ class PixAlignment(EventAligment):
 
         EventAligment.__init__(self, converter)
 
+    def __repr__(self):
+        return f'{super().__repr__()}, correlation between telescope plane {self.TelPlane} & DUT plane {self.DUTPlane} ({self.Run.DUTs[self.DUTPlane - self.NTelPlanes]})'
+
     # ----------------------------------------
     # region INIT
     def find_dut_plane(self, duts):
