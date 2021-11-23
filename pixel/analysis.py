@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # --------------------------------------------------------
 #       Main class for Rate Pixel Analysis
-# created some time in 2016 by D. Sanz (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
+# created some time in 2016 by D.A. Sanz Becerra (sandiego@phys.ethz.ch), maintained by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
 
@@ -82,9 +82,9 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region DISTRIBUTIONS
-    def draw_adc_distribution(self, cut=None, col=None, row=None, pix=None, **kwargs):
+    def draw_adc_distribution(self, cut=None, col=None, row=None, pix=None, **dkw):
         x = self.get_tree_vec('adc', self.Cut(cut) + self.Cut.generate_masks(col, row, pix, exclude=False).Value + self.Cut.get_plane(), 'i2')
-        return self.Draw.distribution(x, Bins.get_adc(), 'ADC Distribution', **prep_kw(kwargs, logy=True))
+        return self.Draw.distribution(x, Bins.get_adc(), 'ADC Distribution', **prep_kw(dkw, x_tit='Pulse Height [adc]'))
 
     @save_pickle('VcalDisto', suf_args='all')
     def get_vcal_disto(self, cut=None, col=None, row=None, pix=None, vcal=True, _redo=False):
@@ -101,11 +101,7 @@ class PixAnalysis(DUTAnalysis):
     @save_pickle('PH', suf_args='all')
     def get_signal_disto(self, roc=None, cut=None, vcal=False, _redo=False):
         x = self.get_tree_vec(self.get_ph_var(roc), self.Cut(cut)) / (Bins.Vcal2El if vcal else 1)
-        return self.Draw.distribution(x, title='Pulse Height Distribution', x_tit=f'Pulse Height [{"VCAL" if vcal else "e"}]', show=False)
-
-    def draw_threshold(self, x=1500, y0=0, y1=1, show=True):
-        if show:
-            return self.Draw.y_axis(x, y0, y1, f'threshold #approx {x}e', off=.3, line=True, opt='-L')
+        return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "e"}]', show=False)
 
     def draw_signal_distribution(self, roc=None, cut=None, vcal=False, redo=False, draw_thresh=False, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
@@ -138,13 +134,19 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region 2D DISTRIBUTIONS
-    def draw_adc_map(self, cut=None, **kwargs):
+    def draw_adc_map(self, cut=None, **dkw):
         x, y, zz = self.get_tree_vec(['col', 'row', 'adc'], self.Cut(cut) + self.Cut.get_plane())
-        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit='ADC'))
+        h = self.Draw.prof2d(x, y, zz, Bins.get_pixel(), show=False)
+        e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
+        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Pulse Height [adc]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01)))
 
-    def draw_threshold_map(self, vcal=True, cols=None, rows=None, pix=None, **kwargs):
-        x, y, zz = self.Calibration.get_thresholds(cols, rows, pix, vcal).T
-        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), 'Artificial Threshold Map', **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit=f'0Treshold [{"VCAL" if vcal else "ke"}]'))
+    def draw_vcal_map(self, cut=None, cutoff=None, **dkw):
+        x, y, zz = self.get_tree_vec(self.Tel.get_hit_vars(self.N) + [self.get_ph_var()], self.Cut(cut))
+        zz /= Bins.Vcal2El
+        ecut = ... if cutoff is None else zz < cutoff
+        h = self.Draw.prof2d(x[ecut], y[ecut], zz[ecut], Bins.get_pixel(), show=False)
+        e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
+        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Cluster Column', y_tit='Cluster Row', z_tit='Pulse Height [vcal]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01)))
 
     def draw_adc_fixed_vcal_map(self, vcal=200, **kwargs):
         cols, rows = self.Cut.get_fid_lines()
@@ -154,6 +156,22 @@ class PixAnalysis(DUTAnalysis):
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
     # endregion 2D DISTRIBUTIONS
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region THRESHOLD
+    def draw_threshold(self, x=1500, y0=0, y1=1, show=True):
+        if show:
+            return self.Draw.y_axis(x, y0, y1, f'threshold #approx {x}e', off=.3, line=True, opt='-L')
+
+    def draw_threshold_map(self, vcal=True, cols=None, rows=None, pix=None, **dkw):
+        x, y, zz = self.Calibration.get_thresholds(cols, rows, pix, vcal).T
+        return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), 'Artificial Threshold Map', **prep_kw(dkw, x_tit='column', y_tit='row', z_tit=f'Threshold [{"vcal" if vcal else "ke"}]'))
+
+    def draw_threshold_disto(self, vcal=True, **dkw):
+        x = self.Calibration.get_thresholds(vcal=vcal).T[-1]
+        return self.Draw.distribution(x, title='Threshold Distribution', **prep_kw(dkw, x_tit='Threshold [vcal]'))
+    # endregion THRESHOLD
     # ----------------------------------------
 
     # ----------------------------------------
