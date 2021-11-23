@@ -1005,5 +1005,9 @@ def get_input(msg, default='None'):
     return txt if txt else default
 
 
+def plural(word, pluralise=True):
+    return f'{word}s' if pluralise else word
+
+
 def do_nothing():
     pass
