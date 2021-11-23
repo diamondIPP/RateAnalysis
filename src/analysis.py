@@ -1,6 +1,7 @@
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
 from plotting.save import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
+from helpers.info_legend import AnaInfo
 from os.path import getsize
 from os import getcwd, chdir
 from subprocess import check_call
@@ -38,6 +39,7 @@ class Analysis(object):
 
         # Modules
         self.Config = self.load_config()
+        self.InfoLegend = AnaInfo
         self.Draw = SaveDraw(self, results_dir, sub_dir)
         self.PBar = PBar()
 
