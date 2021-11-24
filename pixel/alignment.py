@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import column_stack, polyfit, argmax, sum
 from src.event_alignment import *
-from plotting.draw import Draw
+from plotting.draw import Draw, FitRes
 from src.binning import Bins
 
 
@@ -183,18 +183,19 @@ class PixAlignment(EventAligment):
         neg, pos = [[self.is_aligned(v, i, i + n) for i in range(n)] for v in [neg, pos]]
         return last_off + (1 if count_nonzero(pos) > 3 else -1 if count_nonzero(neg) > 3 else 0)
 
-    def find_offsets(self, n=50):
-        start, off = 0, self.FirstOffset
-        info('STEP 1: Finding the offsets ...')
-        self.PBar.start(self.NEntries, counter=False)
-        while start is not None:
-            self.Offsets[start] = off
-            start = self.find_off_event(off, start, n)
-            if start is not None:
-                off = self.find_next_off(off, start)
-                self.PBar.update(start)
-        self.PBar.finish()
-        info(f'found all offsets ({len(self.Offsets) - (1 if [*self.Offsets.values()][0] == 0 else 0)})! :-)')
+    def find_offsets(self, n=50, redo=False):
+        if not self.Offsets or redo:
+            start, off = 0, self.FirstOffset
+            info('STEP 1: Finding the offsets ...')
+            self.PBar.start(self.NEntries, counter=False)
+            while start is not None:
+                self.Offsets[start] = off
+                start = self.find_off_event(off, start, n)
+                if start is not None:
+                    off = self.find_next_off(off, start)
+                    self.PBar.update(start)
+            self.PBar.finish()
+            info(f'found all offsets ({len(self.Offsets) - (1 if [*self.Offsets.values()][0] == 0 else 0)})! :-)')
 
     def correlate_all(self, offset=0, n=None, start=0):
         x, y, e = self.get_data(offset, start)
@@ -238,10 +239,25 @@ class PixAlignment(EventAligment):
     def draw_off_event(self, off=None, start=0, n=50, **dkw):
         x, y, e = self.get_data(choose(off, self.FirstOffset), start)
         i = self.find_next(x, y, n)
-        xi = arange(max(0, int(i - n)), int(i + n))
+        xi = arange(max(0, int(i - 1.5 * n)), int(i + 1.5 * n))
         cy = [correlate(*y[i:i + n].T) for i in xi]
-        self.Draw.graph(e[xi], cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor')).Fit('pol1', 'q', '', e[i - n // 3], e[i + n // 3])
+        return FitRes(self.Draw.graph(e[xi] - e[xi[0]], cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor')).Fit('pol1', 'qs', '', e[i - n // 3] - e[xi[0]], e[i + n // 3] - e[xi[0]]))
 
+    def draw_slide(self, off=None, start=0, end=None, n=50, **dkw):
+        x, y, e = self.get_data(choose(off, self.FirstOffset), start, end)
+        cy = [correlate(*y[i:i + n].T) for i in range(e.size - n)]
+        return self.Draw.graph(e[:-n] - start, cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor', ndivx=507))
+
+    def draw_slides(self, offs=None, start=0, end=None, n=50, **dkw):
+        offs = choose(offs, [-1, 0, 1])
+        g = [self.draw_slide(off, start, end, n, show=False, markersize=.6) for off in offs]
+        self.Draw.multigraph(g, 'Sliding Correlations', [f'offset: {o:+d}' for o in offs], **prep_kw(dkw, **Draw.mode(2)))
+
+    def draw_offsets(self, **dkw):
+        self.find_offsets()
+        x, y = array([*self.Offsets]),  array([*self.Offsets.values()])
+        x, y = append(x.repeat(2)[1:], self.NEntries), y.repeat(2)
+        self.Draw.graph(x, y, 'All Offsets', **prep_kw(dkw, x_tit='Event Number', y_tit='Total Event Offset', draw_opt='al', lw=2, gridy=True, ndivy=105, **Draw.mode(2, rm=.05)))
     # endregion DRAW
     # ----------------------------------------
 
