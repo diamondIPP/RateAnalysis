@@ -23,6 +23,7 @@ class PixAlignment(EventAligment):
         self.Y1, self.Y2 = array([]), array([])  # row arrays
         self.C1, self.C2 = array([]), array([])  # cut arrays
         self.BinSize = None
+        self.HitRate = 1
 
         EventAligment.__init__(self, converter)
 
@@ -64,6 +65,7 @@ class PixAlignment(EventAligment):
         pl, col, row = get_tree_vec(tree, ['plane', 'col', 'row'], dtype='u1', firstentry=firstentry, nentries=nentries)
         c1, c2 = self.get_e_cut(self.TelPlane, pl, n), self.get_e_cut(self.DUTPlane, pl, n)
         cut1, cut2 = c1.repeat(n) & (pl == self.TelPlane), c2.repeat(n) & (pl == self.DUTPlane)
+        self.HitRate = int(round(count_nonzero(c2) / c2.size))
         return col[cut1], col[cut2], row[cut1], row[cut2], c1, c2
 
     def get_aligned(self, tree=None, bin_size=200):
@@ -176,19 +178,24 @@ class PixAlignment(EventAligment):
         if i is None:
             return
         if i <= 0:
-            return start - int(n * i)
+            return start - int(n * i) + (0 if i else self.HitRate)
         r1, r2 = max(0, int(i - n // 3)), int(i + n // 3)
         xi, (c1, c2) = arange(r1, r2), array([[correlate(*x[i:i + n].T), correlate(*y[i:i + n].T)] for i in range(r1, r2)]).T
         f1, f2 = polyfit(xi, c1, deg=1), polyfit(xi, c2, deg=1)
-        return e[int(round(mean([-f[1] / f[0] for f in [f1, f2]])))]
+        return e[i] if f1[0] > 0 or f2[0] > 0 else e[int(round(mean([-f[1] / f[0] for f in [f1, f2]])))]
 
-    def find_next_off(self, last_off, start, n=50):
+    def find_next_off(self, last_off, start, n=50, i=0):
         neg, pos = [self.get_data(last_off + off, start, start + 10 * n) for off in [-1, 1]]
         neg, pos = [[self.is_aligned(v, i, i + n) for i in range(n)] for v in [neg, pos]]
-        return last_off + (1 if count_nonzero(pos) > 3 else -1 if count_nonzero(neg) > 3 else 0)
+        off = last_off + (1 if count_nonzero(pos) > 3 else -1 if count_nonzero(neg) > 3 else 0)
+        if off == last_off and i < 3:
+            return self.find_next_off(last_off + 1, start, n, i + 1)
+        return off - i
 
     def find_offsets(self, n=50, redo=False):
         if not self.Offsets or redo:
+            if redo:
+                self.Offsets = {}
             start, off = 0, self.FirstOffset
             info('STEP 1: Finding the offsets ...')
             self.PBar.start(self.NEntries, counter=False)
@@ -223,12 +230,12 @@ class PixAlignment(EventAligment):
 
     def draw_x(self, off=0, start=0, end=None, **dkw):
         x, y = self.get_data(off, start, end)[0].T
-        h = self.Draw.histo_2d(x, y, Bins.get_pixel_x() * 2, **prep_kw(dkw, x_tit=f'Column DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'Column Plane {self.TelPlane}'))
+        h = self.Draw.histo_2d(x, y, Bins.get_pixel_x() * 2, **prep_kw(dkw, x_tit=f'Column Plane {self.DUTPlane - self.NTelPlanes}', y_tit=f'Column DUT {self.TelPlane}'))
         Draw.info(f'Correlation Coefficent: {h.GetCorrelationFactor():.2f}', size=.03)
 
     def draw_y(self, off=0, start=0, end=None, **dkw):
         x, y = self.get_data(off, start, end)[1].T
-        h = self.Draw.histo_2d(x, y, Bins.get_pixel_y() * 2, **prep_kw(dkw, x_tit=f'Row DUT {self.DUTPlane - self.NTelPlanes}', y_tit=f'Row Plane {self.TelPlane}'))
+        h = self.Draw.histo_2d(x, y, Bins.get_pixel_y() * 2, **prep_kw(dkw, x_tit=f'Row Plane {self.DUTPlane - self.NTelPlanes}', y_tit=f'Row DUT {self.TelPlane}'))
         Draw.info(f'Correlation Coefficent: {h.GetCorrelationFactor():.2f}', size=.03)
 
     def draw_correlation(self, off=0, bin_size=50, **kwargs):
@@ -262,6 +269,11 @@ class PixAlignment(EventAligment):
         x, y = array([*self.Offsets]),  array([*self.Offsets.values()])
         x, y = append(x.repeat(2)[1:], self.NEntries), y.repeat(2)
         self.Draw.graph(x, y, 'All Offsets', **prep_kw(dkw, x_tit='Event Number', y_tit='Total Event Offset', draw_opt='al', lw=2, gridy=True, ndivy=105, **Draw.mode(2, rm=.05)))
+
+    def draw_occupancies(self):
+        c = Draw.canvas(w=2, h=.75, divide=(2,))
+        self.Draw.histo_2d(self.X1, self.Y1, Bins.get_pixel(), x_tit='Column Tel', y_tit='Row Tel', canvas=c.cd(1))
+        self.Draw.histo_2d(self.X2, self.Y2, Bins.get_pixel(), x_tit='Column DUT', y_tit='Row DUT', canvas=c.cd(2))
     # endregion DRAW
     # ----------------------------------------
 
@@ -270,8 +282,12 @@ if __name__ == '__main__':
 
     from pixel.run import PixelRun
     from src.converter import Converter
+    from src.analysis import Analysis
 
-    pargs = init_argparser(run=489, tc='201610')
-    zrun = PixelRun(pargs.run, testcampaign=pargs.testcampaign, load_tree=False, verbose=True)
+    # eg. (489/490, 201610), (147, 201810)
+    pargs = init_argparser()
+    this_tc = Analysis.find_testcampaign(pargs.testcampaign)
+
+    zrun = PixelRun(pargs.run, testcampaign=this_tc, load_tree=False, verbose=True)
     z = PixAlignment(Converter(zrun))
     z.reload()
