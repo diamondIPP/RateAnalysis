@@ -10,6 +10,7 @@ from helpers.utils import *
 from src.binning import Bins
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
+import plotting.latex as latex
 
 
 class Cut(SubAnalysis):
@@ -49,7 +50,7 @@ class Cut(SubAnalysis):
     def update_config(self):
         pass
 
-    def get_config(self, option, section='CUT', dtype=str, default=None):
+    def get_config(self, option, section='CUT', dtype: type = str, default=None):
         return self.Config.get_value(section, option, dtype, default)
 
     def load_fiducial(self, name='fiducial'):
@@ -330,9 +331,10 @@ class Cut(SubAnalysis):
 
     # ----------------------------------------
     # region SHOW & ANALYSE
-    def show(self, raw=False):
-        rows = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.CutStrings.get_strings()]
-        print_table([row for row in rows if row[2]], ['Cut Name', 'Level', 'Description'])
+    def show(self, raw=False, latex_=False):
+        rows, header = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.CutStrings.get_strings()], ['Cut Name', 'Level', 'Description']
+        rows = [row for row in rows if row[2]]
+        print(latex.table(latex.bold(*header), rows)) if latex_ else print_table(rows, header)
 
     @update_pbar
     def get_contribution(self, cut, n_previous=0):
@@ -345,10 +347,11 @@ class Cut(SubAnalysis):
         n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
         return {name: i for name, i in zip(cuts, diff(n))}
 
-    def show_contributions(self, redo=False):
+    def show_contributions(self, redo=False, latex_=False):
         abs_vals = 100 * (1 - (cumsum(list(self.get_contributions(_redo=redo).values()))) / self.Run.NEvents)
         rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
-        print_table(rows, header=['Cut', 'Events', 'Contr. [%]', 'Abs [%]'])
+        header = ['Cut', 'Events', 'Contr. [%]', 'Abs [%]']
+        print(latex.table(latex.bold(*header), rows)) if latex_ else print_table(rows, header=header)
 
     def draw_contributions(self, flat=False, short=False, redo=False, **kwargs):
         n = len(self.get_consecutive())
@@ -371,7 +374,7 @@ class Cut(SubAnalysis):
         return TCut(f'!({cut})' if cut else '')
 
     @staticmethod
-    def to_string(cut):
+    def to_string(cut: Any):
         return cut.GetTitle() if type(cut) is TCut else choose(cut, '')
 
     @staticmethod
