@@ -107,6 +107,10 @@ class PixAlignment(EventAligment):
             self.Branches[br][0][:n_dut + n_tel] = self.Variables[i][ind]
         self.Branches['trigger_phase'][0][:2] = self.Variables[-1][[2 * dut_ev, 2 * tel_ev + 1]]
         self.Branches['aligned'][0][0] = self.Aligned[ev]
+
+    def get_time_bins(self, off=0, bin_size=50):
+        e = self.get_data(off)[2]
+        return Bins.make(array([self.Run.get_time_at_event(i) for i in e[::bin_size]]))
     # endregion DATA
     # ----------------------------------------
 

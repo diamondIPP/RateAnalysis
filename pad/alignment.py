@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import histogram2d, sum, insert, delete, sign
+from numpy import histogram2d, sum, insert, delete
 from src.event_alignment import *
 from src.binning import make_bins
 from plotting.draw import get_hist_vec, get_hist_vecs, ax_range
@@ -28,7 +28,6 @@ class PadAlignment(EventAligment):
 
     # ----------------------------------------
     # region INIT
-
     def load_variables(self):
         data = super(PadAlignment, self).load_variables()
         t = self.Run.info('Loading pad information from tree ... ', endl=False)
@@ -41,6 +40,9 @@ class PadAlignment(EventAligment):
 
     def get_xbins(self, bin_size):
         return append(arange(0, self.NEntries, bin_size), self.NEntries if self.NEntries % bin_size else []).astype('i4')
+
+    def get_time_bins(self, off=0, bin_size=1000):
+        return make_bins([self.Run.get_time_at_event(e) for e in self.get_xbins(bin_size)])
 
     def get_aligned(self, tree=None, bin_size=1000, data=None):
         x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.HitVar], cut='pulser'))
@@ -88,7 +90,7 @@ class PadAlignment(EventAligment):
     # ----------------------------------------
     # region OFFSETS
     def find_all_offsets(self):
-        return self.find_offsets(self.FinalOffset + 5, max(sign(self.FinalOffset - self.FirstOffset), 1, key=abs))
+        return self.find_offsets(self.FinalOffset + 5, -1 if self.FinalOffset - self.FirstOffset < 0 else 1)
 
     def find_offset(self, off=-5, event=0, n=None, max_iter=2900):
         aligned = mean(self.NHits[roll(self.Pulser, off)][self.get_cut(event, choose(n, self.BinSize))] > self.NMaxHits) < .15

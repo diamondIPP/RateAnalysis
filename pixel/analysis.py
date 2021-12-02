@@ -268,6 +268,9 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_residual(self, mode=None, cut=None, **dkw):
         return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **dkw)
+
+    def draw_alignment(self, bin_size=200, **kwargs):
+        super(PixAnalysis, self).draw_alignment(bin_size, **kwargs)
     # endregion DRAW
     # ----------------------------------------
 

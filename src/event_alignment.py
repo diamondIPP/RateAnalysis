@@ -77,7 +77,7 @@ class EventAligment(object):
     # ----------------------------------------
     # region INIT
     def print_start(self):
-        print_banner(f'STARTING {self.__class__.__name__[:3].title()} EVENT ALIGNMENT OF RUN {self.Run.Number}')
+        print_banner(f'STARTING {self.__class__.__name__[:3].upper()} EVENT ALIGNMENT OF RUN {self.Run.Number}')
 
     def load_file(self):
         f_name = self.Converter.get_eudaqfile_path()
@@ -87,6 +87,9 @@ class EventAligment(object):
         v = self.get_aligned(*args, **kwargs)
         self.Run.info(f'{calc_eff(values=invert(v))[0]:.1f}% of the events are misaligned :-(' if not all(v) else f'Run {self.Run.Number} is perfectly aligned :-)')
         return all(v)
+
+    def get_time_bins(self, off=0, bin_size=1000):
+        return [1, array([])]
 
     def get_aligned(self, *args, **kwargs):
         return array([])

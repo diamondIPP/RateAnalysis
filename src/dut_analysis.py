@@ -55,6 +55,7 @@ class DUTAnalysis(Analysis):
             self.Tel = Telescope(self)
 
             # alignment
+            self.Alignment = None
             self.IsAligned = self.check_alignment()
 
     def __str__(self):
@@ -260,6 +261,10 @@ class DUTAnalysis(Analysis):
         from src.event_alignment import EventAligment
         return EventAligment
 
+    def init_alignment(self):
+        if self.Alignment is None:
+            self.Alignment = self.get_alignment()(self.Run.Converter)
+
     def get_aligned(self, *args, **kwargs):
         return self.get_alignment()(self.Run.Converter).get_aligned(*args, **kwargs)
 
@@ -275,13 +280,15 @@ class DUTAnalysis(Analysis):
 
     def draw_alignment(self, bin_size=1000, **kwargs):
         """ draw the aligment of telescope and DUT events """
-        bins, y = self.Bins.get_raw_time(bin_size, t_from_event=True), self.get_aligned(bin_size=bin_size)
-        x, y = (bins[1][:-1] + diff(bins[1]))[:y.size].repeat(y + 1), full(sum(y + 1), 1)
+        self.init_alignment()
+        bins, y = self.Alignment.get_time_bins(bin_size=bin_size), self.Alignment.get_aligned(bin_size=bin_size)
+        x, y = (bins[1][:-1] + diff(bins[1]) / 2)[:y.size].repeat(y + 1), full(sum(y + 1), 1)
         h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
                                draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03, z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
         self.Draw.save_plots('EventAlignment')
         return h
+
     # endregion ALIGNMENT
     # ----------------------------------------
 
@@ -586,7 +593,7 @@ class DUTAnalysis(Analysis):
         x, y = log_bins(nbins, 100, 1e6)[1], []
         self.PBar.start(x.size)
         for f in x:
-            y.append(self.model_trap_number(f, t, max_traps, show=False))
+            y.append(self.model_trap_number(f, t, int(max_traps), show=False))
             self.PBar.update()
         g = Draw.make_tgrapherrors(x=x / 1000, y=y)
         format_histo(g, title='Number of Filled Traps vs Flux', x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
