@@ -65,7 +65,8 @@ class PixAlignment(EventAligment):
         pl, col, row = get_tree_vec(tree, ['plane', 'col', 'row'], dtype='u1', firstentry=firstentry, nentries=nentries)
         c1, c2 = self.get_e_cut(self.TelPlane, pl, n), self.get_e_cut(self.DUTPlane, pl, n)
         cut1, cut2 = c1.repeat(n) & (pl == self.TelPlane), c2.repeat(n) & (pl == self.DUTPlane)
-        self.HitRate = int(round(count_nonzero(c2) / c2.size))
+        self.HitRate = int(round(c2.size / count_nonzero(c2)))
+
         return col[cut1], col[cut2], row[cut1], row[cut2], c1, c2
 
     def get_aligned(self, tree=None, bin_size=200):
@@ -79,7 +80,8 @@ class PixAlignment(EventAligment):
         aligned = invert([self.is_misaligned([ix, iy]) for ix, iy in zip(*PixAlignment.bin_data(x, y, bin_size))])
         aligned = append(aligned, True if self.NEntries % bin_size else [])  # add last bin
         aligned[roll(invert(aligned), 1) & roll(invert(aligned), -1)] = False  # extend to neighbouring bins
-        aligned = aligned.repeat(diff(concatenate([[0], e[::bin_size][1:], [self.NEntries]])))  # calculate how many events are in each bins'
+        aligned = aligned.repeat(diff(concatenate([[0], e[::bin_size][1:], [self.NEntries]])))  # calculate how many events are in each bin
+        aligned[concatenate([arange(i - self.HitRate * 5, i + self.HitRate * 5 + 1) for i in self.Offsets])] = False  # exclude around the off events
         self.Aligned[:aligned.size] = aligned
     # endregion INIT
     # ----------------------------------------
@@ -200,18 +202,26 @@ class PixAlignment(EventAligment):
             info('STEP 1: Finding the offsets ...')
             self.PBar.start(self.NEntries, counter=False)
             while start is not None:
-                self.Offsets[start] = off
+                if not self.Offsets or off != [*self.Offsets.values()][-1]:
+                    self.Offsets[start] = off
                 start = self.find_off_event(off, start, n)
                 if start is not None:
                     off = self.find_next_off(off, start)
                     self.PBar.update(start)
             self.PBar.finish()
-            info(f'found all offsets ({len(self.Offsets) - (1 if [*self.Offsets.values()][0] == 0 else 0)})! :-)')
+            final_off = [*self.Offsets.values()][-1]
+            if any(self.all_aligned(off=final_off, n=n, start=self.NEntries - 5 * n * self.HitRate - final_off)):
+                return info(f'found all offsets ({len(self.Offsets) - (1 if [*self.Offsets.values()][0] == 0 else 0)})! :-)')
+            warning(f'did not find all offsets ({len(self.Offsets) - (1 if [*self.Offsets.values()][0] == 0 else 0)}) ... :-(')
 
     def correlate_all(self, offset=0, n=None, start=0):
         x, y, e = self.get_data(offset, start)
         s = x.shape[0] // n
         return array([correlate(*i.T) for i in x[:s * n].reshape(s, n, 2)]), array([correlate(*i.T) for i in y[:s * n].reshape(s, n, 2)])
+
+    def all_aligned(self, off=0, n=None, start=0):
+        x, y = self.correlate_all(off, n, start)
+        return (x > self.Threshold) & (y > self.Threshold)
 
     def find_all(self, offset=0, n=None, start=0):
         x, y = self.correlate_all(offset, n, start)
