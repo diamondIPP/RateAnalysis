@@ -38,14 +38,13 @@ class PixAnalysis(DUTAnalysis):
 
     def update_config(self):
         self.Config.read(join(self.Dir, 'config', self.TCString, 'PixelConfig.ini'))
-
     # endregion INIT
     # ----------------------------------------
 
     # ----------------------------------------
     # region GET
-    def get_ph_var(self, plane=None):
-        return f'cluster_charge[{choose(plane, self.N)}]'
+    def get_ph_var(self, plane=None, vcal=True):
+        return f'cluster_charge[{choose(plane, self.N)}]{ f"/ {Bins.Vcal2El}" if vcal else ""}'
 
     @save_pickle('Fit', sub_dir='PH', suf_args='all')
     def get_pulse_height(self, bin_size=None, cut=None, _redo=False):
@@ -153,6 +152,9 @@ class PixAnalysis(DUTAnalysis):
         x, y, zz = array([[col, row, self.Calibration.get_adc(col, row, vcal)] for col in cols for row in rows]).T
         return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), f'ADC Map (VCAL={vcal}', **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit='ADC'))
 
+    def draw_signal_map(self, *args, **kwargs):
+        super(PixAnalysis, self).draw_signal_map(*args, **prep_kw(kwargs, local=False, z_tit='Pulse Height [vcal]'))
+
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
     # endregion 2D DISTRIBUTIONS
@@ -182,7 +184,8 @@ class PixAnalysis(DUTAnalysis):
     def get_eff_var(self, plane=None):
         return f'n_hits[{choose(plane, self.N)}] > 0'
 
-    def get_hit_efficiency(self, plane=None, cut=None):
+    @save_pickle(sub_dir='Efficiency', suf_args='all')
+    def get_efficiency(self, plane=None, cut=None, _redo=False):
         return calc_eff(values=self.get_tree_vec(self.get_eff_var(plane), choose(cut, self.get_efficiency_cut()), dtype=bool))
 
     def draw_eff_vs_chi2(self, **kwargs):

@@ -208,10 +208,9 @@ class PadAnalysis(DUTAnalysis):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
 
+    @save_pickle(suf_args='all', sub_dir='Effciency')
     def get_efficiency(self, n_sigma=3, redo=False):
-        def f():
-            return calc_eff(values=self.get_tree_vec(self.get_eff_var(n_sigma), self.Cut()))
-        return do_pickle(self.make_simple_pickle_path(suf=str(n_sigma), sub_dir='Efficiency'), f, redo=redo)
+        return calc_eff(values=self.get_tree_vec(self.get_eff_var(n_sigma), self.Cut()))
     # endregion GET
     # ----------------------------------------
 
@@ -384,7 +383,7 @@ class PadAnalysis(DUTAnalysis):
             format_histo(h, y_range=ax_range(0, max(y[x > m + 6 * s]), 0, .05))
 
     def draw_bunch_comparison(self, n, regions, bin_width=5, show=True):
-        histos = [self.draw_bunch_distribution(i, r, bin_width, show=False) for i, r in zip(n, regions)]
+        histos = [self.draw_bunch_distribution(i, r, bin_width=bin_width, show=False) for i, r in zip(n, regions)]
         self.Draw.stack(histos, 'Bunch Distributions', ['Bucket {}'.format(i + 2) for i in n], scale=True, show=show)
 
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
