@@ -46,6 +46,14 @@ class PixAnalysis(DUTAnalysis):
     def get_ph_var(self, plane=None, vcal=True):
         return f'cluster_charge[{choose(plane, self.N)}]{ f"/ {Bins.Vcal2El}" if vcal else ""}'
 
+    @staticmethod
+    def get_tp_var(dut: Any = True):
+        return f'trigger_phase[{1 if dut else 0}]'
+
+    @staticmethod
+    def get_tp_vars():
+        return [PixAnalysis.get_tp_var(dut=True), PixAnalysis.get_tp_var(dut=False)]
+
     @save_pickle('Fit', sub_dir='PH', suf_args='all')
     def get_pulse_height(self, bin_size=None, cut=None, _redo=False):
         return self.draw_pulse_height(bin_size, cut, show=False)[1][0]
@@ -231,12 +239,20 @@ class PixAnalysis(DUTAnalysis):
         self.Tel.draw_trigger_phase(dut=True, cut=cut, **kwargs)
 
     def draw_trigger_phase_offset(self, cut=None, **dkw):
-        x, y = self.get_tree_vec([f'trigger_phase[{i}]' for i in [1, 0]], choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
+        x, y = self.get_tree_vec(self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
         return self.Draw.distribution(x - y, make_bins(-9.5, 10), **prep_kw(dkw, ndivx=20, x_tit='#Delta Trigger Phase', stats=set_entries()))
 
     def draw_tphase_offset_trend(self, bin_width=None, cut=None, **dkw):
-        t, y0, y1 = self.get_tree_vec([self.get_t_var()] + [f'trigger_phase[{i}]' for i in [1, 0]], choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
+        t, y0, y1 = self.get_tree_vec([self.get_t_var()] + self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
         return self.Draw.profile(t, y0 - y1, self.Bins.get_time(bin_width, cut), 'Trigger Phase vs Time', **prep_kw(dkw, graph=True, y_tit='Trigger Phase', y_range=[-9, 9], **self.get_t_args()))
+
+    def draw_tp_map(self, res=None, **dkw):
+        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_tp_var()], cut=self.Cut.exclude('trigger_phase', 'fiducial'))
+        self.Draw.prof2d(x, y, zz, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits, z_tit='Mean Trigger Phase'))
+
+    def draw_single_tp_map(self, tp, res=None, **dkw):
+        x, y = self.get_tree_vec(self.get_track_vars(), cut=self.Cut.generate_custom(['trigger_phase', 'fiducial'], add=f'trigger_phase == {tp}'))
+        self.Draw.histo_2d(x, y, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits, z_tit='Mean Trigger Phase'))
     # endregion TRIGGER PHASE
     # ----------------------------------------
 
