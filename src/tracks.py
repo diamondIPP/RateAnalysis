@@ -64,6 +64,10 @@ class Tracks(SubAnalysis):
     def get_vars(local=False):
         return ['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']]
 
+    @property
+    def ax_tits(self):
+        return {f'{i.lower()}_tit': f'Track Position {i} [mm]' for i in ['X', 'Y']}
+
     def get_plane_hits(self, local=True, add_cut=''):
         t = self.info('getting plane hits...', endl=False)
         self.Tree.SetEstimate(self.Cut.get_size('tracks', excluded=False) * self.NRocs)
