@@ -282,14 +282,20 @@ class PixAnalysis(DUTAnalysis):
         e = [count_nonzero(i) for i in [(x == 0) & (y == 0), (x > 0) & (y == 0), (x == 0) & (y > 0), (x > 0) & (y > 0)]]
         self.Draw.pie(labels, e, offset=.05, h=.04, r=.2, text_size=.025, angle3d=70, angle_off=250, label_format='%txt (%perc)')
 
-    def draw_cluster_size(self, cut='', show=True):
-        return self.Tel.draw_cluster_size(self.N, self.DUT.Name, cut, show)
+    def draw_cluster_size(self, cut=None, **dkw):
+        return self.Draw(self.Tel.draw_cluster_size(self.N, self.DUT.Name, self.Cut(cut), show=False), **dkw)
 
     def draw_residual(self, mode=None, cut=None, **dkw):
-        return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **dkw)
+        return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **prep_kw(dkw, normalise=True))
+
+    def draw_xy_residual(self, f=.5, cut=None, **dkw):
+        return self.Draw.histo_2d(self.Tracks.draw_xy_residual(self.N, cut=self.Cut.exclude('rhit') if cut is None else self.Cut(cut), show=False, f=f), **dkw)
 
     def draw_alignment(self, bin_size=200, **kwargs):
         super(PixAnalysis, self).draw_alignment(bin_size, **kwargs)
+
+    def draw_n_clusters(self, f=2, **dkw):
+        return self.Draw(self.Tel.draw_n_clusters(self.N, self.DUT.Name, self.Cut(), f, show=False), **prep_kw(dkw, logy=True, normalise=True))
     # endregion DRAW
     # ----------------------------------------
 
