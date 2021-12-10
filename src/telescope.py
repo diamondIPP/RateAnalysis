@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF2
-from numpy import delete, prod
+from numpy import delete, prod, insert
 from uncertainties.umath import log as ulog  # noqa
 from src.binning import Bins
 from plotting.draw import *
@@ -15,6 +15,9 @@ from src.dut import Plane
 
 class Telescope(SubAnalysis):
     """ Class for the analysis of the telescope specific stuff of a single run. """
+
+    XVar = 'cluster_col'
+    YVar = 'cluster_row'
 
     def __init__(self, analysis):
         super().__init__(analysis, sub_dir=analysis.Run.Number, pickle_dir='Telescope', dut=False)
@@ -45,11 +48,11 @@ class Telescope(SubAnalysis):
 
     @staticmethod
     def get_col_var(plane, cluster=True, tel_coods=False):
-        return ('cluster_xpos_local[{}] * 10' if tel_coods else 'cluster_col[{}]' if cluster else 'col').format(plane)
+        return f'cluster_xpos_local[{plane}] * 10' if tel_coods else f'{Telescope.XVar}[{plane}]' if cluster else 'col'
 
     @staticmethod
     def get_row_var(plane, cluster=True, tel_coods=False):
-        return ('cluster_ypos_local[{}] * 10' if tel_coods else 'cluster_row[{}]' if cluster else 'row').format(plane)
+        return f'cluster_ypos_local[{plane}] * 10' if tel_coods else f'{Telescope.YVar}[{plane}]' if cluster else 'row'
 
     def get_hit_vars(self, plane, cluster=True, tel_coods=False):
         return [self.get_col_var(plane, cluster, tel_coods), self.get_row_var(plane, cluster, tel_coods)]
@@ -171,10 +174,20 @@ class Telescope(SubAnalysis):
 
     def draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
         histos = [self.draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in (range(self.NRocs) if planes is None else planes)]
-        c = self.Draw.canvas('Hitmaps', w=.9 * ceil(self.NRocs / 2), h=1.5, divide=(int(ceil(self.NRocs / 2)), 2), show=show)
+        c = self.Draw.canvas('Hitmaps', w=.72 * ceil(self.NRocs / 2), h=1.2, divide=(int(ceil(self.NRocs / 2)), 2), show=show)
         for i, h in enumerate(histos, 1):
             self.Draw(h, canvas=c.cd(i))
         self.Draw.save_plots('HitMaps', show=show, prnt=prnt)
+
+    def draw_cluster_occupancies(self, planes=None, cut='', show=True, **dkw):
+        self.Run.set_estimate(self.NRocs * self.Run.NEvents)
+        n = self.get_tree_vec('n_clusters', self.Cut(cut), dtype='i')
+        self.Run.set_estimate(sum(n))
+        loc = array(self.get_tree_vec([self.XVar, self.YVar], self.Cut(cut), dtype='i2')).T
+        c = self.Draw.canvas('Cluster Maps', w=.66 * ceil(self.NRocs / 2), h=1.1, divide=(int(ceil(self.NRocs / 2)), 2), show=show)
+        for i, pl in enumerate((range(self.NRocs) if planes is None else planes), 1):
+            x, y = loc[tile(insert(zeros(self.NRocs - 1, '?'), pl, True), n.size // self.NRocs).repeat(n)].T
+            self.Draw.histo_2d(x, y, Bins.get_pixel(), canvas=c.cd(i), **prep_kw(dkw, title='Cluster Maps', x_tit='col', y_tit='row'))
 
     def draw_hit_efficiency(self, plane=0, cut=None, y_range=None, show=True):
         e, x = self.get_tree_vec(var=['n_clusters[{}]'.format(plane)] + [self.get_t_var()], cut=choose(cut, self.Cut.get('pulser')))
