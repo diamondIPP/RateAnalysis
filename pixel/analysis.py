@@ -295,7 +295,7 @@ class PixAnalysis(DUTAnalysis):
         super(PixAnalysis, self).draw_alignment(bin_size, **kwargs)
 
     def draw_n_clusters(self, f=2, **dkw):
-        return self.Draw(self.Tel.draw_n_clusters(self.N, self.DUT.Name, self.Cut(), f, show=False), **prep_kw(dkw, logy=True, normalise=True))
+        return self.Draw(self.Tel.draw_n_clusters(self.N, self.DUT.Name, self.Cut.exclude('ncluster'), f, show=False), **prep_kw(dkw, logy=True, normalise=True))
     # endregion DRAW
     # ----------------------------------------
 
