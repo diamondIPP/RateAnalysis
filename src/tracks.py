@@ -5,10 +5,10 @@
 # --------------------------------------------------------
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
-from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad
+from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
 from src.sub_analysis import SubAnalysis
 from plotting.draw import *
-from helpers.utils import do_pickle, split, arctan
+from helpers.utils import do_pickle, arctan
 from scipy.stats import norm
 
 
@@ -62,7 +62,11 @@ class Tracks(SubAnalysis):
 
     @staticmethod
     def get_vars(local=False):
-        return ['cluster_{}pos_{}'.format(n, 'local' if local else 'tel') for n in ['x', 'y']]
+        return [f'cluster_{p}pos_{"local" if local else "tel"}' for p in ['x', 'y']]
+
+    @staticmethod
+    def get_res_var(mode=None):
+        return f'residuals{"_{}".format(mode.lower()) if mode else ""}'
 
     @property
     def ax_tits(self):
@@ -181,21 +185,24 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
     # region RESIDUALS
     def draw_residual(self, roc, mode='x', cut='', fit=False, ret_res=False, **dkw):
-        x = self.get_tree_vec(f'residuals{"_{}".format(mode.lower()) if mode else ""}[{roc}]', self.Cut(cut)) * 1e4  # convert to [um]
+        x = self.get_tree_vec(f'{self.get_res_var(mode)}[{roc}]', self.Cut(cut)) * 1e4  # convert to [um]
         tit = f'{mode.title() if mode else ""} Residuals for Plane {roc}'
         h = self.Draw.distribution(x, show=False, **prep_kw(dkw, title=tit, x_tit='Distance [#mum]', normalise=True))
         res = self.fit_residual(h, show=fit)
         self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', y_off=2.0, lm=.14, stats=set_statbox(fit=fit, all_stat=True)))
         return res if ret_res else h
 
-    def draw_unbiased_residual(self, roc=0, mode='x', cut='', x_range=None, fit=False, show=True):
+    def draw_xy_residual(self, roc, cut='', f=.5, **dkw):
+        x, y = array(self.get_tree_vec([f'{self.get_res_var(m)}[{roc}]' for m in ['x', 'y']], self.Cut(cut))) * 1e4  # convert to [um]
+        return self.Draw.histo_2d(x, y, find_bins(x, f, f, n=2) + find_bins(y, f, f, n=2), **prep_kw(dkw, x_tit='Residual in X [#mum]', y_tit='Residual in Y [#mum]'))
+
+    def draw_unbiased_residual(self, roc=0, mode='x', cut='', fit=False, **dkw):
         """ fit the track without the plane under test and calculate residuals. """
-        x, y, z_ = self.get_plane_hits(local=False, add_cut=cut)
-        var = x if mode == 'x' else y
-        fits = polyfit(delete(z_, roc), delete(var, roc, axis=0), deg=1)
-        v = (polyval(fits, z_[roc]) - var[roc]) * 1e3  # to mm -> um
+        x, y = self.get_z_positions()[:self.Run.NTelPlanes], self.get_plane_hits(local=False, add_cut=cut)[0 if mode == 'x' else 1].T
+        fits = polyfit(delete(x, roc), delete(y, roc, axis=0), deg=1)
+        v = (polyval(fits, x[roc]) - y[roc]) * 1e3  # to mm -> um
         tit = 'Unbiased Residuals in {} for Plane {}'.format(mode.title(), roc)
-        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, y_off=2.0, x_tit='Distance [#mum]', x_range=x_range, show=show, normalise=True, lm=.14)
+        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, **prep_kw(dkw, y_off=2.0, x_tit='Distance [#mum]', normalise=True, lm=.14))
         res = mean_sigma(v, err=0)[1] if 'chi2' in self.Cut.get_name(cut) else self.fit_residual(h, show=fit)
         return res if fit else h
 
