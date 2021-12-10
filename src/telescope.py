@@ -141,11 +141,11 @@ class Telescope(SubAnalysis):
     # region HITS
     def draw_cluster_size(self, roc=0, name=None, cut='', **dkw):
         x, tit = self.get_tree_vec(f'cluster_size[{roc}]', self.Cut(cut)), f'Cluster Size {f"ROC {roc}" if name is None else name}'
-        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
+        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, normalise=True, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
 
-    def draw_n_clusters(self, roc=0, name=None, cut='', **dkw):
+    def draw_n_clusters(self, roc=0, name=None, cut='', f=1, **dkw):
         x, tit = self.get_tree_vec(f'n_clusters[{roc}]', self.Cut(cut)), f'Number of Clusters {f"ROC {roc}" if name is None else name}'
-        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=1), tit, **prep_kw(dkw, logy=True, file_name=f'NClusters{roc}'))
+        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=f), tit, **prep_kw(dkw, logy=True, file_name=f'NClusters{roc}', x_tit='Number of Clusters', normalise=True))
 
     def draw_tot_clusters(self, cut='', **dkw):
         x = self.get_tree_vec(f'total_clusters', self.Cut(cut))
