@@ -25,10 +25,12 @@ def draw_occupancies():
 
 
 def draw_raw_occupancies():
-    c = plot.canvas('c', w=1.5, h=1.5, divide=(2, 2))
+    c = plot.canvas('c', w=1.2, h=1.2, divide=(2, 2))
+    p = get_tree_vec(t, 'plane', dtype='i2')
     for i in range(4):
-        x, y = get_tree_vec(t, ['col', 'row'], cut=f'plane == {i}')
-        plot.histo_2d(x, y, Bins.get_pixel(), stats=0, show=0, canvas=c.cd(i + 1))
+        t.SetEstimate(count_nonzero(p == i))
+        x, y = get_tree_vec(t, ['col', 'row'], cut=f'plane == {i}', dtype='i2')
+        plot.histo_2d(x, y, Bins.get_pixel(), canvas=c.cd(i + 1))
 
 
 def draw_hitmap(dut=1, res=None):
