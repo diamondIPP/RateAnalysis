@@ -55,5 +55,5 @@ class AnaInfo(Info):
     def get_info_string(self):
         voltage = '{0:+4.0f}V'.format(self.Ana.DUT.Bias) if self.has_dut else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Ana.Run.DUTs)
         irradiation = make_irr_string(self.Ana.DUT.Irradiation[self.Ana.TCString]) if self.has_dut else '/'.join(make_irr_string(dut.get_irradiation(self.Ana.TCString)) for dut in self.Ana.Run.DUTs)
-        attenuator = 'Att: {}'.format(str(self.Ana.DUT.Attenuator)) if self.has_dut and self.Ana.DUT.Attenuator else ''
+        attenuator = 'Att: {}'.format(str(self.Ana.DUT.Attenuator)) if self.has_dut and self.Ana.DUT.Attenuator and 'pad' in self.Ana.Run.Type else ''
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')
