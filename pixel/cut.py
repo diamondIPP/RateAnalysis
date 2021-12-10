@@ -18,17 +18,13 @@ class PixCut(Cut):
         """ Generates the cut strings to apply in the analysis for each of the cuts. """
         self.CutStrings.register(self.generate_fiducial(center=True), level=23)
         self.CutStrings.register(self.generate_trigger_phase(), level=30)
-        self.CutStrings.register(self.generate_hit(), 60)
         # self.CutStrings.register(self.generate_masks(), 61)
-        self.CutStrings.register(self.generate_rhit(), 80)
+        self.CutStrings.register(self.generate_ncluster(), 80)
+        self.CutStrings.register(self.generate_rhit(), 81)
 
     def generate_trigger_phase(self):
         v = self.load_dut_config('trigger phase')
         return CutString() if v is None else CutString('trigger_phase', f'trigger_phase[1] >= {v[0]} && trigger_phase[1]<={v[1]}', f'{v[0]} <= trigger phase <= {v[1]}')
-
-    @staticmethod
-    def generate_hit():  # TODO implement cut! must change tree structure from tracking telescope (hits in the plane)
-        return CutString('hit', '', 'bla')
 
     def generate_masks(self, col=None, row=None, pixels=None, exclude=True):
         cut_string = TCut('')
@@ -41,6 +37,9 @@ class PixCut(Cut):
         v = choose(value, self.get_config('rhit'))
         cut = self.compute_rhit(v)
         return CutString('rhit', f's_residuals[{self.N}] < {cut}', f'residual < {cut * 10:1.1f}mm ({v}% quantile)')
+
+    def generate_ncluster(self, max_n=1):
+        return CutString('ncluster', f'n_clusters[{self.N}] <= {max_n}', f'number of clusters <= {max_n}')
     # endregion GENERATE
     # ----------------------------------------
 
