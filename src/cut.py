@@ -285,6 +285,9 @@ class Cut(SubAnalysis):
 
     def exclude(self, *exclude, name='custom'):
         return self.CutStrings.generate_custom(exclude, name=name)
+
+    def add(self, *add, name='custom'):
+        return TCut(name, Cut.to_string(self() + sum([Cut.make('', cut) for cut in add], start=TCut())))
     # endregion GENERATE
     # ----------------------------------------
 
