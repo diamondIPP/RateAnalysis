@@ -1,6 +1,7 @@
 from helpers.utils import *
-from src.cut import Cut, CutString, TCut, linspace
+from src.cut import Cut, CutString, TCut
 from src.binning import Bins
+from plotting.draw import fit_fwhm
 
 
 class PixCut(Cut):
@@ -34,9 +35,9 @@ class PixCut(Cut):
         return CutString('masks', cut_string, 'masking {} columns, {} rows and {} pixels'.format(*self.find_n_masked(col, row, pixels)) if exclude else '')
 
     def generate_rhit(self, value=None):
-        v = choose(value, self.get_config('rhit'))
+        v = choose(value, self.get_config('rhit sigma', dtype=float))
         cut = self.compute_rhit(v)
-        return CutString('rhit', f's_residuals[{self.N}] < {cut}', f'residual < {cut * 10:1.1f}mm ({v}% quantile)')
+        return CutString('rhit', f's_residuals[{self.N}] < {cut}', f'residual < {cut * 10:1.1f}mm ({v} sigma)')
 
     def generate_ncluster(self, max_n=1):
         return CutString('ncluster', f'n_clusters[{self.N}] <= {max_n}', f'number of clusters <= {max_n}')
@@ -83,11 +84,12 @@ class PixCut(Cut):
     # ----------------------------------------
     # region COMPUTE
     @save_pickle('RHit', print_dur=True)
-    def calc_rhit_q(self, _redo=False):
-        return quantile(self.get_tree_vec(f'residuals[{self.N}]'), linspace(0, 1, 100, endpoint=False))
+    def calc_res_sigmas(self, _redo=False):
+        d = self.get_tree_vec([f'residuals_{m}[{self.N}]' for m in ['x', 'y']], self['tracks'] + self.get_ncluster(1, self.N))
+        return array([fit_fwhm(self.Draw.distribution(i, show=False))[2].n for i in d])
 
-    def compute_rhit(self, value, redo=False):
-        return self.calc_rhit_q(_redo=redo)[int(value)]
+    def compute_rhit(self, n, redo=False):
+        return sqrt(sum((n * self.calc_res_sigmas(_redo=redo)) ** 2))
 
     def find_n_masked(self, col, row, pixels):
         ncols, nrows = [make_list(self.load_mask(w) if lines is None else lines).size for w, lines in [('column', col), ('row', row)]]
