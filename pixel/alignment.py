@@ -78,7 +78,8 @@ class PixAlignment(EventAligment):
         data = [self.get_data(off, start, end) for (start, off), end in zip(self.Offsets.items(), [*self.Offsets][1:] + [self.NEntries])]
         e, (x, y) = concatenate([d[2] for d in data]), concatenate([d[:2] for d in data], axis=1)
         aligned = invert([self.is_misaligned([ix, iy]) for ix, iy in zip(*PixAlignment.bin_data(x, y, bin_size))])
-        aligned = append(aligned, True if self.NEntries % bin_size else [])  # add last bin
+        # aligned = append(aligned, True if self.NEntries % bin_size else []).astype('?')  # add last bin
+        aligned = append(aligned, True)  # add last bin
         aligned[roll(invert(aligned), 1) & roll(invert(aligned), -1)] = False  # extend to neighbouring bins
         aligned = aligned.repeat(diff(concatenate([[0], e[::bin_size][1:], [self.NEntries]])))  # calculate how many events are in each bin
         aligned[concatenate([arange(i - self.HitRate * 5, i + self.HitRate * 5 + 1) for i in self.Offsets])] = False  # exclude around the off events
