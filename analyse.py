@@ -75,6 +75,7 @@ if __name__ == '__main__':
                     w = z.Waveform
                 tr = z.Tracks
                 t = z.Tel
+            run = z.Run
             c = z.Run.Converter
             cut = z.Cut
         except AttributeError:
