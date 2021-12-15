@@ -192,9 +192,10 @@ class Tracks(SubAnalysis):
         self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', y_off=2.0, lm=.14, stats=set_statbox(fit=fit, all_stat=True)))
         return res if ret_res else h
 
-    def draw_xy_residual(self, roc, cut='', f=.5, **dkw):
+    def draw_xy_residual(self, roc, cut='', f=.5, show_cut=False, **dkw):
         x, y = array(self.get_tree_vec([f'{self.get_res_var(m)}[{roc}]' for m in ['x', 'y']], self.Cut(cut))) * 1e4  # convert to [um]
-        return self.Draw.histo_2d(x, y, find_bins(x, f, f, n=2) + find_bins(y, f, f, n=2), **prep_kw(dkw, x_tit='Residual in X [#mum]', y_tit='Residual in Y [#mum]'))
+        rcut = Draw.ellipse(*self.Cut.calc_res_sigmas() * self.Cut.get_config('rhit sigma', dtype=float) * 1e4, show=False) if show_cut else None
+        return self.Draw.histo_2d(x, y, find_bins(x, f, f, n=2) + find_bins(y, f, f, n=2), **prep_kw(dkw, x_tit='Residual in X [#mum]', y_tit='Residual in Y [#mum]', leg=rcut))
 
     def draw_unbiased_residual(self, roc=0, mode='x', cut='', fit=False, **dkw):
         """ fit the track without the plane under test and calculate residuals. """
