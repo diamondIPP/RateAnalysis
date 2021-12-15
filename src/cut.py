@@ -50,8 +50,8 @@ class Cut(SubAnalysis):
     def update_config(self):
         pass
 
-    def get_config(self, option, section='CUT', dtype: type = str, default=None):
-        return self.Config.get_value(section, option, dtype, default)
+    def get_config(self, option, section='CUT', dtype: type = str, default=None, required=False):
+        return critical(f'{option} cut not defined!') if required and not self.Config.has_option(section, option) else self.Config.get_value(section, option, dtype, default)
 
     def load_fiducial(self, name='fiducial'):
         splits = array(self.Config.get_list('SPLIT', 'fiducial'))
