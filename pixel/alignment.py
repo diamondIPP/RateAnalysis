@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import column_stack, polyfit, argmax, sum
 from src.event_alignment import *
-from plotting.draw import Draw, FitRes
+from plotting.draw import FitRes
 from src.binning import Bins
 
 
@@ -18,6 +18,7 @@ class PixAlignment(EventAligment):
         self.DUTPlane = self.find_dut_plane(converter.Run.DUTs)
         self.TelPlane = choose(tel_plane, 1 if self.DUTPlane > self.NTelPlanes else 2)
         self.MaxOffset = 1000
+        self.Mode = converter.Run.Config.get_value('BASIC', 'align', default='')
 
         self.X1, self.X2 = array([]), array([])  # col arrays
         self.Y1, self.Y2 = array([]), array([])  # row arrays
@@ -78,7 +79,7 @@ class PixAlignment(EventAligment):
         data = [self.get_data(off, start, end) for (start, off), end in zip(self.Offsets.items(), [*self.Offsets][1:] + [self.NEntries])]
         e, (x, y) = concatenate([d[2] for d in data]), concatenate([d[:2] for d in data], axis=1)
         aligned = invert([self.is_misaligned([ix, iy]) for ix, iy in zip(*PixAlignment.bin_data(x, y, bin_size))])
-        # aligned = append(aligned, True if self.NEntries % bin_size else []).astype('?')  # add last bin
+        # aligned = append(aligned, True) if self.NEntries % bin_size else aligned  # add last bin
         aligned = append(aligned, True)  # add last bin
         aligned[roll(invert(aligned), 1) & roll(invert(aligned), -1)] = False  # extend to neighbouring bins
         aligned = aligned.repeat(diff(concatenate([[0], e[::bin_size][1:], [self.NEntries]])))  # calculate how many events are in each bin
@@ -95,6 +96,10 @@ class PixAlignment(EventAligment):
         x1, x2, y1, y2, c1, c2 = self.X1[e1], self.X2[e2], self.Y1[e1], self.Y2[e2], self.C1[start:end], self.C2[start:end]
         co1, co2 = self.find_events(offset, c1, c2)
         return column_stack([x1[co1], x2[co2]]), column_stack([y1[co1], y2[co2]]), where(c1)[0][co1] + start
+
+    def get_bucket(self, offset=0, start=0, n=50):
+        x, y, e = self.get_data(offset, start, start + n * self.HitRate * 2)
+        return x[:n], y[:n], e[:n]
 
     @staticmethod
     def bin_data(x, y, n):
@@ -139,11 +144,11 @@ class PixAlignment(EventAligment):
             return None
         i = next((i for i in range(max(0, (i_s - 1) * n), x.shape[0]) if self.is_misaligned([x, y], i, n + i)), None)  # first index
         if i == 0:  # very short jump
-            c = [correlate(*x[i:n + i].T) < self.Threshold and correlate(*y[i:n + i].T) < self.Threshold for i in range(10)]
+            c = [self.is_misaligned([x, y], i, i + n) for i in range(10)]
             if all(c):
                 return 0
             i_min = argmax(invert(c))
-            i = next(i for i in range(i_min, x.shape[0]) if correlate(*x[i:n + i].T) < self.Threshold or correlate(*y[i:n + i].T) < self.Threshold)
+            i = next(i for i in range(i_min, x.shape[0]) if self.is_misaligned([x, y], i, i + n))
         return i
 
     def correlate(self, x, y, n):
@@ -151,11 +156,13 @@ class PixAlignment(EventAligment):
 
     def is_aligned(self, d, start=None, n=None):
         start, n = (0, choose(start, d[0].shape[0])) if n is None else (start, n)
-        return correlate(*d[0][start:n].T) > self.Threshold and correlate(*d[1][start:n].T) > self.Threshold
+        x, y = [correlate(*d[i][start:n].T) > self.Threshold for i in range(2)]
+        return x and y if self.Mode == '' else x if 'x' in self.Mode else y
 
     def is_misaligned(self, d, start=None, n=None):
         start, n = (0, choose(start, d[0].size)) if n is None else (start, n)
-        return correlate(*d[0][start:n].T) < self.Threshold and correlate(*d[1][start:n].T) < self.Threshold
+        x, y = [correlate(*d[i][start:n].T) < self.Threshold for i in range(2)]
+        return x and y if self.Mode == '' else x if 'x' in self.Mode else y
 
     def find_final_offset(self, n=100):
         start = where(self.C1)[0][-6 * n]
@@ -163,12 +170,11 @@ class PixAlignment(EventAligment):
             if not all(self.correlate(*self.get_data(off, start)[:2], n)):
                 return off
 
-    def find_first_offset(self, n=50):
-        start = where(self.C1[:20 * n] & self.C2[:20 * n])[0][n]
-        for off in range(50):
-            for sgn in [-1, 1]:
-                if self.is_aligned(self.get_data(sgn * off, start, start + 10 * n), 0, n):
-                    return off
+    def find_first_offset(self, max_off=50, n=50):
+        start = self.get_bucket(n=n)[2][-1] + 1  # exclude the 0th bucket
+        for off in sorted(range(-max_off, max_off + 1)):
+            if self.is_aligned(self.get_bucket(off, start, n)):
+                return off
         warning('could not determine starting offset! assuming 0 ...')
         return 0
 
@@ -183,9 +189,8 @@ class PixAlignment(EventAligment):
         if i <= 0:
             return start - int(n * i) + (0 if i else self.HitRate)
         r1, r2 = max(0, int(i - n // 3)), int(i + n // 3)
-        xi, (c1, c2) = arange(r1, r2), array([[correlate(*x[i:i + n].T), correlate(*y[i:i + n].T)] for i in range(r1, r2)]).T
-        f1, f2 = polyfit(xi, c1, deg=1), polyfit(xi, c2, deg=1)
-        return e[i] if f1[0] > 0 or f2[0] > 0 else e[int(round(mean([-f[1] / f[0] for f in [f1, f2]])))]
+        f = [polyfit(arange(r1, r2), array([correlate(*v[i:i + n].T) for i in range(r1, r2)]), deg=1) for v in ([x, y] if self.Mode == '' else [x] if 'x' in self.Mode else [y])]
+        return e[i] if any(fi[0] > 0 for fi in f) else e[int(round(mean([-fi[1] / fi[0] for fi in f])))]
 
     def find_next_off(self, last_off, start, n=50, i=0):
         neg, pos = [self.get_data(last_off + off, start, start + 10 * n) for off in [-1, 1]]
@@ -265,14 +270,14 @@ class PixAlignment(EventAligment):
         cy = [correlate(*y[i:i + n].T) for i in xi]
         return FitRes(self.Draw.graph(e[xi] - e[xi[0]], cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor')).Fit('pol1', 'qs', '', e[i - n // 3] - e[xi[0]], e[i + n // 3] - e[xi[0]]))
 
-    def draw_slide(self, off=None, start=0, end=None, n=50, **dkw):
+    def draw_slide(self, off=None, start=0, end=None, n=50, mode=None, **dkw):
         x, y, e = self.get_data(choose(off, self.FirstOffset), start, end)
-        cy = [correlate(*y[i:i + n].T) for i in range(e.size - n)]
-        return self.Draw.graph(e[:-n] - start, cy, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor', ndivx=507))
+        c = [correlate(*(x if 'x' in choose(mode, self.Mode) else y)[i:i + n].T) for i in range(e.size - n)]
+        return self.Draw.graph(e[:-n] - start, c, **prep_kw(dkw, x_tit='Event Number', y_tit='Correlation Factor', ndivx=507, y_range=[0, 1.05]))
 
-    def draw_slides(self, offs=None, start=0, end=None, n=50, **dkw):
+    def draw_slides(self, offs=None, start=0, end=None, n=50, mode=None, **dkw):
         offs = choose(offs, [-1, 0, 1])
-        g = [self.draw_slide(off, start, end, n, show=False, markersize=.6) for off in offs]
+        g = [self.draw_slide(off, start, end, n, show=False, markersize=.6, mode=mode) for off in offs]
         self.Draw.multigraph(g, 'Sliding Correlations', [f'offset: {o:+d}' for o in offs], **prep_kw(dkw, **Draw.mode(2)))
 
     def draw_offsets(self, **dkw):
