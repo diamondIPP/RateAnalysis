@@ -413,13 +413,13 @@ if __name__ == '__main__':
                 tc = remove_letters(Path(args.run).absolute().parts[3]).replace('_', '')
             else:
                 run = None
-
-        try:
-            z = Run(run, testcampaign=tc)
-        except ValueError:
-            run = Run(2, testcampaign='201807')
-        except Exception as err:
-            warning(err)
+        if 'Tracked' in args.run:
+            try:
+                z = Run(run, testcampaign=tc)
+            except ValueError:
+                run = Run(2, testcampaign='201807')
+            except Exception as err:
+                warning(err)
 
         channels = read_macro(rootfile)
         t = rootfile.Get('tree')
