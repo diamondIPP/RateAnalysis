@@ -169,7 +169,7 @@ class Telescope(SubAnalysis):
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
         bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         tit = f'{"Cluster" if cluster else "Hit"} Occupancy {f"ROC {plane}" if name is None else name}'
-        return self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='x [mm]' if tel_coods else 'col', y_tit='y [mm]' if tel_coods else 'row', y_off=1.2,
+        return self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='x [mm]' if tel_coods else 'Column', y_tit='y [mm]' if tel_coods else 'Row', y_off=1.2,
                                                         file_name=f'{"Cluster" if cluster else "Hit"}Map{plane}'))
 
     def draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
