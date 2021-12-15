@@ -190,10 +190,10 @@ class PixAlignment(EventAligment):
     def find_next_off(self, last_off, start, n=50, i=0):
         neg, pos = [self.get_data(last_off + off, start, start + 10 * n) for off in [-1, 1]]
         neg, pos = [[self.is_aligned(v, i, i + n) for i in range(n)] for v in [neg, pos]]
-        off = last_off + (1 if count_nonzero(pos) > 3 else -1 if count_nonzero(neg) > 3 else 0)
-        if off == last_off and i < 3:
+        off = 1 if count_nonzero(pos) > 3 else -1 if count_nonzero(neg) > 3 else 0
+        if off == 0 and i < 3:
             return self.find_next_off(last_off + 1, start, n, i + 1)
-        return off - i
+        return last_off + off - (i if i == 3 else 0)
 
     def find_offsets(self, n=50, redo=False):
         if not self.Offsets or redo:
