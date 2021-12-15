@@ -186,8 +186,8 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region EFFICIENCY
-    def get_efficiency_cut(self, *exclude):
-        return self.Cut.exclude('rhit', *exclude)
+    def get_efficiency_cut(self, *exclude, cut=None):
+        return self.Cut.exclude('rhit', *exclude) if cut is None else self.Cut(cut)
 
     def get_eff_var(self, plane=None):
         return f'n_hits[{choose(plane, self.N)}] > 0'
@@ -209,8 +209,8 @@ class PixAnalysis(DUTAnalysis):
         self.Draw.save_plots('HitEfficiency', **kwargs)
         return fit if fit.Parameter(0) is not None else 0
 
-    def draw_efficiency_map(self, res=None, fid=False, **kwargs):
-        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut(None if fid else 'fiducial'))
+    def draw_efficiency_map(self, res=None, fid=False, cut=None, **kwargs):
+        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()],  self.get_efficiency_cut(None if fid else 'fiducial', cut=cut))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
         self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
         self.Draw.preliminary()
