@@ -74,7 +74,7 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         """ draw hitmap or cluster map """
-        return self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, **dkw)
+        return self.Draw(self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show=False), **dkw)
 
     def draw_occupancy_trend(self, cut=None, fid=False, bin_size=None, **kwargs):
         cut = self.Cut.generate_custom(exclude='fiducial' if not fid else []) if cut is None else self.Cut(cut)
@@ -186,8 +186,8 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region EFFICIENCY
-    def get_efficiency_cut(self, trig_phase=True):
-        return self.Cut.generate_custom(exclude=None if trig_phase else 'trigger_phase', prnt=False)
+    def get_efficiency_cut(self, *exclude):
+        return self.Cut.exclude('rhit', *exclude)
 
     def get_eff_var(self, plane=None):
         return f'n_hits[{choose(plane, self.N)}] > 0'
@@ -210,7 +210,7 @@ class PixAnalysis(DUTAnalysis):
         return fit if fit.Parameter(0) is not None else 0
 
     def draw_efficiency_map(self, res=None, fid=False, **kwargs):
-        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut() if fid else self.Cut.generate_custom('fiducial'))
+        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut(None if fid else 'fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
         self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
         self.Draw.preliminary()
@@ -228,7 +228,7 @@ class PixAnalysis(DUTAnalysis):
         self.Draw.prof2d(x % Plane.PX, y % Plane.PY, e * 100, bins, 'Cell Efficiency', **prep_kw(dkw, x_tit='Track X [mm]', y_tit='Track Y [mm]', z_tit='Efficiency [%]'))
 
     def draw_efficiency_vs_trigphase(self, **kwargs):
-        x, e = self.get_tree_vec(['trigger_phase[1]', self.get_eff_var()], self.get_efficiency_cut(trig_phase=False))
+        x, e = self.get_tree_vec(['trigger_phase[1]', self.get_eff_var()], self.get_efficiency_cut('trigger_phase'))
         return self.Draw.efficiency(x, e, make_bins(-.5, 10), 'Trigger Phase Efficiency', **prep_kw(kwargs, x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
     # endregion EFFICIENCY
     # ----------------------------------------
@@ -288,8 +288,8 @@ class PixAnalysis(DUTAnalysis):
     def draw_residual(self, mode=None, cut=None, **dkw):
         return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **prep_kw(dkw, normalise=True))
 
-    def draw_xy_residual(self, f=.5, cut=None, **dkw):
-        return self.Draw.histo_2d(self.Tracks.draw_xy_residual(self.N, cut=self.Cut.exclude('rhit') if cut is None else self.Cut(cut), show=False, f=f), **dkw)
+    def draw_xy_residual(self, f=.5, cut=None, show_cut=False, **dkw):
+        return self.Draw.histo_2d(self.Tracks.draw_xy_residual(self.N, cut=self.Cut.exclude('rhit') if cut is None else self.Cut(cut), show=False, show_cut=show_cut, f=f), **dkw)
 
     def draw_alignment(self, bin_size=200, **kwargs):
         super(PixAnalysis, self).draw_alignment(bin_size, **kwargs)
