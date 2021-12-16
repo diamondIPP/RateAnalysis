@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut
-from numpy import delete
+from numpy import delete, column_stack, insert
 
 from plotting.draw import *
 from helpers.utils import *
@@ -333,7 +333,7 @@ class Cut(SubAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
-    # region SHOW & ANALYSE
+    # region CONTRIBUTIONS
     def show(self, raw=False, latex_=False):
         rows, header = [[cut.Name, '{:5d}'.format(cut.Level), cut.Value if raw else cut.Description] for cut in self.CutStrings.get_strings()], ['Cut Name', 'Level', 'Description']
         rows = [row for row in rows if row[2]]
@@ -344,31 +344,40 @@ class Cut(SubAnalysis):
         return self.Run.NEvents - self.Tree.GetEntries(self(cut).GetTitle()) - n_previous
 
     @save_pickle('Contribution')
-    def get_contributions(self, _redo=False):
+    def _get_contributions(self, _redo=False):
         cuts = self.get_consecutive(raw=False)
         self.PBar.start(len(self.get_consecutive()) - 1, counter=True)
         n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
         return {name: i for name, i in zip(cuts, diff(n))}
 
-    def show_contributions(self, redo=False, latex_=False):
-        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions(_redo=redo).values()))) / self.Run.NEvents)
+    def get_contributions(self, threshold=None, redo=False):
+        return {name: n for name, n in self._get_contributions(_redo=redo).items() if threshold is None or n > threshold * self.Run.NEvents}
+
+    def show_contributions(self, redo=False, latex_=False, ret=False):
+        abs_vals = 100 * (1 - (cumsum(list(self.get_contributions(redo=redo).values()))) / self.Run.NEvents)
         rows = [[name, f'{value:>6}', f'{value / self.Run.NEvents * 100: 10.2f}', f'{abs_: 3.2f}'] for (name, value), abs_ in zip(self.get_contributions().items(), abs_vals)]
         header = ['Cut', 'Events', 'Contr. [%]', 'Abs [%]']
-        print(latex.table(latex.bold(*header), rows)) if latex_ else print_table(rows, header=header)
+        return rows if ret else print(latex.table(latex.bold(*header), rows)) if latex_ else None if print_table(rows, header=header) else None
 
-    def draw_contributions(self, flat=False, short=False, redo=False, **kwargs):
-        n = len(self.get_consecutive())
-        contr = {key: (value, self.Draw.get_color(n)) for key, value in self.get_contributions(_redo=redo).items()}
-        contr['Good Events'] = (self.Run.NEvents - sum(self.get_contributions().values()), self.Draw.get_color(n))
-        sorted_contr = OrderedDict(sorted(OrderedDict(item for item in contr.items() if item[1][0] >= (.03 * self.Run.NEvents if short else 0)).items(), key=lambda x: x[1]))  # sort by size
-        sorted_contr.update({'Other': (self.Run.NEvents - sum(v[0] for v in sorted_contr.values()), self.Draw.get_color(n))} if short else {})
-        sorted_contr = OrderedDict(sorted_contr.popitem(not i % 2) for i in range(len(sorted_contr)))  # sort by largest->smallest->next largest...
-        self.Draw.pie(sorted_contr, **prep_kw(kwargs, offset=.05, flat=flat, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250))
-        return sorted_contr
+    def show_2contributions(self, run, redo=False):
+        from analyse import analysis_selector
+        r1, r2 = array(self.show_contributions(redo, ret=True)), array(analysis_selector(run, self.DUT.Number, self.TCString, tree=True, prnt=False).Cut.show_contributions(redo, ret=True))
+        r1 = insert(r1, where(r2[:, 0] == 'aligned')[0][0], ['aligned', '0', '      0.00', '0'], axis=0) if len(r1) != len(r2) and 'aligned' in r2 else r1
+        r1, r2 = [append(r, [['good events', '0', f'{r[-1][-1]:>10}', '1']], axis=0) for r in [r1, r2]]
+        print(latex.table(latex.bold('Cut Name', 'Low Rate', 'High Rate'), column_stack((array(r1)[:, [0, 2]], array(r2)[:, 2]))))
+
+    def draw_contributions(self, flat=False, threshold=None, redo=False, **kwargs):
+        cuts = self.get_contributions(threshold=threshold / 100, redo=redo)
+        cuts['good events'] = self.Run.NEvents - sum(self.get_contributions().values())
+        cuts = {**({'other': self.Run.NEvents - sum(cuts.values())} if threshold is not None else {}), **cuts}
+        cuts = OrderedDict(sorted({name: (n, self.Draw.get_color(len(cuts))) for name, n in cuts.items()}.items(), key=lambda x: x[1]))  # add colors and sort by number of events
+        sorted_cuts = OrderedDict(cuts.popitem(i % 2 == 1) for i in range(len(cuts)))  # sort by largest->smallest->next largest...
+        self.Draw.pie(sorted_cuts, **prep_kw(kwargs, offset=.05, flat=flat, h=.04, r=.2, text_size=.025, angle3d=70, label_format='%txt (%perc)', angle_off=250))
+        return sorted_cuts
 
     def draw_fid(self, scale=10):
         self.get_fid(scale).Draw()
-    # endregion SHOW & ANALYSE
+    # endregion CONTRIBUTIONS
     # ----------------------------------------
 
     # ----------------------------------------
