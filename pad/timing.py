@@ -193,7 +193,7 @@ class TimingAnalysis(PadSubAnalysis):
         h = do_pickle(self.make_simple_pickle_path('PeakTC', '{}{}{}'.format(self.TimingCut(cut).GetName(), bin_size, int(fine_corr))), f, redo=redo)
         self.fit_sin(h, fit)
         format_histo(h, x_tit='Trigger Cell', y_tit='Signal Peak Time [ns]', y_off=1.8, stats=fit)
-        self.Draw(h, 'OriPeakPosVsTriggerCell', show, lm=.13, prnt=prnt, save=save, stats=set_statbox(fit=True, center_x=True))
+        self.Draw(h, title='OriPeakPosVsTriggerCell', show=show, lm=.13, prnt=prnt, save=save, stats=set_statbox(fit=True, center_x=True))
         return h
 
     def fit_sin(self, h, fit):
