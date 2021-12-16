@@ -27,7 +27,7 @@ class Telescope(SubAnalysis):
 
     def verify_mask(self):
         """ verify that the mask file is in the right order. """
-        run_mask, pl_mask = self.Run.load_mask(), [self.find_mask(i) for i in [1, 2]]
+        run_mask, pl_mask = self.Run.load_mask(), [self.find_mask(i) for i in arange(len(self.Run.load_mask())) + 1]
         warning(f'mask file of run {self.Run.Number} does not agree with found mask!! {run_mask} != {pl_mask}', prnt=run_mask != pl_mask and run_mask is not None)
         return run_mask == pl_mask
 
