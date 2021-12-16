@@ -55,8 +55,12 @@ class PixAnalysis(DUTAnalysis):
         return [PixAnalysis.get_tp_var(dut=True), PixAnalysis.get_tp_var(dut=False)]
 
     @save_pickle('Fit', sub_dir='PH', suf_args='all')
-    def get_pulse_height(self, bin_size=None, cut=None, _redo=False):
+    def _get_pulse_height(self, bin_size=None, cut=None, _redo=False):
         return self.draw_pulse_height(bin_size, cut, show=False)[1][0]
+
+    @update_pbar
+    def get_pulse_height(self, bin_size=None, cut=None, redo=False):  # copy required to mimic behaviour of pad method
+        return self._get_pulse_height(bin_size, cut, _redo=redo)
 
     def get_vcal(self, redo=False):
         h = self.draw_vcal_distribution(show=False, redo=redo)
@@ -202,7 +206,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_hit_efficiency(self, cut=None, bin_size=None, rel_time=False, **kwargs):
         (x, e), bins = self.get_tree_vec([self.get_t_var(), self.get_eff_var()], choose(cut, self.get_efficiency_cut())), self.Bins.get_time(bin_size, cut)
-        g = self.Draw.efficiency(x, e, bins, 'Hit Efficiency', **prep_kw(kwargs, **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz'))
+        g = self.Draw.efficiency(x, e, bins, **prep_kw(kwargs, title='Hit Efficiency', **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz'))
         fit = FitRes(g.Fit('pol0', 'qs'))
         self.Draw.stats(fit, width=.35, y2=.35, names=['Efficiency'])
         self.Draw.preliminary()
@@ -210,7 +214,7 @@ class PixAnalysis(DUTAnalysis):
         return fit if fit.Parameter(0) is not None else 0
 
     def draw_efficiency_map(self, res=None, fid=False, cut=None, **kwargs):
-        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()],  self.get_efficiency_cut(None if fid else 'fiducial', cut=cut))
+        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut(None if fid else 'fiducial', cut=cut))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
         self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
         self.Draw.preliminary()
@@ -229,7 +233,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_efficiency_vs_trigphase(self, **kwargs):
         x, e = self.get_tree_vec(['trigger_phase[1]', self.get_eff_var()], self.get_efficiency_cut('trigger_phase'))
-        return self.Draw.efficiency(x, e, make_bins(-.5, 10), 'Trigger Phase Efficiency', **prep_kw(kwargs, x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
+        return self.Draw.efficiency(x, e, make_bins(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
     # endregion EFFICIENCY
     # ----------------------------------------
 
