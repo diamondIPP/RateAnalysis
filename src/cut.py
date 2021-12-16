@@ -371,6 +371,27 @@ class Cut(SubAnalysis):
     # endregion SHOW & ANALYSE
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region ANA
+    def compare_single_cuts(self, scale=True, redo=False):
+        histos = [self.Ana.draw_signal_distribution(cut(), show=False, redo=redo, save=False) for cut in self.get_strings()]
+        self.Draw.stack(histos, 'Single Cuts', self.get_names(), scale=scale)
+
+    def compare_consecutive_cuts(self, scale=False, short=False, x_range=None, redo=False):
+        cuts = self.get_consecutive(short)
+        histos = [self.Ana.draw_signal_distribution(cut=cut, show=False, redo=redo, x_range=x_range, save=False) for cut in cuts.values()]
+        self.Draw.stack(histos, 'Signal Distribution with Consecutive Cuts', cuts.keys(), scale)
+
+    @quiet
+    def draw_means(self, short=False, cuts=None, names=None, normalise=True, redo=False, **dkw):
+        cuts, labels = choose(cuts, list(self.get_consecutive(short).values())), choose(names, self.get_consecutive(short).keys())
+        self.Ana.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
+        x, y = arange(len(cuts)), array([self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts])
+        y /= y[-1] if normalise else 1
+        return self.Draw.graph(x, y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', **prep_kw(dkw, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels))
+    # endregion ANA
+    # ----------------------------------------
+
     @staticmethod
     def invert(cut):
         cut = Cut.to_string(cut)
