@@ -46,6 +46,9 @@ class PixAnalysis(DUTAnalysis):
     def get_ph_var(self, plane=None, vcal=True):
         return f'cluster_charge[{choose(plane, self.N)}]{ f"/ {Bins.Vcal2El}" if vcal else ""}'
 
+    def get_signal_var(self):
+        return self.get_ph_var()
+
     @staticmethod
     def get_tp_var(dut: Any = True):
         return f'trigger_phase[{1 if dut else 0}]'
@@ -140,6 +143,9 @@ class PixAnalysis(DUTAnalysis):
         fit = FitRes(h.Fit('pol0', 'qs'))
         self.Draw.save_plots(f'PulseHeight{bin_size}')
         return h, fit
+
+    def draw_signal_vs_trigger_phase(self, dut=True, cut=None, show=True):
+        return super(PixAnalysis, self).draw_signal_vs_trigger_phase(dut, self.Cut.exclude('trigger_phase'), show)
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
