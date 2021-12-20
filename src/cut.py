@@ -173,9 +173,9 @@ class Cut(SubAnalysis):
     def update(self, name, value=None):
         self.CutStrings.set(name, value)
 
-    def remove(self, name):
+    def remove(self, name, ret=False):
         self.CutStrings.remove(name)
-        self.Ana.Bins.remove_pickle()
+        return self if ret else self.Ana.Bins.remove_pickle()
 
     def set_chi2(self, value):
         self.update('chi2_x', self.generate_chi2('x', value).Value)
@@ -408,7 +408,7 @@ class Cut(SubAnalysis):
 
     @staticmethod
     def to_string(cut: Any):
-        return cut.GetTitle() if type(cut) is TCut else choose(cut, '')
+        return cut.GetTitle() if type(cut) is TCut else cut.Value if type(cut) is CutString else choose(cut, '')
 
     @staticmethod
     def make(name, cut, invert=False):
