@@ -410,7 +410,7 @@ if __name__ == '__main__':
                 run = int(argv[1].split('/')[-1].strip('_withTracks.roottest'))
             elif 'Tracked' in argv[1]:
                 run = int(argv[1].split('/')[-1].strip('.root').strip('TrackedRun'))
-                tc = remove_letters(Path(args.run).absolute().parts[3]).replace('_', '')
+                tc = remove_letters(Path(args.run).absolute().parts[3]).replace('_', '') if 'psi' in args.run else tc
             else:
                 run = None
         if 'Tracked' in args.run:
