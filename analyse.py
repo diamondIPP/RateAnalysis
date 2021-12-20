@@ -68,6 +68,7 @@ if __name__ == '__main__':
             if pargs.tree:
                 if z.Run.Type == 'pixel':
                     cal = z.Calibration
+                    e = z.Efficiency
                 else:
                     p = z.Peaks
                     pul = z.Pulser
