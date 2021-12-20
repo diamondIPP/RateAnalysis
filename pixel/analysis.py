@@ -9,8 +9,8 @@ from numpy import insert, sum
 
 from pixel.calibration import Calibration
 from pixel.cut import PixCut
+from pixel.efficiency import Efficiency
 from pixel.run import PixelRun
-from src.dut import Plane
 from src.dut_analysis import *
 
 
@@ -24,6 +24,7 @@ class PixAnalysis(DUTAnalysis):
 
         if self.Tree.Hash():
             self.Calibration = Calibration(self)
+            self.Efficiency = Efficiency(self)
 
         self.print_finished(prnt=prnt)
 
@@ -192,55 +193,6 @@ class PixAnalysis(DUTAnalysis):
         x = self.Calibration.get_thresholds(vcal=vcal).T[-1]
         return self.Draw.distribution(x, title='Threshold Distribution', **prep_kw(dkw, x_tit='Threshold [vcal]'))
     # endregion THRESHOLD
-    # ----------------------------------------
-
-    # ----------------------------------------
-    # region EFFICIENCY
-    def get_efficiency_cut(self, *exclude, cut=None):
-        return self.Cut.exclude('rhit', *exclude) if cut is None else self.Cut(cut)
-
-    def get_eff_var(self, plane=None):
-        return f'n_hits[{choose(plane, self.N)}] > 0'
-
-    @save_pickle(sub_dir='Efficiency', suf_args='all')
-    def get_efficiency(self, plane=None, cut=None, _redo=False):
-        return calc_eff(values=self.get_tree_vec(self.get_eff_var(plane), choose(cut, self.get_efficiency_cut()), dtype=bool))
-
-    def draw_eff_vs_chi2(self, **kwargs):
-        x, e = self.get_tree_vec(['chi2_tracks', self.get_eff_var()], self.get_efficiency_cut())
-        self.Draw.efficiency(x, e, find_bins(x, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(kwargs, x_tit='#chi^{2}'))
-
-    def draw_hit_efficiency(self, cut=None, bin_size=None, rel_time=False, **kwargs):
-        (x, e), bins = self.get_tree_vec([self.get_t_var(), self.get_eff_var()], choose(cut, self.get_efficiency_cut())), self.Bins.get_time(bin_size, cut)
-        g = self.Draw.efficiency(x, e, bins, **prep_kw(kwargs, title='Hit Efficiency', **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz'))
-        fit = FitRes(g.Fit('pol0', 'qs'))
-        self.Draw.stats(fit, width=.35, y2=.35, names=['Efficiency'])
-        self.Draw.preliminary()
-        self.Draw.save_plots('HitEfficiency', **kwargs)
-        return fit if fit.Parameter(0) is not None else 0
-
-    def draw_efficiency_map(self, res=None, fid=False, cut=None, **kwargs):
-        x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut(None if fid else 'fiducial', cut=cut))
-        tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
-        self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
-        self.Draw.preliminary()
-        self.draw_fid_cut()
-        self.Draw.save_plots('Efficiency Map')
-
-    def get_fiducial_cell(self, n):
-        x1, x2, y1, y2 = self.Cut.CutConfig['fiducial']
-        nx = int(round((x2 - x1) / Plane.PX))
-        return round(x1 + Plane.PX * (n % nx), 4), round(y1 + Plane.PY * (n / nx), 4)
-
-    def draw_cell_efficiency(self, nbins=None, **dkw):
-        x, y, e = self.get_tree_vec(self.get_track_vars() + [self.get_eff_var()], self.get_efficiency_cut())
-        bins = None if nbins is None else [nbins, 0, Plane.PX, nbins, 0, Plane.PY]
-        self.Draw.prof2d(x % Plane.PX, y % Plane.PY, e * 100, bins, 'Cell Efficiency', **prep_kw(dkw, x_tit='Track X [mm]', y_tit='Track Y [mm]', z_tit='Efficiency [%]'))
-
-    def draw_efficiency_vs_trigphase(self, **kwargs):
-        x, e = self.get_tree_vec(['trigger_phase[1]', self.get_eff_var()], self.get_efficiency_cut('trigger_phase'))
-        return self.Draw.efficiency(x, e, make_bins(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
-    # endregion EFFICIENCY
     # ----------------------------------------
 
     # ----------------------------------------
