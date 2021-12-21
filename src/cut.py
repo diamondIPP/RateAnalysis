@@ -475,7 +475,7 @@ class CutStrings(object):
 
     def remove(self, name):
         if name not in self.Strings:
-            return warning(f'there is no cut with name {name}')
+            return warning(f'there is no cut with name {name}', prnt=name is not None)
         self.Strings.pop(name)
 
     def sort(self):
