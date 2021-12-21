@@ -679,11 +679,12 @@ def make_suffix(ana, values):
     return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
 
 
-def prep_suffix(f, args, kwargs, suf_args):
+def prep_suffix(f, args, kwargs, suf_args, field=None):
     def_pars = signature(f).parameters
     names, values = list(def_pars.keys()), [par.default for par in def_pars.values()]
     i_arg = (arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))) + 1
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
+    suf_vals += [getattr(args[0], str(field))] if field is not None and hasattr(args[0], field) else []
     return make_suffix(args[0], suf_vals)
 
 
@@ -692,14 +693,14 @@ def load_pickle(file_name):
         return pickle.load(f)
 
 
-def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', **pkwargs):
+def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', field=None, **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             if '_no_save' in kwargs:
                 return func(*args, **kwargs)
             run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
-            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args)))
+            pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args, field)))
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 return load_pickle(pickle_path)
