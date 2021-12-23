@@ -3,6 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array
+from numpy import multiply
 
 
 class DUT:
@@ -21,6 +22,7 @@ class DUT:
 
         # Specs
         self.Specs = load_json(join(self.Dir, 'Runinfos', 'dia_info.json'))[self.Key]
+        self.Type = self.load_spec('type', default='pad')
         self.Irradiation = self.load_spec('irradiation')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
@@ -52,9 +54,9 @@ class DUT:
     def set_number(self, value):
         self.Number = value
 
-    def get_area(self, bcm=False):
-        """ :returns: area of the DUT in cm^2"""
-        return self.get_bcm_area() if bcm else self.ActiveArea * .01
+    def get_area(self, bcm=False, tc=None):
+        """ :returns: area of the DUT in cm²"""
+        return self.get_bcm_area() if bcm else Plane.PixArea * multiply(*self.Size) * .01 if 'pix' in self.Type[tc] else self.ActiveArea * .01
 
     def get_bcm_area(self):
         """ :returns: total area of the BCM' pad sizes """
