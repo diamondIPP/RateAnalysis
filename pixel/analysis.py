@@ -6,6 +6,7 @@
 
 
 from numpy import insert, sum
+from scipy.stats import poisson
 
 from pixel.calibration import Calibration
 from pixel.cut import PixCut
@@ -75,6 +76,10 @@ class PixAnalysis(DUTAnalysis):
 
     def get_track_vars(self, mm=True, local=False):
         return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local)
+
+    def get_lambda(self, flux=None):
+        """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux"""
+        return choose(flux, self.get_flux().n) * 1e3 * self.DUT.get_area(tc=self.TCString) / self.Run.Plane.Frequency
     # endregion GET
     # ----------------------------------------
 
@@ -92,6 +97,12 @@ class PixAnalysis(DUTAnalysis):
         y0, y1 = [[ufloat(ip.GetMean(), ip.GetMeanError()) for ip in p] for p in [px, py]]
         g = [self.Draw.graph(x, y, x_tit='Time [hh:mm]', y_tit='Mean Pixel Pos', show=False) for y in [y0, y1]]
         return self.Draw.multigraph(g, 'Hit Position Trend', ['Column', 'Row'], t_ax_off=0, **kwargs)
+
+    def draw_n_tracks(self, flux=None, **dkw):
+        """theoretical number of tracks through the DUT based on flux"""
+        lam, x = self.get_lambda(flux), arange(1, 10)
+        y = poisson.pmf(x - 1, lam) * 100
+        self.Draw.graph(x, y, **prep_kw(dkw, x_range=[.5, where(y > 2e-10)[0][-1] + 1.5], y_range=[1e-10, 2e2], draw_opt='ab', x_tit='Number of Tracks', y_tit='Frequency [%]', logy=True, gridy=True))
     # endregion OCCUPANCY
     # ----------------------------------------
 
