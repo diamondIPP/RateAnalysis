@@ -56,6 +56,13 @@ class Telescope(SubAnalysis):
 
     def get_hit_vars(self, plane, cluster=True, tel_coods=False):
         return [self.get_col_var(plane, cluster, tel_coods), self.get_row_var(plane, cluster, tel_coods)]
+
+    def get_ncluster_prob(self, plane=None):
+        self.Run.set_estimate(self.Run.NEvents * self.NRocs)
+        x, n = self.get_tree_vec('n_clusters', dtype='i'), self.NRocs
+        x = x.reshape((x.size // n, n))[:, 0:self.Run.NTelPlanes]
+        x = x[all(x > 0, axis=1)].T
+        return [calc_eff(values=ix > 1) for ix in x] if plane is None else calc_eff(values=x[plane] > 1)
     # endregion GET
     # ----------------------------------------
 
