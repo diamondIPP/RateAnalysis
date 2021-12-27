@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort, invert, any
+from numpy import vectorize, meshgrid, digitize, histogram2d, lexsort, invert, any, unravel_index, argmax
 from numpy.random import rand
 from uncertainties.umath import sqrt as usqrt  # noqa
 
@@ -556,6 +556,41 @@ class DUTAnalysis(Analysis):
         ratio = do_pickle(pickle_path, f)
         self.info('Relative Signal Spread is: {:2.2f} %'.format(ratio * 100), prnt=prnt)
         return ratio
+
+    def draw_low_sig_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
+        low = '&&{}>{}'.format(self.get_signal_var(), low) if low is not None else ''
+        fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
+        kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
+        self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
+
+    def correlate_sm(self, run, col=True, **kwargs):
+        sm1, sm2 = [ana.get_signal_map(fid=True, **kwargs) for ana in [self, self.__class__(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
+        c = correlate_all_maps(sm1, sm2)
+        return c if col else c.T
+
+    def find_best_sm_correlation(self, run):
+        c = self.correlate_sm(run, res=1)
+        self.info(f'best correlation: {max(c):.2f} at shift {unravel_index(argmax(c), c.shape)}')
+        return c.max()
+
+    def draw_sm_correlation_vs_shift(self, run, col=True, res=1, n=4, **kwargs):
+        c = self.correlate_sm(run, col, res=res)
+        iy, ix = unravel_index(argmax(c), c.shape)
+        x = (arange(2 * n + 1) - n + ix)
+        x = x % c.shape[1] if max(x) > c.shape[1] else x
+        self.Draw.graph(x, c[iy][x], **prep_kw(kwargs, x_tit=f'Shift in {"X" if col else "Y"}', y_tit='Correlation Factor'))
+
+    def draw_sm_correlation(self, run, m=10, show=True):
+        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, self.__class__(run, self.DUT.Number, self.TCString, prnt=False)]]
+        g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
+                               x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
+        Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
+
+    def draw_corr_coeff(self, run, show=True):
+        x = [5, 10, 25, 50, 100, 200]
+        ana = self.__class__(run, self.DUT.Number, self.TCString, prnt=False)
+        y = [correlate(*[get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False, zero_supp=0) for f in [self, ana]]) for m in x]
+        self.Draw.graph(x, y, 'Signal Map Correlation', x_tit='Number of Bins', y_tit='Correlation Coefficient', show=show)
     # endregion SIGNAL MAP
     # ----------------------------------------
 

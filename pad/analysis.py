@@ -1,5 +1,5 @@
-from ROOT import gRandom, TCut
-from numpy import insert, sum, round, in1d, max, unravel_index, argmax
+from ROOT import gRandom
+from numpy import insert, sum, round, in1d, max
 
 from pad.pedestal import PedestalAnalysis
 from pad.timing import TimingAnalysis
@@ -259,51 +259,6 @@ class PadAnalysis(DUTAnalysis):
         Draw.vertical_line(x=self.Pedestal.get_noise().n * 3, ymin=0, ymax=110, w=2)
         Draw.tlatex(x=self.Pedestal.get_noise().n * 3, y=95, text=' 3 #times noise', align=10)
         self.Draw.save_plots('EffThresh')
-
-    def draw_low_sig_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
-        low = '&&{}>{}'.format(self.get_signal_var(), low) if low is not None else ''
-        fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
-        kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
-        self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
-
-    @staticmethod
-    def _correlate_sm(sm1, sm2, col=True):
-        """ optimise correlation of two signal maps by translating one map. """
-        a1, a2 = [get_2d_hist_vec(sm, err=False, flat=False) for sm in [sm1, sm2]]
-        n1, n2 = [get_2d_bin_entries(sm) for sm in [sm1, sm2]]
-        a1[n1 < .1 * max(n1)] = 0  # set bins with low stats to 0
-        a2[n2 < .1 * max(n2)] = 0
-        c = array([[correlate(a1, roll(a2, [x, y], axis=[0, 1])) for x in range(a1.shape[0])] for y in range(a1.shape[1])])
-        return c if col else c.T
-
-    def correlate_sm(self, run, col=True, **kwargs):
-        sm1, sm2 = [ana.get_signal_map(fid=True, **kwargs) for ana in [self, PadAnalysis(run, self.DUT.Number, self.TCString, verbose=False, prnt=False) if isint(run) else run]]
-        return self._correlate_sm(sm1, sm2, col)
-
-    def find_best_sm_correlation(self, run):
-        c = self._correlate_sm(*run) if is_iter(run) else self.correlate_sm(run, res=1)
-        self.info(f'best correlation: {max(c):.2f} at shift {unravel_index(argmax(c), c.shape)}')
-        return max(c)
-
-    def draw_sm_correlation_vs_shift(self, run, col=True, res=1, n=4, **kwargs):
-        c = self.correlate_sm(run, col, res=res)
-        iy, ix = unravel_index(argmax(c), c.shape)
-        x = (arange(2 * n + 1) - n + ix)
-        x = x % c.shape[1] if max(x) > c.shape[1] else x
-        self.Draw.graph(x, c[iy][x], **prep_kw(kwargs, x_tit=f'Shift in {"X" if col else "Y"}', y_tit='Correlation Factor'))
-
-    def draw_sm_correlation(self, run, m=10, show=True):
-        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, PadAnalysis(run, self.DUT.Number, self.TCString)]]
-        g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
-                               x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
-        Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
-
-    def draw_corr_coeff(self, run, show=True):
-        x = [5, 10, 25, 50, 100, 200]
-        ana = PadAnalysis(run, self.DUT.Number, self.TCString)
-        y = [correlate(*[get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False, zero_supp=0) for f in [self, ana]]) for m in x]
-        self.Draw.graph(x, y, 'Signal Map Correlation', x_tit='Number of Bins', y_tit='Correlation Coefficient', show=show)
-
     # endregion 2D MAPS
     # ----------------------------------------
 
