@@ -42,10 +42,7 @@ class Efficiency(SubAnalysis):
     def draw_map(self, res=None, fid=False, cut=None, **kwargs):
         x, y, zz = self.get_tree_vec(self.Ana.get_track_vars() + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
-        self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit))
-        self.Draw.preliminary()
-        self.Ana.draw_fid_cut()
-        self.Draw.save_plots('Efficiency Map')
+        return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), file_name='Efficiency Map'))
 
     def get_fiducial_cell(self, n):
         x1, x2, y1, y2 = self.Cut.CutConfig['fiducial']
