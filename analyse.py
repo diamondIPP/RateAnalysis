@@ -77,6 +77,7 @@ if __name__ == '__main__':
                 tr = z.Tracks
                 t = z.Tel
             run = z.Run
+            dut = z.DUT
             c = z.Run.Converter
             cut = z.Cut
         except AttributeError:
