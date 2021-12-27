@@ -5,6 +5,7 @@
 # --------------------------------------------------------
 
 from src.run import Run
+from src.dut import PixelDUT
 from helpers.utils import init_argparser
 
 
@@ -22,6 +23,10 @@ class PixelRun(Run):
         Run.__init__(self, number, testcampaign, load_tree, verbose)
         # Settings
         self.Type = 'pixel'
+
+    @property
+    def dut(self):
+        return PixelDUT
 
 
 if __name__ == '__main__':

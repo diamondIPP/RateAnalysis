@@ -32,10 +32,10 @@ class DUT:
         self.GuardRing = self.load_spec('guard ring', typ=float)
 
     def __str__(self):
-        return 'DUT {}, {}, Bias: {:1.0f}V'.format(self.Number, self.Name, self.Bias)
+        return self.Name
 
     def __repr__(self):
-        return self.__str__()
+        return f'{self.__class__.__name__} {self.Number}, {self.Name}, Bias: {self.Bias:1.0f}V'
 
     def load_irradiation(self):
         with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
@@ -54,9 +54,9 @@ class DUT:
     def set_number(self, value):
         self.Number = value
 
-    def get_area(self, bcm=False, tc=None):
+    def get_area(self, bcm=False):
         """ :returns: area of the DUT in cm²"""
-        return self.get_bcm_area() if bcm else Plane.PixArea * multiply(*self.Size) * .01 if 'pix' in self.Type[tc] else self.ActiveArea * .01
+        return self.get_bcm_area() if bcm else self.ActiveArea * .01
 
     def get_bcm_area(self):
         """ :returns: total area of the BCM' pad sizes """
@@ -74,6 +74,17 @@ def get_spacings(i, spacing, length):
         return 0
     j = 2 ** (i / 2)
     return spacing * (j * length + (j - 1) * spacing) + 2 * get_spacings(i - 1, spacing, length)
+
+
+class PixelDUT(DUT):
+
+    def __init__(self, number, run_info):
+        super().__init__(number, run_info)
+
+        self.PX, self.PY = self.load_spec('pixel size', lst=True, default=[Plane.PX, Plane.PY])
+
+    def get_area(self, bcm=False):
+        return Plane.PixArea * multiply(*self.Size) * .01
 
 
 class Plane(object):

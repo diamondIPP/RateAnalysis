@@ -38,7 +38,7 @@ class Run(Analysis):
         self.RootFile = None
         self.Tree = TTree()
         self.TreeName = self.Config.get('BASIC', 'treename')
-        self.DUTs = [DUT(i + 1, self.Info) for i in range(self.get_n_diamonds())] if self.Number is not None else None
+        self.DUTs = [self.dut(i + 1, self.Info) for i in range(self.get_n_diamonds())] if self.Number is not None else None
 
         # Settings
         self.Plane = Plane()
@@ -113,6 +113,10 @@ class Run(Analysis):
 
     # ----------------------------------------
     # region INIT
+    @property
+    def dut(self):
+        return DUT
+
     def load_rootfile(self, prnt=True):
         self.info('Loading information for rootfile: {file}'.format(file=basename(self.RootFilePath)), endl=False, prnt=prnt)
         self.RootFile = TFile(self.RootFilePath)
