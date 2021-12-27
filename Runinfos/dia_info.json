@@ -230,7 +230,8 @@
     },
     "thickness": "None", 
     "size": "None",
-    "manufacturer": "II-VI"
+    "manufacturer": "II-VI",
+    "pixel size": "[150, 100]"
   }, 
   "II6-A7": {
     "irradiation": {
@@ -288,7 +289,8 @@
     },
     "thickness": "None", 
     "size": "[20, 30]",
-    "manufacturer": "II-VI"
+    "manufacturer": "II-VI",
+    "pixel size": "[50, 50]"
   }, 
   "II6-E5-3": {
     "irradiation": {
