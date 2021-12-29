@@ -74,8 +74,8 @@ class PixAnalysis(DUTAnalysis):
     def get_nhits(self, cut=None):
         return self.get_tree_vec(f'n_hits[{self.N}]', self.Cut(cut), dtype='u2')
 
-    def get_track_vars(self, mm=True, local=False):
-        return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local)
+    def get_track_vars(self, mm=True, local=False, pixel=False):
+        return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local, pixel)
 
     def get_lambda(self, flux=None):
         """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux"""

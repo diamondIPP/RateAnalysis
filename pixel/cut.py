@@ -73,11 +73,11 @@ class PixCut(Cut):
         cols, rows = make_list(cols) if cols is not None else arange(*fid[0][1:3] + [0, 1]), make_list(rows) if rows is not None else arange(*fid[1][:2] + [0, 1])
         return cols if pix is None else make_list(pix[0]), rows if pix is None else make_list(pix[1])
 
-    def get_track_var(self, n, mode, mm=True, local=False):
-        return super(PixCut, self).get_track_var(n, mode, mm, local)
+    def get_track_var(self, n, mode, mm=True, local=False, pixel=False):
+        return super(PixCut, self).get_track_var(n, mode, mm, local, pixel)
 
-    def get_track_vars(self, n, mm=True, local=False):
-        return super(PixCut, self).get_track_vars(n, mm, local)
+    def get_track_vars(self, n, mm=True, local=False, pixel=False):
+        return super(PixCut, self).get_track_vars(n, mm, local, pixel)
     # endregion GET
     # ----------------------------------------
 

@@ -130,11 +130,13 @@ class Cut(SubAnalysis):
         return self.get_max_event() - self.get_min_event()
 
     @staticmethod
-    def get_track_var(n, mode, mm=False, local=True):
-        return f'dia_track_{mode}{"_local" if local else ""}[{n}]{" * 10" if mm else ""}'
+    def get_track_var(n, mode, mm=False, local=True, pixel=False):
+        if pixel:
+            return f'dia_track_{"col" if mode == "x" else "row"}[{n}]'
+        return f'dia_track_{mode}{"_local" if local and not pixel else ""}[{n}]{" * 10" if mm else ""}'
 
-    def get_track_vars(self, num, mm=False, local=True):
-        return [self.get_track_var(num, v, mm, local) for v in ['x', 'y']]
+    def get_track_vars(self, num, mm=False, local=True, pixel=False):
+        return [self.get_track_var(num, v, mm, local, pixel) for v in ['x', 'y']]
 
     def get_fiducial_area(self):
         return poly_area(*self.load_fiducial())

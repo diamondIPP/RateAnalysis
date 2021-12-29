@@ -143,8 +143,8 @@ class DUTAnalysis(Analysis):
     def get_time(self):
         return self.Run.get_time()
 
-    def get_track_vars(self, mm=True, local=True):
-        return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local)
+    def get_track_vars(self, mm=True, local=True, pixel=False):
+        return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local, pixel)
 
     def get_t_var(self):
         return 'time / 1000.' if self.Run.TimeOffset is None else '(time - {}) / 1000.'.format(self.Run.TimeOffset)
