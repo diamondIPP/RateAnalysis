@@ -229,7 +229,8 @@
       "201810": "3D-pixel"
     },
     "thickness": "None", 
-    "size": "None",
+    "size": "[20, 30]",
+    "column diameter": "2.6",
     "manufacturer": "II-VI",
     "pixel size": "[150, 100]"
   }, 
@@ -289,6 +290,7 @@
     },
     "thickness": "None", 
     "size": "[20, 30]",
+    "column diameter": "2.6",
     "manufacturer": "II-VI",
     "pixel size": "[50, 50]"
   }, 
