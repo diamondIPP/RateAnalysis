@@ -82,6 +82,8 @@ class PixelDUT(DUT):
         super().__init__(number, run_info)
 
         self.PX, self.PY = self.load_spec('pixel size', lst=True, default=[Plane.PX, Plane.PY])
+        self.W, self.H = self.PX * self.Size[0] / 1e3, self.PY * self.Size[1] / 1e3
+        self.ColDia = self.load_spec('column diameter', typ=float)
 
     def get_area(self, bcm=False):
         return Plane.PixArea * multiply(*self.Size) * .01
