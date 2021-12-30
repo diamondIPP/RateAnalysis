@@ -111,8 +111,8 @@ class Cut(SubAnalysis):
         low, high = [self.Ana.Run.get_event_at_time(seconds=abs(v * 60)) if v < 0 else v for v in self.Config.get_list('CUT', 'event range', default=[0, 0])]
         return array([low, self.Run.NEvents if high == 0 else high])
 
-    def get_track_angle(self):
-        return self.get_config('track angle', dtype=int)
+    def get_track_angle(self, v):
+        return sum([self.generate_track_angle(m, v)() for m in ['x', 'y']], start=TCut('track angle', ''))
 
     def get_chi2(self, mode='x', value=None):
         return choose(value, self.get_config('chi2{}'.format(mode.title()), dtype=int))
@@ -234,10 +234,10 @@ class Cut(SubAnalysis):
         return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
 
     def generate_track_angle(self, mode='x', amin=None, amax=None):
-        amin, amax = (array([-1, 1]) * self.get_track_angle()) if amin is None else (amin, amax)
+        amin, amax = (array([-1, 1]) * self.get_config('track angle', dtype=int, required=True)) if amin is None else (-amin, amin) if amax is None else (amin, amax)
         string = '{v}>{} && {v}<{}'.format(amin, amax, v='angle_{}'.format(mode))
         description = '{:1.1f} < tracking angle in {} < {:1.1f} [degrees]'.format(amin, mode, amax)
-        return CutString('track_angle_{}'.format(mode), string if amax > 0 else '', description)
+        return CutString(f'track angle {mode}', string if amax > 0 else '', description)
 
     def generate_beam_interruptions(self):
         """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
