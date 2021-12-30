@@ -83,8 +83,9 @@ def add_to_info(t, msg='Done', prnt=True):
         print('{m} ({t:2.2f} s)'.format(m=msg, t=time() - t))
 
 
-def print_check():
+def print_check(reset=False):
     global COUNT
+    COUNT = 0 if reset else COUNT
     print('======={}========'.format(COUNT))
     COUNT += 1
 
