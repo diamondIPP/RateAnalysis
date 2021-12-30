@@ -85,6 +85,10 @@ class Efficiency(SubAnalysis):
         x, y = arange(len(cuts)), array([self.get(cut, _redo=redo) for cut in cuts.values()])
         return self.Draw.graph(x, y, title='Efficiency for Consecutive Cuts', y_tit='Efficiency [%]', **prep_kw(dkw, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=cuts.keys()))
 
+    def draw_vs_angle(self, **dkw):
+        x, y, e = self.get_tree_vec(['angle_x', 'angle_y', self.get_var()], self.Cut.exclude('track angle x', 'track angle y'))
+        self.Draw.prof2d(x, y, e * 100, **prep_kw(dkw, x_tit='Angle X', y_tit='Angle Y', z_tit='Efficiency [%]'))
+
     def _find_alignment(self, p, w, show=False):
         g = self.Draw.make_graph_from_profile(p)
         (x0, x1), m = get_graph_x(g, err=False)[[0, -1]], p.GetMean()
