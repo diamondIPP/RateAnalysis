@@ -3,11 +3,12 @@
 # created on December 17th 2021 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.sub_analysis import SubAnalysis
 from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array
+from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x
+from plotting.fit import Erf
 from src.binning import Bins, Plane, make_bins
-from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange
 from src.cut import Cut
+from src.sub_analysis import SubAnalysis
 
 
 class Efficiency(SubAnalysis):
@@ -39,20 +40,29 @@ class Efficiency(SubAnalysis):
         self.Draw.save_plots('HitEfficiency', **kwargs)
         return fit if fit.Parameter(0) is not None else 0
 
-    def draw_map(self, res=None, fid=False, cut=None, **kwargs):
-        x, y, zz = self.get_tree_vec(self.Ana.get_track_vars() + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
+    @save_pickle('Map', suf_args='all')
+    def get_map(self, res=None, fid=False, cut=None, local=False, _redo=False):
+        x, y, zz = self.get_tree_vec(self.Ana.get_track_vars(local=local) + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
-        return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, **prep_kw(kwargs, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), file_name='Efficiency Map'))
+        return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), show=False)
 
-    def get_fiducial_cell(self, n):
-        x1, x2, y1, y2 = self.Cut.CutConfig['fiducial']
-        nx = int(round((x2 - x1) / Plane.PX))
-        return round(x1 + Plane.PX * (n % nx), 4), round(y1 + Plane.PY * (n / nx), 4)
+    def draw_map(self, res=None, fid=False, cut=None, local=False, redo=False, **dkw):
+        self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='Efficiency Map'))
 
-    def draw_cell_efficiency(self, nbins=None, **dkw):
-        x, y, e = self.get_tree_vec(self.Ana.get_track_vars() + [self.get_var()], self.Cut())
-        bins = None if nbins is None else [nbins, 0, Plane.PX, nbins, 0, Plane.PY]
-        self.Draw.prof2d(x % Plane.PX, y % Plane.PY, e * 100, bins, 'Cell Efficiency', **prep_kw(dkw, x_tit='Track X [mm]', y_tit='Track Y [mm]', z_tit='Efficiency [%]'))
+    def get_mod_vars(self, mx, my, ox=0, oy=0, cut=None, expand=True):
+        return self.Ana.get_mod_vars(mx, my, ox, oy, self.get_var(), self.Cut(cut), expand)
+
+    def draw_in(self, mx=1, my=1, ox=0, oy=0, nbins=None, **dkw):
+        x, y, e = self.get_mod_vars(mx, my, ox, oy, expand=True)
+        return self.Ana.draw_in(x, y, e * 100, mx * Plane.PX * 1e3, my * Plane.PY * 1e3, nbins, **prep_kw(dkw, title='In Cell Effciency', z_tit='Efficiency [%]'))
+
+    def draw_in_cell(self, nbins=None, ox=0, oy=0, **dkw):
+        """ in 3D cell"""
+        return self.draw_in(self.DUT.GX, self.DUT.GY, ox, oy, nbins, **dkw)
+
+    def draw_in_pixel(self, nbins=None, ox=0, oy=0, **dkw):
+        """ in pixel of ROC"""
+        return self.draw_in(1, 1, ox, oy, nbins, **prep_kw(dkw, title='In Pixel Efficiency'))
 
     def draw_vs_chi2(self, **dkw):
         x, e = self.get_tree_vec(['chi2_tracks', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
@@ -74,3 +84,15 @@ class Efficiency(SubAnalysis):
         self.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path(suf=f'{[*cuts.values()][-1].GetName()}_{self.UseRhit}')) else do_nothing()
         x, y = arange(len(cuts)), array([self.get(cut, _redo=redo) for cut in cuts.values()])
         return self.Draw.graph(x, y, title='Efficiency for Consecutive Cuts', y_tit='Efficiency [%]', **prep_kw(dkw, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=cuts.keys()))
+
+    def _find_alignment(self, p, w, show=False):
+        g = self.Draw.make_graph_from_profile(p)
+        (x0, x1), m = get_graph_x(g, err=False)[[0, -1]], p.GetMean()
+        self.Draw(g, x_tit='Coordinate', y_tit='Efficiency [%]') if show else do_nothing()
+        f0, f1 = Erf(g, [x0, m]).fit(show=show).Fit, Erf(g, [m, x1]).fit(show=show).Fit
+        return self.Draw.make_tf1(None, lambda x: f0(x) - f1(x + w), x0, m).GetX(0)
+
+    @save_pickle('Align', suf_args='[0]')
+    def find_alignment(self, res=.5, show=False, _redo=False):
+        e = self.get_map(res)
+        return self._find_alignment(e.ProfileX(), self.DUT.W, show), self._find_alignment(e.ProfileY(), self.DUT.H, show)

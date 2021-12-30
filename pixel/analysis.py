@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 
-from numpy import insert, sum
+from numpy import insert, sum as nsum
 from scipy.stats import poisson
 
 from pixel.calibration import Calibration
@@ -13,6 +13,7 @@ from pixel.cut import PixCut
 from pixel.efficiency import Efficiency
 from pixel.run import PixelRun
 from src.dut_analysis import *
+from src.dut import Plane
 
 
 class PixAnalysis(DUTAnalysis):
@@ -46,7 +47,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region GET
     def get_ph_var(self, plane=None, vcal=True):
-        return f'cluster_charge[{choose(plane, self.N)}]{ f"/ {Bins.Vcal2El}" if vcal else ""}'
+        return f'cluster_charge[{choose(plane, self.N)}]{ f" / {Bins.Vcal2El}" if vcal else ""}'
 
     def get_signal_var(self):
         return self.get_ph_var()
@@ -116,7 +117,7 @@ class PixAnalysis(DUTAnalysis):
     def get_vcal_disto(self, cut=None, col=None, row=None, pix=None, vcal=True, _redo=False):
         cut = self.Cut(cut) + self.Cut.generate_masks(col, row, pix, exclude=False).Value + self.Cut.get_ncluster()
         n, v = self.get_nhits(cut), self.Calibration.get_vcals(*self.get_tree_vec(['col', 'row', 'adc'], cut + self.Cut.get_plane(), dtype='i2'))
-        v = sum(insert(v, cumsum(n).astype('i').repeat(max(n) - n), 0).reshape(n.size, max(n)), axis=1)  # fill arrays with zeros where there are less than max hits
+        v = nsum(insert(v, cumsum(n).astype('i').repeat(max(n) - n), 0).reshape(n.size, max(n)), axis=1)  # fill arrays with zeros where there are less than max hits
         v *= (1 if vcal else Bins.Vcal2El)
         return self.Draw.distribution(v, title='Pulse Height Distribution', x_tit=f'Pulse Height [{"VCAL" if vcal else "e"}]', show=False)
 
@@ -191,6 +192,42 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region 3D
+    def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, zvar=None, cut=None, expand=True):
+        x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=True) + [choose(zvar, self.get_ph_var())], self.Cut(cut))
+        x, y, z_ = (x + ox / Plane.PX / 1e3) % mx, (y + oy / Plane.PY / 1e3) % my, z_
+        return array(self.expand_mod_vars(x, y, z_, mx, my) if expand else (x, y, z_)) * [[Plane.PX * 1e3], [Plane.PY * 1e3], [1]]  # convert from pixel to um
+
+    @staticmethod
+    def expand_mod_vars(x, y, e, mx, my):
+        d = array([x, y]).T
+        (x, y), e = concatenate([d + [i, j] for i in [-mx, 0, mx] for j in [-my, 0, my]]).T, tile(e, 9)  # copy arrays in each direction
+        cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
+        return x[cut], y[cut], e[cut]
+
+    def draw_in(self, x, y, z_, mx, my, nbins=None, **dkw):
+        n = None if nbins is None else nbins // 2 * 2  # should be symmetric...
+        bins = find_bins(x, 0, 0) + find_bins(y, 0, 0) if n is None else sum([make_bins(-i / 2 * (1 + 1 / n), i / 2 * (3 + 1 / n), n=n * 2 + 1) for i in [mx, my]], start=[])
+        cell = self.Draw.box(0, 0, mx, my, width=2, show=False)
+        h = self.Draw.prof2d(x, y, z_, bins, **prep_kw(dkw, title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]', leg=cell))
+        self.draw_columns(show=dkw['show'] if 'show' in dkw else True)
+        return h
+
+    def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, **dkw):
+        x, y, ph = self.get_mod_vars(self.DUT.GX, self.DUT.GY, ox, oy, expand=True)
+        return self.draw_in(x, y, ph, self.DUT.PX, self.DUT.PY, nbins, **dkw)
+
+    def draw_columns(self, show=True):
+        wx, wy, c = self.DUT.PX, self.DUT.PY, get_last_canvas()
+        x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
+        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wx) if x > x0 and y > y0]      # bias
+        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wx) if x > x0 and y > y0]  # readout
+        g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
+        Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)
+    # endregion 3D
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region THRESHOLD
     def draw_threshold(self, x=1500, y0=0, y1=1, show=True):
         if show:
@@ -242,6 +279,10 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region DRAW
+    def draw_detector_size(self):
+        x, y = self.DUT.Size
+        self.draw_size([x * Plane.PX, y * Plane.PY], color=432, name='detector')
+
     def draw_dut_hits(self, dut2=None, cut=None, **dkw):
         duts = [self.get_next_dut(dut2), self.DUT]
         x, y = self.get_tree_vec([f'n_hits[{dut.Number + self.Run.NTelPlanes - 1}]' for dut in duts], self.Cut(cut))
