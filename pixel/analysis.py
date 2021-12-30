@@ -213,9 +213,9 @@ class PixAnalysis(DUTAnalysis):
         self.draw_columns(show=dkw['show'] if 'show' in dkw else True)
         return h
 
-    def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, **dkw):
-        x, y, ph = self.get_mod_vars(self.DUT.GX, self.DUT.GY, ox, oy, expand=True)
-        return self.draw_in(x, y, ph, self.DUT.PX, self.DUT.PY, nbins, **dkw)
+    def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
+        x, y, ph = self.get_mod_vars(self.DUT.GX, self.DUT.GY, ox, oy, cut=cut, expand=True)
+        return self.draw_in(x, y, ph, self.DUT.PX, self.DUT.PY, nbins, **prep_kw(dkw, pal=53))
 
     def draw_columns(self, show=True):
         wx, wy, c = self.DUT.PX, self.DUT.PY, get_last_canvas()

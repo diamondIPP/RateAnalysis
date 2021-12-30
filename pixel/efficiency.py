@@ -52,17 +52,17 @@ class Efficiency(SubAnalysis):
     def get_mod_vars(self, mx, my, ox=0, oy=0, cut=None, expand=True):
         return self.Ana.get_mod_vars(mx, my, ox, oy, self.get_var(), self.Cut(cut), expand)
 
-    def draw_in(self, mx=1, my=1, ox=0, oy=0, nbins=None, **dkw):
-        x, y, e = self.get_mod_vars(mx, my, ox, oy, expand=True)
+    def draw_in(self, mx=1, my=1, ox=0, oy=0, nbins=None, cut=None, **dkw):
+        x, y, e = self.get_mod_vars(mx, my, ox, oy, cut, expand=True)
         return self.Ana.draw_in(x, y, e * 100, mx * Plane.PX * 1e3, my * Plane.PY * 1e3, nbins, **prep_kw(dkw, title='In Cell Effciency', z_tit='Efficiency [%]'))
 
-    def draw_in_cell(self, nbins=None, ox=0, oy=0, **dkw):
+    def draw_in_cell(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
         """ in 3D cell"""
-        return self.draw_in(self.DUT.GX, self.DUT.GY, ox, oy, nbins, **dkw)
+        return self.draw_in(self.DUT.GX, self.DUT.GY, ox, oy, nbins, cut, **dkw)
 
-    def draw_in_pixel(self, nbins=None, ox=0, oy=0, **dkw):
+    def draw_in_pixel(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
         """ in pixel of ROC"""
-        return self.draw_in(1, 1, ox, oy, nbins, **prep_kw(dkw, title='In Pixel Efficiency'))
+        return self.draw_in(1, 1, ox, oy, nbins, cut, **prep_kw(dkw, title='In Pixel Efficiency'))
 
     def draw_vs_chi2(self, **dkw):
         x, e = self.get_tree_vec(['chi2_tracks', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
