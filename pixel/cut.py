@@ -68,6 +68,9 @@ class PixCut(Cut):
     def get_ncluster(self, n=1, plane=None):
         return TCut(f'n_clusters[{choose(plane, self.N)}] == {n}')
 
+    def get_cluster_size(self, n=1, plane=None):
+        return TCut(f'cluster_size[{choose(plane, self.N)}] == {n}')
+
     def get_fid_lines(self, cols=None, rows=None, pix=None):
         fid = self.load_pixel_fid()
         cols, rows = make_list(cols) if cols is not None else arange(*fid[0][1:3] + [0, 1]), make_list(rows) if rows is not None else arange(*fid[1][:2] + [0, 1])
