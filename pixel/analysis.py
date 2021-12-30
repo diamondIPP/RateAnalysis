@@ -206,8 +206,9 @@ class PixAnalysis(DUTAnalysis):
         return x[cut], y[cut], e[cut]
 
     def draw_in(self, x, y, z_, mx, my, nbins=None, **dkw):
-        n = None if nbins is None else nbins // 2 * 2  # should be symmetric...
-        bins = find_bins(x, 0, 0) + find_bins(y, 0, 0) if n is None else sum([make_bins(-i / 2 * (1 + 1 / n), i / 2 * (3 + 1 / n), n=n * 2 + 1) for i in [mx, my]], start=[])
+        n = choose(nbins, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
+        d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
+        bins = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False)
         h = self.Draw.prof2d(x, y, z_, bins, **prep_kw(dkw, title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]', leg=cell))
         self.draw_columns(show=dkw['show'] if 'show' in dkw else True)
@@ -220,8 +221,8 @@ class PixAnalysis(DUTAnalysis):
     def draw_columns(self, show=True):
         wx, wy, c = self.DUT.PX, self.DUT.PY, get_last_canvas()
         x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
-        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wx) if x > x0 and y > y0]      # bias
-        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wx) if x > x0 and y > y0]  # readout
+        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
+        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
         g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
         Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)
     # endregion 3D
