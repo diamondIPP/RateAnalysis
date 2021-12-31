@@ -10,7 +10,7 @@ from scipy.stats import poisson
 
 from pixel.calibration import Calibration
 from pixel.cut import PixCut
-from pixel.efficiency import Efficiency
+# from pixel.efficiency import Efficiency
 from pixel.run import PixelRun
 from src.dut_analysis import *
 from src.dut import Plane
@@ -26,9 +26,13 @@ class PixAnalysis(DUTAnalysis):
 
         if self.Tree.Hash():
             self.Calibration = Calibration(self)
-            self.Efficiency = Efficiency(self)
+            self.Efficiency = self.make_eff()
 
         self.print_finished(prnt=prnt)
+
+    def make_eff(self):
+        from pixel.efficiency import Efficiency
+        return Efficiency(self)
 
     # ----------------------------------------
     # region INIT
@@ -205,26 +209,28 @@ class PixAnalysis(DUTAnalysis):
         cut = (x >= -mx / 2) & (x <= mx * 3 / 2) & (y >= -my / 2) & (y <= my * 3 / 2)  # select only half of the copied cells
         return x[cut], y[cut], e[cut]
 
-    def draw_in(self, x, y, z_, mx, my, nbins=None, **dkw):
+    def draw_in(self, mx, my, ox=0, oy=0, nbins=None, cut=None, max_angle=None, **dkw):
+        cut = self.Cut(cut) if max_angle is None else self.Cut.generate_custom(['track angle x', 'track angle y'], add=self.Cut.get_track_angle(max_angle), prnt=False)
+        x, y, z_ = self.get_mod_vars(mx / Plane.PX * 1e-3, my / Plane.PY * 1e-3, ox, oy, cut=cut)
         n = choose(nbins, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
-        bins = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
+        bins = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False)
         h = self.Draw.prof2d(x, y, z_, bins, **prep_kw(dkw, title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]', leg=cell))
         self.draw_columns(show=dkw['show'] if 'show' in dkw else True)
         return h
 
     def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
-        x, y, ph = self.get_mod_vars(self.DUT.GX, self.DUT.GY, ox, oy, cut=cut, expand=True)
-        return self.draw_in(x, y, ph, self.DUT.PX, self.DUT.PY, nbins, **prep_kw(dkw, pal=53))
+        return self.draw_in(self.DUT.PX, self.DUT.PY, ox, oy, nbins, cut=cut, **prep_kw(dkw, pal=53))
 
     def draw_columns(self, show=True):
-        wx, wy, c = self.DUT.PX, self.DUT.PY, get_last_canvas()
-        x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
-        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
-        [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
-        g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
-        Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)
+        if self.DUT.ColDia is not None:
+            wx, wy, c = self.DUT.PX, self.DUT.PY, get_last_canvas()
+            x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
+            [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
+            [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
+            g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
+            Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)
     # endregion 3D
     # ----------------------------------------
 

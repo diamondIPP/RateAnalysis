@@ -6,24 +6,25 @@
 from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array
 from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x
 from plotting.fit import Erf
-from src.binning import Bins, Plane, make_bins
+from src.binning import Bins, make_bins, Plane
 from src.cut import Cut
-from src.sub_analysis import SubAnalysis
+from pixel.analysis import PixAnalysis
 
 
-class Efficiency(SubAnalysis):
+class Efficiency(PixAnalysis):
 
-    def __init__(self, pix_analysis):
-        super().__init__(pix_analysis, pickle_dir='Efficiency')
-        self.N = self.Ana.N
+    def __init__(self, parent):  # noqa
+        self.__dict__.update(parent.__dict__)
+        self.PickleSubDir = 'Efficiency'
+
         self.UseRhit = False
-        self.Cut = deepcopy(self.Ana.Cut).remove('rhit' if self.UseRhit else None, ret=True)
+        self.Cut = deepcopy(self.Cut).remove('rhit' if self.UseRhit else None, ret=True)
 
     def get_values(self, cut=None):
         return self.get_tree_vec(self.get_var(), self.Cut(cut), dtype='?')
 
-    def get_var(self, sigma=None, plane=None):
-        var = f'n_clusters[{choose(plane, self.N)}] > 0'
+    def get_var(self, sigma=None, plane=None, percent=False):
+        var = f'(n_clusters[{choose(plane, self.N)}] > 0){" * 100" if percent else ""}'
         return Cut.to_string(self.Cut.generate_rhit(sigma) + Cut.make('', var)) if self.UseRhit else var
 
     @update_pbar
@@ -42,27 +43,23 @@ class Efficiency(SubAnalysis):
 
     @save_pickle('Map', suf_args='all')
     def get_map(self, res=None, fid=False, cut=None, local=False, _redo=False):
-        x, y, zz = self.get_tree_vec(self.Ana.get_track_vars(local=local) + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
+        x, y, zz = self.get_tree_vec(self.get_track_vars(local=local) + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
         return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), show=False)
 
     def draw_map(self, res=None, fid=False, cut=None, local=False, redo=False, **dkw):
         self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='Efficiency Map'))
 
-    def get_mod_vars(self, mx, my, ox=0, oy=0, cut=None, expand=True):
-        return self.Ana.get_mod_vars(mx, my, ox, oy, self.get_var(), self.Cut(cut), expand)
+    def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, cut=None, max_angle=None, expand=True, **kwargs):
+        return super(Efficiency, self).get_mod_vars(mx, my, ox, oy, zvar=self.get_var(percent=True), cut=cut, expand=expand)
 
-    def draw_in(self, mx=1, my=1, ox=0, oy=0, nbins=None, cut=None, **dkw):
-        x, y, e = self.get_mod_vars(mx, my, ox, oy, cut, expand=True)
-        return self.Ana.draw_in(x, y, e * 100, mx * Plane.PX * 1e3, my * Plane.PY * 1e3, nbins, **prep_kw(dkw, title='In Cell Effciency', z_tit='Efficiency [%]'))
-
-    def draw_in_cell(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
+    def draw_in_cell(self, nbins=None, ox=0, oy=0, cut=None, max_angle=None, **dkw):
         """ in 3D cell"""
-        return self.draw_in(self.DUT.GX, self.DUT.GY, ox, oy, nbins, cut, **dkw)
+        return self.draw_in(self.DUT.PX, self.DUT.PY, ox, oy, nbins, cut, max_angle, **prep_kw(dkw, title='In Cell Efficiency', z_tit='Efficiency [%]'))
 
-    def draw_in_pixel(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
+    def draw_in_pixel(self, nbins=None, ox=0, oy=0, cut=None, max_angle=None, **dkw):
         """ in pixel of ROC"""
-        return self.draw_in(1, 1, ox, oy, nbins, cut, **prep_kw(dkw, title='In Pixel Efficiency'))
+        return self.draw_in(Plane.PX, Plane.PY, ox, oy, nbins, cut, max_angle, **prep_kw(dkw, title='In Pixel Efficiency', z_tit='Efficiency [%]'))
 
     def draw_vs_chi2(self, **dkw):
         x, e = self.get_tree_vec(['chi2_tracks', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
