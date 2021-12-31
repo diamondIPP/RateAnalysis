@@ -220,8 +220,8 @@ class PixAnalysis(DUTAnalysis):
         self.draw_columns(show=dkw['show'] if 'show' in dkw else True)
         return h
 
-    def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, cut=None, **dkw):
-        return self.draw_in(self.DUT.PX, self.DUT.PY, ox, oy, nbins, cut=cut, **prep_kw(dkw, pal=53))
+    def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, cut=None, max_angle=None, **dkw):
+        return self.draw_in(self.DUT.PX, self.DUT.PY, ox, oy, nbins, cut, max_angle, **prep_kw(dkw, pal=53))
 
     def draw_columns(self, show=True):
         if self.DUT.ColDia is not None:
