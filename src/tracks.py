@@ -7,6 +7,7 @@
 from ROOT import TCut, TF1, TMultiGraph, THStack
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
 from src.sub_analysis import SubAnalysis
+from src.dut import Plane
 from plotting.draw import *
 from helpers.utils import do_pickle, arctan
 from scipy.stats import norm
@@ -68,9 +69,9 @@ class Tracks(SubAnalysis):
     def get_res_var(mode=None):
         return f'residuals{"_{}".format(mode.lower()) if mode else ""}'
 
-    @property
-    def ax_tits(self):
-        return {f'{i.lower()}_tit': f'Track Position {i} [mm]' for i in ['X', 'Y']}
+    @staticmethod
+    def ax_tits(pixel=False):
+        return Plane.AxTits if pixel else {f'{i.lower()}_tit': f'Track Position {i} [mm]' for i in ['X', 'Y']}
 
     def get_plane_hits(self, local=True, add_cut=''):
         t = self.info('getting plane hits...', endl=False)

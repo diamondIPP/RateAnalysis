@@ -434,7 +434,7 @@ class DUTAnalysis(Analysis):
         var, bins = self.get_track_vars(local=local) + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
         x, y, zz = self.get_tree_vec(var, self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut))
         tit, ztit = 'Pulse Height Map', 'Pulse Height [mV]'
-        return self.Draw.prof2d(x, y, zz, bins, tit, **self.Tracks.ax_tits, z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
+        return self.Draw.prof2d(x, y, zz, bins, tit, **self.Tracks.ax_tits(), z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
 
     def draw_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, square, m, n, local, _redo=redo)
