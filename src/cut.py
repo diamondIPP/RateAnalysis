@@ -151,6 +151,9 @@ class Cut(SubAnalysis):
                 cut.SetPoint(i, scale * cut.GetX()[i], scale * cut.GetY()[i])
             return Draw.add(cut)
 
+    def no_fid(self, fid=False, cut=None):
+        return self(cut) if cut is not None or fid else self.exclude('fiducial')
+
     def get_raw_pulse_height(self):
         return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
     # endregion GET
