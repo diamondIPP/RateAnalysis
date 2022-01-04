@@ -192,6 +192,11 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         return super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
+
+    def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
+        x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=pixel and res is None) + [f'cluster_size[{self.N}]'], self.Cut.no_fid(fid, cut) + self.Cut.get_ncluster(1))
+        h = self.Draw.prof2d(x, y, z_, **prep_kw({}, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False))
+        return self.Draw.prof2d(h, **prep_kw(dkw, **self.Tracks.ax_tits(pixel), z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53))
     # endregion 2D DISTRIBUTIONS
     # ----------------------------------------
 
@@ -265,11 +270,11 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_tp_map(self, res=None, **dkw):
         x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_tp_var()], cut=self.Cut.exclude('trigger_phase', 'fiducial'))
-        self.Draw.prof2d(x, y, zz, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits, z_tit='Mean Trigger Phase'))
+        self.Draw.prof2d(x, y, zz, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits(), z_tit='Mean Trigger Phase'))
 
     def draw_single_tp_map(self, tp, res=None, **dkw):
         x, y = self.get_tree_vec(self.get_track_vars(), cut=self.Cut.generate_custom(['trigger_phase', 'fiducial'], add=f'trigger_phase == {tp}'))
-        self.Draw.histo_2d(x, y, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits, z_tit='Mean Trigger Phase'))
+        self.Draw.histo_2d(x, y, Bins.get_global(res), 'TP Map', **prep_kw(dkw, **self.Tracks.ax_tits(), z_tit='Mean Trigger Phase'))
     # endregion TRIGGER PHASE
     # ----------------------------------------
 
