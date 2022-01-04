@@ -48,7 +48,7 @@ class Efficiency(PixAnalysis):
         return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), show=False)
 
     def draw_map(self, res=None, fid=False, cut=None, local=False, redo=False, **dkw):
-        self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='Efficiency Map'))
+        self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='EfficiencyMap'))
 
     def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, cut=None, max_angle=None, expand=True, **kwargs):
         return super(Efficiency, self).get_mod_vars(mx, my, ox, oy, zvar=self.get_var(percent=True), cut=cut, expand=expand)
