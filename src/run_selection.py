@@ -2,7 +2,6 @@ from json import dump
 from os import system
 from os.path import basename
 from subprocess import check_call
-from textwrap import fill
 
 from src.dut import DUT
 from helpers.utils import *
@@ -358,7 +357,7 @@ class RunSelector(object):
             if verify('Do you wish to unselect a run type'):
                 run_type = input('Which type to you want to unselect? ')
                 self.unselect_runs_of_type(run_type)
-        self.show_selected_runs(full_comments=True)
+        self.show_selected_runs(100)
         while verify('Do you wish to unselect a run'):
             run = input('Which run do you want to unselect? ')
             self.unselect_run(int(run))
@@ -367,25 +366,17 @@ class RunSelector(object):
             nr = input('Enter the name/number of the runplan: ')
             self.add_selection_to_runplan(nr)
 
-    def show_selected_runs(self, full_comments=False):
+    def show_selected_runs(self, max_length=20):
         """ Prints an overview of all selected runs. """
-        print_banner('Selection with {} runs:'.format(len(self.get_selected_runs())))
+        print_banner(f'Selection of RunPlan {self.SelectedRunplan}' if self.SelectedRunplan is not None else f'Selction with {len(self.get_selected_runs())} runs:')
         r0 = self.Run(self.get_selected_runs()[0])
-        dia_bias = list(concatenate([['Dia {}'.format(i + 1), 'HV {} [V]'.format(i + 1)] for i in range(r0.get_n_diamonds())]))
-        header = ['Nr.', 'Type'] + dia_bias + ['Flux [kHz/cm2]'] + (['Comments'] if not full_comments else [])
+        header = ['Nr.', 'Type'] + sum([[f'DUT {i + 1}', f'HV {i + 1} [V]'] for i in range(r0.get_n_diamonds())], start=[]) + ['Flux [kHz/cm2]', 'Comment']
         rows = []
         for run in self.get_selected_runs():
-            r0.set_run(run, load_tree=False)
-            dia_bias = concatenate([r0.load_dut_names(), r0.get_bias_strings()])[[0, 2, 1, 3]]
-            row = ['{:3d}'.format(run), r0.Info['runtype']] + list(dia_bias) + ['{:14.2f}'.format(r0.Flux.n)]
-            if not full_comments:
-                row += ['{c}{s}'.format(c=r0.Info['comments'][:20].replace('\r\n', ' '), s='*' if len(r0.Info['comments']) > 20 else ' ' * 21)]
-                rows.append(row)
-            else:
-                rows.append(row)
-                if r0.Info['comments']:
-                    rows.append(['Comments: {c}'.format(c=fill(r0.Info['comments'], len('   '.join(header))))])
-                    rows.append(['~' * len('   '.join(rows[0]))])
+            r0(run, load_tree=False)
+            dia_bias = list(array([r0.load_dut_names(), r0.get_bias_strings()]).T.flatten())  # alternating dut name and bias
+            row = ['{:3d}'.format(run), r0.Info['runtype']] + dia_bias + ['{:14.2f}'.format(r0.Flux.n)]
+            rows.append(row + [r0.Info['comments'][:max_length].replace('\r\n', ' ') + '*' if len(r0.Info['comments']) > max_length else ''])
         print_table(rows, header)
     # endregion SELECT
     # ----------------------------------------
