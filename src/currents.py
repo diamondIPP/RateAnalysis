@@ -29,6 +29,8 @@ class Currents(Analysis):
         self.RunSelection = RunSelector(testcampaign=self.TCString)
         self.RunLogs = self.RunSelection.RunInfos
         self.Run = self.RunSelection.Run if analysis is None else self.Ana.FirstAnalysis.Run if self.IsCollection else self.Ana.Run
+        if self.IsCollection:
+            self.Runs = self.Ana.Runs  # required for plotting
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.HVConfig = self.load_parser()
         self.Bias = self.Ana.Bias if hasattr(self.Ana, 'Bias') else None
