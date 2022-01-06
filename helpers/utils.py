@@ -276,7 +276,7 @@ def print_small_banner(msg, symbol='-', color=None):
 
 
 def print_elapsed_time(start, what='This', show=True, color=None):
-    string = 'Elapsed time for {w}: {t}'.format(t=get_elapsed_time(start), w=what)
+    string = f'Elapsed time for {what}: {get_elapsed_time(start)}'
     print_banner(string, color=color) if show else do_nothing()
     return string
 

@@ -32,13 +32,13 @@ class AnaInfo(Info):
 
     def is_active(self):
         if self.is_collection:
-            return self.Ana.Ana.LoadTree if hasattr(self.Ana, 'Ana') else self.Ana.LoadTree
+            return self.Ana.Ana.LoadTree if hasattr(self.Ana, 'Ana') and hasattr(self.Ana.Ana, 'LoadTree') else self.Ana.LoadTree if hasattr(self.Ana, 'LoadTree') else True
         return hasattr(self.Ana, 'Run') and self.Ana.Run.Number is not None and bool(self.Ana.Tree.Hash() if hasattr(self.Ana, 'Tree') else self.Ana.Ana.Tree.Hash())
 
     def get_run_string(self):
         dur = sum([ana.Run.Duration for ana in self.Ana.get_analyses()], timedelta()) if self.is_collection else self.Ana.Run.Duration
         dur -= timedelta(microseconds=dur.microseconds)
-        nr = f's {"-".join(self.Ana.Runs[[0, -1]])}' if self.is_collection else f' {self.Ana.Run.Number}'
+        nr = f's {"{}-{}".format(*self.Ana.Runs[[0, -1]])}' if self.is_collection else f' {self.Ana.Run.Number}'
         run_str = f'Run{nr}: {self.get_rate_string()}, {dur}'
         return run_str + ('' if self.is_collection else f' ({self.Ana.Run.NEvents} evts)')
 
