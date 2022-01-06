@@ -4,7 +4,7 @@
 # --------------------------------------------------------
 
 from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array
-from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x
+from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x, set_statbox
 from plotting.fit import Erf
 from src.binning import Bins, make_bins, Plane
 from src.cut import Cut
@@ -32,13 +32,11 @@ class Efficiency(PixAnalysis):
     def get(self, cut=None, _redo=False):
         return calc_eff(values=self.get_values(cut))
 
-    def draw(self, cut=None, bin_size=None, rel_time=False, **kwargs):
-        (x, e), bins = self.get_tree_vec([self.get_t_var(), self.get_var()], choose(cut, self.Cut())), self.Bins.get_time(bin_size, cut)
-        g = self.Draw.efficiency(x, e, bins, **prep_kw(kwargs, title='Hit Efficiency', **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz'))
-        fit = FitRes(g.Fit('pol0', 'qs'))
-        self.Draw.stats(fit, width=.35, y2=.35, names=['Efficiency'])
-        self.Draw.preliminary()
-        self.Draw.save_plots('HitEfficiency', **kwargs)
+    def draw(self, cut=None, bin_size=None, rel_time=False, **dkw):
+        x, e = self.get_tree_vec([self.get_t_var(), self.get_var()], choose(cut, self.Cut()))
+        g = self.Draw.efficiency(x, e, self.Bins.get_time(choose(bin_size, 1000 if x.size // 20 < 1000 or x.size / 1000 < 20 else x.size // 20)), show=False)  # min bin size of 1000 max 20 points
+        fit, tit = FitRes(g.Fit('pol0', 'qs')), 'Hit Efficiency'
+        self.Draw(g, **prep_kw(dkw, title=tit, **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz', stats=set_statbox(fit=True, form='.2f', center_y=True), file_name='HitEff'))
         return fit if fit.Parameter(0) is not None else 0
 
     @save_pickle('Map', suf_args='all')
