@@ -84,25 +84,28 @@ class AnalysisCollection(Analysis):
         return legend
 
     def set_verbose(self, status):
+        super().set_verbose(status)
         for ana in self.get_analyses():
             ana.set_verbose(status)
 
     def save_all(self):
         t = info('creating all data ...')
+        self.save_coll_plots()
+        self.Draw.close_file()
         self.save_data()
         self.save_plots()
-        self.save_coll_plots()
         print_elapsed_time(t, color='green')
 
     @quiet
     def save_plots(self):
-        self.parallel(self.Analysis.save_plots)
+        self.parallel(self.Analysis.save_plots, print_link=False)
 
     @quiet
     def save_data(self):
         for i, data in enumerate(self.parallel(self.Analysis.get_data)):
             self.Analyses[i].save_data(data)
 
+    @quiet
     def save_coll_plots(self):
         self.draw_flux(show=False)
         self.draw_currents(show=False, fname='Currents')
@@ -288,7 +291,7 @@ class AnalysisCollection(Analysis):
         return mean_sigma(self.get_pulse_heights())
 
     def get_efficiencies(self, suf='3', redo=False):
-        return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.make_simple_pickle_path(suf=suf, sub_dir='Efficiency', run='{}'), redo=redo)
+        return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.get_pickle_path(suf=suf, sub_dir='Efficiency'), redo=redo)
 
     def get_rate_dependence(self, redo=False, values=None, avrg=False):
         values = choose(values, self.get_pulse_heights(redo=redo, pbar=False, avrg=avrg))
