@@ -694,7 +694,7 @@ def load_pickle(file_name):
         return pickle.load(f)
 
 
-def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', field=None, **pkwargs):
+def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_args='[]', field=None, verbose=False, **pkwargs):
     def inner(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -702,6 +702,7 @@ def save_pickle(*pargs, print_dur=False, low_rate=False, high_rate=False, suf_ar
                 return func(*args, **kwargs)
             run = args[0].Run.get_high_rate_run(high=not low_rate) if low_rate or high_rate else None
             pickle_path = args[0].make_simple_pickle_path(*pargs, **prep_kw(pkwargs, run=run, suf=prep_suffix(func, args, kwargs, suf_args, field)))
+            info(f'Pickle path: {pickle_path}', prnt=verbose)
             redo = (kwargs['_redo'] if '_redo' in kwargs else False) or (kwargs['show'] if 'show' in kwargs else False)
             if file_exists(pickle_path) and not redo:
                 return load_pickle(pickle_path)
