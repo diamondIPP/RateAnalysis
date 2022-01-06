@@ -215,7 +215,7 @@ class AnalysisCollection(Analysis):
         return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, **kwargs)
 
     def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=None, rel=False, redo=False):
-        picklepath = self.get_pickle_path(f'Flux', f'{choose(plane, 1)}_1', 'Telescope', dut='')
+        picklepath = self.get_pickle_path(f'Flux', make_suffix(0, plane, corr, 1, full_size, self.DUT.Number), 'Telescope', dut='')
         pbar = False if not self.FirstAnalysis.has_branch('rate') else pbar
         values = self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr, full_size=full_size, redo=redo)
         return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
@@ -433,7 +433,7 @@ class AnalysisCollection(Analysis):
 
     @save_pickle('Full', sub_dir='PH', suf_args='all')
     def get_full_ph(self, bin_size=None, _redo=False):
-        g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, bin_size=bin_size, _redo=_redo, picklepath=self.get_pickle_path('Trend', make_suffix(self, [bin_size, 1]), 'PH'))
+        g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, bin_size=bin_size, _redo=_redo, picklepath=self.get_pickle_path('Trend', make_suffix(self, bin_size, 1), 'PH'))
         ph = concatenate([append(get_graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
         return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit='Mean Pulse Height [mV]', show=False)
 
@@ -632,7 +632,7 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region SIGNAL MAP
     def draw_signal_map(self, fid=False, res=.7, redo=False, square=False, scale=False, **kwargs):
-        pickle_path = self.get_pickle_path('SM', make_suffix(self.FirstAnalysis, [res, None, fid, 0, square]), 'Maps')
+        pickle_path = self.get_pickle_path('SM', make_suffix(self.FirstAnalysis, res, None, fid, 0, square), 'Maps')
         histos = self.get_plots('signal maps', self.Analysis.get_signal_map, res=res, square=square, _redo=redo, fid=fid, picklepath=pickle_path)
         for h in histos[1:]:
             histos[0].Add(h)

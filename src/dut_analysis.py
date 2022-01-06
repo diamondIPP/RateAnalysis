@@ -236,7 +236,7 @@ class DUTAnalysis(Analysis):
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
     def get_flux(self, plane=None, corr=True, full_size=False, redo=False):
-        return self.Tel.get_flux(plane, corr, True, full_size, redo)
+        return self.Tel.get_flux(plane, corr, True, full_size, _redo=redo)
 
     def get_ph_values(self, *args, **kwargs):
         """ :returns: all pulse height values for a given cut. [numpy.ndarray] """

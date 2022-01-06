@@ -675,7 +675,7 @@ def prep_kw(dic, **default):
     return d
 
 
-def make_suffix(ana, values):
+def make_suffix(ana, *values):
     suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in values]
     return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
 
@@ -686,7 +686,7 @@ def prep_suffix(f, args, kwargs, suf_args, field=None):
     i_arg = (arange(len([n for n in names if n not in ['self', '_redo']])) if suf_args == 'all' else make_list(loads(str(suf_args)))) + 1
     suf_vals = [args[i] if len(args) > i else kwargs[names[i]] if names[i] in kwargs else values[i] for i in i_arg]
     suf_vals += [getattr(args[0], str(field))] if field is not None and hasattr(args[0], field) else []
-    return make_suffix(args[0], suf_vals)
+    return make_suffix(args[0], *suf_vals)
 
 
 def load_pickle(file_name):
