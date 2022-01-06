@@ -94,6 +94,9 @@ class PixAnalysis(DUTAnalysis):
     def get_lambda(self, flux=None):
         """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux"""
         return choose(flux, self.get_flux().n) * 1e3 * self.DUT.get_area() / self.Run.Plane.Frequency
+
+    def get_efficiency(self):
+        self.Efficiency.get()
     # endregion GET
     # ----------------------------------------
 
@@ -146,7 +149,7 @@ class PixAnalysis(DUTAnalysis):
     def draw_signal_distribution(self, roc=None, cut=None, vcal=False, redo=False, draw_thresh=False, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
-        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t))
+        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, file_name='SignalDistribution'))
 
     def draw_ncluster_disto(self, n=1, cut=None, redo=False, **kwargs):
         return self.draw_signal_distribution(cut=self.Cut.make(f'{n}cl', self.Cut(cut) + self.Cut.get_ncluster(n)), redo=redo, **kwargs)
@@ -162,9 +165,10 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region PULSE HEIGHT
-    def draw_pulse_height(self, bin_size=30000, cut=None, **kwargs):
+    def draw_pulse_height(self, bin_size=None, cut=None, **kwargs):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
-        (x, y), bins = self.get_tree_vec([self.get_t_var(), self.get_ph_var()], self.Cut(cut)), self.Bins.get_time(bin_size)
+        x, y = self.get_tree_vec([self.get_t_var(), self.get_ph_var()], self.Cut(cut))
+        bins = self.Bins.get_time(choose(bin_size, 1000 if y.size // 20 < 1000 or y.size / 1000 < 20 else y.size // 20))  # min bin size of 1000 max 20 points
         h = self.Draw.profile(x, y, bins, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [e]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
         fit = FitRes(h.Fit('pol0', 'qs'))
         self.Draw.save_plots(f'PulseHeight{bin_size}')
