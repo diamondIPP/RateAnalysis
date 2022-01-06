@@ -50,6 +50,15 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
+    def get_data(self):
+        e, n = eff2u(self.Efficiency.get()), ufloat(0, 0)
+        return [self.get_flux(), self.get_current(), self.get_pulse_height(), e, n, e] + [n] * 3 + [ufloat(self.get_n_entries(), 0)]
+
+    @quiet
+    def save_plots(self, print_link=True):
+        self.Efficiency.draw(show=False)
+        super(PixAnalysis, self).save_plots(print_link)
+
     def get_ph_var(self, plane=None, vcal=True):
         return f'cluster_charge[{choose(plane, self.N)}]{ f" / {Bins.Vcal2El}" if vcal else ""}'
 
