@@ -34,6 +34,9 @@ class PixCollection(AnalysisCollection):
 
     def get_efficiencies(self, *args):
         return super(PixCollection, self).get_efficiencies('0')
+
+    def get_cluster_sizes(self, avrg=False, redo=False):
+        return self.get_values('cluster sizes', self.Analysis.get_cluster_size, None, 1, avrg, self.get_pickle_path('CS', '', 'Telescope', self.N), redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -42,7 +45,7 @@ class PixCollection(AnalysisCollection):
         return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=f'Efficiencies{"Avr" if avrg else ""}'))
 
     def draw_cluster_sizes(self, avrg=False, t=False, redo=False, **dkw):
-        x, y = self.get_x_var(t, avrg=avrg), self.get_values('cluster sizes', self.Analysis.get_cluster_size, None, 1, avrg, self.get_pickle_path('CS', '', 'Telescope', self.N), redo=redo)
+        x, y = self.get_x_var(t, avrg=avrg), self.get_cluster_sizes(avrg, redo)
         return self.Draw.graph(x, y[:, 0], 'Cluster Size', **prep_kw(dkw, y_tit='Cluster Size', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=f'ClusterSize{"Avr" if avrg else ""}'))
 
 
