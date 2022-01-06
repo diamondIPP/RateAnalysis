@@ -63,6 +63,11 @@ class Telescope(SubAnalysis):
         x = x.reshape((x.size // n, n))[:, 0:self.Run.NTelPlanes]
         x = x[all(x > 0, axis=1)].T
         return [calc_eff(values=ix > 1) for ix in x] if plane is None else calc_eff(values=x[plane] > 1)
+
+    @save_pickle('CS', suf_args='all')
+    def get_cluster_size(self, plane, cut=None, _redo=False):
+        x = self.get_tree_vec(f'cluster_size[{plane}]', self.Cut(cut))
+        return mean_sigma(x[x > 0])  # exclude non-efficient events
     # endregion GET
     # ----------------------------------------
 
