@@ -63,6 +63,16 @@ class Analysis(object):
             print('\nTESTCAMPAIGN: {}{}'.format(out, subset))
         return out
 
+    def set_verbose(self, status: bool):
+        self.Verbose = status
+        for field in self.__dict__.values():
+            if hasattr(field, 'Verbose'):
+                field.Verbose = status
+            if hasattr(field, '__dict__'):
+                for subfield in field.__dict__.values():
+                    if hasattr(subfield, 'Verbose'):
+                        subfield.Verbose = status
+
     @staticmethod
     def get_test_campaigns():
         return [basename(path).replace('_', '').strip('psi') for path in glob(join(Analysis.DataDir, 'psi*'))]

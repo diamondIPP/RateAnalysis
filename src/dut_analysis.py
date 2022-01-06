@@ -91,7 +91,7 @@ class DUTAnalysis(Analysis):
     # ----------------------------------------
     # region SAVE
     def save_data(self, data=None):
-        if self.Draw.server_is_mounted():
+        if self.Draw.MountExists:
             data = choose(data, self.get_data())
             with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
                 if self.TCString not in f:
@@ -102,14 +102,14 @@ class DUTAnalysis(Analysis):
 
     @reload_tree
     @quiet
-    def save_plots(self):
+    def save_plots(self, print_link=True):
         self.draw_hitmap(show=False)
         self.draw_signal_distribution(show=False)
         self.draw_signal_map(show=False)
         self.Currents.draw(show=False, fname='Current')
         self.draw_flux(save=self.has_branch('rate'), show=False)
         self.draw_pulse_height(show=False)
-        self.Draw.print_http('plots.html', force_print=True)
+        self.Draw.print_http('plots.html', force_print=print_link)
 
     def save_tree(self, cut=None):
         f = TFile('test.root', 'RECREATE')
@@ -644,16 +644,6 @@ class DUTAnalysis(Analysis):
         for field in self.__dict__.values():
             if hasattr(field, 'Tree'):
                 field.Tree = self.Tree
-
-    def set_verbose(self, status: bool):
-        self.Verbose = status
-        for field in self.__dict__.values():
-            if hasattr(field, 'Verbose'):
-                field.Verbose = status
-            if hasattr(field, '__dict__'):
-                for subfield in field.__dict__.values():
-                    if hasattr(subfield, 'Verbose'):
-                        subfield.Verbose = status
 
     def fit_langau(self, h=None, nconv=30, show=True, chi_thresh=8, fit_range=None):
         h = self.draw_signal_distribution(show=False) if h is None and hasattr(self, 'draw_signal_distribution') else h
