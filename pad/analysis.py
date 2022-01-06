@@ -50,12 +50,12 @@ class PadAnalysis(DUTAnalysis):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
 
     @quiet
-    def save_plots(self):
+    def save_plots(self, print_link=True):
         self.Pedestal.draw_disto_fit(show=False)
         self.Pulser.draw_pulse_height(show=False)
         self.Pulser.draw_distribution_fit(show=False)
         self.Pulser.draw_pedestal_fit(show=False)
-        super(PadAnalysis, self).save_plots()
+        super(PadAnalysis, self).save_plots(print_link)
 
     @reload_tree
     def get_data(self):
