@@ -8,7 +8,7 @@ from numpy import delete, prod, insert
 from uncertainties.umath import log as ulog  # noqa
 from src.binning import Bins
 from plotting.draw import *
-from helpers.utils import do_pickle, save_pickle, remove_files, time_stamp
+from helpers.utils import save_pickle, remove_files, time_stamp
 from src.sub_analysis import SubAnalysis, choose
 from src.dut import Plane
 
@@ -24,6 +24,7 @@ class Telescope(SubAnalysis):
 
         self.StartTime = self.Run.StartTime if self.Tree else time_stamp(self.Run.LogStart)
         self.verify_mask()
+        self.N = self.Ana.DUT.Number  # alias for dut number
 
     def verify_mask(self):
         """ verify that the mask file is in the right order. """
@@ -73,13 +74,14 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    def get_flux(self, plane=None, corr=True, use_eff=True, full_size=False, redo=False):
-        flux = self.calculate_flux(plane, use_eff, redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
+    @save_pickle('Flux', suf_args='all', field='N', verbose=1)
+    def get_flux(self, plane=None, corr=True, use_eff=True, full_size=False, _redo=False):
+        flux = self.calculate_flux(plane, use_eff, _redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
         if flux == 0:
             warning('Could not determine flux from TU rates ...')
             remove_files(self.make_simple_pickle_path('Flux', suf='*'), prnt=False, wildcard=True)
             flux = self.Run.get_flux(plane, use_eff)
-        return flux * (self.get_flux_scale(full_size, redo=redo) if corr else ufloat(1, .1))
+        return flux * (self.get_flux_scale(full_size, _redo=_redo) if corr else ufloat(1, .1))
 
     def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
         tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(self.Run.get_mask_dims(mm=True), axis=0) * [1, -1]]
@@ -99,8 +101,9 @@ class Telescope(SubAnalysis):
     def get_pad_flux_ratio(self):
         return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize] * 2) * [1, -1]])
 
-    def get_flux_scale(self, full_size=False, redo=False):
-        return do_pickle(self.make_simple_pickle_path('FluxScale', int(full_size), dut=self.Ana.DUT.Number), self.get_pad_flux_ratio if full_size else self.get_fid_flux_ratio, redo=redo)
+    @save_pickle('FluxScale', suf_args='all', field='N')
+    def get_flux_scale(self, full_size=False, _redo=False):
+        return self.get_pad_flux_ratio() if full_size else self.get_fid_flux_ratio()
 
     @save_pickle('Mask', suf_args='all')
     def find_mask_(self, plane=1, _redo=False):
@@ -119,7 +122,7 @@ class Telescope(SubAnalysis):
     def get_areas(self):
         return [self.get_area(pl) for pl in [1, 2]]
 
-    @save_pickle('Flux', suf_args='[0, 1]')
+    @save_pickle('PlaneFlux', suf_args='[0, 1]')
     def calculate_flux_(self, plane, corr, show=False, _redo=False):
         h = self.draw_rate_disto(plane, show=show)
         if h.GetEntries() < 3:
