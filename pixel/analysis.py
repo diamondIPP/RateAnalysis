@@ -95,8 +95,11 @@ class PixAnalysis(DUTAnalysis):
         """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux"""
         return choose(flux, self.get_flux().n) * 1e3 * self.DUT.get_area() / self.Run.Plane.Frequency
 
-    def get_efficiency(self):
-        self.Efficiency.get()
+    def get_efficiency(self, redo=False):
+        self.Efficiency.get(_redo=redo)
+
+    def get_cluster_size(self, cut=None, redo=False):
+        return self.Tel.get_cluster_size(self.N, cut, _redo=redo)
     # endregion GET
     # ----------------------------------------
 
