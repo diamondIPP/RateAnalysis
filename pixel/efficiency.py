@@ -5,7 +5,7 @@
 
 from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array
 from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x, set_statbox
-from plotting.fit import Erf
+from plotting.fit import Erf, Draw
 from src.binning import Bins, make_bins, Plane
 from src.cut import Cut
 from pixel.analysis import PixAnalysis
@@ -95,3 +95,12 @@ class Efficiency(PixAnalysis):
     def find_alignment(self, res=.5, show=False, _redo=False):
         e = self.get_map(res)
         return self._find_alignment(e.ProfileX(), self.DUT.W, show), self._find_alignment(e.ProfileY(), self.DUT.H, show)
+
+    def draw_pdf(self, k=9, n=10, **dkw):
+        (med, e0, e1), m = calc_eff(k, n) / 100, (k + 1) / (n + 2)
+        f_str = 'TMath::Factorial([1] + 1) / (TMath::Factorial([0]) * TMath::Factorial([1] - [0])) * x ** [0] * (1 - x) ** ([1] - [0])'
+        f = self.Draw(self.Draw.make_f('epdf', f_str, pars=[k, n], npx=1000), 'Efficiency PDF', **prep_kw(dkw, x_tit='Efficiency', y_tit='Probability'))
+        ff = self.Draw(self.Draw.make_f(None, f_str, med - e0, med + e1, pars=[k, n], lw=0, npx=1000, fill_style=1001, fill_color=1, opacity=.3), draw_opt='same')
+        ls = [Draw.vertical_line(m, 0, f(m), style=7), Draw.vertical_line(med, 0, f(med))]
+        _ = [Draw.arrow(med - e0, med, *[f(med) / 4] * 2, size=.01), Draw.arrow(med + e1, med, *[f(med) / 4] * 2, size=.01), f.Draw('same')]
+        Draw.legend(ls + [ff], ['mean', 'mode', 'CL = 1#sigma'], ['l', 'l', 'f'], left=True)
