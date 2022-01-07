@@ -74,7 +74,7 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region FLUX
-    @save_pickle('Flux', suf_args='all', field='N', verbose=1)
+    @save_pickle('Flux', suf_args='all', field='N')
     def get_flux(self, plane=None, corr=True, use_eff=True, full_size=False, _redo=False):
         flux = self.calculate_flux(plane, use_eff, _redo) if self.Tree.Hash and self.has_branch('rate') else self.Run.get_flux(plane, use_eff)
         if flux == 0:

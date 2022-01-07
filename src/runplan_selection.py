@@ -6,14 +6,14 @@
 
 from json import dump
 from re import split as splitname
-from ROOT import TMultiGraph
-from src.binning import Bins
-from pad.collection import AnalysisCollection, PadCollection
-from src.run_selection import RunSelector
-from src.analysis import *
+
 from analyse import collection_selector
-from plotting.draw import get_graph_y, ax_range, markers
-from inspect import signature
+from pad.collection import AnalysisCollection, PadCollection
+from pixel.collection import PixCollection
+from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph
+from src.analysis import *
+from src.binning import Bins
+from src.run_selection import RunSelector
 
 
 class DiaScans(Analysis):
@@ -204,8 +204,15 @@ class DiaScans(Analysis):
         return '{}{}'.format(name, self.Name.title().replace('-', '').replace('_', ''))
 
     def get_signal_maps(self, fid=False, res=.2, square=True, scale=True, redo=False):
-        pickle_info = PickleInfo('SM', make_suffix(self, [fid, res, square, scale]))
+        pickle_info = PickleInfo('SM', make_suffix(self, fid, res, square, scale))
         return self.get_values(AnalysisCollection.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
+
+    def get_cluster_size(self, avrg=False, redo=False):
+        return self.get_values(PixCollection.get_cluster_sizes, PickleInfo('CS', avrg), redo=redo, avrg=avrg)
+
+    @staticmethod
+    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
+        return AnalysisCollection.get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
     # endregion GET
     # ----------------------------------------
 
@@ -465,6 +472,11 @@ class DiaScans(Analysis):
         x_range, y_range = [.5 * min(x).n, 1.2 * max(x).n], [.5 * min(y).n, 1.2 * max(y).n]
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
+
+    def draw_cluster_size(self, avrg=True, redo=False, **dkw):
+        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_fluxes(avrg), self.get_cluster_size(avrg, redo))]
+        leg_tits = [f'{i.DUTName} @ {make_bias_str(i.Bias)}' for i in self.Info]
+        return self.Draw.multigraph(g, 'Cluster Sizes', leg_tits, **prep_kw(dkw, **self.get_x_args(draw=True), wleg=.3, file_name='ClusterSize'))
     # endregion DRAWING
     # ----------------------------------------
 
