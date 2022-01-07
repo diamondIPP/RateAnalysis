@@ -97,9 +97,6 @@ class PixAnalysis(DUTAnalysis):
 
     def get_efficiency(self, redo=False):
         self.Efficiency.get(_redo=redo)
-
-    def get_cluster_size(self, cut=None, redo=False):
-        return self.Tel.get_cluster_size(self.N, cut, _redo=redo)
     # endregion GET
     # ----------------------------------------
 
@@ -208,11 +205,6 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         return super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
-
-    def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
-        x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=pixel and res is None) + [f'cluster_size[{self.N}]'], self.Cut.no_fid(fid, cut) + self.Cut.get_ncluster(1))
-        h = self.Draw.prof2d(x, y, z_, **prep_kw({}, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False))
-        return self.Draw.prof2d(h, **prep_kw(dkw, **self.Tracks.ax_tits(pixel), z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53))
     # endregion 2D DISTRIBUTIONS
     # ----------------------------------------
 
@@ -309,6 +301,25 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region CLUSTER SIZE
+    def get_cluster_size(self, cut=None, redo=False):
+        return self.Tel.get_cluster_size(self.N, cut, _redo=redo)
+
+    def draw_cluster_size(self, cut=None, **dkw):
+        return self.Draw(self.Tel.draw_cluster_size(self.N, self.DUT.Name, self.Cut(cut), show=False), **dkw)
+
+    def draw_cluster_size_vs_angle(self, **dkw):
+        x, y, cs = self.get_tree_vec(['angle_x', 'angle_y', f'cluster_size[{self.N}]'], self.Cut.exclude('track angle x', 'track angle y'))
+        self.Draw.prof2d(x, y, cs, **prep_kw(dkw, x_tit='Angle X', y_tit='Angle Y', z_tit='Cluster Size', z_range=[1, find_range(cs, q=.1)[-1]], file_name='CSAngle'))
+
+    def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
+        x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=pixel and res is None) + [f'cluster_size[{self.N}]'], self.Cut.no_fid(fid, cut) + self.Cut.get_ncluster(1))
+        h = self.Draw.prof2d(x, y, z_, **prep_kw({}, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False))
+        return self.Draw.prof2d(h, **prep_kw(dkw, **self.Tracks.ax_tits(pixel), z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53))
+    # endregion CLUSTER SIZE
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region DRAW
     def draw_detector_size(self):
         x, y = self.DUT.Size
@@ -326,9 +337,6 @@ class PixAnalysis(DUTAnalysis):
         labels = ['No Hits'] + [f'{dut.Name} Hit' for dut in duts] + ['Both Hits']
         e = [count_nonzero(i) for i in [(x == 0) & (y == 0), (x > 0) & (y == 0), (x == 0) & (y > 0), (x > 0) & (y > 0)]]
         self.Draw.pie(labels, e, offset=.05, h=.04, r=.2, text_size=.025, angle3d=70, angle_off=250, label_format='%txt (%perc)')
-
-    def draw_cluster_size(self, cut=None, **dkw):
-        return self.Draw(self.Tel.draw_cluster_size(self.N, self.DUT.Name, self.Cut(cut), show=False), **dkw)
 
     def draw_residual(self, mode=None, cut=None, **dkw):
         return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **prep_kw(dkw, normalise=True))
