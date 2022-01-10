@@ -96,7 +96,7 @@ class PixAnalysis(DUTAnalysis):
         return choose(flux, self.get_flux().n) * 1e3 * self.DUT.get_area() / self.Run.Plane.Frequency
 
     def get_efficiency(self, redo=False):
-        self.Efficiency.get(_redo=redo)
+        return self.Efficiency.get(_redo=redo)
     # endregion GET
     # ----------------------------------------
 

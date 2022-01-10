@@ -32,16 +32,16 @@ class PixCollection(AnalysisCollection):
         x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, avrg=avrg, picklepath=picklepath, bin_size=bin_width, redo=redo, flux_sort=flux_sort)
         return array([ufloat(ph.n, sqrt(ph.s ** 2 + ((self.get_sys_error() if err else 0) * ph.n) ** 2)) for ph in x])
 
-    def get_efficiencies(self, *args):
-        return super(PixCollection, self).get_efficiencies('0')
+    def get_efficiencies(self, suf=None, redo=False):
+        return super(PixCollection, self).get_efficiencies('0', redo)
 
     def get_cluster_sizes(self, avrg=False, redo=False):
         return self.get_values('cluster sizes', self.Analysis.get_cluster_size, None, 1, avrg, self.get_pickle_path('CS', '', 'Telescope', self.N), redo=redo)
     # endregion GET
     # ----------------------------------------
 
-    def draw_efficiencies(self, avrg=False, t=False, **dkw):
-        x, y = self.get_x_var(t, avrg=avrg), self.get_efficiencies()
+    def draw_efficiencies(self, avrg=False, t=False, redo=False, **dkw):
+        x, y = self.get_x_var(t, avrg=avrg), self.get_efficiencies(redo=redo)
         return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=f'Efficiencies{"Avr" if avrg else ""}'))
 
     def draw_cluster_sizes(self, avrg=False, t=False, redo=False, **dkw):
