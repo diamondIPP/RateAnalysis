@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, all
+from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, all, column_stack
 from os import makedirs, remove, devnull, stat, getenv, _exit
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -1014,7 +1014,9 @@ def plural(word, pluralise=True):
 
 def alternate(l0, l1):
     """alternatingly concatenates two lists."""
-    return array([l0, l1]).T.flatten()
+    l0, l1 = array(l0), array(l1)
+    col_vec = lambda x: array([x]).T if len(x.shape) == 1 else x.T
+    return column_stack([col_vec(l0), col_vec(l1)]).flatten()
 
 
 def do_nothing():
