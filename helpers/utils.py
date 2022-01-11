@@ -1012,5 +1012,10 @@ def plural(word, pluralise=True):
     return f'{word}s' if pluralise else word
 
 
+def alternate(l0, l1):
+    """alternatingly concatenates two lists."""
+    return array([l0, l1]).T.flatten()
+
+
 def do_nothing():
     pass
