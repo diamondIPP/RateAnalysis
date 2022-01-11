@@ -45,6 +45,10 @@ class DiaScans(Analysis):
     def __str__(self):
         return self.Name
 
+    @property
+    def is_volt_scan(self):
+        return all([i.is_volt_scan for i in self.Info])
+
     # ----------------------------------------
     # region INIT
     def load_selections(self):
@@ -119,6 +123,9 @@ class DiaScans(Analysis):
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
 
+    def get_biases(self):
+        return array([[float(i.RunInfo[run][f'dia{i.DUTNr}hv']) for run in i.Runs] for i in self.Info])
+
     def get_rp_values(self, sel, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         pickle_path = pickle_info.path(sel) if pickle_info else ''
         if file_exists(pickle_path) and not redo:
@@ -180,6 +187,9 @@ class DiaScans(Analysis):
 
     def get_fluxes(self, avrg=False, redo=False):
         return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
+
+    def get_x(self, avrg=False, redo=False):
+        return self.get_biases() if self.is_volt_scan else self.get_fluxes(avrg, redo)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -480,10 +490,9 @@ class DiaScans(Analysis):
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
 
-    def draw_cluster_size(self, avrg=True, redo=False, **dkw):
-        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_fluxes(avrg), self.get_cluster_size(avrg, redo))]
-        leg_tits = [f'{i.DUTName} @ {make_bias_str(i.Bias)}' for i in self.Info]
-        return self.Draw.multigraph(g, 'Cluster Sizes', leg_tits, **prep_kw(dkw, **self.get_x_args(draw=True), wleg=.3, file_name='ClusterSize'))
+    def draw_cluster_size(self, avrg=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]
+        return self.Draw.multigraph(g, 'Cluster Sizes', leg=self.make_legend(g), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='ClusterSize', draw_opt='pl'))
     # endregion DRAWING
     # ----------------------------------------
 
@@ -515,6 +524,7 @@ class DiaScans(Analysis):
 
 class SelectionInfo:
     def __init__(self, sel: RunSelector):
+        self.RunInfo = sel.RunInfos
         self.Run = sel.Run
         self.TCString = sel.TCString
         self.RunPlan = sel.SelectedRunplan
@@ -536,6 +546,10 @@ class SelectionInfo:
 
     def __call__(self):
         return [self.TCString, self.RunPlan, self.DUTName, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
+
+    @property
+    def is_volt_scan(self):
+        return 'voltage' in self.Type
 
 
 class PickleInfo:
