@@ -9,34 +9,34 @@ from src.binning import Bins
 _ = Bins.Verbose
 
 
-def analysis_selector(run, dut, tc, tree, verbose=False, prnt=True):
+def analysis_selector(run_, dut_, tc, tree, verbose=False, prnt=True):
     from src.run import Run
-    dummy = Run(int(run), tc, load_tree=False)
+    dummy = Run(int(run_), tc, load_tree=False)
     if dummy.get_type() == 'pad':
         from pad.analysis import PadAnalysis
-        return PadAnalysis(int(run), dut, tc, tree, verbose, prnt)
+        return PadAnalysis(int(run_), dut_, tc, tree, verbose, prnt)
     elif dummy.get_type() == 'pixel':
         from pixel.analysis import PixAnalysis
-        return PixAnalysis(int(run), dut, tc, tree, verbose, prnt)
+        return PixAnalysis(int(run_), dut_, tc, tree, verbose, prnt)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
 
-def collection_selector(name, dut, tc, tree, verbose=False):
+def collection_selector(name, dut_, tc, tree, verbose=False):
     from src.run_selection import RunPlan, RunSelection
-    dummy = RunPlan(name, tc, dut, verbose) if isfloat(name) else RunSelection(name, verbose)
+    dummy = RunPlan(name, tc, dut_, verbose) if isfloat(name) else RunSelection(name, verbose)
     if dummy.DUTType == 'pad':
         from pad.collection import PadCollection
         if 'voltage' in dummy.Type:
-            from src.voltage_scan import make_volage_scan
-            return make_volage_scan(PadCollection)(name, dut, tc, tree, verbose)
-        return PadCollection(name, dut, tc, tree, verbose)
+            from src.voltage_scan import PadVScan
+            return PadVScan(name, dut_, tc, tree, verbose)
+        return PadCollection(name, dut_, tc, tree, verbose)
     elif dummy.DUTType == 'pixel':
         from pixel.collection import PixCollection
         if 'voltage' in dummy.Type:
-            from src.voltage_scan import make_volage_scan
-            return make_volage_scan(PixCollection)(name, dut, tc, tree, verbose)
-        return PixCollection(name, dut, tc, tree, verbose)
+            from src.voltage_scan import PixVScan
+            return PixVScan(name, dut_, tc, tree, verbose)
+        return PixCollection(name, dut_, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
