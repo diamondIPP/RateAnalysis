@@ -14,6 +14,7 @@ from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph
 from src.analysis import *
 from src.binning import Bins
 from src.run_selection import RunSelector
+from src.voltage_scan import VoltageScan
 
 
 class DiaScans(Analysis):
@@ -210,9 +211,15 @@ class DiaScans(Analysis):
     def get_cluster_size(self, avrg=False, redo=False):
         return self.get_values(PixCollection.get_cluster_sizes, PickleInfo('CS', avrg), redo=redo, avrg=avrg)
 
-    @staticmethod
-    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
-        return AnalysisCollection.get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
+    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
+        return (VoltageScan if self.is_volt_scan else AnalysisCollection).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
+
+    def make_legend(self, g, irrad=False, **kw):
+        bias = lambda x: '' if self.is_volt_scan else f' @ {make_bias_str(x.Bias)}'
+        irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
+        tits = [w for i in self.Info for w in [f'{i.DUTName}', bias(i), irr(i)] if w]
+        cols = len(tits) // len(g)
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=.25 + .05 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
     # endregion GET
     # ----------------------------------------
 
