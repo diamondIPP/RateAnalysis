@@ -229,7 +229,7 @@ class DiaScans(Analysis):
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
         tits = [w for i in self.Info for w in [f'{i.DUTName}', bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=.25 + .05 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=.15 + .1 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
     # endregion GET
     # ----------------------------------------
 
