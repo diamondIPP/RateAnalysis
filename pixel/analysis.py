@@ -142,11 +142,11 @@ class PixAnalysis(DUTAnalysis):
         return self.Draw.distribution(h, **kwargs, filename=f'PHDisto{"V" if vcal else "E"}')
 
     @save_pickle('PH', suf_args='all')
-    def get_signal_disto(self, roc=None, cut=None, vcal=False, _redo=False):
-        x = self.get_tree_vec(self.get_ph_var(roc), self.Cut(cut)) / (Bins.Vcal2El if vcal else 1)
+    def get_signal_disto(self, roc=None, cut=None, vcal=True, _redo=False):
+        x = self.get_tree_vec(self.get_ph_var(roc, vcal), self.Cut(cut))
         return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "e"}]', show=False)
 
-    def draw_signal_distribution(self, roc=None, cut=None, vcal=False, redo=False, draw_thresh=False, **kwargs):
+    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
         return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, file_name='SignalDistribution'))
@@ -169,7 +169,7 @@ class PixAnalysis(DUTAnalysis):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
         x, y = self.get_tree_vec([self.get_t_var(), self.get_ph_var()], self.Cut(cut))
         bins = self.Bins.get_time(choose(bin_size, 1000 if y.size // 20 < 1000 or y.size / 1000 < 20 else y.size // 20))  # min bin size of 1000 max 20 points
-        h = self.Draw.profile(x, y, bins, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [e]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
+        h = self.Draw.profile(x, y, bins, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [vcal]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
         fit = FitRes(h.Fit('pol0', 'qs'))
         self.Draw.save_plots(f'PulseHeight{bin_size}')
         return h, fit
