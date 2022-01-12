@@ -290,8 +290,8 @@ class AnalysisCollection(Analysis):
     def get_pulse_height(self):
         return mean_sigma(self.get_pulse_heights())
 
-    def get_efficiencies(self, suf='3', redo=False):
-        return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.get_pickle_path(suf=suf, sub_dir='Efficiency'), redo=redo)
+    def get_efficiencies(self, suf='3', avrg=False, redo=False):
+        return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.get_pickle_path(suf=suf, sub_dir='Efficiency'), avrg=avrg, redo=redo)
 
     def get_rate_dependence(self, redo=False, values=None, avrg=False):
         values = choose(values, self.get_pulse_heights(redo=redo, pbar=False, avrg=avrg))
