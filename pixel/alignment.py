@@ -3,7 +3,7 @@
 #       Class to align the DUT and REF events of the Rate Pixel Analysis
 # created on February 13th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import column_stack, polyfit, argmax, sum
+from numpy import polyfit, argmax, sum
 from src.event_alignment import *
 from plotting.draw import FitRes
 from src.binning import Bins
