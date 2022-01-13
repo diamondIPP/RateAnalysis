@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut
-from numpy import delete, column_stack, insert
+from numpy import delete, insert
 
 from plotting.draw import *
 from helpers.utils import *
@@ -57,12 +57,12 @@ class Cut(SubAnalysis):
         splits = array(self.Config.get_list('SPLIT', 'fiducial'))
         n = next(iter(where(splits > self.Run.Number)[0]), splits.size) + 1
         option = name if self.Config.has_option('CUT', name) and n == 1 else '{} {}'.format(name, n)
-        v = self.load_dut_config(option, warn=False)
-        if v is None:
+        v = array(self.load_dut_config(option, warn=False))
+        if v.ndim == 0:
             warning('fiducial cut not defined!')
             return make_box_args(-1, -1, 1, 1)
         self.HasFid = True
-        return make_box_args(*array(v)[[0, 2, 1, 3]]) if len(v) == 4 else array(v)
+        return make_box_args(*v[[0, 2, 1, 3]]) if v.ndim == 1 else v
 
     def load_pixel_fid(self):
         fid = self.load_fiducial('pixel fiducial')
