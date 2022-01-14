@@ -90,6 +90,10 @@ class DUTAnalysis(Analysis):
 
     # ----------------------------------------
     # region SAVE
+    def save_all(self, print_link=True):
+        self.save_data()
+        self.save_plots(print_link)
+
     def save_data(self, data=None):
         if self.Draw.MountExists:
             data = choose(data, self.get_data())
