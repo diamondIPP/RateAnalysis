@@ -26,7 +26,7 @@ class AutoConvert:
 
         self.Selection = RunSelector(testcampaign=test_campaign, verbose=verbose)
         self.Run = self.Selection.Run
-        self.StartAtRun = choose(first_run, self.find_last_converted())
+        self.StartAtRun = choose(first_run, self.get_all_runs()[0] if self.Multi else self.find_last_converted())
         self.StopAtRun = 1e9 if not multi or end_run is None else int(end_run)
         self.Runs = self.load_runs()
 
