@@ -10,10 +10,10 @@ from scipy.stats import poisson
 
 from pixel.calibration import Calibration
 from pixel.cut import PixCut
-# from pixel.efficiency import Efficiency
 from pixel.run import PixelRun
 from src.dut_analysis import *
 from src.dut import Plane
+from plotting.fit import Landau
 
 
 class PixAnalysis(DUTAnalysis):
@@ -66,7 +66,7 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
     # region GET
     def get_ph_var(self, plane=None, vcal=True):
-        return f'cluster_charge[{choose(plane, self.N)}]{ f" / {Bins.Vcal2El}" if vcal else ""}'
+        return f'cluster_charge[{choose(plane, self.N)}]{f" / {Bins.Vcal2El if vcal else 1e3}"}'
 
     def get_signal_var(self):
         return self.get_ph_var()
@@ -150,12 +150,21 @@ class PixAnalysis(DUTAnalysis):
     @save_pickle('PH', suf_args='all')
     def get_signal_disto(self, roc=None, cut=None, vcal=True, _redo=False):
         x = self.get_tree_vec(self.get_ph_var(roc, vcal), self.Cut(cut))
-        return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "e"}]', show=False)
+        return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "ke"}]', show=False)
 
-    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, **kwargs):
+    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
-        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, file_name='SignalDistribution'))
+        self.info(f'Real MPV: {Landau(h, self.find_fit_range(h)).get_mpv():.2f}') if fit else do_nothing()
+        stats = set_statbox(fit=fit, all_stat=True)
+        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, file_name=f'SignalDistribution{"E" if not vcal else ""}'), stats=stats)
+
+    @staticmethod
+    def find_fit_range(h, fl=.5, fr=.2):
+        xmax, ymax = find_mpv(h)
+        x, y = get_hist_vecs(h, err=False)
+        xr, yr = x[x > xmax], y[x > xmax]
+        return [h.GetBinCenter(h.FindFirstBinAbove(fl * ymax.n)), xr[yr < fr * ymax.n][0]]
 
     def draw_ncluster_disto(self, n=1, cut=None, redo=False, **kwargs):
         return self.draw_signal_distribution(cut=self.Cut.make(f'{n}cl', self.Cut(cut) + self.Cut.get_ncluster(n)), redo=redo, **kwargs)
