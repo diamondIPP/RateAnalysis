@@ -156,8 +156,7 @@ class PixAnalysis(DUTAnalysis):
         h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
         self.info(f'Real MPV: {Landau(h, self.find_fit_range(h)).get_mpv():.2f}') if fit else do_nothing()
-        stats = set_statbox(fit=fit, all_stat=True)
-        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, file_name=f'SignalDistribution{"E" if not vcal else ""}'), stats=stats)
+        return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, draw_opt='' if fit else None, file_name=f'SignalDistribution{"E" if not vcal else ""}'))
 
     @staticmethod
     def find_fit_range(h, fl=.5, fr=.2):
