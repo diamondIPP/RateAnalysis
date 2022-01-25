@@ -61,7 +61,7 @@ class PixAlignment(EventAligment):
 
     def load_data(self, firstentry=0, nentries=None, tree=None):
         tree = choose(tree, self.InTree)
-        n = get_tree_vec(tree, self.HitVar, dtype='u1', nentries=nentries, firstentry=firstentry)
+        n = get_tree_vec(tree, self.HitVar, dtype='u2', nentries=nentries, firstentry=firstentry)
         tree.SetEstimate(sum(n))
         pl, col, row = get_tree_vec(tree, ['plane', 'col', 'row'], dtype='u1', firstentry=firstentry, nentries=nentries)
         c1, c2 = self.get_e_cut(self.TelPlane, pl, n), self.get_e_cut(self.DUTPlane, pl, n)

@@ -96,7 +96,7 @@ class EventAligment(object):
 
     @staticmethod
     def init_branches():
-        return {'n_hits_tot': (zeros(1, 'u1'), 'n_hits_tot/b'),
+        return {'n_hits_tot': (zeros(1, 'u2'), 'n_hits_tot/s'),
                 'plane': (zeros(MAX_SIZE, 'u1'), 'plane[n_hits_tot]/b'),
                 'col': (zeros(MAX_SIZE, 'u1'), 'col[n_hits_tot]/b'),
                 'row': (zeros(MAX_SIZE, 'u1'), 'row[n_hits_tot]/b'),
