@@ -46,7 +46,7 @@ class Efficiency(PixAnalysis):
         return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), show=False)
 
     def draw_map(self, res=None, fid=False, cut=None, local=False, redo=False, **dkw):
-        self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='EfficiencyMap'))
+        return self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='EfficiencyMap'))
 
     def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, cut=None, max_angle=None, expand=True, **kwargs):
         return super(Efficiency, self).get_mod_vars(mx, my, ox, oy, zvar=self.get_var(percent=True), cut=cut, expand=expand)
@@ -88,7 +88,7 @@ class Efficiency(PixAnalysis):
         g = self.Draw.make_graph_from_profile(p)
         (x0, x1), m = get_graph_x(g, err=False)[[0, -1]], p.GetMean()
         self.Draw(g, x_tit='Coordinate', y_tit='Efficiency [%]') if show else do_nothing()
-        f0, f1 = Erf(g, [x0, m]).fit(show=show).Fit, Erf(g, [m, x1]).fit(show=show).Fit
+        f0, f1 = Erf(g, [x0, m]).fit(draw=show).Fit, Erf(g, [m, x1]).fit(draw=show).Fit
         return self.Draw.make_tf1(None, lambda x: f0(x) - f1(x + w), x0, m).GetX(0)
 
     @save_pickle('Align', suf_args='[0]')
