@@ -53,7 +53,7 @@ class Ensemble(object):
         return array([run.Flux for run in self.Runs])
 
     def get_biases(self):
-        return array([run.DUTs[self.DUT.Number - 1].Bias for run in self.Runs])
+        return array([self.Runs[i].load_biases()[d[1] - 1] for i, d in enumerate(self.Data)])
 
     def get_durations(self):
         return array([run.Duration.total_seconds() for run in self.Runs])
