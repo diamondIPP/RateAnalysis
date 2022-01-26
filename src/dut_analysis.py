@@ -76,15 +76,15 @@ class DUTAnalysis(Analysis):
     def update_config(self):
         pass
 
-    @staticmethod
-    def get_info_header():
+    @property
+    def info_header(self):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]']
 
     def show_information(self, header=True, prnt=True, ret_row=False):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, '{:14.1f}'.format(self.Run.Flux.n), '{:+6.0f}'.format(self.DUT.Bias)]]
         if ret_row:
             return rows[0]
-        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        print_table(rows, self.info_header if header else None, prnt=prnt)
     # endregion INIT
     # ----------------------------------------
 

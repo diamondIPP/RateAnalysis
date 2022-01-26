@@ -71,7 +71,7 @@ class AnalysisCollection(Analysis):
         pass
 
     def show_information(self):
-        print_table(rows=self.get_values('', self.Analysis.show_information, pbar=False, prnt=False, ret_row=True), header=self.FirstAnalysis.get_info_header())
+        print_table(rows=self.get_values('', self.Analysis.show_information, pbar=False, prnt=False, ret_row=True), header=self.FirstAnalysis.info_header)
 
     def print_loaded(self):
         print('\033[1A\rRuns {0}-{1} were successfully loaded!{2}\n'.format(self.Runs[0], self.Runs[-1], 20 * ' '))

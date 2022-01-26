@@ -45,8 +45,8 @@ class PadAnalysis(DUTAnalysis):
 
         self.print_finished(prnt=prnt)
 
-    @staticmethod
-    def get_info_header():
+    @property
+    def info_header(self):
         return ['Run', 'Type', 'Diamond', 'Flux [kHz/cm2]', 'HV [V]', 'Region', 'Integral']
 
     @quiet
@@ -80,7 +80,7 @@ class PadAnalysis(DUTAnalysis):
         rows = [[self.Run.Number, self.Run.Info['runtype'], self.DUT.Name, f'{self.Run.Flux.n:14.1f}', f'{self.DUT.Bias:+5.0f}', region, peak_int]]
         if ret_row:
             return rows[0]
-        print_table(rows, self.get_info_header() if header else None, prnt=prnt)
+        print_table(rows, self.info_header if header else None, prnt=prnt)
     # endregion INFO
     # ----------------------------------------
 
