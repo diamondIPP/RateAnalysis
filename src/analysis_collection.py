@@ -30,7 +30,7 @@ class AnalysisCollection(Analysis):
         self.Fluxes = self.Ensemble.get_fluxes()
         self.MinFluxRun, self.MaxFluxRun = self.get_high_low_rate_runs()
 
-        super(AnalysisCollection, self).__init__(self.Ensemble.TCString, sub_dir=join(self.DUT.Name, self.RunPlan), verbose=verbose)
+        super(AnalysisCollection, self).__init__(self.Ensemble.TCString, self.Ensemble.res_dir, sub_dir=self.Ensemble.save_dir, verbose=verbose)
         self.print_start(name, prnt=load_tree, dut=self.DUT.Name)
         self.print_start_info()
 

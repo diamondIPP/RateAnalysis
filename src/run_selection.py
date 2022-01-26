@@ -43,6 +43,13 @@ class Ensemble(object):
     def load_data(self):
         pass
 
+    def save_dir(self):
+        pass
+
+    @property
+    def res_dir(self):
+        return self.TCString
+
     def init_dut(self):
         return self.Runs[0].DUTs[self.Data[0][1] - 1]
 
@@ -90,6 +97,10 @@ class RunPlan(Ensemble):
         self.Type = data['type']
         return [(run, self.DUTNr, self.TCString) for run in data['runs']]
 
+    @property
+    def save_dir(self):
+        return join(self.DUT.Name, str(self))
+
 
 class RunSelection(Ensemble):
     """ Container for an arbitrary selection of runs. """
@@ -98,7 +109,7 @@ class RunSelection(Ensemble):
         super().__init__(name, verbose)
 
     def __str__(self):
-        return f'RS{self.Name}'
+        return f'RS-{self.Name}'
 
     def init_run(self, verbose):
         run, ch, tc = self.load_data()[0]
@@ -110,6 +121,14 @@ class RunSelection(Ensemble):
         if name not in data:
             critical(f'{self.Name} is not a valid selection name!')
         return [(run, dut, tc) for tc, lst in data[name].items() for run, dut in lst]
+
+    @property
+    def save_dir(self):
+        return join('selections', str(self))
+
+    @property
+    def res_dir(self):
+        return ''
 
     def convert(self):
         with Pool() as pool:
