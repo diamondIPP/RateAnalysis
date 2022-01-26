@@ -491,6 +491,10 @@ def eff2u(eff):
     return ufloat(eff[0], mean(eff[1:]))
 
 
+def eff2str(eff, u='\\percent', f='.2f'):
+    return f'\\SIerr{{{eff[0]:{f}}}}{{{eff[2]:{f}}}}{{{eff[1]:{f}}}}{{{u}}}'
+
+
 def make_ufloat(n, s=0):
     return array([ufloat(*v) for v in array([n, s]).T]) if is_iter(n) else n if is_ufloat(n) else ufloat(n, s)
 
