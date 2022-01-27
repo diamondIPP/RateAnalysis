@@ -50,6 +50,10 @@ class Ensemble(object):
     def res_dir(self):
         return self.TCString
 
+    @property
+    def tcs(self):
+        return [d[2] for d in self.Data]
+
     def init_dut(self):
         return self.Runs[0].DUTs[self.Data[0][1] - 1]
 
