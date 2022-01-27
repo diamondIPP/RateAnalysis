@@ -80,7 +80,6 @@ if __name__ == '__main__':
             dut = z.DUT
             c = z.Run.Converter
             cut = z.Cut
-            sl = z.Draw.save_last
         except AttributeError:
             pass
         if pargs.draw:
@@ -92,3 +91,4 @@ if __name__ == '__main__':
     else:
         from src.runplan_selection import DiaScans
         z = DiaScans(pargs.runplan, pargs.verbose)
+    sl = z.Draw.save_last
