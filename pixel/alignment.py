@@ -97,8 +97,11 @@ class PixAlignment(EventAligment):
         co1, co2 = self.find_events(offset, c1, c2)
         return column_stack([x1[co1], x2[co2]]), column_stack([y1[co1], y2[co2]]), where(c1)[0][co1] + start
 
-    def get_bucket(self, offset=0, start=0, n=50):
-        x, y, e = self.get_data(offset, start, start + n * self.HitRate * 2)
+    def get_bucket(self, offset=0, start=0, n=50, end=None):
+        end = choose(end, start + n * (self.HitRate + 1))
+        x, y, e = self.get_data(offset, start, end)
+        if e.size < n and end < self.NEntries:
+            return self.get_bucket(offset, start, n, end + n)
         return x[:n], y[:n], e[:n]
 
     @staticmethod
@@ -177,6 +180,10 @@ class PixAlignment(EventAligment):
                 return off
         warning('could not determine starting offset! assuming 0 ...')
         return 0
+
+    def verify_offset(self, o, s=0, n=50, m=10):
+        d = self.get_bucket(o, s, n * 2)
+        return all([self.is_aligned(d, i, i + n) for i in range(m)])
 
     def find_all_offsets(self):
         return self.find_offsets()
