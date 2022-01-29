@@ -265,9 +265,10 @@ class DUTAnalysis(Analysis):
         from src.event_alignment import EventAligment
         return EventAligment
 
-    def init_alignment(self):
+    def init_alignment(self, **kwargs):
         if self.Alignment is None:
             self.Alignment = self.get_alignment()(self.Run.Converter)
+        return self.Alignment
 
     def get_aligned(self, *args, **kwargs):
         return self.get_alignment()(self.Run.Converter).get_aligned(*args, **kwargs)

@@ -59,6 +59,7 @@ class PixAnalysis(DUTAnalysis):
         self.Efficiency.draw(show=False)
         self.Efficiency.draw_map(show=False)
         self.draw_occupancy(show=False)
+        self.draw_correlation(show=False)
         super(PixAnalysis, self).save_plots(print_link)
     # endregion DATA
     # ----------------------------------------
@@ -289,9 +290,9 @@ class PixAnalysis(DUTAnalysis):
         x, y = self.get_tree_vec(self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
         return self.Draw.distribution(x - y, make_bins(-9.5, 10), **prep_kw(dkw, ndivx=20, x_tit='#Delta Trigger Phase', stats=set_entries()))
 
-    def draw_tphase_offset_trend(self, bin_width=None, cut=None, **dkw):
+    def draw_tphase_offset_trend(self, bw=None, cut=None, **dkw):
         t, y0, y1 = self.get_tree_vec([self.get_t_var()] + self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
-        return self.Draw.profile(t, y0 - y1, self.Bins.get_time(bin_width, cut), 'Trigger Phase vs Time', **prep_kw(dkw, graph=True, y_tit='Trigger Phase', y_range=[-9, 9], **self.get_t_args()))
+        return self.Draw.profile(t, y0 - y1, self.Bins.get_time(bw, cut), 'Trigger Phase vs Time', **prep_kw(dkw, graph=True, y_tit='Trigger Phase', y_range=[-9, 9], **self.get_t_args()))
 
     def draw_tp_map(self, res=None, **dkw):
         x, y, zz = self.get_tree_vec(self.get_track_vars() + [self.get_tp_var()], cut=self.Cut.exclude('trigger_phase', 'fiducial'))
@@ -309,8 +310,14 @@ class PixAnalysis(DUTAnalysis):
         from pixel.alignment import PixAlignment
         return PixAlignment
 
-    def draw_correlation(self, tel_plane=None, offset=0, bin_size=200, **dkw):
-        self.Draw(self.get_alignment()(self.Run.Converter, tel_plane).draw_correlation(offset, bin_size, show=False), **prep_kw(dkw, file_name='Correlation'))
+    def init_alignment(self, tel_plane=None, dut_plane=None):
+        if self.Alignment is None:
+            self.Alignment = self.get_alignment()(self.Run.Converter, tel_plane, dut_plane)
+        return self.Alignment
+
+    def draw_correlation(self, tel_plane=None, dut_plane=None, offset=0, bin_size=1000, **dkw):
+        dut_plane = choose(dut_plane, self.N)
+        self.Draw(self.init_alignment(tel_plane, dut_plane).draw_correlation(offset, bin_size, show=False), **prep_kw(dkw, y_range=[0, 1.15], file_name=f'Correlation{dut_plane}'))
     # endregion ALIGNMENT
     # ----------------------------------------
 
