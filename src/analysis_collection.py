@@ -96,6 +96,7 @@ class AnalysisCollection(Analysis):
         self.save_data()
         self.save_plots()
         print_elapsed_time(t, color='green')
+        self.Draw.print_http('plots.html')
 
     @quiet
     def save_plots(self):
