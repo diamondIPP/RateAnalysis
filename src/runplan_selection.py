@@ -212,15 +212,18 @@ class DiaScans(Analysis):
     def get_cluster_size(self, avrg=False, redo=False):
         return self.get_values(PixCollection.get_cluster_sizes, PickleInfo('CS', avrg), redo=redo, avrg=avrg)
 
+    def get_efficiency(self, avrg=False, redo=False):
+        return self.get_values(PixCollection.get_efficiencies, PickleInfo('Eff', avrg), redo=redo, avrg=avrg)
+
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
         return (VoltageScan if self.is_volt_scan else AnalysisCollection).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
 
-    def make_legend(self, g, irrad=False, **kw):
+    def make_legend(self, g, dut=False, irrad=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else f' @ {make_bias_str(x.Bias)}'
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
-        tits = [w for i in self.Info for w in [f'{i.DUTName}', bias(i), irr(i)] if w]
+        tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=.15 + .1 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
     # endregion GET
     # ----------------------------------------
 
@@ -480,11 +483,19 @@ class DiaScans(Analysis):
         x_range, y_range = [.5 * min(x).n, 1.2 * max(x).n], [.5 * min(y).n, 1.2 * max(y).n]
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
+    # endregion DRAWING
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region PIXEL
+    def draw_efficiency(self, avrg=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]') for x, y in zip(self.get_x(avrg), self.get_efficiency(avrg, redo))]
+        return self.Draw.multigraph(g, 'Efficiencies', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='Efficiency', draw_opt='pl', y_range=[0, 105]))
 
     def draw_cluster_size(self, avrg=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]
-        return self.Draw.multigraph(g, 'Cluster Sizes', leg=self.make_legend(g), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='ClusterSize', draw_opt='pl'))
-    # endregion DRAWING
+        return self.Draw.multigraph(g, 'Cluster Sizes', leg=self.make_legend(g, dut=True, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='ClusterSize', draw_opt='pl'))
+    # endregion PIXEL
     # ----------------------------------------
 
     # ----------------------------------------

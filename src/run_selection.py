@@ -166,8 +166,8 @@ class RunSelector(object):
 
     def __repr__(self):
         if self.SelectedRunplan is None:
-            return f'RunSelection for {tc_to_str(self.TCString, short=False)}, {self.RunNumbers.size} runs in total.'
-        return f'RunSelection with RunPlan {self.SelectedRunplan} of {self.SelectedDUT} taken in {tc_to_str(self.TCString, short=False)}'
+            return f'RunSelection for {tc2str(self.TCString, short=False)}, {self.RunNumbers.size} runs in total.'
+        return f'RunSelection with RunPlan {self.SelectedRunplan} of {self.SelectedDUT} taken in {tc2str(self.TCString, short=False)}'
 
     # ----------------------------------------
     # region INIT
@@ -480,7 +480,7 @@ class RunSelector(object):
         """ Print a list of all run plans from the current test campaign to the console. """
         diamond = None if diamond == 'None' else int(diamond) if isint(diamond) else diamond
         old_selection = deepcopy(self.Selection)
-        print_banner('RUN PLANS FOR {tc}'.format(tc=tc_to_str(self.TCString, short=False).upper()), color='yellow')
+        print_banner('RUN PLANS FOR {tc}'.format(tc=tc2str(self.TCString, short=False).upper()), color='yellow')
         header = ['Nr.', 'Run Type', 'Range', 'Excluded']
         dia_nrs = arange(1, self.MaxDuts + 1) if diamond is None else [diamond if isint(diamond) else 1]
         for i in dia_nrs:
