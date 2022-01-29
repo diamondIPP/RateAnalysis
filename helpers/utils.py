@@ -312,7 +312,7 @@ def make_tc_str(tc, long_=True, data=False):
         return '{tc}{s}'.format(tc=datetime.strptime(tc_data[0], '%b%y').strftime('%Y%m' if long_ else '%B %Y'), s=sub_string)
 
 
-def tc_to_str(tc, short=True):
+def tc2str(tc, short=True):
     tc_str = str(tc).split('-')[0]
     sub_str = '-{}'.format(tc.split('-')[-1]) if '-' in str(tc) else ''
     return '{tc}{s}'.format(tc=datetime.strptime(tc_str, '%Y%m').strftime('%b%y' if short else '%B %Y'), s=sub_str)
