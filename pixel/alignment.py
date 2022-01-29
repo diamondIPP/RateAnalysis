@@ -10,12 +10,12 @@ from src.binning import Bins
 
 
 class PixAlignment(EventAligment):
-    def __init__(self, converter=None, tel_plane=None):
+    def __init__(self, converter=None, tel_plane=None, dut_plane=None):
 
         # Info
         self.Threshold = .35
         self.NTelPlanes = converter.Run.NTelPlanes
-        self.DUTPlane = self.find_dut_plane(converter.Run.DUTs)
+        self.DUTPlane = choose(dut_plane, self.find_dut_plane(converter.Run.DUTs))
         self.TelPlane = choose(tel_plane, 1 if self.DUTPlane > self.NTelPlanes else 2)
         self.MaxOffset = 1000
         self.Mode = converter.Run.Config.get_value('BASIC', 'align', default='')
