@@ -309,8 +309,8 @@ class PixAnalysis(DUTAnalysis):
         from pixel.alignment import PixAlignment
         return PixAlignment
 
-    def draw_correlation(self, tel_plane=None, offset=0, bin_size=200):
-        self.get_alignment()(self.Run.Converter, tel_plane).draw_correlation(offset, bin_size)
+    def draw_correlation(self, tel_plane=None, offset=0, bin_size=200, **dkw):
+        self.Draw(self.get_alignment()(self.Run.Converter, tel_plane).draw_correlation(offset, bin_size, show=False), **prep_kw(dkw, file_name='Correlation'))
     # endregion ALIGNMENT
     # ----------------------------------------
 
