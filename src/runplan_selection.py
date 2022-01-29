@@ -5,7 +5,6 @@
 # --------------------------------------------------------
 
 from json import dump
-from re import split as splitname
 
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection
@@ -34,10 +33,10 @@ class DiaScans(Analysis):
 
         # Info
         self.RS = RunSelector()  # dummy for information
-        self.DUTName = self.load_dut_name()
         self.RunPlans = self.load_runplans()
         self.TestCampaigns = self.load_test_campaigns()
         self.Info = self.load_selection_info()
+        self.DUTName = self.load_dut_name()
         self.NPlans = len(self.Info) if self.Info else None
 
         self.print_finished(prnt=verbose)
@@ -65,19 +64,11 @@ class DiaScans(Analysis):
         return self.Selections[name]
 
     def load_dut_name(self, name=None):
-        name = self.Name if name is None else name
-        if name is None:
-            return
-        if any([word in name.lower() for word in ['all', 'test']]):
-            return name.title()
-        dut = name.lower()
-        if dut not in self.DUTParser.options('ALIASES'):
-            dut = splitname('[-_]', name)[0]
-        if dut.lower() not in self.DUTParser.options('ALIASES'):
-            dut = '-'.join(splitname('[-_]', name)[:2])
-        if dut.lower() not in self.DUTParser.options('ALIASES'):
-            warning('No diamond name found in "{}". Please choose one from \n{}'.format(name, ', '.join(self.DUTParser.options('ALIASES'))))
-        return self.DUTParser.get('ALIASES', dut)
+        name = choose(name, self.Name)
+        if name is not None:
+            if any([word in name.lower() for word in ['all', 'test']]):
+                return name.title()
+            return self.Info[0].DUTName
 
     def load_runplans(self):
         with open(self.RS.RunPlanPath) as f:
@@ -124,7 +115,7 @@ class DiaScans(Analysis):
         return [sel.Bias for sel in self.Info]
 
     def get_biases(self):
-        return array([[float(i.RunInfo[run][f'dia{i.DUTNr}hv']) for run in i.Runs] for i in self.Info])
+        return [array([float(i.RunInfo[run][f'dia{i.DUTNr}hv']) for run in i.Runs]) for i in self.Info]
 
     def get_rp_values(self, sel, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         pickle_path = pickle_info.path(sel) if pickle_info else ''
@@ -275,10 +266,10 @@ class DiaScans(Analysis):
     def set_selection(self, name):
         self.info('Set Selection {0}'.format(name))
         self.Name = name
-        self.DUTName = self.load_dut_name()
         self.Selection = self.load_selection(name)
         self.TestCampaigns = self.load_test_campaigns()
         self.Info = self.load_selection_info()
+        self.DUTName = self.load_dut_name()
         self.Draw.set_results_dir(join('Results', 'selections', self.Name)) if name else do_nothing()
 
     def set_selection_name(self, name):
