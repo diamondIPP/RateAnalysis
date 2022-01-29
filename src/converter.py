@@ -189,7 +189,7 @@ class Converter(object):
 
     def tracking_tel(self, action=0, max_events=None):
         root_file = self.Run.RootFilePath if file_exists(self.Run.RootFilePath) else self.get_eudaqfile_path()
-        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '0' if action == 1 else '1' ] + ([str(max_events)] if max_events else [])
+        cmd_list = [join(self.TrackingDir, 'TrackingTelescope'), root_file, str(action), str(self.TelescopeID), '0' if action == 1 else '1'] + ([str(max_events)] if max_events else [])
         print(' '.join(cmd_list))
         check_call(cmd_list)
 
@@ -228,7 +228,8 @@ class Converter(object):
         remove_file(self.NewConfigFile)
 
     def remove_decodingfile(self):
-        remove_file(f'decoding_{self.Run.Number}.root')
+        for name in glob(f'decoding*{self.Run.Number}.root'):
+            remove_file(name)
 
     def clean_files(self):
         self.remove_final_file()
