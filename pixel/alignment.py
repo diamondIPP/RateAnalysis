@@ -211,7 +211,7 @@ class PixAlignment(EventAligment):
             if redo:
                 self.Offsets = {}
             start, off = 0, self.FirstOffset
-            info('STEP 1: Finding the offsets ...')
+            info('STEP 1: Looking for event offsets ...')
             self.PBar.start(self.NEntries, counter=False)
             while start is not None:
                 if not self.Offsets or off != [*self.Offsets.values()][-1]:
@@ -307,9 +307,11 @@ if __name__ == '__main__':
     from src.analysis import Analysis
 
     # eg. (489/490, 201610), (147, 201810)
-    pargs = init_argparser()
+    pp = init_argparser(return_parser=True)
+    pp.add_argument('dut', nargs='?', default=None, type=int)
+    pargs = pp.parse_args()
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
     zrun = PixelRun(pargs.run, testcampaign=this_tc, load_tree=False, verbose=True)
-    z = PixAlignment(Converter(zrun))
+    z = PixAlignment(Converter(zrun), dut_plane=pargs.dut)
     z.reload()
