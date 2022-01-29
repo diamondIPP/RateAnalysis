@@ -17,6 +17,7 @@ class AnalysisCollection(Analysis):
     """ Analysis of the various runs of a single runplan. """
 
     StartTime = None
+    PhTit = 'Pulse Height [mV]'
 
     def __init__(self, name, dut_nr, testcampaign=None, load_tree=True, verbose=False):
 
@@ -385,7 +386,7 @@ class AnalysisCollection(Analysis):
         x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
         ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
-        g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit='Pulse Height [mV]')
+        g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
         graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
@@ -399,26 +400,26 @@ class AnalysisCollection(Analysis):
     def draw_low_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= y[argmin(x)].n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
+        self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y).n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
+        self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_mid_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y[1:-1]).n
-        self.Draw.graph(x, y, y_tit='Scaled Pulse Height [mV]', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
+        self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
     def draw_scaled_pulse_heights(self, binning=None, vs_time=False, redo=False, avrg=False, peaks=False, **dkw):
         """ Shows the scaled pulse heights of the single runs. """
         mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks, scale=True)
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
-        self.Draw(mg, **self.get_x_args(vs_time, draw=True), **prep_kw(dkw, gridy=True, y_tit='Scaled Pulse Height', y_range=[.95, 1.05], ndivx=503, color=None, **m))
+        self.Draw(mg, **self.get_x_args(vs_time, draw=True), **prep_kw(dkw, gridy=True, y_tit=f'Scaled {self.PhTit}', y_range=[.95, 1.05], ndivx=503, color=None, **m))
         Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
         self.Draw.save_plots(f'ScaledPulseHeights{"Time" if vs_time else "Flux"}')
         return mg.GetListOfGraphs()[0]
@@ -435,7 +436,7 @@ class AnalysisCollection(Analysis):
     def get_full_ph(self, bin_size=None, _redo=False):
         g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, bin_size=bin_size, _redo=_redo, picklepath=self.get_pickle_path('Trend', make_suffix(self, bin_size, 1), 'PH'))
         ph = concatenate([append(get_graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
-        return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit='Mean Pulse Height [mV]', show=False)
+        return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit=f'Mean {self.PhTit}', show=False)
 
     def draw_full_pulse_height(self, bin_size=None, rel_t=True, with_flux=True, redo=False, show=True, **dkw):
         """ Shows the pulse heights bins of all runs vs time. """
@@ -444,12 +445,12 @@ class AnalysisCollection(Analysis):
         c = self.Draw.tpad(transparent=True, c=get_last_canvas()) if with_flux else None
         h = self.get_full_ph(bin_size, _redo=redo)
         return self.Draw.distribution(h, canvas=c, **prep_kw(dkw, y_range=[0, h.GetMaximum() * 1.05], **self.get_x_args(True, rel_t, draw=True), stats=0, **Draw.mode(2),
-                                      rm=.1 if with_flux else None, fill_style=3002, file_name=f'FullPulseHeight{"Flux" if with_flux else""}', y_tit='Pulse Height [mV]'))
+                                      rm=.1 if with_flux else None, fill_style=3002, file_name=f'FullPulseHeight{"Flux" if with_flux else""}', y_tit=self.PhTit))
 
     def draw_splits(self, m=2, show=True, normalise=False):
         x, y = self.get_x_var(), self.get_values('split pulse heights', DUTAnalysis.get_split_ph, m=m).T
         y /= mean(y, axis=1).reshape(m ** 2, 1) if normalise else 1
-        graphs = [self.Draw.graph(x, iy, y_tit='Pulse Height [mV]', **self.get_x_args(), show=False) for iy in y]
+        graphs = [self.Draw.graph(x, iy, y_tit=self.PhTit, **self.get_x_args(), show=False) for iy in y]
         mg = self.Draw.multigraph(graphs, 'Region Pulse Heights', ['{}'.format(i) for i in range(y.shape[0])], show=show, draw_opt='alp', logx=True)
         format_histo(mg, **self.get_x_args())
 
@@ -564,7 +565,7 @@ class AnalysisCollection(Analysis):
         f.SetParLimits(5, 100, 5e3)  # asymptote for of the exp
         set_root_output(False)
         g.Fit(f, 'q')
-        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit='Pulse Height [mV]', y_off=1.4, x_range=self.Bins.FluxRange if logx else [0, 10100])
+        format_histo(g, x_tit='Flux [kHz/cm^{2}]', y_tit=self.PhTit, y_off=1.4, x_range=self.Bins.FluxRange if logx else [0, 10100])
         self.Draw(g, logx=logx, lm=.12, stats=set_statbox(fit=True))
         l1 = Draw.horizontal_line(f.GetParameter(0), .1, 1e6, color=2, style=7, w=2)
         l2 = Draw.horizontal_line(f.GetParameter(0) - f.GetParameter(1) + f.GetParameter(3), .1, 1e6, color=4, style=7, w=2)

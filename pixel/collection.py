@@ -10,6 +10,8 @@ from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw, ufloat, 
 
 class PixCollection(AnalysisCollection):
 
+    PhUnit = 'Pulse Height [vcal]'
+
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
         AnalysisCollection.__init__(self, run_plan, dut_nr, test_campaign, load_tree, verbose)
 

@@ -67,7 +67,6 @@ class PixAlignment(EventAligment):
         c1, c2 = self.get_e_cut(self.TelPlane, pl, n), self.get_e_cut(self.DUTPlane, pl, n)
         cut1, cut2 = c1.repeat(n) & (pl == self.TelPlane), c2.repeat(n) & (pl == self.DUTPlane)
         self.HitRate = int(round(c2.size / count_nonzero(c2)))
-
         return col[cut1], col[cut2], row[cut1], row[cut2], c1, c2
 
     def get_aligned(self, tree=None, bin_size=200):
@@ -264,7 +263,7 @@ class PixAlignment(EventAligment):
     def draw_correlation(self, off=0, bin_size=50, **kwargs):
         yx, yy = self.correlate_all(off, bin_size)
         g = [self.Draw.graph(self.get_x(y, off, bin_size), y, x_tit='Event Number', y_tit='Correlation Factor', show=False) for y in [yx, yy]]
-        self.Draw.multigraph(g, f'Correlations, Offset = {off}', ['xx', 'yy'], **prep_kw(kwargs, draw_opt='l', **Draw.mode(2), y_range=[0, 1.18]))
+        return self.Draw.multigraph(g, f'Correlations, Offset = {off}', ['xx', 'yy'], **prep_kw(kwargs, draw_opt='l', **Draw.mode(2), y_range=[0, 1.18]))
 
     def draw(self, off=0, bin_size=50):
         y = invert(self.find_all(off, bin_size))
