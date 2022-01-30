@@ -38,7 +38,10 @@ class DiaScans(Analysis):
         self.Info = self.load_selection_info()
         self.DUTName = self.load_dut_name()
         self.NPlans = len(self.Info) if self.Info else None
+        self.Ana = self.load_dummy()
 
+        if self.Info:
+            self.show_selection()
         self.print_finished(prnt=verbose)
 
     def __str__(self):
@@ -86,6 +89,9 @@ class DiaScans(Analysis):
                 for dut_nr in array([dut_nrs]).flatten():
                     selections.append(SelectionInfo(RunSelector(tc).select_runs_from_runplan(rp, dut_nr, unselect=True)))
         return selections
+
+    def load_dummy(self):
+        return AnalysisCollection if not self.Info else PixCollection if self.Info[0].IsPixel else PadCollection
     # endregion INIT
     # ----------------------------------------
 
@@ -134,10 +140,10 @@ class DiaScans(Analysis):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
     def get_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
+        return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
     def get_rate_dependencies(self, redo=False):
-        return array(self.get_values(AnalysisCollection.get_rate_dependence, PickleInfo('PHRD'), redo=redo))
+        return array(self.get_values(self.Ana.get_rate_dependence, PickleInfo('PHRD'), redo=redo))
 
     def print_mean_rd(self, latex=False):
         s, r = [mean_sigma(i)[0] * 100 for i in self.get_rate_dependencies().T]
@@ -156,7 +162,7 @@ class DiaScans(Analysis):
         print(make_latex_table([], rows))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
-        return self.get_rp_values(sel, AnalysisCollection.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
+        return self.get_rp_values(sel, self.Ana.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
 
     def get_pedestals(self, redo=False):
         return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals'), redo=redo)
@@ -167,17 +173,17 @@ class DiaScans(Analysis):
 
     def get_mean_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
         pickle_info = PickleInfo('Uni', low, high, use_fcw)
-        return self.get_values(AnalysisCollection.get_mean_uniformity, pickle_info, redo=redo, high_flux=high, low_flux=low)
+        return self.get_values(self.Ana.get_mean_uniformity, pickle_info, redo=redo, high_flux=high, low_flux=low)
 
     def get_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
         pickle_info = PickleInfo('Uniformity', 'UniSMSTD', '{}{}{}'.format(int(low), int(high), int(use_fcw)))
-        return self.get_values(AnalysisCollection.get_uniformities, pickle_info, redo=redo, high_flux=high, low_flux=low, use_fcw=use_fcw)
+        return self.get_values(self.Ana.get_uniformities, pickle_info, redo=redo, high_flux=high, low_flux=low, use_fcw=use_fcw)
 
     def get_currents(self):
-        return self.get_values(AnalysisCollection.get_currents, PickleInfo('CurrentsVals'))
+        return self.get_values(self.Ana.get_currents, PickleInfo('CurrentsVals'))
 
     def get_fluxes(self, avrg=False, redo=False):
-        return self.get_values(AnalysisCollection.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
+        return self.get_values(self.Ana.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
 
     def get_x(self, avrg=False, redo=False):
         return self.get_biases() if self.is_volt_scan else self.get_fluxes(avrg, redo)
@@ -207,7 +213,7 @@ class DiaScans(Analysis):
 
     def get_signal_maps(self, fid=False, res=.2, square=True, scale=True, redo=False):
         pickle_info = PickleInfo('SM', make_suffix(self, fid, res, square, scale))
-        return self.get_values(AnalysisCollection.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
+        return self.get_values(self.Ana.draw_signal_map, pickle_info, fid=fid, res=res, square=square, scale=scale, show=False, redo=redo)
 
     def get_cluster_size(self, avrg=False, redo=False):
         return self.get_values(PixCollection.get_cluster_sizes, PickleInfo('CS', avrg), redo=redo, avrg=avrg)
@@ -216,7 +222,7 @@ class DiaScans(Analysis):
         return self.get_values(PixCollection.get_efficiencies, PickleInfo('Eff', avrg), redo=redo, avrg=avrg)
 
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
-        return (VoltageScan if self.is_volt_scan else AnalysisCollection).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
+        return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
 
     def make_legend(self, g, dut=False, irrad=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else f' @ {make_bias_str(x.Bias)}'
@@ -331,7 +337,7 @@ class DiaScans(Analysis):
     # region DRAWING
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        mgs = self.get_values(AnalysisCollection.draw_pulse_heights, PickleInfo('PHMG', '10000_{}'.format(corr)), redo=redo, show=False)
+        mgs = self.get_values(self.Ana.draw_pulse_heights, PickleInfo('PHMG', '10000_{}'.format(corr)), redo=redo, show=False)
         for i, (mgi, sel) in enumerate(zip(mgs, self.Info)):
             for g in mgi.GetListOfGraphs():
                 format_histo(g, color=self.Draw.get_color(self.NPlans, i), markersize=1.5, lw=2)
@@ -385,7 +391,7 @@ class DiaScans(Analysis):
         Draw.tpad('p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
         Draw.tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
 
-        for i, g in enumerate(self.get_values(AnalysisCollection.draw_scaled_pulse_heights, PickleInfo('PHScaledGraph', avrg), avrg=avrg, show=False)):
+        for i, g in enumerate(self.get_values(self.Ana.draw_scaled_pulse_heights, PickleInfo('PHScaledGraph', avrg), avrg=avrg, show=False)):
             c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = Draw.tpad(pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True, fix=True)
@@ -414,7 +420,7 @@ class DiaScans(Analysis):
                 fit = g.Fit('pol1', 'qs0')
                 g = Draw.make_tgrapherrors(fluxes[i], array(currents[i]) - fit.Parameter(0) + .1)
             format_histo(g, color=self.Draw.get_color(self.NPlans))
-            legend.AddEntry(g, '{tc} - {hv}'.format(tc=self.Info[i].TCString, hv=self.get_rp_values(self.Info[i], AnalysisCollection.get_hv_name, load_tree=False)), 'pl')
+            legend.AddEntry(g, '{tc} - {hv}'.format(tc=self.Info[i].TCString, hv=self.get_rp_values(self.Info[i], self.Ana.get_hv_name, load_tree=False)), 'pl')
             mg.Add(g)
         format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, max(concatenate(currents)).n * 2], x_range=Bins.FluxRange)
         self.Draw(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='ap', logx=True, logy=True, leg=legend, bm=.17, show=show)
@@ -513,15 +519,15 @@ class DiaScans(Analysis):
     def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01):
         data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg))
         g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
-        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **AnalysisCollection.get_x_args(draw=True), wleg=.3)
-        format_histo(mg, **AnalysisCollection.get_x_args(), y_range=1 + array([-ym, ym]))
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **self.Ana.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **self.Ana.get_x_args(), y_range=1 + array([-ym, ym]))
     # endregion PULSER
     # ----------------------------------------
 
     def draw_bucket_ratios(self, avrg=False, redo=False, **kwargs):
         g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
-        mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **AnalysisCollection.get_x_args(draw=True), wleg=.3)
-        format_histo(mg, **prep_kw(kwargs, **AnalysisCollection.get_x_args()))
+        mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **self.Ana.get_x_args(draw=True), wleg=.3)
+        format_histo(mg, **prep_kw(kwargs, **self.Ana.get_x_args()))
 
 
 class SelectionInfo:
@@ -533,6 +539,7 @@ class SelectionInfo:
         self.DUT = sel.SelectedDUT
         self.DUTName = self.DUT.Name
         self.DUTNr = self.DUT.Number
+        self.IsPixel = 'pix' in self.DUT.Type[self.TCString]
         self.Verbose = sel.Run.Verbose
         self.Bias = self.DUT.Bias
         self.Irradiation = self.DUT.get_irradiation(self.TCString)
