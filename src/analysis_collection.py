@@ -137,11 +137,18 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region INIT
-    def print_start_info(self):
+    @property
+    def info_header(self):
+        return ['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Start', 'Duration [hh:mm]']
+
+    @property
+    def info_rows(self):
         bias = [f'{bias:+8.0f}' for bias in self.Ensemble.get_biases()]
         times = [datetime.fromtimestamp(duration - 3600).strftime('%H:%M').rjust(15) for duration in self.Ensemble.get_durations()]
-        rows = array([self.Runs, [f'{flux.n:14.1f}' for flux in self.Fluxes], bias, self.Ensemble.get_start_times(), times]).T
-        print_table(header=['Run', 'Flux [kHz/cm2]', 'Bias [V]', 'Start', 'Duration [hh:mm]'], rows=rows, prnt=self.Verbose)
+        return array([self.Runs, [f'{flux.n:14.1f}' for flux in self.Fluxes], bias, self.Ensemble.get_start_times(), times]).T
+
+    def print_start_info(self):
+        print_table(header=self.info_header, rows=self.info_rows, prnt=self.Verbose)
 
     def get_high_low_rate_runs(self):
         return self.Runs[argmin(self.Fluxes)], self.Runs[argmax(self.Fluxes)]
