@@ -72,7 +72,7 @@ class Run(Analysis):
         self.TInit = time() - self.InitTime
 
     def __str__(self):
-        return f'{self.__class__.__name__} {self.Number} ({self.TCString})'
+        return f'{self.__class__.__name__} {self.Number}{self.evt_str} ({self.TCString})'
 
     def __repr__(self):
         return self.__str__()
@@ -80,6 +80,10 @@ class Run(Analysis):
     def __call__(self, number, load_tree=False):
         self.set_run(number, load_tree)
         return self
+
+    @property
+    def evt_str(self):
+        return f' with {self.Info["events"]} evnts' if 'events' in self.Info else f' with {self.NEvents} evnts' if self.Tree.Hash() else ''
 
     def set_run(self, number, load_tree):
         if number is None:
