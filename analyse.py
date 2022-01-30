@@ -30,12 +30,18 @@ def collection_selector(name, dut_, tc, tree, verbose=False):
         if 'voltage' in dummy.Type:
             from src.voltage_scan import PadVScan
             return PadVScan(name, dut_, tc, tree, verbose)
+        if 'angle' in dummy.Type:
+            from src.angle_scan import PadAScan
+            return PadAScan(name, dut_, tc, tree, verbose)
         return PadCollection(name, dut_, tc, tree, verbose)
     elif dummy.DUTType == 'pixel':
         from pixel.collection import PixCollection
         if 'voltage' in dummy.Type:
             from src.voltage_scan import PixVScan
             return PixVScan(name, dut_, tc, tree, verbose)
+        if 'angle' in dummy.Type:
+            from src.angle_scan import PixAScan
+            return PixAScan(name, dut_, tc, tree, verbose)
         return PixCollection(name, dut_, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
