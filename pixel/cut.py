@@ -17,11 +17,14 @@ class PixCut(Cut):
     # region GENERATE
     def generate_dut(self):
         """ Generates the cut strings to apply in the analysis for each of the cuts. """
-        self.CutStrings.register(self.generate_fiducial(center=True), level=23)
+        self.CutStrings.register(self.generate_fiducial(), level=23)
         self.CutStrings.register(self.generate_trigger_phase(), level=30)
         # self.CutStrings.register(self.generate_masks(), 61)
         self.CutStrings.register(self.generate_ncluster(), 80)
         self.CutStrings.register(self.generate_rhit(), 81)
+
+    def generate_fiducial(self, center=True, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
+        return super(PixCut, self).generate_fiducial(center, x, y, name, fid_name, xvar, yvar)
 
     def generate_trigger_phase(self):
         v = self.load_dut_config('trigger phase')
