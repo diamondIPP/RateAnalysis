@@ -38,8 +38,8 @@ class PixCut(Cut):
         return CutString('masks', cut_string, 'masking {} columns, {} rows and {} pixels'.format(*self.find_n_masked(col, row, pixels)) if exclude else '')
 
     def generate_rhit(self, value=None):
-        (sx, sy), n = self.calc_res_sigmas(), choose(value, self.get_config('rhit sigma', dtype=float, required=True))
-        cut = f'(sres_x[{self.N}] / {sx}) ** 2 + (sres_y[{self.N}] / {sy}) ** 2 <= {n ** 2}'
+        ((mx, sx), (my, sy)), n = self.calc_res_sigmas(), choose(value, self.get_config('rhit sigma', dtype=float, required=True))
+        cut = f'((sres_x[{self.N}] - {mx}) / {sx})  ** 2 + ((sres_y[{self.N}] - {my}) / {sy}) ** 2 <= {n ** 2}'
         return CutString('rhit', f'({cut} || sres[{self.N}] == -999)', f'(rx/{sx * 1e4:.0f})² + (ry/{sy * 1e4:.0f})² < {n}² [um] ({n} sigma)')
 
     def generate_ncluster(self, max_n=1):
@@ -92,7 +92,7 @@ class PixCut(Cut):
     @save_pickle('RHit', print_dur=True)
     def calc_res_sigmas(self, _redo=False):
         d = self.get_tree_vec([f'residuals_{m}[{self.N}]' for m in ['x', 'y']], self['tracks'] + self.get_ncluster(1, self.N))
-        return array([fit_fwhm(self.Draw.distribution(i, show=False))[2].n for i in d])
+        return array([uarr2n(fit_fwhm(self.Draw.distribution(i, show=False))[1:]) for i in d])
 
     def find_n_masked(self, col, row, pixels):
         ncols, nrows = [make_list(self.load_mask(w) if lines is None else lines).size for w, lines in [('column', col), ('row', row)]]
