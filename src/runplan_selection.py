@@ -335,6 +335,10 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region DRAWING
+    def draw_pulse_heights(self, avrg=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y, title='PH', y_tit=self.Ana.PhTit) for x, y in zip(self.get_x(avrg, redo), self.get_pulse_heights(avrg, redo))]
+        return self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='PH', draw_opt='pl'))
+
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
         mgs = self.get_values(self.Ana.draw_pulse_heights, PickleInfo('PHMG', '10000_{}'.format(corr)), redo=redo, show=False)
