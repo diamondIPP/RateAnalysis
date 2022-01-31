@@ -37,6 +37,7 @@ from json import load, loads
 from inspect import signature
 from types import FunctionType, MethodType
 from glob import glob
+from pathlib import Path
 
 OFF = False
 ON = True
@@ -848,8 +849,16 @@ class Config(ConfigParser):
 
     def __init__(self, file_name, **kwargs):
         super(Config, self).__init__(**kwargs)
-        self.FileName = file_name
+        self.FilePath = Path(file_name)
+        self.SubPath = None
         self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}: {join(*self.FilePath.parts[-2:])}{self.sub_path}'
+
+    @property
+    def sub_path(self):
+        return '' if self.SubPath is None else f' with sub config: {self.SubPath.stem}'
 
     def get_value(self, section, option, dtype: type = str, default=None):
         dtype = type(default) if default is not None else dtype
@@ -878,8 +887,13 @@ class Config(ConfigParser):
             print()
 
     def write(self, file_name=None, space_around_delimiters=True):
-        with open(choose(file_name, self.FileName), 'w') as f:
+        with open(choose(file_name, self.FilePath), 'w') as f:
             super(Config, self).write(f, space_around_delimiters)
+
+    def read(self, filenames, encoding=None):
+        if Path(filenames) != self.FilePath:
+            self.SubPath = Path(filenames)
+        super(Config, self).read(filenames, encoding)
 # endregion CLASSES
 # ----------------------------------------
 
