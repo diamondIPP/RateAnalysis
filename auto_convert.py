@@ -91,7 +91,7 @@ class AutoConvert:
         if not all([file_exists(run.Converter.RawFilePath) for run in self.Runs]):
             self.Selection.copy_raw_files(sel=True)
         with Pool() as pool:
-            result = pool.starmap_async(make_run, [(run, self.Selection.TCString) for run in self.Runs])
+            result = pool.starmap_async(make_run, [(run.Number, self.Selection.TCString) for run in self.Runs])
             print()
             runs = result.get()
             print_small_banner('Summary:')
