@@ -29,6 +29,7 @@ class AutoConvert:
         self.StartAtRun = choose(first_run, self.get_all_runs()[0] if self.Multi else self.find_last_converted())
         self.StopAtRun = 1e9 if not multi or end_run is None else int(end_run)
         self.Runs = self.load_runs()
+        self.Selection.select_runs(*[run.Number for run in self.Runs])
 
     def find_last_converted(self):
         rdir = 'pads' if self.Type == 'pad' else 'pixel' if self.Type == 'pixel' else '*'
@@ -39,9 +40,12 @@ class AutoConvert:
         all_runs = self.Selection.get_runplan_runs()
         return [r for r in all_runs if self.Selection.get_type(r) == self.Type] if self.Type is not None else all_runs
 
+    def load_run(self, nr):
+        return Run(nr, self.Selection.TCString, load_tree=False, verbose=self.Selection.Run.Verbose)
+
     def load_runs(self):
-        runs = array([r for r in self.get_all_runs() if not file_exists(self.Selection.get_final_file_path(r)) and file_exists(self.Run.Converter.get_raw_file_path(r))], 'i2')
-        return runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]
+        runs = array([r for r in self.get_all_runs() if not file_exists(self.Selection.get_final_file_path(r))], 'i2')
+        return [self.load_run(run) for run in runs[(runs >= self.StartAtRun) & (runs <= self.StopAtRun)]]
 
     def load_logged_runs(self):
         runs = self.Selection.load_runs()
@@ -53,10 +57,10 @@ class AutoConvert:
         return None if not runs.size or last == runs[-1] else runs[0] if last is None else next(run for run in runs if run > last)
 
     def print_progress(self):
-        pbar = PBar(self.load_runs().size, counter=True, t='h')
+        pbar = PBar(len(self.load_runs()), counter=True, t='h')
         while not pbar.is_finished():
             sleep(5)
-            pbar.update(pbar.N - self.load_runs().size - 1)
+            pbar.update(pbar.N - len(self.load_runs()) - 1)
 
     def auto_convert(self):
         """Sequential conversion with check if the file is currently written. For usage during beam tests."""
@@ -84,6 +88,8 @@ class AutoConvert:
     def multi(self):
         """parallel conversion"""
         info(f'Creating pool with {cpu_count()} processes')
+        if not all([file_exists(run.Converter.RawFilePath) for run in self.Runs]):
+            self.Selection.copy_raw_files(sel=True)
         with Pool() as pool:
             result = pool.starmap_async(make_run, [(run, self.Selection.TCString) for run in self.Runs])
             print()
@@ -95,7 +101,7 @@ class AutoConvert:
                 print(f'{run} --> {delta} ({speed})')
 
     def run(self):
-        if not self.Runs.size:
+        if not len(self.Runs):
             return info('There are no runs to convert :-)')
         self.multi() if self.Multi else self.auto_convert()
 
@@ -117,7 +123,7 @@ if __name__ == '__main__':
     from src.analysis import Analysis
     z = AutoConvert(args.m, args.s, args.e, Analysis.find_testcampaign(args.tc), 'pad' if args.pad else 'pixel' if args.pixel else None, args.v)
     if not args.t:
-        if z.Runs.size:
+        if len(z.Runs):
             print_banner(f'Starting {"multi" if z.Multi else "auto"} conversion for runs {z.Runs[0]} - {z.Runs[-1]}', color='green')
             z.run()
             print_banner('Finished Conversion!', color='green')
