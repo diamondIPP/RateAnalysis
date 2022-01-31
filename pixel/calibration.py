@@ -34,13 +34,13 @@ class Calibration(SubAnalysis):
         return [join(self.Dir, f'ROC{i}.txt') for i in range(self.Ana.NRocs)]
 
     def check_fit_files(self):
-        return True if all(file_exists(f, warn=True) for f in self.load_fit_files()) else False
+        return True if all(file_exists(f, warn=False) for f in self.load_fit_files()) else False
 
     def load_files(self):
         return [join(self.Dir, f'cal{i}.txt') for i in range(self.Ana.NRocs)]
 
     def check_files(self):
-        return True if all(file_exists(f, warn=True) for f in self.load_files()) else False
+        return True if all(file_exists(f, warn=False) for f in self.load_files()) else False
 
     def verify_fits(self):
         """ check if fits represent the data. """
