@@ -310,6 +310,7 @@ if __name__ == '__main__':
     pp = init_argparser(return_parser=True)
     pp.add_argument('dut', nargs='?', default=None, type=int)
     pp.add_argument('-x', action='store_true')
+    pp.add_argument('-y', action='store_true')
     pargs = pp.parse_args()
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
