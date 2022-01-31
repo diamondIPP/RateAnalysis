@@ -22,8 +22,10 @@ class Ensemble(object):
         self.TCString = self.Run.TCString
         self.Data = self.load_data()
         self.Runs = self.init_runs()
+        self.N = len(self.Runs)
         self.DUT = self.init_dut()
         self.DUTType = self.Runs[0].Type
+        self.PBar = PBar(counter=True, t='min')
 
     def __getitem__(self, item):
         return self.Runs[item]
@@ -32,7 +34,7 @@ class Ensemble(object):
         return self.Name
 
     def __repr__(self):
-        return f'{self.__class__.__name__} {self.Name} with {len(self.Runs)} runs'
+        return f'{self.__class__.__name__} {self.Name} with {self.N} runs'
 
     def init_run(self, verbose):
         return Run(load_tree=False, verbose=verbose)
@@ -53,6 +55,14 @@ class Ensemble(object):
     @property
     def tcs(self):
         return [d[2] for d in self.Data]
+
+    @property
+    def raw_files_exist(self):
+        return all([file_exists(run.Converter.RawFilePath) for run in self.Runs])
+
+    @property
+    def final_files_exist(self):
+        return all([file_exists(run.RootFilePath) for run in self.Runs])
 
     def init_dut(self):
         return self.Runs[0].DUTs[self.Data[0][1] - 1]
@@ -80,6 +90,14 @@ class Ensemble(object):
 
     def get_dut_nrs(self):
         return array([d[1] for d in self.Data])
+
+    @update_pbar
+    def copy_raw_file(self, run: Run):
+        run.Converter.copy_raw_file(out=False)
+
+    def copy_raw_files(self):
+        self.PBar.start(self.N)
+        [self.copy_raw_file(run) for run in self.Runs]
 
 
 class RunPlan(Ensemble):
