@@ -4,7 +4,7 @@
 # created on April 5th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from src.analysis_collection import AnalysisCollection
+from src.analysis_collection import AnalysisCollection, fname
 from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw, ufloat, sqrt, quiet
 
 
@@ -44,7 +44,7 @@ class PixCollection(AnalysisCollection):
 
     def draw_efficiencies(self, avrg=False, t=False, redo=False, **dkw):
         x, y = self.get_x_var(t, avrg=avrg), self.get_efficiencies(avrg=avrg, redo=redo)
-        return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=f'Efficiencies{"Avr" if avrg else ""}'))
+        return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=fname('Efficiencies', avrg, t)))
 
     def draw_cluster_sizes(self, avrg=False, t=False, redo=False, **dkw):
         x, y = self.get_x_var(t, avrg=avrg), self.get_cluster_sizes(avrg, redo)

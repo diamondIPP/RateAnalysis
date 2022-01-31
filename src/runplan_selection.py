@@ -7,7 +7,7 @@
 from json import dump
 
 from analyse import collection_selector
-from pad.collection import AnalysisCollection, PadCollection
+from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
 from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph
 from src.analysis import *
@@ -225,7 +225,7 @@ class DiaScans(Analysis):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
 
     def make_legend(self, g, dut=False, irrad=False, **kw):
-        bias = lambda x: '' if self.is_volt_scan else f' @ {make_bias_str(x.Bias)}'
+        bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {make_bias_str(x.Bias)}'
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
         tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
@@ -406,7 +406,7 @@ class DiaScans(Analysis):
 
         Draw.tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
         Draw.x_axis(1, lm, 1 - rm, 'Flux [kHz/cm^{2}]', Bins.FluxRange, opt='', log=True, tick_size=0, lab_size=size * 2, tit_size=size * 2, off=1.1)
-        self.Draw.save_plots('ScaledDiaScans{dia}'.format(dia=make_dia_str(self.DUTName)))
+        self.Draw.save_plots(fname('ScaledPH', avrg))
 
     def draw_scaled_distribution(self, excluded=None):
         values = concatenate(([vals / mean_sigma(vals)[0] for i, vals in enumerate(self.get_pulse_heights()) if i not in make_list(excluded)]))
@@ -500,7 +500,7 @@ class DiaScans(Analysis):
     # region PIXEL
     def draw_efficiency(self, avrg=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]') for x, y in zip(self.get_x(avrg), self.get_efficiency(avrg, redo))]
-        return self.Draw.multigraph(g, 'Efficiencies', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='Efficiency', draw_opt='pl', y_range=[0, 105]))
+        return self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name=fname('Efficiency', avrg), draw_opt='pl', y_range=[0, 105]))
 
     def draw_cluster_size(self, avrg=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]

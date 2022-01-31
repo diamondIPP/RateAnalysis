@@ -404,7 +404,7 @@ class AnalysisCollection(Analysis):
         graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend:
-            mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True, d=.05))
+            mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True))
         if vs_time:
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
                 mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.02))
@@ -434,7 +434,7 @@ class AnalysisCollection(Analysis):
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
         self.Draw(mg, **self.get_x_args(vs_time, draw=True), **prep_kw(dkw, gridy=True, y_tit=f'Scaled {self.PhTit}', y_range=[.95, 1.05], ndivx=503, color=None, **m))
         Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
-        self.Draw.save_plots(f'ScaledPulseHeights{"Time" if vs_time else "Flux"}')
+        self.Draw.save_plots(fname('ScaledPulseHeights', avrg, vs_time))
         return mg.GetListOfGraphs()[0]
 
     def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
@@ -813,6 +813,10 @@ class AnalysisCollection(Analysis):
     def draw_efficiencies(self, vs_time=False, show=True):
         x, y = self.get_x_var(vs_time), self.get_efficiencies()
         self.Draw.graph(x, y, 'Efficiencies', **self.get_x_args(vs_time, draw=True), y_tit='Effciency [%]', show=show, lm=.12, y_off=1.8)
+
+
+def fname(n, avrg=False, t=False):
+    return f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}'
 
 
 if __name__ == '__main__':
