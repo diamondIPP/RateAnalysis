@@ -92,6 +92,10 @@ if __name__ == '__main__':
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
     elif isfloat(pargs.runplan) or pargs.collection:
         z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
+        try:
+            e = z.Ensemble
+        except AttributeError:
+            pass
         if pargs.draw:
             z.draw_all(redo=pargs.redo)
     else:
