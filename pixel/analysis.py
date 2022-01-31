@@ -311,13 +311,13 @@ class PixAnalysis(DUTAnalysis):
         return PixAlignment
 
     def init_alignment(self, tel_plane=None, dut_plane=None):
-        if self.Alignment is None:
+        dut_plane = choose(dut_plane, self.N)
+        if self.Alignment is None or self.Alignment.DUTPlane != dut_plane:
             self.Alignment = self.get_alignment()(self.Run.Converter, tel_plane, dut_plane)
         return self.Alignment
 
     def draw_correlation(self, tel_plane=None, dut_plane=None, offset=0, bin_size=1000, **dkw):
-        dut_plane = choose(dut_plane, self.N)
-        self.Draw(self.init_alignment(tel_plane, dut_plane).draw_correlation(offset, bin_size, show=False), **prep_kw(dkw, y_range=[0, 1.15], file_name=f'Correlation{dut_plane}'))
+        self.Draw(self.init_alignment(tel_plane, dut_plane).draw_correlation(offset, bin_size, show=False), **prep_kw(dkw, y_range=[0, 1.15], file_name=f'Correlation{choose(dut_plane, self.N)}'))
     # endregion ALIGNMENT
     # ----------------------------------------
 

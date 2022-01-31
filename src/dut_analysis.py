@@ -275,12 +275,12 @@ class DUTAnalysis(Analysis):
 
     @save_pickle('Events', sub_dir='Alignment')
     def check_alignment_(self, _redo=False):
-        return calc_eff(values=self.get_aligned())[0] > 99.7
+        return calc_eff(values=self.init_alignment().get_aligned())[0] > 99.7
 
     def check_alignment(self, redo=False):
         """ check if the events are aligned"""
         is_aligned = self.check_alignment_(_redo=redo)
-        warning('Run {r} is misaligned :-('.format(r=self.Run.Number), prnt=not is_aligned)
+        warning(f'Run {self.Run.Number} is misaligned :-(', prnt=not is_aligned)
         return is_aligned
 
     def draw_alignment(self, bin_size=1000, **kwargs):
