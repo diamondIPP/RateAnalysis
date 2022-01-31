@@ -85,7 +85,7 @@ class EventAligment(object):
 
     def check_alignment(self, *args, **kwargs):
         v = self.get_aligned(*args, **kwargs)
-        self.Run.info(f'{calc_eff(values=invert(v))[0]:.1f}% of the events are misaligned :-(' if not all(v) else f'Run {self.Run.Number} is perfectly aligned :-)')
+        self.Run.info(f'{calc_eff(values=invert(v))[0]:.1f}% of the events are misaligned :-(') if not all(v) else warning(f'Run {self.Run.Number} is perfectly aligned :-)')
         return all(v)
 
     def get_time_bins(self, off=0, bin_size=1000):
