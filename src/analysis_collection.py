@@ -238,14 +238,14 @@ class AnalysisCollection(Analysis):
         return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
 
     @save_pickle('Splits', sub_dir='Flux')
-    def get_flux_splits(self, corr=True, width=.1, _redo=False):
-        return self.draw_flux_splits(corr, width, show=False)
+    def get_flux_splits(self, corr=True, w=.1, n=50, _redo=False):
+        return self.draw_flux_splits(corr, w, n, show=False)
 
-    def draw_flux_splits(self, corr=True, width=.1, **kwargs):
+    def draw_flux_splits(self, corr=True, w=.1, n=50, **kwargs):
         x = sort([flux.n for flux in self.get_fluxes(corr=corr)])
         stats = set_statbox(entries=True, w=.2)
-        h = self.Draw.distribution(x, log_bins(50, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True), filename='FluxSplits', stats=stats))
-        split_bins = histogram(x, self.find_flux_binning(h, width))[0]
+        h = self.Draw.distribution(x, log_bins(n, 1, 1e5), 'Flux Splits', **prep_kw(kwargs, **Draw.mode(2), **self.get_x_args(draw=True), file_name='FluxSplits', stats=stats))
+        split_bins = histogram(x, self.find_flux_binning(h, w))[0]
         return cumsum(split_bins[where(split_bins > 0)])[:-1]
 
     def find_flux_binning(self, h, width=.1):
