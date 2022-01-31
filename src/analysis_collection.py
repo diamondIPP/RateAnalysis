@@ -40,7 +40,7 @@ class AnalysisCollection(Analysis):
 
         # Loading the Single Analyses
         self.Analysis = self.load_dummy()  # dummy to get access to the methods
-        self.Analyses = self.load_analyses(load_tree)
+        self.Analyses = self.load_analyses()
         self.FirstAnalysis = self.Analyses[0]
         self.LastAnalysis = self.Analyses[-1]
         self.Bins = self.FirstAnalysis.Bins if load_tree else None
@@ -157,10 +157,15 @@ class AnalysisCollection(Analysis):
     def load_dummy():
         return DUTAnalysis
 
-    def load_analyses(self, load_tree=True):
+    def copy_raw_files(self, force=False):
+        if self.LoadTree and not self.Ensemble.final_files_exist and not self.Ensemble.raw_files_exist or force:
+            self.Ensemble.copy_raw_files()
+
+    def load_analyses(self):
+        self.copy_raw_files()
         with Pool() as pool:
-            res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, load_tree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs())])
-        if load_tree:
+            res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, self.LoadTree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs())])
+        if self.LoadTree:
             for r in res:
                 r.reload_tree_()
                 r.Cut.generate_fiducial()
