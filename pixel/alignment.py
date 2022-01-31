@@ -10,7 +10,7 @@ from src.binning import Bins
 
 
 class PixAlignment(EventAligment):
-    def __init__(self, converter=None, tel_plane=None, dut_plane=None):
+    def __init__(self, converter=None, tel_plane=None, dut_plane=None, mode=None):
 
         # Info
         self.Threshold = .35
@@ -18,7 +18,7 @@ class PixAlignment(EventAligment):
         self.DUTPlane = choose(dut_plane, self.find_dut_plane(converter.Run.DUTs))
         self.TelPlane = choose(tel_plane, 1 if self.DUTPlane > self.NTelPlanes else 2)
         self.MaxOffset = 1000
-        self.Mode = converter.Run.Config.get_value('BASIC', 'align', default='')
+        self.Mode = choose(mode, converter.Run.Config.get_value('BASIC', 'align', default=''))
 
         self.X1, self.X2 = array([]), array([])  # col arrays
         self.Y1, self.Y2 = array([]), array([])  # row arrays
@@ -71,8 +71,8 @@ class PixAlignment(EventAligment):
 
     def get_aligned(self, tree=None, bin_size=200):
         self.init_data(tree)
-        x, y = self.correlate_all(n=bin_size)
-        return (x > self.Threshold) & (y > self.Threshold)
+        x, y = self.correlate_all(n=bin_size) > self.Threshold
+        return x & y if self.Mode == '' else x if 'x' in self.Mode else y
 
     def set_aligned(self, bin_size=200):
         data = [self.get_data(off, start, end) for (start, off), end in zip(self.Offsets.items(), [*self.Offsets][1:] + [self.NEntries])]
@@ -229,7 +229,7 @@ class PixAlignment(EventAligment):
     def correlate_all(self, offset=0, n=None, start=0):
         x, y, e = self.get_data(offset, start)
         s = x.shape[0] // n
-        return array([correlate(*i.T) for i in x[:s * n].reshape(s, n, 2)]), array([correlate(*i.T) for i in y[:s * n].reshape(s, n, 2)])
+        return array([[correlate(*i.T) for i in x[:s * n].reshape(s, n, 2)], [correlate(*i.T) for i in y[:s * n].reshape(s, n, 2)]])
 
     def all_aligned(self, off=0, n=None, start=0):
         x, y = self.correlate_all(off, n, start)
@@ -309,9 +309,10 @@ if __name__ == '__main__':
     # eg. (489/490, 201610), (147, 201810)
     pp = init_argparser(return_parser=True)
     pp.add_argument('dut', nargs='?', default=None, type=int)
+    pp.add_argument('-x', action='store_true')
     pargs = pp.parse_args()
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
 
     zrun = PixelRun(pargs.run, testcampaign=this_tc, load_tree=False, verbose=True)
-    z = PixAlignment(Converter(zrun), dut_plane=pargs.dut)
+    z = PixAlignment(Converter(zrun), dut_plane=pargs.dut, mode='x' if pargs.x else 'y' if pargs.y else '')
     z.reload()
