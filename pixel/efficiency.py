@@ -72,7 +72,7 @@ class Efficiency(PixAnalysis):
 
     def draw_vs_trigphase(self, **kwargs):
         x, e = self.get_tree_vec(['trigger_phase[1]', self.get_var()], self.Cut.exclude('trigger_phase'))
-        return self.Draw.efficiency(x, e, make_bins(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap'))
+        return self.Draw.efficiency(x, e, make_bins(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap', file_name='EffVsTP'))
 
     def draw_vs_cuts(self, cuts=None, short=False, redo=False, **dkw):
         cuts = choose(cuts, self.Cut.get_consecutive(short))
