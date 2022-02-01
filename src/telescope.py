@@ -83,9 +83,9 @@ class Telescope(SubAnalysis):
             flux = self.Run.get_flux(plane, use_eff)
         return flux * (self.get_flux_scale(full_size, _redo=_redo) if corr else ufloat(1, .1))
 
-    def get_flux_ratio(self, dim, show=False):   # dim -> [x1, x2, y1, y2] in mm
+    def get_flux_ratio(self, dim, show=False, redo=False):   # dim -> [x1, x2, y1, y2] in mm
         tel = [c - s / 2 for c in self.Ana.find_center() for s in mean(self.Run.get_mask_dims(mm=True), axis=0) * [1, -1]]
-        h = self.Ana.draw_hitmap(.7, show=show, prnt=False)
+        h = self.Ana.draw_hitmap(.7, show=show, prnt=False, redo=redo)
         f = TF2('ff', 'xygaus')
         fx, fy = self.Ana.Tracks.fit_beam_profile(h.ProjectionX()), self.Ana.Tracks.fit_beam_profile(h.ProjectionY())
         f.SetParameters(1, *[i.n for i in fx], *[i.n for i in fy])
@@ -95,15 +95,15 @@ class Telescope(SubAnalysis):
         ratio = (int_dim / prod(diff(dim)[[0, 2]])) / (int_tel / prod(diff(tel)[[0, 2]]))
         return ufloat(ratio.n, ratio.s + .05 * ratio.n)  # add 5% systematic uncertainty
 
-    def get_fid_flux_ratio(self, show=False):
-        return self.get_flux_ratio([ufloat(i, 0) for i in self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10], show) if self.Cut.HasFid else 1
+    def get_fid_flux_ratio(self, show=False, redo=False):
+        return self.get_flux_ratio([ufloat(i, 0) for i in self.Cut.load_fiducial()[:, [0, 2]].flatten() * 10], show, redo=redo) if self.Cut.HasFid else 1
 
-    def get_pad_flux_ratio(self):
-        return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize] * 2) * [1, -1]])
+    def get_pad_flux_ratio(self, redo=False):
+        return self.get_flux_ratio([c - s / 2 for c in self.Ana.find_center() for s in array([self.Ana.DUT.PadSize] * 2) * [1, -1]], redo=redo)
 
     @save_pickle('FluxScale', suf_args='all', field='N')
     def get_flux_scale(self, full_size=False, _redo=False):
-        return self.get_pad_flux_ratio() if full_size else self.get_fid_flux_ratio()
+        return self.get_pad_flux_ratio() if full_size else self.get_fid_flux_ratio(redo=_redo)
 
     @save_pickle('Mask', suf_args='all')
     def find_mask_(self, plane=1, _redo=False):
