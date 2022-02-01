@@ -62,7 +62,7 @@ class DUTAnalysis(Analysis):
         return f'{self.__class__.__name__} of {self.Run} and {self.DUT}'
 
     def __repr__(self):
-        return self.__str__()
+        return f'{self.__class__.__name__} of {self.DUT}, {self.Run}'
 
     # ----------------------------------------
     # region INIT
