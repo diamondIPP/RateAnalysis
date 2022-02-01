@@ -83,7 +83,7 @@ class Run(Analysis):
 
     @property
     def evt_str(self):
-        return f' with {self.Info["events"]} evnts' if 'events' in self.Info else f' with {self.NEvents} evnts' if self.Tree.Hash() else ''
+        return f' with {make_ev_str(self.Info["events"])} ev' if 'events' in self.Info else f' with {make_ev_str(self.NEvents)} ev' if self.Tree.Hash() else ''
 
     def set_run(self, number, load_tree):
         if number is None:

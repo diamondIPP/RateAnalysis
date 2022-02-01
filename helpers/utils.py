@@ -333,6 +333,11 @@ def make_runplan_string(nr):
     return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
 
 
+def make_ev_str(v):
+    n = int(log10(v) // 3)
+    return f'{v / 10 ** (3 * n):.{2 if n > 1 else 1}f}{["", "k", "M"][n]}'
+
+
 def isfloat(string):
     try:
         float(string)
