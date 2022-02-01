@@ -81,6 +81,9 @@ class Run(Analysis):
         self.set_run(number, load_tree)
         return self
 
+    def __gt__(self, other):
+        return self.Number > (other.Number if isinstance(other, Run) else other)
+
     @property
     def evt_str(self):
         return f' with {make_ev_str(self.Info["events"])} ev' if 'events' in self.Info else f' with {make_ev_str(self.NEvents)} ev' if self.Tree.Hash() else ''

@@ -161,15 +161,19 @@ class AnalysisCollection(Analysis):
         if self.LoadTree and not self.Ensemble.final_files_exist and not self.Ensemble.raw_files_exist or force:
             self.Ensemble.copy_raw_files()
 
-    def load_analyses(self):
+    def load_analyses(self, r0=0):
         self.copy_raw_files()
         with Pool() as pool:
-            res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, self.LoadTree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs())])
+            res = pool.starmap(self.Analysis, [(run.Number, dut, run.TCString, self.LoadTree, self.Verbose, False) for run, dut in zip(self.Ensemble.Runs, self.Ensemble.get_dut_nrs()) if run > r0])
         if self.LoadTree:
             for r in res:
                 r.reload_tree_()
                 r.Cut.generate_fiducial()
         return res
+
+    def reload_anas(self, r0, load_tree=None):
+        self.LoadTree = choose(load_tree, self.LoadTree)
+        self.Analyses = self.load_analyses(r0)
     # endregion INIT
     # ----------------------------------------
 
