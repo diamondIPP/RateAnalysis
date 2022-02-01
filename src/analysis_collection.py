@@ -107,11 +107,11 @@ class AnalysisCollection(Analysis):
             self.Analyses[i].save_data(data)
 
     @quiet
-    def save_coll_plots(self):
+    def save_coll_plots(self, prnt=True):
         self.draw_flux(show=False)
         self.draw_currents(show=False, fname='Currents')
         self.draw_pulse_heights(show=False)
-        self.Draw.print_http('plots.html')
+        self.Draw.print_http('plots.html', force_print=prnt)
 
     @staticmethod
     @reload_tree
