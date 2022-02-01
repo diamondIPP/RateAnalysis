@@ -335,7 +335,7 @@ def make_runplan_string(nr):
 
 def make_ev_str(v):
     n = int(log10(v) // 3)
-    return f'{v / 10 ** (3 * n):.{2 if n > 1 else 1}f}{["", "k", "M"][n]}'
+    return f'{v / 10 ** (3 * n):.{2 if n > 1 else 0}f}{["", "k", "M"][n]}'
 
 
 def isfloat(string):
