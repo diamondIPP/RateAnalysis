@@ -22,7 +22,7 @@ class PixAnalysis(DUTAnalysis):
         DUTAnalysis.__init__(self, run_number, dut, test_campaign, load_tree, verbose, prnt)
 
         # Main
-        self.N = self.DUT.Number + self.Run.NTelPlanes - 1
+        self.N = self.dut_plane
 
         if self.Tree.Hash():
             self.Calibration = Calibration(self)
@@ -66,6 +66,10 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region GET
+    @property
+    def dut_plane(self):
+        return self.DUT.Number + self.Run.NTelPlanes - 1
+
     def get_ph_var(self, plane=None, vcal=True):
         return f'cluster_charge[{choose(plane, self.N)}]{f" / {Bins.Vcal2El if vcal else 1e3}"}'
 
@@ -311,7 +315,7 @@ class PixAnalysis(DUTAnalysis):
         return PixAlignment
 
     def init_alignment(self, tel_plane=None, dut_plane=None):
-        dut_plane = choose(dut_plane, self.N)
+        dut_plane = choose(dut_plane, self.dut_plane)
         if self.Alignment is None or self.Alignment.DUTPlane != dut_plane:
             self.Alignment = self.get_alignment()(self.Run.Converter, tel_plane, dut_plane)
         return self.Alignment
