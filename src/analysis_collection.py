@@ -810,9 +810,13 @@ class AnalysisCollection(Analysis):
     # end region GENERATE PLOTS
     # ----------------------------------------
 
-    def draw_efficiencies(self, vs_time=False, show=True):
-        x, y = self.get_x_var(vs_time), self.get_efficiencies()
-        self.Draw.graph(x, y, 'Efficiencies', **self.get_x_args(vs_time, draw=True), y_tit='Effciency [%]', show=show, lm=.12, y_off=1.8)
+    def draw_efficiencies(self, avrg=False, t=False, **dkw):
+        x, y = self.get_x_var(t, avrg=avrg), self.get_efficiencies()
+        self.Draw.graph(x, y, 'Efficiencies', **prep_kw(dkw, **self.get_x_args(t, draw=True), y_tit='Effciency [%]'))
+
+    def draw_eff_vs_current(self, **dkw):
+        x, y = self.get_currents(), self.get_efficiencies()
+        self.Draw.graph(x, y, 'Eff vs Current', **prep_kw(dkw, x_tit='Current [nA]', y_tit='Effciency [%]', file_name='EffCurrent'))
 
 
 def fname(n, avrg=False, t=False):
