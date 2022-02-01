@@ -453,6 +453,7 @@ class DUTAnalysis(Analysis):
 
     @save_pickle('HM', sub_dir='Maps', suf_args='all')
     def get_hitmap(self, res=None, cut='', _redo=False):
+        self.Run.set_estimate()
         x, y = self.get_tree_vec(self.get_track_vars(), self.Cut(cut))
         return self.Draw.histo_2d(x, y, Bins.get_global(res), 'Hit Map', x_tit='Track Position X [mm]', y_tit='Track Position Y [mm]', show=False)
 
