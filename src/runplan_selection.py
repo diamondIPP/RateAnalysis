@@ -229,7 +229,8 @@ class DiaScans(Analysis):
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
         tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)))), tits, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), show=False, **prep_kw(kw, styles='p'))
+        styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, scale=.7, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), show=False, **prep_kw(kw, styles=styles))
     # endregion GET
     # ----------------------------------------
 
@@ -436,12 +437,12 @@ class DiaScans(Analysis):
         if any(['rand' in word for word in self.get_run_types()]):
             for i, sel in enumerate(self.Info):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
-        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else make_bias_str(bias)) for t, bias in zip(tits, self.get_bias_voltages())]
+        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else [f'@ {make_bias_str(bias)}']) for t, bias in zip(tits, self.get_bias_voltages())]
 
     def draw_legend(self, i, gr, irr, c):
         tits = self.get_titles(irr)
         w = max([sum(len(t) for t in tit) for tit in tits]) * (.011 if irr else .022)
-        Draw.legend([gr] + ([] if len(tits[i]) == 1 else ['']), tits[i], ['pe', ''], w=w, ts=.22, d=0, nentries=1.2, scale=5, c=c, cols=len(tits[i]))
+        Draw.legend([gr] + ([] if len(tits[i]) == 1 else ['']), tits[i], ['pe', ''], w=w, ts=.21, d=0, nentries=1.2, scale=5, c=c, cols=len(tits[i]))
 
     def set_bin_labels(self, h):
         for i, sel in enumerate(self.Info):
@@ -499,11 +500,11 @@ class DiaScans(Analysis):
     # ----------------------------------------
     # region PIXEL
     def draw_efficiency(self, avrg=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]') for x, y in zip(self.get_x(avrg), self.get_efficiency(avrg, redo))]
+        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]', marker=markers(i)) for i, (x, y) in enumerate(zip(self.get_x(avrg), self.get_efficiency(avrg, redo)))]
         return self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name=fname('Efficiency', avrg), draw_opt='pl', y_range=[0, 105]))
 
     def draw_cluster_size(self, avrg=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]
+        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size', ) for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]
         return self.Draw.multigraph(g, 'Cluster Sizes', leg=self.make_legend(g, dut=True, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='ClusterSize', draw_opt='pl'))
     # endregion PIXEL
     # ----------------------------------------
