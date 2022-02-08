@@ -10,6 +10,7 @@ from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
 from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph
+import plotting.latex as latex
 from src.analysis import *
 from src.binning import Bins
 from src.run_selection import RunSelector
@@ -142,22 +143,25 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
-    def get_rate_dependencies(self, redo=False):
-        return array(self.get_values(self.Ana.get_rate_dependence, PickleInfo('PHRD'), redo=redo))
+    def get_rate_dependencies(self, avrg=True, redo=False):
+        return array(self.get_values(self.Ana.get_rate_dependence, PickleInfo('PHRD', avrg), avrg=avrg, redo=redo))
 
-    def print_mean_rd(self, latex=False):
-        s, r = [mean_sigma(i)[0] * 100 for i in self.get_rate_dependencies().T]
-        info(f'Mean rel STD:    {si(s, unit="percent") if latex else f"{s:.1f} %"}')
-        info(f'Mean rel Spread: {si(r, unit="percent") if latex else f"{r:.1f} %"}')
+    def print_mean_rd(self, avrg=True, tex=False):
+        s, r = [mean_sigma(i)[0] * 100 for i in self.get_rate_dependencies(avrg).T]
+        if tex:
+            print(latex.table(False, [[self.DUTName] + latex.si(self.get_bias_voltages()[0], fmt='.0f', unt='V') + latex.si(s, r, unt='percent')]))
+        else:
+            info(f'Mean rel STD:    {si(s, unit="percent") if latex else f"{s:.1f} %"}')
+            info(f'Mean rel Spread: {si(r, unit="percent") if latex else f"{r:.1f} %"}')
 
-    def print_rate_dependencies(self):
-        for i, (s1, s2) in zip(self.Info, self.get_rate_dependencies() * 100):
+    def print_rate_dependencies(self, avrg=True):
+        for i, (s1, s2) in zip(self.Info, self.get_rate_dependencies(avrg) * 100):
             print(i)
             print(f'  Rel STD:    {s1.n:.1f} %')
             print(f'  Rel Spread: {s2:.1f} %')
 
-    def print_rd_table(self):
-        data = 100 * self.get_rate_dependencies().reshape((self.NPlans // 2, 4))
+    def print_rd_table(self, avrg=True):
+        data = 100 * self.get_rate_dependencies(avrg).reshape((self.NPlans // 2, 4))
         rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [si(r, '.1f') for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
         print(make_latex_table([], rows))
 
