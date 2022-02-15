@@ -641,9 +641,9 @@ class AnalysisCollection(Analysis):
         return self.Draw.distribution(h, **prep_kw(kwargs, file_name='FluxProfile', **self.get_x_args(True, rel_time, draw=True), **Draw.mode(2), logy=True,
                                                    y_tit='Flux [kHz/cm^{2}]', stats=False))
 
-    def draw_flux_ratio(self, show=True):
-        r = self.get_fluxes(1, rel=True) / self.get_fluxes(2, rel=True)
-        self.Draw.graph(self.get_fluxes(), r, 'FluxRatio', y_tit='Flux Plane1/Plane2', show=show, **self.get_x_args(draw=True), **Draw.mode(2, bm=.23))
+    def draw_flux_ratio(self, avrg=False, **dkw):
+        x, (r1, r2) = self.get_fluxes(avrg=avrg), [self.get_fluxes(pl, rel=True, avrg=avrg) for pl in [1, 2]]
+        self.Draw.graph(x, r1 / r2, 'FluxRatio', **prep_kw(dkw, y_tit='Flux Plane1/Plane2', **self.get_x_args(draw=True), **Draw.mode(2, bm=.23), **dfname('FluxRatio', avrg)))
     # endregion TELESCOPE
     # ----------------------------------------
 
@@ -825,6 +825,10 @@ class AnalysisCollection(Analysis):
 
 def fname(n, avrg=False, t=False):
     return f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}'
+
+
+def dfname(n, avrg=False, t=False):
+    return {'file_name': f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}'}
 
 
 if __name__ == '__main__':
