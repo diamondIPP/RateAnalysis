@@ -830,7 +830,7 @@ class PBar(object):
 
     def eta(self, i, h, m, s=0):
         self.PBar.start_time = time_stamp(datetime.now() - timedelta(hours=h, minutes=m, seconds=s))
-        self.update(i - 1)
+        self.update(i)
 
 
 class EventSpeed(Widget):
