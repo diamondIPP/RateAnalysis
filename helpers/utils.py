@@ -858,7 +858,7 @@ class Config(ConfigParser):
 
     def __init__(self, file_name, **kwargs):
         super(Config, self).__init__(**kwargs)
-        self.FilePath = Path(file_name)
+        self.FilePath = Path(file_name if type(file_name) is not list else '')
         self.SubPath = None
         self.read(file_name) if type(file_name) is not list else self.read_file(file_name)
 
