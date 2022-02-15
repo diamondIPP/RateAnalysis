@@ -828,6 +828,10 @@ class PBar(object):
     def is_finished(self):
         return self.PBar.currval == self.N
 
+    def eta(self, i, h, m, s=0):
+        self.PBar.start_time = time_stamp(datetime.now() - timedelta(hours=h, minutes=m, seconds=s))
+        self.update(i - 1)
+
 
 class EventSpeed(Widget):
     """Widget for showing the event speed (useful for slow updates)."""
