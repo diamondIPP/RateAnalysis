@@ -388,6 +388,13 @@ class PadAnalysis(DUTAnalysis):
         x = sum(array([ip for ip in self.Run.PeakIntegrals[self.DUT.Number - 1].values()]) / 2, axis=1)
         y = [self.get_pulse_height(sig=self.get_signal_name(peak_int=name)) for name in self.Run.PeakIntegrals[self.DUT.Number - 1]]
         self.Draw.graph(x, y, title='Signal vs. Peak Integral', x_tit='Integralwidth [ns]', y_tit='Pulse Height [mV]', show=show, x_range=ax_range(x, 0, .1, .1))
+
+    def draw_int_vs_ph(self, xmin=0, xmax=500, **dkw):
+        x, y = self.get_ph_values(name=self.get_signal_name(peak_int=1)), self.get_ph_values()
+        p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Peak Height [mV]', y_tit='Pulse Height [mV]'))
+        f = Draw.make_f(None, '[0] * x', xmin, xmax, parnames='Slope')
+        p.Fit(f, 'q', '', xmin, xmax)
+        format_statbox(p, fit=True, entries=True, left=True, form='.2f')
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
