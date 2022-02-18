@@ -467,7 +467,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_b2_fit(self, c=None, n=100):
         fit, (m, s) = self.Cut.get_fb2(), self.Pedestal()
         x = linspace(-50, 500, n)
-        self.Draw.graph(x, [ufloat(fit(i), 4 * s) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)
+        self.Draw.graph(x, [ufloat(fit(i), 4 * s + m) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
 
     def draw_b2_cut(self, draw_opt='same', **kwargs):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
