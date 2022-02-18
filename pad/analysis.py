@@ -445,7 +445,7 @@ class PadAnalysis(DUTAnalysis):
             return 0
         return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
 
-    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, use_wf_int=False, redo=False, **kwargs):
+    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **kwargs):
         if use_wf_int:
             cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
             x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
@@ -453,16 +453,23 @@ class PadAnalysis(DUTAnalysis):
             cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
             x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
         h = self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
-        if draw_cut:
+        if draw_cut and not draw_fit:
             m, s = self.Pedestal.get_under_signal()
             v = m.n + 3 * s.n
             lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
-            f = self.draw_b2_fit(color=1)
+            f = self.draw_b2_cut(color=1)
             Draw.fypolygon(f, -100, 600, 1000, fill_color=2, opacity=.2, line_color=1)
             Draw.legend([b, f], ['excluded', 'pedestal fit'], ['lf', 'l'], y2=.822)
             format_statbox(h, entries=True, w=.2)  # draw above cut
+        if draw_fit:
+            self.draw_b2_fit(c=get_last_canvas())
 
-    def draw_b2_fit(self, draw_opt='same', **kwargs):
+    def draw_b2_fit(self, c=None, n=100):
+        fit, (m, s) = self.Cut.get_fb2(), self.Pedestal()
+        x = linspace(-50, 500, n)
+        self.Draw.graph(x, [ufloat(fit(i), 4 * s) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)
+
+    def draw_b2_cut(self, draw_opt='same', **kwargs):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
         return self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 4 * s}', -50, 500, **kwargs), draw_opt=draw_opt)
 

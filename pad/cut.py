@@ -192,6 +192,10 @@ class PadCut(Cut):
         # fit.Pars[0] -= self.Ana.get_polarity() * self.calc_pedestal_[0]  # subtract baseline -> THIS IS WRONG!
         return fit
 
+    def get_fb2(self, redo=False, **kw):
+        fit = self.get_b2_fit(_redo=redo)
+        return Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2)', -50, 500, **kw)
+
     @save_pickle('TP', print_dur=True, high_rate=True)
     @high_rate
     def get_trigger_phase(self, show=False, _redo=False):
