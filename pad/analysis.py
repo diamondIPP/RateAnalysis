@@ -488,9 +488,14 @@ class PadAnalysis(DUTAnalysis):
         y = array([self.get_bucket_ratio(cut, _redo=redo) for cut in cuts.values()])
         self.Draw.graph(arange(y.size), y * 100, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), **kwargs, y_range=[0, max(y).n * 110])
 
-    def draw_bucket_map(self, **kwargs):
+    def draw_bucket_map(self, res=None, **kwargs):
         cut = self.Cut.get('bucket', invert=True) + self.Cut.generate_custom(exclude=['bucket', 'bucket2', 'fiducial'])
-        self.draw_hitmap(cut=cut, **kwargs)
+        return self.draw_hitmap(res, cut, **kwargs)
+
+    def draw_bucket_ratio_map(self, res=None, **dkw):
+        b, h = self.draw_bucket_map(res=res, show=False), self.draw_hitmap(res, cut=self.Cut.exclude('bucket', 'bucket2', 'fiducial'), show=False)
+        b.Divide(h)
+        self.Draw(b, **prep_kw(dkw, z_tit='Bucket Ratio', file_name='BRMap', stats=False, z_range=[0, find_range(get_2d_hist_vec(b, err=False))[1]]))
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
