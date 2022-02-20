@@ -309,9 +309,9 @@ class PadAnalysis(DUTAnalysis):
                 return x[j - 2]
         return x[-1] + 1000
 
-    def fit_expo(self, bw=None, **dkw):
+    def fit_expo(self, bw=None, n=3, **dkw):
         g = self.draw_pulse_height(bin_size=bw, fit=False, show=False)[0]
-        f = Expo(g).fit()
+        f = Expo(g).fit(n=n)
         return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
