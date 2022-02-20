@@ -232,7 +232,7 @@ def make_dia_str(dia):
 
 
 def make_list(value):
-    return array([value] if value else [], dtype=object).flatten()
+    return array([] if value is None else [value], dtype=object).flatten()
 
 
 def uarr2n(arr):
