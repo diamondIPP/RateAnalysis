@@ -125,7 +125,7 @@ class Telescope(SubAnalysis):
     @save_pickle('PlaneFlux', suf_args='[0, 1]')
     def calculate_flux_(self, plane, corr, show=False, _redo=False):
         h = self.draw_rate_disto(plane, show=show)
-        if h.GetEntries() < 3:
+        if h is None or h.GetEntries() < 3:
             return ufloat(0, 0)
         fit = FitRes(h.Fit('gaus', 'qs'))
         rate = fit[1] if fit.Ndf() and fit.get_chi2() < 10 and fit[2] < fit[1] / 2 else ufloat(*h.GetMean() * array([1, .05]))
@@ -136,7 +136,7 @@ class Telescope(SubAnalysis):
 
     def draw_rate_disto(self, plane=1, **dkw):
         x = self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4') / 1000
-        return self.Draw.distribution(x[x < 1e9], **prep_kw(dkw, draw_opt='', x_tit='Plane Rate [kHz]', file_name=f'Plane{plane}Rate'))
+        return self.Draw.distribution(x[x < 1e9], **prep_kw(dkw, draw_opt='', x_tit='Plane Rate [kHz]', file_name=f'Plane{plane}Rate')) if x.size > 3 else None
 
     def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True, save=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
