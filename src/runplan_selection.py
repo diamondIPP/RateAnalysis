@@ -448,9 +448,9 @@ class DiaScans(Analysis):
         w = max([sum(len(t) for t in tit) for tit in tits]) * (.011 if irr else .022)
         Draw.legend([gr] + ([] if len(tits[i]) == 1 else ['']), tits[i], ['pe', ''], w=w, ts=.21, d=0, nentries=1.2, scale=5, c=c, cols=len(tits[i]))
 
-    def set_bin_labels(self, h):
+    def set_bin_labels(self, h, rp=True):
         for i, sel in enumerate(self.Info):
-            h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), '{} - {}'.format(make_tc_str(sel.TCString, 0), sel.RunPlan))
+            h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), f'{make_tc_str(sel.TCString, 0)}{f" - {sel.RunPlan}" if rp else ""}')
 
     def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
         y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
@@ -463,12 +463,11 @@ class DiaScans(Analysis):
     def draw_mean_noise(self, irr=False, redo=False, show=True):
         self.draw_mean_pedestals(True, irr, redo, show)
 
-    def draw_means(self, y_range=None, show=True):
-        y = array([make_ufloat(mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
-        g = Draw.make_tgrapherrors(arange(y.size), y, title='Pulse Height Evolution', x_tit='Run Plan', y_tit='Mean Pulse Height [mV]')
-        format_histo(g, y_off=1.2, x_range=ax_range(0, y.size - 1, .3, .3), x_off=2.5, y_range=y_range)
-        self.set_bin_labels(g)
-        self.Draw(g, self.get_savename('Means'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
+    def draw_means(self, **dkw):
+        y = array([ufloat(*mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
+        g = self.Draw.graph(arange(y.size), y, title='Pulse Height Evolution', x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', show=False, x_range=ax_range(0, y.size - 1, .3, .3))
+        self.set_bin_labels(g, rp=False)
+        self.Draw(g, file_name=self.get_savename('Means'), **prep_kw(dkw, **Draw.mode(2), gridy=True, x_off=2.5))
 
     def draw_sigmas(self, y_range=None, show=True):
         y = array([mean_sigma(ph_list)[1] for ph_list in self.get_pulse_heights()])
@@ -548,7 +547,7 @@ class SelectionInfo:
         self.DUT = sel.SelectedDUT
         self.DUTName = self.DUT.Name
         self.DUTNr = self.DUT.Number
-        self.IsPixel = 'pix' in self.DUT.Type[self.TCString]
+        self.IsPixel = 'pix' in (self.DUT.Type if type(self.DUT.Type) is str else self.DUT.Type[self.TCString])
         self.Verbose = sel.Run.Verbose
         self.Bias = self.DUT.Bias
         self.Irradiation = self.DUT.get_irradiation(self.TCString)
