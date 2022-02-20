@@ -160,7 +160,7 @@ class DUTAnalysis(Analysis):
         return self.Run.StartTime if rel_time else 0
 
     def get_t_args(self, rel_time=False):
-        return {'x_tit': 'Time [hh::mm]', 't_ax_off': self.get_t_off(rel_time)}
+        return {'x_tit': 'Time [hh:mm]', 't_ax_off': self.get_t_off(rel_time)}
 
     def get_tree_vec(self, var, cut='', dtype=None, nentries=None, firstentry=0):
         return self.Run.get_tree_vec(var, cut, dtype, nentries, firstentry)
