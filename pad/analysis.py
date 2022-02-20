@@ -1,14 +1,15 @@
 from ROOT import gRandom
 from numpy import insert, sum, round, in1d, max
 
-from pad.pedestal import PedestalAnalysis
-from pad.timing import TimingAnalysis
-from src.dut_analysis import *
 from pad.cut import PadCut
-from pad.run import PadRun
 from pad.peaks import PeakAnalysis
+from pad.pedestal import PedestalAnalysis
 from pad.pulser import PulserAnalysis
+from pad.run import PadRun
+from pad.timing import TimingAnalysis
 from pad.waveform import Waveform
+from plotting.fit import Expo
+from src.dut_analysis import *
 from src.mc_signal import MCSignal
 
 
@@ -292,10 +293,10 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **kwargs):
         g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
-        fit = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
+        f = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
         kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
         g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
-        return g, fit
+        return g, f
 
     def __get_max_fit_pos(self, g, thresh=.8):
         """ look for huge fluctiations in ph graph and return last stable point"""
@@ -307,6 +308,11 @@ class PadAnalysis(DUTAnalysis):
                 warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * j / y.size:2.0f}%')
                 return x[j - 2]
         return x[-1] + 1000
+
+    def fit_expo(self, bw=None, **dkw):
+        g = self.draw_pulse_height(bin_size=bw, fit=False, show=False)[0]
+        f = Expo(g).fit()
+        return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
     def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, _redo=False):
