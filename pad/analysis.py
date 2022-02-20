@@ -290,10 +290,10 @@ class PadAnalysis(DUTAnalysis):
         ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
         return self.Draw.profile(t, ph, self.Bins.get_time(bin_size, cut), 'Pulse Height Trend', y_tit='Mean Pulse Height [mV]', **self.get_t_args(), graph=True, show=False)
 
-    def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, **kwargs):
+    def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **kwargs):
         g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
-        fit = FitRes(g.Fit('pol0', 'qs', '', 0, self.__get_max_fit_pos(g)))
-        kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=True, form='.2f'))
+        fit = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
+        kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
         g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
         return g, fit
 
