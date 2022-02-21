@@ -402,7 +402,7 @@ class Cut(SubAnalysis):
         self.Ana.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
         x, y = arange(len(cuts)), array([self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts])
         y /= y[-1] if normalise else 1
-        return self.Draw.graph(x, y, title='Pulse Height for Consecutive Cuts', y_tit='Pulse Height [mV]', **prep_kw(dkw, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels))
+        return self.Draw.graph(x, y, title='PH Consec. Cuts', y_tit='Pulse Height [mV]', **prep_kw(dkw, draw_opt='ap', gridy=True, x_range=[-1, len(y)], bin_labels=labels, file_name='CutMeans'))
     # endregion ANA
     # ----------------------------------------
 

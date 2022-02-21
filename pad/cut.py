@@ -34,7 +34,7 @@ class PadCut(Cut):
         return self.get_raw_pulse_height() / self.get_raw_noise()
 
     def get_full_bucket(self):
-        return self.generate_custom(exclude='trigger phase', add=self.generate_bucket() + self.generate_b2(4), name='bful', prnt=False)
+        return self.generate_custom(exclude='trigger phase', add=self.generate_bucket() + self.generate_b2(5), name='bful', prnt=False)
 
     def get_bucket(self, all_cuts=False):
         cut = self.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
@@ -78,7 +78,7 @@ class PadCut(Cut):
             if self.Run.is_volt_scan() or self.get_raw_snr() > 5 or abs(self.Ana.DUT.Bias) < 10:
                 self.CutStrings.register(self.generate_bucket(), 91)
                 if not self.Run.is_volt_scan() or self.Ana.DUT.Bias < 10:
-                    self.CutStrings.register(self.generate_b2(n_sigma=4), 92)
+                    self.CutStrings.register(self.generate_b2(n_sigma=5), 92)
             else:
                 self.CutStrings.register(self.generate_trigger_phase(), 91)
 
