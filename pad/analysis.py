@@ -421,14 +421,25 @@ class PadAnalysis(DUTAnalysis):
         return [self.get_pulse_height(cut=cut, redo=redo) for cut in cuts]
 
     @update_pbar
-    @save_pickle('Ratio', suf_args='[0, 1]', sub_dir='Bucket')
-    def get_bucket_ratio(self, cut=None, all_cuts=False, _redo=False):
+    @save_pickle('Ratio', suf_args='all', sub_dir='Bucket')
+    def get_bucket_ratio(self, b2=False, cut=None, all_cuts=False, _redo=False):
         """ return fraction of bucket events with no signal in the signal region. """
         default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
-        c = choose(cut, self.Cut.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else default)
-        n = self.get_n_entries(c, _redo=_redo)
-        n_bucket = n - self.get_n_entries(self.Cut['bucket'] + c, _redo=_redo)
-        return ufloat(n_bucket, sqrt(n_bucket)) / n
+        c = choose(cut, self.Cut.exclude('bucket', 'bucket2', name='br') if all_cuts else default)
+        n = self.get_n_entries(c + (self.Cut['bucket'] if b2 else ''), _redo=_redo)
+        nb = n - self.get_n_entries(self.Cut['bucket2' if b2 else 'bucket'] + c, _redo=_redo)
+        return ufloat(nb, sqrt(nb)) / n
+
+    def draw_b2_disto(self, n=5, **dkw):
+        x = self.get_ph_values(cut=self.Cut.exclude('bucket2') + self.Cut.generate_b2(n).invert())
+        return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='B2PhDisto'))
+
+    def draw_bucket_disto(self, **dkw):
+        x = self.get_ph_values(cut=self.Cut.exclude('bucket', 'bucket2') + Cut.invert(self.Cut['bucket2'] + self.Cut['bucket']))
+        return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='BucketDisto'))
+
+    def get_b2_ph(self):
+        return mean_sigma(values=self.get_ph_values(cut=self.Cut.exclude('bucket2') + Cut.invert(self.Cut['bucket2'])))[0]
 
     @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
     def get_bucket_tp_ratio(self, all_cuts=False, _redo=False):
@@ -451,14 +462,14 @@ class PadAnalysis(DUTAnalysis):
             return 0
         return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
 
-    def draw_bucket_ph(self, cut=None, fid=False, bin_width=2, logz=True, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **kwargs):
+    def draw_bucket_ph(self, cut=None, fid=False, bw=2, logz=True, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **dkw):
         if use_wf_int:
             cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
             x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
         else:
             cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
             x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
-        h = self.Draw.histo_2d(x, y, Bins.get_pad_ph(bin_width) * 2, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+        h = self.Draw.histo_2d(x, y, Bins.get_pad_ph(bw) * 2, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz))
         if draw_cut and not draw_fit:
             m, s = self.Pedestal.get_under_signal()
             v = m.n + 3 * s.n
@@ -469,11 +480,12 @@ class PadAnalysis(DUTAnalysis):
             format_statbox(h, entries=True, w=.2)  # draw above cut
         if draw_fit:
             self.draw_b2_fit(c=get_last_canvas())
+        self.Draw.save_plots('BucketPH')
 
     def draw_b2_fit(self, c=None, n=100):
         fit, (m, s) = self.Cut.get_fb2(), self.Pedestal()
         x = linspace(-50, 500, n)
-        self.Draw.graph(x, [ufloat(fit(i), 4 * s + m) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
+        self.Draw.graph(x, [ufloat(fit(i), 5 * s + abs(m)) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
 
     def draw_b2_cut(self, draw_opt='same', **kwargs):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
@@ -487,12 +499,12 @@ class PadAnalysis(DUTAnalysis):
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
         return self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
 
-    def draw_bucket_fraction(self, redo=False, **kwargs):
+    def draw_bucket_fraction(self, redo=False, **dkw):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
         cuts['trigger phase'] = Cut.make(f'{len(cuts) + 1}', list(cuts.values())[-1] + self.Cut.generate_trigger_phase()())
         self.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('BucketRatio', len(cuts) - 1)) else do_nothing()
-        y = array([self.get_bucket_ratio(cut, _redo=redo) for cut in cuts.values()])
-        self.Draw.graph(arange(y.size), y * 100, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), **kwargs, y_range=[0, max(y).n * 110])
+        y = array([self.get_bucket_ratio(cut=cut, _redo=redo) for cut in cuts.values()])
+        self.Draw.graph(arange(y.size), y * 100, **prep_kw(dkw, y_tit='Fraction of Bucket Events [%]', bin_labels=cuts.keys(), y_range=[0, max(y).n * 110], file_name='BucketRatio'))
 
     def draw_bucket_map(self, res=None, **kwargs):
         cut = self.Cut.get('bucket', invert=True) + self.Cut.generate_custom(exclude=['bucket', 'bucket2', 'fiducial'])
