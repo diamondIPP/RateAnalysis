@@ -153,13 +153,18 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region CUTS
-    def draw_bucket_ratio(self, fit=True, avrg=False, redo=False, **kwargs):
-        x, y = self.get_fluxes(), 100 * self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('Ratio', '1', 'Bucket'), all_cuts=True, _redo=redo, avrg=avrg)
-        g = self.Draw.graph(x, y, 'Bucket Ratio', y_tit='Fraction of Bucket Events [%]', **prep_kw(kwargs, y_range=[0, max(y).n * 1.5], markersize=.7, **self.get_x_args(draw=True)))
+    def draw_bucket_ratio(self, b2=False, fit=True, avrg=False, redo=False, **dkw):
+        x, y = self.get_fluxes(), self.get_values('bucket ratios', PadAnalysis.get_bucket_ratio, picklepath=self.get_pickle_path('Ratio', '1', 'Bucket'), all_cuts=True, _redo=redo, avrg=avrg, b2=b2)
+        g = self.Draw.graph(x, 100 * y, 'Bucket Ratio', y_tit='Fraction of Bucket Events [%]', **prep_kw(dkw, y_range=[0, max(y).n * 150], markersize=.7, **self.get_x_args(draw=True)))
         if fit:
             g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 1e-3], fix=0), 'qs')
-            format_statbox(g, fit=True and 'stats' not in kwargs, form='.2e')
+            format_statbox(g, fit=True and 'stats' not in dkw, form='.2e')
+        self.Draw.save_plots(f'Bucket{2 if b2 else ""}Ratio')
         return g
+
+    def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
+        g = [self.draw_bucket_ratio(b2, fit, avrg, redo, show=False, **dkw) for b2 in [False, True]]
+        return self.Draw.multigraph(g, 'Bucket Ratios', ['flat waveform', 'bucket 2 pedestal'], **prep_kw(dkw, file_name='BucketRatios', **self.get_x_args(draw=True)))
 
     def draw_bucket_ph(self, show=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Fit', '{}_1_b2_nobucket'.format(Bins.Size), 'Ph_fit', '{}')
