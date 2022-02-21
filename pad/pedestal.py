@@ -8,7 +8,7 @@ from numpy import log
 
 from src.sub_analysis import PadSubAnalysis
 from plotting.save import *
-from helpers.utils import save_pickle, binned_stats, do_pickle
+from helpers.utils import save_pickle, binned_stats
 
 
 class PedestalAnalysis(PadSubAnalysis):
@@ -21,6 +21,10 @@ class PedestalAnalysis(PadSubAnalysis):
     def __call__(self, err=False, redo=False):
         m, s = self.get_mean(redo=redo), self.get_noise()
         return (m, s) if err else (m.n, s.n)
+
+    def __repr__(self):
+        m, s = self(err=True)
+        return f'{self.__class__.__name__}, Mean: {m:.2f} mV, Sigma: {s:.2f} mV'
 
     # ----------------------------------------
     # region GET
@@ -64,10 +68,12 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_raw_noise(self, cut=None, redo=False):
         return self.get_noise(self.RawName, 5, cut, redo)
 
+    @save_pickle('SigPed')
+    def _get_under_signal(self, _redo=False):
+        return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
+
     def get_under_signal(self, err=True, redo=False):
-        def f():
-            return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
-        return do_pickle(self.make_simple_pickle_path('USig'), f, redo=redo).get_pars(err)[1:]
+        return self._get_under_signal(_redo=redo).get_pars(err)[1:]
     # endregion GET
     # ----------------------------------------
 
@@ -83,9 +89,9 @@ class PedestalAnalysis(PadSubAnalysis):
         update_canvas()
         return fid_vals
 
-    def draw_under_signal(self, name=None, cut=None, show=True):
+    def draw_under_signal(self, name=None, cut=None, **dkw):
         x = self.get_tree_vec(var=choose(name, self.Ana.get_signal_var(off_corr=False, evnt_corr=False)), cut=choose(cut, self.Cut.get_pulser().Value))
-        return self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', x_tit='Pedestal [mV]', y_off=1.8, show=show, lm=.13, x_range=ax_range(x, 0, .1, .1, thresh=5))
+        return self.Draw.distribution(x, self.get_bins(), 'Pedestal under Signal', **prep_kw(dkw, x_tit='Pedestal [mV]', x_range=ax_range(x, 0, .1, .1, thresh=5), file_name='SigPed'))
 
     def compare_under_signal(self, cut=None, bin_size=None, x_range=None):
         cut = choose(cut, self.Cut.get_pulser().Value)
