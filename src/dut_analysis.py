@@ -30,6 +30,9 @@ def reload_tree(f):
 
 
 class DUTAnalysis(Analysis):
+
+    PhTit = 'Pulse Height [mV]'
+
     def __init__(self, run_number, diamond_nr=1, testcampaign=None, load_tree=None, verbose=False, prnt=True):
 
         self.Run = self.init_run(run_number, testcampaign, load_tree, verbose)
