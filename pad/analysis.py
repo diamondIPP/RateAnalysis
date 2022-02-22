@@ -456,11 +456,16 @@ class PadAnalysis(DUTAnalysis):
         tpr = self.get_bucket_tp_ratio(all_cuts=True) / 100  # ratio of the bucket trigger phase
         return br * (1 - tpr)
 
-    def estimate_bucket_ratio(self):
+    def get_sc_tp_scale(self, e=.8):
+        """ return scaling factor [%] for the bucket ratio after the trigger phase cut fitted for S129. """
         if not self.Run.Config.has_option('BASIC', 'bucket scale') and not self.Run.Config.has_option('BASIC', 'bucket tpr'):
             warning('bucket parameters not defined -> applying no correction!')
             return 0
-        return self.Run.Config.get_ufloat('BASIC', 'bucket scale') * self.get_flux() * (1 - self.Run.Config.get_ufloat('BASIC', 'bucket tpr'))
+        bucket_scale, tp_ratio = self.Run.Config.get_ufloat('BASIC', 'bucket scale'), self.Run.Config.get_ufloat('BASIC', 'bucket tpr')
+        return add_perr(bucket_scale, e) * (1 - add_err(tp_ratio, .005))
+
+    def estimate_bucket_ratio(self, e=.8):
+        return self.get_sc_tp_scale(e) * self.get_flux()
 
     def draw_bucket_ph(self, cut=None, fid=False, bw=2, logz=True, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **dkw):
         if use_wf_int:

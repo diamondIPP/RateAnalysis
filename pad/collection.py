@@ -174,9 +174,8 @@ class PadCollection(AnalysisCollection):
         return g
 
     def draw_sc_bucket_ratio(self, e=.2, npx=100, c=None, **dkw):
-        bucket_scale, tp_ratio = self.Ensemble.Run.Config.get_ufloat('BASIC', 'bucket scale'), self.Ensemble.Run.Config.get_ufloat('BASIC', 'bucket tpr')
-        m = add_perr(bucket_scale, e) * (1 - add_err(tp_ratio, .005))
         x = log_bins(npx, *ax_range(*uarr2n(self.get_fluxes()[[0, -1]]), 0, 1))[-1]
+        m = self.FirstAnalysis.get_sc_tp_scale(e)
         self.Draw.graph(x, [m * i for i in x], canvas=c, **prep_kw(dkw, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4))
 
     def draw_bucket_ph(self, show=True, redo=False):
