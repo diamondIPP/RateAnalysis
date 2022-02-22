@@ -8,6 +8,7 @@ from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
 from plotting.draw import *
+import plotting.latex as latex
 from helpers.utils import *
 
 PBAR = PBar()
@@ -315,10 +316,10 @@ class AnalysisCollection(Analysis):
         values = choose(values, self.get_pulse_heights(redo=redo, pbar=False, avrg=avrg))
         return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
 
-    def print_rate_dependence(self, values=None, avrg=False, latex=False):
+    def print_rate_dependence(self, values=None, avrg=False, tex=False):
         s1, s2 = array(self.get_rate_dependence(values=values, avrg=avrg)) * 100
-        print('Rel STD:   ' + f'\\SI{{{s1.n:3.1f}}}{{\\percent}}' if latex else f'{s1.n:3.1f}')
-        print(f'Rel Spread: {s2:3.1f}')
+        print(f'Rel STD:    {s1.n:3.1f}')
+        print(f'Rel Spread: {latex.si(s2)[0] if tex else f"{s2:3.1f}"}')
 
     def get_runs_below_flux(self, flux):
         return self.Runs[self.get_fluxes() <= flux]
