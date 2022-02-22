@@ -31,7 +31,7 @@ class MCSignal(object):
         self.NOther = self.Rate * self.Area * 19.8e-9
         self.NScint = self.Rate * (1 - self.Area) * 19.8e-9
         # self.PBucket = (1 - self.Area / self.AreaScint) * (1 - poisson.cdf(1, self.NOther, 1))
-        self.PBucket = 0.05246 if ana is None else ana.get_bucket_ratio().n
+        self.PBucket = ana.get_bucket_ratio().n and ana.Cut.has('bucket') if ana is not None and ana.Cut.has('bucket') else 0.05246
         self.NBuc = round(self.N * self.PBucket)
         self.NCons = None
 
