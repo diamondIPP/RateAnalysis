@@ -585,16 +585,17 @@ class RunSelector(object):
                         self.RunInfos[run][key] = new
         self.save_runinfo()
 
-    def test_runs(self, dut=1):
+    def test_runs(self, dut=1, start=0):
         # TODO try to catch all output
         from analyse import analysis_selector
         for run in self.get_selected_runs():
-            try:
-                self.Run.reload_run_config(run)
-                if file_exists(self.Run.RootFilePath):
-                    print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
-            except Exception as err:
-                return run, err
+            if run >= start:
+                try:
+                    self.Run.reload_run_config(run)
+                    if file_exists(self.Run.RootFilePath):
+                        print(analysis_selector(run, dut, self.TCString, tree=True, verbose=False, prnt=False))
+                except Exception as err:
+                    return run, err
 
     def save_data(self, rp, dut_nr, redo=False, verbose=False):
         from analyse import collection_selector
