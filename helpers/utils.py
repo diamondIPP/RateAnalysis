@@ -509,6 +509,14 @@ def is_ufloat(value):
     return type(value) in [Variable, AffineScalarFunc]
 
 
+def add_err(u, e):
+    return u + ufloat(0, e)
+
+
+def add_perr(u, e):
+    return u * ufloat(1, e)
+
+
 def is_iter(v):
     try:
         iter(v)
