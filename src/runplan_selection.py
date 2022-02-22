@@ -591,16 +591,13 @@ if __name__ == '__main__':
     aparser.add_argument('-v', '--verbose', action='store_false')
     aparser.add_argument('-p', action='store_true', help='print analysis strings')
     aparser.add_argument('-r', action='store_true', help='redo')
-    aparser.add_argument('-s', action='store_true', help='activate show single selection')
     aparser.add_argument('-la', action='store_true', help='active show all selections')
-    aparser.add_argument('-ls', default=None, help='active show all selections for given DUT')
+    aparser.add_argument('-ls', nargs='?', default=None, help='active show all selections for given DUT')
     pargs = aparser.parse_args()
 
     z = DiaScans(pargs.sel, pargs.verbose and not (pargs.ls or pargs.la))
     if pargs.p:
         print(z.get_all_ana_strings(pargs.d, pargs.tc, pargs.r))
-    if pargs.s:
-        z.show_selection()
     if pargs.ls or pargs.la:
         z.show_selections(pargs.ls)
         critical('finish')
