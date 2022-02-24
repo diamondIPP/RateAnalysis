@@ -24,6 +24,8 @@ class PeakAnalysis(PadSubAnalysis):
     Prominence = 5  # mV
     Distance = 35  # bins -> almost one bunch spacing at PSI
 
+    PhTit = 'Peak Height [mV]'
+
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='Peaks')
         self.WF = self.Ana.Waveform
@@ -360,12 +362,12 @@ class PeakAnalysis(PadSubAnalysis):
         n = [count_nonzero(self.get_bunch_cut(i, thresh=thresh, fit=fit) & self.get_pulser_cut(thresh)) for i in self.get_bunch_nrs()]
         self.Draw.graph(self.get_bunch_nrs(), [ufloat(v, sqrt(v)) for v in n], 'Peaks per Bunch', x_tit='Bunch Number', y_tit='Number of Peaks', **Draw.mode(2), show=show)
 
-    def draw_bunch_height(self, n=1, bin_width=5, cut=None, thresh=None, fit=False, all_=False, peak_cut=False, **kwargs):
+    def draw_bunch_height(self, n=1, bw=5, cut=None, thresh=None, fit=False, all_=False, peak_cut=False, **dkw):
         x = self.get_bunch_heights(n, cut=cut, fit=fit, thresh=thresh, all_=all_, peak_cut=peak_cut)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), f'Peak Height B{n}', x_tit='Peak Height [mV]', lm=.12, y_off=1.8, **kwargs)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bw), f'Peak Height B{n}', **prep_kw(dkw, x_tit='Peak Height [mV]', lm=.12, y_off=1.8, file_name=f'PeakHeight{"All" if all_ else n}'))
 
-    def draw_bunch_times(self, n=1, bin_width=.2, cut=None, fit=False, **kwargs):
-        x, bins = self.get_bunch_times(n, cut=cut, fit=fit), self.get_binning(bin_width, n)
+    def draw_bunch_times(self, n=1, bw=.2, cut=None, fit=False, **kwargs):
+        x, bins = self.get_bunch_times(n, cut=cut, fit=fit), self.get_binning(bw, n)
         return self.Draw.distribution(x, bins, f'Peak Times B{n}', x_tit='Peak Time [ns]', **kwargs, lm=.12, y_off=1.7, stats=set_statbox(.43, all_stat=True))
 
     def _add_ph(self, n=1, c=None, bin_size=.2, fit=False, y_range=None, cft=False, show=True):
@@ -417,13 +419,13 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_height_map(self, fit=True, res=None, show=True):
         return self.draw_map(1, fit, res, show)
 
-    def draw_bunch_heights(self, thresh=150, fit=True, cut=None, peak_cut=False, show=True):
+    def draw_bunch_heights(self, thresh=150, fit=True, cut=None, peak_cut=False, **dkw):
         self.PBar.start(self.MaxBunch)
         x = self.get_bunch_nrs(1)
         y = [self.get_bunch_height(i, thresh=thresh, peak_cut=peak_cut, cut=self.get_pre_bunch_cut(i, cut), fit=fit, isolated=cut is None) for i in x]
         g = Draw.make_tgrapherrors(x, y, x_tit='Bucket Number', y_tit='Peak Height [mV]')
         ga = Draw.make_tgrapherrors([ufloat(mean(x[2:]), (x[-1] - x[2]) / 2)], [mean_sigma(y[2:])[0]], color=2)
-        return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], show=show, color=False, gridy=True)
+        return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], **prep_kw(dkw, color=None, gridy=True, file_name='BunchHeights'))
 
     def draw_pre_bunch_heights(self, b=-1, thresh=150, y_range=None):
         g = [ig for cut in [None, b] for ig in self.draw_bunch_heights(thresh=thresh, show=False, cut=cut).GetListOfGraphs()]
