@@ -142,13 +142,11 @@ class PulserAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw_rate(self, bin_size=10, cut='', rel_t=True, show=True, prnt=True):
+    def draw_rate(self, bin_size=10, cut='', rel_t=True, **dkw):
         """ Shows the fraction of pulser events as a function of time. Peaks appearing in this graph are most likely beam interruptions. """
         x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(choose(cut, self.Ana.Cut.get('beam stops'))))
-        p = self.Draw.profile(x, y * 100, self.Bins.get_raw_time(bin_size), 'Pulser Rate', y_range=[0, 105], stats=0, draw_opt='bare', show=show,
-                              **Draw.mode(3, **self.get_t_args(rel_t), y_tit='Pulser Rate [%]'))
-        self.Draw.save_plots('PulserRate', prnt=prnt, show=show)
-        return p
+        return self.Draw.profile(x, y * 100, self.Bins.get_raw_time(bin_size), 'Pulser Rate', **prep_kw(dkw, **Draw.mode(5, y_tit='Pulser Rate [%]', **self.get_t_args(rel_t)), y_range=[0, 105],
+                                                                                                        stats=0, draw_opt='bare', file_name='PulserRate'))
 
     @save_pickle('PulserPulseHeight', suf_args='all')
     def get_pulse_height_trend(self, bin_size=None, cut=None, _redo=False):
