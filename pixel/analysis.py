@@ -171,6 +171,17 @@ class PixAnalysis(DUTAnalysis):
         xr, yr = x[x > xmax], y[x > xmax]
         return [h.GetBinCenter(h.FindFirstBinAbove(fl * ymax.n)), xr[yr < fr * ymax.n][0]]
 
+    def draw_map_disto(self, h, thresh=2, norm_x=False, **dkw):
+        x = get_2d_hist_vec(h, err=False, zero_supp=False)[get_2d_bin_entries(h, flat=True) > thresh]
+        x /= mean(x) if norm_x else 1
+        return self.Draw.distribution(x, **prep_kw(dkw, normalise=True, stats=set_statbox(all_stat=True, form='.2f')))
+
+    def draw_adc_map_disto(self, thresh=2, norm_x=False, **dkw):
+        return self.draw_map_disto(self.draw_adc_map(show=False), thresh, norm_x, **prep_kw(dkw, x_tit=f'{"Normalised " if norm_x else ""}Pulse Height [adc]'))
+
+    def draw_vcal_map_disto(self, thresh=2, norm_x=False, cutoff=None, **dkw):
+        return self.draw_map_disto(self.draw_vcal_map(cutoff=cutoff, show=False), thresh, norm_x, **prep_kw(dkw, x_tit=f'{"Normalised " if norm_x else ""}Pulse Height [vcal]'))
+
     def draw_ncluster_disto(self, n=1, cut=None, redo=False, **kwargs):
         return self.draw_signal_distribution(cut=self.Cut.make(f'{n}cl', self.Cut(cut) + self.Cut.get_ncluster(n)), redo=redo, **kwargs)
 
