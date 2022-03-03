@@ -153,14 +153,15 @@ class PixAnalysis(DUTAnalysis):
         return self.Draw.distribution(h, **kwargs, filename=f'PHDisto{"V" if vcal else "E"}')
 
     @save_pickle('PH', suf_args='all')
-    def get_signal_disto(self, roc=None, cut=None, vcal=True, _redo=False):
+    def get_signal_disto(self, roc=None, cut=None, vcal=True, cutoff=None, _redo=False):
         x = self.get_tree_vec(self.get_ph_var(roc, vcal), self.Cut(cut))
+        x = x[... if cutoff is None else x < cutoff]
         return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "ke"}]', show=False)
 
-    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, **kwargs):
-        h = self.get_signal_disto(roc, cut, vcal, _redo=redo)
+    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, cutoff=False, **kwargs):
+        h = self.get_signal_disto(roc, cut, vcal, cutoff, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
-        self.info(f'Real MPV: {Landau(h, self.find_fit_range(h)).get_mpv():.2f}') if fit else do_nothing()
+        self.info(f'Real MPV: {Landau(h, self.find_fit_range(h)).get_mpv(draw=True):.2f}') if fit else do_nothing()
         return self.Draw.distribution(h, **prep_kw(kwargs, x_range=ax_range(10, 10, fl=.2, fh=.5, h=h), leg=t, draw_opt='' if fit else None, file_name=f'SignalDistribution{"E" if not vcal else ""}'))
 
     @staticmethod
@@ -208,7 +209,6 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_vcal_map(self, cut=None, cutoff=None, **dkw):
         x, y, zz = self.get_tree_vec(self.Tel.get_hit_vars(self.N) + [self.get_ph_var()], self.Cut(cut))
-        zz /= Bins.Vcal2El
         ecut = ... if cutoff is None else zz < cutoff
         h = self.Draw.prof2d(x[ecut], y[ecut], zz[ecut], Bins.get_pixel(), show=False)
         e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
