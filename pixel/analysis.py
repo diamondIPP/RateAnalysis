@@ -14,6 +14,7 @@ from pixel.run import PixelRun
 from src.dut_analysis import *
 from src.dut import Plane
 from plotting.fit import Landau
+import plotting.latex as latex
 
 
 class PixAnalysis(DUTAnalysis):
@@ -376,6 +377,14 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_residual(self, mode=None, cut=None, **dkw):
         return self.Tracks.draw_residual(self.N, mode=mode, cut=cut, **prep_kw(dkw, normalise=True))
+
+    def get_residual(self, m='x', cut=None):
+        return self.Tracks.get_residual_fit(self.N, m, cut)
+
+    def print_residuals(self, tex=False):
+        x, y = [self.get_residual(m) for m in ['x', 'y']]
+        print(f'X Residual: {latex.si(x[0], fmt=".0f", unt="um")[0] if tex else f"{x[0]:.1f}"}, STD: {latex.si(x[1], fmt=".0f", unt="um")[0] if tex else f"{x[1]:.1f}"}')
+        print(f'Y Residual: {latex.si(y[0], fmt=".0f", unt="um")[0] if tex else f"{y[0]:.1f}"}, STD: {latex.si(y[1], fmt=".0f", unt="um")[0] if tex else f"{y[1]:.1f}"}')
 
     def draw_xy_residual(self, f=.5, cut=None, show_cut=False, **dkw):
         return self.Draw.histo_2d(self.Tracks.draw_xy_residual(self.N, cut=self.Cut.exclude('rhit') if cut is None else self.Cut(cut), show=False, show_cut=show_cut, f=f), **dkw)

@@ -187,10 +187,14 @@ class Tracks(SubAnalysis):
     def draw_residual(self, roc, mode='x', cut='', fit=False, ret_res=False, **dkw):
         x = self.get_tree_vec(f'{self.get_res_var(mode)}[{roc}]', self.Cut(cut)) * 1e4  # convert to [um]
         tit = f'{mode.title() if mode else ""} Residuals for Plane {roc}'
-        h = self.Draw.distribution(x, show=False, **prep_kw(dkw, title=tit, x_tit='Distance [#mum]', normalise=True))
+        h = self.Draw.distribution(x, show=False, title=tit, x_tit='Distance [#mum]', normalise=True)
         res = self.fit_residual(h, show=fit)
         self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', y_off=2.0, lm=.14, stats=set_statbox(fit=fit, all_stat=True)))
         return res if ret_res else h
+
+    def get_residual_fit(self, plane=0, m='x', cut=None):
+        """ :return FWHM fit of the residual with a Gaussian."""
+        return fit_fwhm(self.draw_residual(plane, m, cut, show=False))[1:]
 
     def draw_xy_residual(self, roc, cut='', f=.5, show_cut=False, **dkw):
         x, y = array(self.get_tree_vec([f'{self.get_res_var(m)}[{roc}]' for m in ['x', 'y']], self.Cut(cut))) * 1e4  # convert to [um]
