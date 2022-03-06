@@ -81,10 +81,11 @@ class PixelDUT(DUT):
     def __init__(self, number, run_info):
         super().__init__(number, run_info)
 
-        self.PX, self.PY = self.load_spec('pixel size', lst=True, default=[Plane.PX, Plane.PY])
+        self.PX, self.PY = self.load_spec('cell size', lst=True, default=[Plane.PX, Plane.PY])
         self.A = self.PX * self.PY
         self.GX, self.GY = self.PX / Plane.PX / 1e3, self.PY / Plane.PY / 1e3  # ganging
-        self.W, self.H = self.PX * self.Size[0] / 1e3, self.PY * self.Size[1] / 1e3
+        self.ActivePixels = self.load_spec('active pixels', lst=True, default=[Plane.NCols, Plane.NRows])
+        self.W, self.H = self.PX / self.GX * self.ActivePixels[0] / 1e3, self.PY / self.GY * self.ActivePixels[1] / 1e3
         self.ColDia = self.load_spec('column diameter', typ=float)
         self.ColArea = (self.ColDia / 2) ** 2 * pi if self.ColDia else None
         self.ColRatio = 2 * self.ColArea / self.A if self.ColDia else None  # two columns per cell

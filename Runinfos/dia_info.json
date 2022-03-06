@@ -214,25 +214,14 @@
     "manufacturer": "II-VI"
   }, 
   "II6-A2": {
-    "irradiation": {
-      "201610": "0", 
-      "201705": "0", 
-      "201708": "0", 
-      "201708-2": "0", 
-      "201810": "0"
-    },
-    "type": {
-      "201610": "3D-pixel",
-      "201705": "3D-pixel",
-      "201708": "3D-pixel",
-      "201708-2": "3D-pixel",
-      "201810": "3D-pixel"
-    },
-    "thickness": "None", 
-    "size": "[20, 30]",
+    "irradiation": {"201610": "0",  "201705": "0",  "201708": "0",   "201708-2": "0",  "201810": "0" },
+    "type": {"201610": "3D-pixel", "201705": "3D-pixel", "201708": "3D-pixel", "201708-2": "3D-pixel", "201810": "3D-pixel"},
+    "thickness": "None",
+    "size": "[5.04, 5.08]",
+    "active pixels": "[20, 30]",
     "column diameter": "2.6",
     "manufacturer": "II-VI",
-    "pixel size": "[150, 100]"
+    "cell size": "[150, 100]"
   }, 
   "II6-A7": {
     "irradiation": {
@@ -278,21 +267,14 @@
     "manufacturer": "II-VI"
   }, 
   "II6-B6": {
-    "irradiation": {
-      "201708": "0", 
-      "201708-2": "0", 
-      "201810": "0"
-    },
-    "type": {
-      "201708": "3D-pixel",
-      "201708-2": "3D-pixel",
-      "201810": "3D-pixel"
-    },
-    "thickness": "None", 
-    "size": "[20, 30]",
+    "irradiation": {"201708": "0",  "201708-2": "0",  "201810": "0"},
+    "type": { "201708": "3D-pixel",  "201708-2": "3D-pixel", "201810": "3D-pixel"},
+    "thickness": "None",
+    "size": "[4.85, 4.90]",
+    "active pixels": "[20, 30]",
     "column diameter": "2.6",
     "manufacturer": "II-VI",
-    "pixel size": "[50, 50]"
+    "cell size": "[50, 50]"
   }, 
   "II6-E5-3": {
     "irradiation": {
