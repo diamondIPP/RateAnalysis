@@ -247,6 +247,22 @@ class PadAnalysis(DUTAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region SIZES
+    def draw_active_area(self):
+        size = [self.DUT.PadSize.n] * 2 if self.DUT.PadSize is not None else None
+        self.draw_size(size, color=923, name='metal')
+
+    def draw_guard_ring(self):
+        size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
+        self.draw_size(size, color=417, name='guard ring')
+
+    def draw_all_sizes(self):
+        super(PadAnalysis, self).draw_all_sizes()
+        self.draw_guard_ring()
+    # endregion SIZES
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region 2D MAPS
     def draw_efficiency_vs_threshold(self, thresh=None, bin_width=.5, show=True):
         thresh = self.Pedestal.get_noise().n * 4 if thresh is None else thresh

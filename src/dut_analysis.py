@@ -366,19 +366,13 @@ class DUTAnalysis(Analysis):
     def draw_detector_size(self):
         self.draw_size(self.DUT.Size, color=432, name='detector')
 
-    def draw_metal_size(self):
-        size = [self.DUT.PadSize.n] * 2 if self.DUT.PadSize is not None else None
-        self.draw_size(size, color=923, name='metal')
-
-    def draw_guard_ring(self):
-        size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
-        self.draw_size(size, color=417, name='guard ring')
+    def draw_active_area(self):
+        pass
 
     def draw_all_sizes(self):
         self.draw_fid_cut()
         self.draw_detector_size()
-        self.draw_metal_size()
-        self.draw_guard_ring()
+        self.draw_active_area()
 
     @save_pickle('Center', sub_dir='Maps')
     def find_center(self, _redo=False, h=None, _no_save=False):
