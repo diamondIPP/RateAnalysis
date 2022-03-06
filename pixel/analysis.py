@@ -103,9 +103,9 @@ class PixAnalysis(DUTAnalysis):
     def get_track_vars(self, mm=True, local=False, pixel=False):
         return self.Cut.get_track_vars(self.DUT.Number - 1, mm, local, pixel)
 
-    def get_lambda(self, flux=None):
-        """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux"""
-        return choose(flux, self.get_flux().n) * 1e3 * self.DUT.get_area() / self.Run.Plane.Frequency
+    def get_lambda(self, flux=None, area=None):
+        """ :returns: lambda parameter of the poission distribution for a single clock cycle based on the flux [khz/cm²] and area [cm²]"""
+        return choose(flux, self.get_flux().n) * 1e3 * choose(area, self.DUT.get_area()) / self.Run.Plane.Frequency
 
     def get_efficiency(self, redo=False):
         return self.Efficiency.get(_redo=redo)
@@ -230,6 +230,9 @@ class PixAnalysis(DUTAnalysis):
         cols, rows = self.Cut.get_fid_lines()
         x, y, zz = array([[col, row, self.Calibration.get_adc(col, row, vcal)] for col in cols for row in rows]).T
         return self.Draw.prof2d(x, y, zz, Bins.get_pixel(), f'ADC Map (VCAL={vcal}', **prep_kw(kwargs, x_tit='col', y_tit='row', z_tit='ADC'))
+
+    def get_signal_map(self, *args, **kwargs):
+        return super(PixAnalysis, self).get_signal_map(*args, **prep_kw(kwargs, local=False))
 
     def draw_signal_map(self, *args, **kwargs):
         return super(PixAnalysis, self).draw_signal_map(*args, **prep_kw(kwargs, local=False, z_tit='Pulse Height [vcal]'))
@@ -358,9 +361,8 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw_detector_size(self):
-        x, y = self.DUT.Size
-        self.draw_size([x * Plane.PX, y * Plane.PY], color=432, name='detector')
+    def draw_active_area(self):
+        self.draw_size([self.DUT.W, self.DUT.H], color=923, name='active')
 
     def draw_dut_hits(self, dut2=None, cut=None, **dkw):
         duts = [self.get_next_dut(dut2), self.DUT]
@@ -394,6 +396,12 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_n_clusters(self, f=2, **dkw):
         return self.Draw(self.Tel.draw_n_clusters(self.N, self.DUT.Name, self.Cut.exclude('ncluster'), f, show=False), **prep_kw(dkw, logy=True, normalise=True))
+
+    def compare_n_cluster(self, f=2, fac=100, **dkw):
+        self.draw_n_clusters(f, **prep_kw(dkw, stats=0))
+        x, y = arange(30), lambda flux: append(0, poisson.pmf(arange(29), self.get_lambda(flux, area=self.Cut.get_fiducial_area())))
+        pl = [Draw.polyline(*make_poly_args(x, y(flux)), line_color=self.Draw.get_color(2), width=2) for flux in [self.get_flux().n * fac, None]]
+        Draw.legend(pl[::-1], [f'{f:.0f} kHz/cm^{{2}}' for f in self.get_flux().n * array([1, fac])])
     # endregion DRAW
     # ----------------------------------------
 
