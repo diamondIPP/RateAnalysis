@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from numpy import polyfit, argmax, sum
 from src.event_alignment import *
-from plotting.draw import FitRes
+from plotting.draw import FitRes, make_poly_args
 from src.binning import Bins
 
 
@@ -289,7 +289,7 @@ class PixAlignment(EventAligment):
     def draw_offsets(self, **dkw):
         self.find_offsets()
         x, y = array([*self.Offsets]),  array([*self.Offsets.values()])
-        x, y = append(x.repeat(2)[1:], self.NEntries), y.repeat(2)
+        x, y = make_poly_args(x, y, last_x=self.NEntries)
         self.Draw.graph(x, y, 'All Offsets', **prep_kw(dkw, x_tit='Event Number', y_tit='Total Event Offset', draw_opt='al', lw=2, gridy=True, ndivy=105, **Draw.mode(2, rm=.05)))
 
     def draw_occupancies(self):
