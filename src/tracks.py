@@ -9,7 +9,7 @@ from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2r
 from src.sub_analysis import SubAnalysis
 from src.dut import Plane
 from plotting.draw import *
-from helpers.utils import do_pickle, arctan
+from helpers.utils import do_pickle, arctan, save_pickle
 from scipy.stats import norm
 
 
@@ -36,15 +36,18 @@ class Tracks(SubAnalysis):
         pickle_path = self.make_simple_pickle_path('Res{}{}'.format(mode.title(), roc), self.Cut.get_name(cut))
         return do_pickle(pickle_path, self.draw_residual, redo=redo, roc=roc, cut=cut, ret_res=True, show=False, mode=mode)
 
-    def get_unbiased_residual(self, roc=0, mode='x', cut='', redo=False):
-        pickle_path = self.make_simple_pickle_path('URes{}{}'.format(mode.title(), roc), self.Cut.get_name(cut))
-        return do_pickle(pickle_path, self.draw_unbiased_residual, redo=redo, roc=roc, cut=cut, fit=True, show=False, mode=mode)
+    @save_pickle('URes', suf_args='all')
+    def get_unbiased_residual(self, roc=0, mode='x', cut='', _redo=False):
+        return self.draw_unbiased_residual(roc, mode, cut, fit=True, show=False)
 
     def get_residuals(self, mode='x', cut='', unbias=False, redo=False):
-        return array([(self.get_unbiased_residual(roc, mode, cut, redo) if unbias else self.get_residual(roc, mode, cut, redo)) for roc in range(self.NRocs)])
+        return array([(self.get_unbiased_residual(roc, mode, cut, _redo=redo) if unbias else self.get_residual(roc, mode, cut, redo)) for roc in range(self.Run.NTelPlanes)])
 
-    def get_resolution(self, mode='x', cut=''):
-        return self.draw_resolution(mode, cut=cut, show=False)
+    def get_resolution(self, mode='x', cut='', unbias=False, redo=False):
+        return self.draw_resolution(mode, cut=cut, unbias=unbias, show=False, redo=redo)
+
+    def get_mean_resolution(self, cut='', unbias=True, redo=False):
+        return mean([self.get_resolution(m, cut, unbias, redo) for m in ['x', 'y']])
 
     def get_chi2_residual(self, roc, chi2, mode='x', redo=False):
         def f():
@@ -249,11 +252,11 @@ class Tracks(SubAnalysis):
             da = self.align(x, y, dx, dy)
         return dx, dy, da
 
-    def draw_resolution(self, mode='x', cut='', n=1e5, y_range=None, unbias=False, show=True):
-        z_ = self.get_z_positions()
-        r = self.get_residuals(mode=mode, cut=cut, unbias=unbias)
+    def draw_resolution(self, mode='x', cut='', n=1e5, unbias=False, redo=False, **dkw):
+        z_ = self.get_z_positions()[:self.Run.NTelPlanes]
+        r = self.get_residuals(mode=mode, cut=cut, unbias=unbias, redo=redo)
         x_range = -20, max(z_) + 20
-        self.Draw.graph(z_, [ufloat(0, ex) for ex in r], x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=choose(y_range, [-200, 200]), x_range=x_range, show=show)
+        self.Draw.graph(z_, [ufloat(0, ex) for ex in r], **prep_kw(dkw, x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=[-200, 200], x_range=x_range))
         x = array([norm.rvs(0, ir, size=int(n)) for ir in r])
         fits = array(polyfit(z_, x, deg=1))
         p = linspace(*x_range, 100)
