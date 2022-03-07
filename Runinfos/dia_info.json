@@ -54,7 +54,7 @@
     "type": {
       "201909": "pixel"
     },
-    "thickness": "None", 
+    "thickness": 285,
     "size": "None",
     "manufacturer": "PSI"
   }, 
@@ -65,7 +65,7 @@
     "type": {
       "201810": "pixel"
     },
-    "thickness": "None", 
+    "thickness": 285,
     "size": "None",
     "manufacturer": "PSI"
   }, 
@@ -616,7 +616,7 @@
       "201508": "pixel",
       "201510": "pixel"
     },
-    "thickness": "None", 
+    "thickness": 285,
     "size": "None",
     "manufacturer": "PSI"
   }, 
@@ -633,7 +633,7 @@
       "201708": "pixel",
       "201708-2": "pixel"
     },
-    "thickness": "None", 
+    "thickness": 285,
     "size": "None",
     "manufacturer": "PSI"
   }, 
