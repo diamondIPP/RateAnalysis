@@ -156,10 +156,10 @@ class PixAnalysis(DUTAnalysis):
     @save_pickle('PH', suf_args='all')
     def get_signal_disto(self, roc=None, cut=None, vcal=True, cutoff=None, _redo=False):
         x = self.get_tree_vec(self.get_ph_var(roc, vcal), self.Cut(cut))
-        x = x[... if cutoff is None else x < cutoff]
+        x = x if cutoff is None else x[x < cutoff]
         return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "ke"}]', show=False)
 
-    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, cutoff=False, **kwargs):
+    def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, cutoff=None, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, cutoff, _redo=redo)
         t = self.draw_threshold(1500, 0, h.GetMaximum(), draw_thresh)
         self.info(f'Real MPV: {Landau(h, self.find_fit_range(h)).get_mpv(draw=True):.2f}') if fit else do_nothing()
