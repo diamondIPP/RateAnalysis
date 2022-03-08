@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose
 from numpy import multiply
 
 
@@ -67,6 +67,9 @@ class DUT:
         rounded_edge = radius ** 2 * (4 - pi)
         return 2 ** i * base_length ** 2 + get_spacings(i, spacing, base_length) - rounded_edge
 
+    def get_e_field(self, bias):
+        return choose(bias, self.Bias) / self.Thickness
+
 
 def get_spacings(i, spacing, length):
     """ :returns: the additional spacings for the BCM' pad sizes """
@@ -87,11 +90,15 @@ class PixelDUT(DUT):
         self.ActivePixels = self.load_spec('active pixels', lst=True, default=[Plane.NCols, Plane.NRows])
         self.W, self.H = self.PX / self.GX * self.ActivePixels[0] / 1e3, self.PY / self.GY * self.ActivePixels[1] / 1e3
         self.ColDia = self.load_spec('column diameter', typ=float)
-        self.ColArea = (self.ColDia / 2) ** 2 * pi if self.ColDia else None
-        self.ColRatio = 2 * self.ColArea / self.A if self.ColDia else None  # two columns per cell
+        self.Is3D = self.ColDia is not None
+        self.ColArea = (self.ColDia / 2) ** 2 * pi if self.Is3D else None
+        self.ColRatio = 2 * self.ColArea / self.A if self.Is3D else None  # two columns per cell
 
     def get_area(self, bcm=False):
         return Plane.PixArea * multiply(*self.Size) * .01
+
+    def get_e_field(self, bias=None):
+        return choose(bias, self.Bias) / sqrt(self.PX ** 2 + self.PY ** 2) if self.Is3D else super().get_e_field(bias)
 
     @property
     def r_col2area(self):
