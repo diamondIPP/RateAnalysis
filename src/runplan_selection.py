@@ -15,6 +15,7 @@ from src.analysis import *
 from src.binning import Bins
 from src.run_selection import RunSelector
 from src.voltage_scan import VoltageScan
+from src.dut import PixelDUT
 
 
 class DiaScans(Analysis):
@@ -124,6 +125,9 @@ class DiaScans(Analysis):
     def get_biases(self):
         return [array([float(i.RunInfo[run][f'dia{i.DUTNr}hv']) for run in i.Runs]) for i in self.Info]
 
+    def get_e_fields(self):
+        return [array([i.DUT.get_e_field(float(i.RunInfo[run][f'dia{i.DUTNr}hv'])) for run in i.Runs]) for i in self.Info]
+
     def get_rp_values(self, sel, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         pickle_path = pickle_info.path(sel) if pickle_info else ''
         if file_exists(pickle_path) and not redo:
@@ -189,8 +193,8 @@ class DiaScans(Analysis):
     def get_fluxes(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
 
-    def get_x(self, avrg=False, redo=False):
-        return self.get_biases() if self.is_volt_scan else self.get_fluxes(avrg, redo)
+    def get_x(self, avrg=False, e_field=False, redo=False):
+        return (self.get_e_fields() if e_field else self.get_biases()) if self.is_volt_scan else self.get_fluxes(avrg, redo)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -225,8 +229,8 @@ class DiaScans(Analysis):
     def get_efficiency(self, avrg=False, redo=False):
         return self.get_values(PixCollection.get_efficiencies, PickleInfo('Eff', avrg), redo=redo, avrg=avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
-        return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
+    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, e_field=False, **kwargs):
+        return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
     def make_legend(self, g, dut=False, irrad=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {make_bias_str(x.Bias)}'
@@ -234,7 +238,7 @@ class DiaScans(Analysis):
         tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
         styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, scale=.7, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), show=False, **prep_kw(kw, styles=styles))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=.7, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), styles=styles))
     # endregion GET
     # ----------------------------------------
 
@@ -502,13 +506,14 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region PIXEL
-    def draw_efficiency(self, avrg=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]', marker=markers(i)) for i, (x, y) in enumerate(zip(self.get_x(avrg), self.get_efficiency(avrg, redo)))]
+    def draw_efficiency(self, avrg=False, e_field=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]', marker=markers(i)) for i, (x, y) in enumerate(zip(self.get_x(avrg, e_field), self.get_efficiency(avrg, redo)))]
         return self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name=fname('Efficiency', avrg), draw_opt='pl', y_range=[0, 105]))
 
-    def draw_cluster_size(self, avrg=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size', ) for x, y in zip(self.get_x(avrg), self.get_cluster_size(avrg, redo))]
-        return self.Draw.multigraph(g, 'Cluster Sizes', leg=self.make_legend(g, dut=True, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='ClusterSize', draw_opt='pl'))
+    def draw_cluster_size(self, avrg=False, e_field=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg, e_field), self.get_cluster_size(avrg, redo))]
+        leg = self.make_legend(g, dut=True, scale=1, **dkw)
+        return self.Draw.multigraph(g, 'Cluster Sizes', leg=leg, **prep_kw(dkw, **self.get_x_args(draw=True, e_field=e_field), file_name='ClusterSize', draw_opt='pl'))
     # endregion PIXEL
     # ----------------------------------------
 
@@ -554,6 +559,7 @@ class SelectionInfo:
         self.Type = sel.SelectedType.lower()
         self.Runs = sel.get_selected_runs()
         self.PulserType = sel.PulserType
+        self.DUT = PixelDUT(self.DUT.Number, self.RunInfo[self.Runs[0]])
 
     def __str__(self):
         return f'Selection instance: {self.TCString:<8} {self.RunPlan:<4} {self.DUTName}, {make_bias_str(self.Bias)}'

@@ -20,16 +20,16 @@ def v_scan(cls):
             return self.get_times() if vs_time else self.get_voltages()
 
         @staticmethod
-        def get_x_tit(vs_time=False, vs_irrad=False):  # noqa
-            return 'Time [hh:mm]' if vs_time else 'Voltage [V]'
+        def get_x_tit(vs_time=False, vs_irrad=False, e_field=False):  # noqa
+            return 'Time [hh:mm]' if vs_time else 'Electric Field [V/#mum]' if e_field else 'Voltage [V]'
 
         @staticmethod
         def get_x_draw(vs_time=False):
             return {'grid': vs_time}
 
         @staticmethod
-        def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
-            kw = prep_kw(kwargs, x_tit=VScan.get_x_tit(vs_time), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time), x_off=None if vs_time or vs_irrad else 1.1)
+        def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, e_field=False, **kwargs):
+            kw = prep_kw(kwargs, x_tit=VScan.get_x_tit(vs_time, 0, e_field), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time), x_off=None if vs_time or vs_irrad else 1.1)
             return {**kw, **VScan.get_x_draw(vs_time)} if draw else kw
 
         def get_repr_error(self, *args, **kwargs):  # noqa
