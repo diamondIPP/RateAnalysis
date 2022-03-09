@@ -238,7 +238,7 @@ class DiaScans(Analysis):
         tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
         styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=.7, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), styles=styles))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=.9, cols=cols, w=(.15 if dut else .25) + .1 * (cols - 1), styles=styles))
     # endregion GET
     # ----------------------------------------
 
@@ -344,9 +344,11 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region DRAWING
-    def draw_pulse_heights(self, avrg=False, redo=False, **dkw):
+    def draw_pulse_heights(self, avrg=False, ef_ax=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y, title='PH', y_tit=self.Ana.PhTit) for x, y in zip(self.get_x(avrg, redo), self.get_pulse_heights(avrg, redo))]
-        return self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name='PH', draw_opt='pl'))
+        mg = self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', tm=.116 if ef_ax else None))
+        self.draw_ef_axis(mg, ef_ax)
+        self.Draw.save_plots(fname('PH', avrg))
 
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
@@ -506,9 +508,16 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region PIXEL
-    def draw_efficiency(self, avrg=False, e_field=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y, title='Efficiency', y_tit='Hit Efficiency [%]', marker=markers(i)) for i, (x, y) in enumerate(zip(self.get_x(avrg, e_field), self.get_efficiency(avrg, redo)))]
-        return self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), file_name=fname('Efficiency', avrg), draw_opt='pl', y_range=[0, 105]))
+    def draw_ef_axis(self, mg, draw=True, **dkw):
+        if draw:
+            x, y = array([getattr(mg.GetXaxis(), f'GetX{i}')() for i in ['min', 'max']]), get_last_canvas().GetUymax()
+            Draw.x_axis(y, *x, 'Electric Field [V/#mum]', self.Info[0].DUT.get_e_field(x), **prep_kw(dkw, off=1.1, tit_size=.05, lab_size=.045, opt='-'))
+
+    def draw_efficiency(self, avrg=False, e_field=False, ef_ax=False, redo=False, **dkw):
+        g = [self.Draw.graph(x, y, 'Efficiency', y_tit='Hit Efficiency [%]', marker=markers(i), show=False) for i, (x, y) in enumerate(zip(self.get_x(avrg, e_field), self.get_efficiency(avrg, redo)))]
+        mg = self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True, e_field=e_field), draw_opt='pl', y_range=[0, 105], tm=.116 if ef_ax else None))
+        self.draw_ef_axis(mg, ef_ax)
+        self.Draw.save_plots(fname('Efficiency', avrg))
 
     def draw_cluster_size(self, avrg=False, e_field=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg, e_field), self.get_cluster_size(avrg, redo))]
