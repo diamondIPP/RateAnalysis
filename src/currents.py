@@ -220,7 +220,7 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region PLOTTING
-    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, show=True, fname=None):
+    def draw(self, rel_time=False, ignore_jumps=True, v_range=None, c_range=None, averaging=1, draw_opt='al', with_flux=False, f_range=None, cunit='nA', **dkw):
         self.reload_data(ignore_jumps)
         if self.Data is None:
             return warning('no current data!')
@@ -229,22 +229,22 @@ class Currents(Analysis):
         if with_flux:
             gv = self.Ana.draw_flux(rel_time=rel_time, show=False)
             format_histo(gv, title=self.get_title(), fill_color=4000, fill_style=4000, lw=3, y_range=choose(f_range, [5, 20000]), y_tit='Flux [kHz/cm^{2}]')
+        c = array(c) / {'nA': 1, '#muA': 1000}[cunit]
         gc = Draw.make_tgrapherrors(t, c)
-        format_histo(gc, x_tit='Time [hh:mm]', y_tit='Current [nA]', yax_col=self.CCol, color=self.CCol, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]))
+        format_histo(gc, x_tit='Time [hh:mm]', y_tit=f'Current [{cunit}]', yax_col=self.CCol, color=self.CCol, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]))
         x_range = [gv.GetBinLowEdge(1), gv.GetBinLowEdge(gv.GetNbinsX() + 1)] if with_flux else [t[0], t[-1]]
         for g in [gc, gv]:
             format_histo(g, lab_size=.05, x_off=1.05, tit_size=.06, t_ax_off=t[0] if rel_time else 0, y_off=.8, center_y=True, x_range=x_range, markersize=self.MS, stats=0)
         m = [.09, .09, .2, .02]
-        self.Draw(gv, show=show, m=m, w=1.5, h=.75, draw_opt='{}y+'.format('hist' if with_flux else draw_opt), logy=with_flux)
+        self.Draw(gv, **prep_kw(dkw, **Draw.mode(2), m=m, draw_opt='{}y+'.format('hist' if with_flux else 'al'), logy=with_flux))
         Draw.tpad('pc', transparent=True, margins=m)
         gc.Draw(draw_opt)
-        save_name = '{}_{}{}'.format(self.get_run_number(), self.DUT.Name, 'Flux' if with_flux else '')
-        self.Draw.save_plots(choose(fname, save_name), show=show, ftype='png')
+        self.Draw.save_plots(**prep_kw(dkw, savename=f'{self.get_run_number()}_{self.DUT}{"Flux" if with_flux else ""}', ftype='png'))
         return gc
 
-    def draw_profile(self, bin_width=5, show=True):
+    def draw_profile(self, bw=5, show=True):
         x, y = self.Data['timestamps'], self.Data['currents']
-        return self.Draw.profile(x, y, make_bins(x[0], x[-1], bin_width), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, w=1.5,
+        return self.Draw.profile(x, y, make_bins(x[0], x[-1], bw), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, w=1.5,
                                  h=.75, lm=.08, y_off=.8, show=show, stats=set_entries())
 
     def draw_distribution(self, show=True):

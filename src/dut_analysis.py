@@ -113,7 +113,7 @@ class DUTAnalysis(Analysis):
         self.draw_hitmap(show=False)
         self.draw_signal_distribution(show=False)
         self.draw_signal_map(show=False)
-        self.Currents.draw(show=False, fname='Current')
+        self.Currents.draw(show=False, savename='Current')
         self.draw_flux(save=self.has_branch('rate'), show=False)
         self.draw_pulse_height(show=False)
         self.Draw.print_http('plots.html', force_print=print_link)

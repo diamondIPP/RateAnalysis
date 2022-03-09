@@ -600,8 +600,8 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region CURRENT
-    def draw_currents(self, v_range=None, rel_time=False, averaging=True, with_flux=False, c_range=None, f_range=None, draw_opt='al', show=True, fname=None):
-        self.Currents.draw(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, show=show, draw_opt=draw_opt, fname=fname)
+    def draw_currents(self, v_range=None, rel_time=False, averaging=True, with_flux=False, c_range=None, f_range=None, cunit='nA', **dkw):
+        self.Currents.draw(rel_time=rel_time, v_range=v_range, averaging=averaging, with_flux=with_flux, c_range=c_range, f_range=f_range, cunit=cunit, **prep_kw(dkw, savename='Currents'))
 
     def draw_iv(self, show=True):
         g = self.Currents.draw_iv(show=False)
