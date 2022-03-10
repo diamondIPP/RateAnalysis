@@ -112,7 +112,7 @@ class Currents(Analysis):
     def init_dut(self, number):
         if self.Ana is not None:
             return self.Ana.DUT
-        elif self.RunSelection.has_selected_runs():
+        elif self.RunSelection.has_selected_runs:
             return self.RunSelection.SelectedDUT
         from dut import DUT
         return DUT(number, next(log for log in self.RunLogs.values() if conv_log_time(log['starttime0']) > self.Begin))
@@ -120,7 +120,7 @@ class Currents(Analysis):
     def load_device_str(self):
         if self.Ana is not None:
             run_info = self.Ana.FirstAnalysis.Run.Info if self.IsCollection else self.Ana.Run.Info
-        elif self.RunSelection.has_selected_runs():
+        elif self.RunSelection.has_selected_runs:
             run_info = self.RunLogs[self.RunSelection.get_selected_runs()[0]]
         else:
             run_info = next(log for log in self.RunLogs.values() if conv_log_time(log['starttime0']) > self.Begin)
