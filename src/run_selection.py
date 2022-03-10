@@ -372,7 +372,7 @@ class RunSelector(object):
         self.Selection[arange(run)] = False
 
     def select_runs_in_range(self, minrun, maxrun, dut=1):
-        self.select_runs([run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut)
+        self.select_runs(*[run for run in self.RunNumbers if int(maxrun) >= run >= int(minrun)], dut=dut)
 
     def select_runs(self, *runs, dut=1):
         for run in runs:
