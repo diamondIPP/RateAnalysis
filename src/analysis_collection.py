@@ -18,7 +18,8 @@ class AnalysisCollection(Analysis):
     """ Analysis of the various runs of a single runplan. """
 
     StartTime = None
-    PhTit = 'Pulse Height [mV]'
+    PhUnit = '[mV]'
+    PhTit = f'Pulse Height {PhUnit}'
 
     def __init__(self, name, dut_nr, testcampaign=None, load_tree=True, verbose=False):
 
@@ -518,8 +519,9 @@ class AnalysisCollection(Analysis):
     def draw_fwhm(self, arg=1, t=False, vs_irrad=False, use_fwc=True, avrg=False, redo=False, **kwargs):
         x, y = self.get_x_var(t, vs_irrad, avrg), self.get_uniformities(use_fwc, redo, avrg=avrg)[:, arg]
         ph_var = 'FWC' if use_fwc else 'Mean'
-        var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
-        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(t, vs_irrad=vs_irrad, draw=True), file_name=fname(var, avrg, t)))
+        var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], f' {self.PhUnit}' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
+        f = fname('Uni' if arg == 2 else var, avrg, t)
+        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(t, vs_irrad=vs_irrad, draw=True), file_name=f))
 
     def draw_means(self, vs_time=False, vs_irrad=False, avrg=False, redo=False, **kwargs):
         return self.draw_fwhm(0, vs_time, vs_irrad, False, avrg, redo, **kwargs)

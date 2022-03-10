@@ -10,7 +10,8 @@ from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw, ufloat, 
 
 class PixCollection(AnalysisCollection):
 
-    PhTit = 'Pulse Height [vcal]'
+    PhUnit = '[vcal]'
+    PhTit = f'Pulse Height {PhUnit}'
 
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
         AnalysisCollection.__init__(self, run_plan, dut_nr, test_campaign, load_tree, verbose)
@@ -48,7 +49,7 @@ class PixCollection(AnalysisCollection):
 
     def draw_cluster_sizes(self, avrg=False, t=False, redo=False, **dkw):
         x, y = self.get_x_var(t, avrg=avrg), self.get_cluster_sizes(avrg, redo)
-        return self.Draw.graph(x, y[:, 0], 'Cluster Size', **prep_kw(dkw, y_tit='Cluster Size', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=f'ClusterSize{"Avr" if avrg else ""}'))
+        return self.Draw.graph(x, y[:, 0], 'Cluster Size', **prep_kw(dkw, y_tit='Cluster Size', **self.get_x_args(t, draw=True), draw_opt='ap', file_name=f'ClusterSize{"Avr" if avrg else ""}'))
 
 
 if __name__ == '__main__':

@@ -31,10 +31,6 @@ class PixAnalysis(DUTAnalysis):
 
         self.print_finished(prnt=prnt)
 
-    def make_eff(self):
-        from pixel.efficiency import Efficiency
-        return Efficiency(self)
-
     # ----------------------------------------
     # region INIT
     @staticmethod
@@ -46,6 +42,10 @@ class PixAnalysis(DUTAnalysis):
 
     def update_config(self):
         self.Config.read(join(self.Dir, 'config', self.TCString, 'PixelConfig.ini'))
+
+    def make_eff(self):
+        from pixel.efficiency import Efficiency
+        return Efficiency(self)
     # endregion INIT
     # ----------------------------------------
 
@@ -116,7 +116,7 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         """ draw hitmap or cluster map """
-        return self.Draw(self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show=False), **dkw)
+        return self.Draw(self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show=False, **dkw), **dkw)
 
     def draw_occupancy_trend(self, cut=None, fid=False, bin_size=None, **kwargs):
         cut = self.Cut.generate_custom(exclude='fiducial' if not fid else []) if cut is None else self.Cut(cut)
@@ -224,7 +224,7 @@ class PixAnalysis(DUTAnalysis):
         ecut = ... if cutoff is None else zz < cutoff
         h = self.Draw.prof2d(x[ecut], y[ecut], zz[ecut], Bins.get_pixel(), show=False)
         e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
-        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Cluster Column', y_tit='Cluster Row', z_tit='Pulse Height [vcal]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01)))
+        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Cluster Column', y_tit='Cluster Row', z_tit='Pulse Height [vcal]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01), file_name='VcalOcc'))
 
     def draw_adc_fixed_vcal_map(self, vcal=200, **kwargs):
         cols, rows = self.Cut.get_fid_lines()
@@ -422,7 +422,7 @@ class PixAnalysis(DUTAnalysis):
             return l - 2 * l0 - l2
         if a < arctan(3 * s / t):
             return l - 3 * l0
-        return 500
+        return 1
 
     def mpath(self, a, cols=1):
         # TODO: integrate over other direction ...
