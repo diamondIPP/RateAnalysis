@@ -3,11 +3,12 @@
 #       Class do overwrite methods in case of angle scans
 # created on January 30th 2022 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from numpy import insert
+from numpy import insert, cos, deg2rad, mean
 
 from pad.collection import PadCollection, AnalysisCollection
 from pixel.collection import PixCollection
-from plotting.draw import array, ufloat, prep_kw
+from plotting.draw import array, ufloat, prep_kw, choose, get_graph_y, format_statbox
+from plotting.fit import make_fit
 
 
 def a_scan(cls):
@@ -47,6 +48,12 @@ def a_scan(cls):
 
         def draw_legend(self, graphs, **kwargs):  # noqa
             return super(AScan, self).draw_legend(graphs, x=.75)
+
+        def fit_ph(self, g, amin=-10, amax=35):
+            a0, a1 = sorted([choose(amin, -amax), amax])
+            make_fit(g, lambda x, ph, off: ph / cos(deg2rad(x - off)), a0, a1, start_values=[mean(get_graph_y(g, err=False)), 0], par_names=['ph_{0}', 'a_{0}']).fit()
+            format_statbox(g, fit=True, form='.0f')
+            self.Draw.save_plots('PHAngleFit')
 
     return AScan
 
