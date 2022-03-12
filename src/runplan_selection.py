@@ -147,6 +147,14 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
+    def get_scaled_pulse_heights(self, avrg=False, redo=False):
+        """ scale the ph to the mean of the pulse heights in the 'min flux range' """
+        def scale_ph(x, y):
+            xmin, xmax = self.MainConfig.get_list('MAIN', 'min flux range')
+            y0 = y[where((x >= xmin) & (x <= xmax))]
+            return y / mean(y0).n
+        return [scale_ph(x, y) for x, y in zip(self.get_fluxes(avrg), self.get_pulse_heights(avrg, redo))]
+
     def get_rate_dependencies(self, avrg=True, redo=False):
         return array(self.get_values(self.Ana.get_rate_dependence, PickleInfo('PHRD', avrg), avrg=avrg, redo=redo))
 
@@ -232,9 +240,10 @@ class DiaScans(Analysis):
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, e_field=False, **kwargs):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
-    def make_legend(self, g, dut=False, irrad=False, **kw):
+    def make_legend(self, g, dut=None, irrad=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {make_bias_str(x.Bias)}'
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
+        dut = choose(dut, len(set(self.get_dut_names())) > 1)
         tits = [w for i in self.Info for w in [i.DUTName if dut else tc2str(i.TCString, short=False), bias(i), irr(i)] if w]
         cols = len(tits) // len(g)
         styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
@@ -349,6 +358,12 @@ class DiaScans(Analysis):
         mg = self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', tm=.116 if ef_ax else None))
         self.draw_ef_axis(mg, ef_ax)
         self.Draw.save_plots(fname('PH', avrg))
+
+    def draw_scaled_pulse_heights(self, avrg=False, redo=False, yr=None, **dkw):
+        x, y = self.get_x(avrg, redo), self.get_scaled_pulse_heights(avrg, redo)
+        g = [self.Draw.graph(ix, iy, title='PH', y_tit='Normalised Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
+        f, yr = fname('NormalPH', avrg), None if yr is None else [1 - yr, 1 + yr]
+        return self.Draw.multigraph(g, 'Scaled Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', file_name=f, y_range=yr))
 
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
