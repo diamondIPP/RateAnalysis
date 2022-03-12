@@ -43,10 +43,10 @@ class Efficiency(PixAnalysis):
     def get_map(self, res=None, fid=False, cut=None, local=False, _redo=False):
         x, y, zz = self.get_tree_vec(self.get_track_vars(local=local) + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
-        return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, leg=self.Cut.get_fid(), show=False)
+        return self.Draw.prof2d(x, y, zz * 100, Bins.get_global(res), tit, x_tit=xtit, y_tit=ytit, z_tit=ztit, show=False)
 
     def draw_map(self, res=None, fid=False, cut=None, local=False, redo=False, **dkw):
-        return self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, file_name='EfficiencyMap'))
+        return self.Draw(self.get_map(res, fid, cut, local, _redo=redo), **prep_kw(dkw, leg=self.Cut.get_fid(), file_name='EfficiencyMap'))
 
     def get_mod_vars(self, mx=1, my=1, ox=0, oy=0, cut=None, max_angle=None, expand=True, **kwargs):
         return super(Efficiency, self).get_mod_vars(mx, my, ox, oy, zvar=self.get_var(percent=True), cut=cut, expand=expand)
