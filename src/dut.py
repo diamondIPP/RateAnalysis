@@ -2,12 +2,15 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose, add_err
 from numpy import multiply
 
 
 class DUT:
     """ Class with all information about a single DUT. """
+
+    K = add_err(ufloat(2.65, .13), .18) * 1e-18  # damage constant for neutrons in pCVD diamond [cm²/um]
+
     def __init__(self, number, run_info):
 
         self.Config = load_main_config()
@@ -68,7 +71,15 @@ class DUT:
         return 2 ** i * base_length ** 2 + get_spacings(i, spacing, base_length) - rounded_edge
 
     def get_e_field(self, bias):
-        return choose(bias, self.Bias) / self.Thickness
+        return choose(bias, self.Bias) / self.max_drift_distance
+
+    @property
+    def max_drift_distance(self):
+        return self.Thickness
+
+    @property
+    def max_fluence(self):
+        return 1 / (self.K * self.max_drift_distance)
 
 
 def get_spacings(i, spacing, length):
@@ -97,8 +108,9 @@ class PixelDUT(DUT):
     def get_area(self, bcm=False):
         return Plane.PixArea * multiply(*self.Size) * .01
 
-    def get_e_field(self, bias=None):
-        return choose(bias, self.Bias) / sqrt(self.PX ** 2 + self.PY ** 2) if self.Is3D else super().get_e_field(bias)
+    @property
+    def max_drift_distance(self):
+        return sqrt(self.PX ** 2 + self.PY ** 2) / 2 if self.Is3D else self.Thickness
 
     @property
     def r_col2area(self):
