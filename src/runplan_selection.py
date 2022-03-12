@@ -519,9 +519,9 @@ class DiaScans(Analysis):
         self.draw_ef_axis(mg, ef_ax)
         self.Draw.save_plots(fname('Efficiency', avrg))
 
-    def draw_cluster_size(self, avrg=False, e_field=False, redo=False, **dkw):
+    def draw_cluster_size(self, avrg=False, e_field=False, dut=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg, e_field), self.get_cluster_size(avrg, redo))]
-        leg = self.make_legend(g, dut=True, scale=1, **dkw)
+        leg = self.make_legend(g, dut=dut, scale=1, **dkw)
         return self.Draw.multigraph(g, 'Cluster Sizes', leg=leg, **prep_kw(dkw, **self.get_x_args(draw=True, e_field=e_field), file_name='ClusterSize', draw_opt='pl'))
     # endregion PIXEL
     # ----------------------------------------
