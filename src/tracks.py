@@ -166,9 +166,10 @@ class Tracks(SubAnalysis):
         format_histo(mg, x_tit='#chi^{2} [quantile]', y_tit='Residual Standard Deviation [#mum]', y_off=1.5, y_range=y_range, draw_first=True)
         self.Draw(mg, 'EventOffsets', show, draw_opt='ap', leg=leg, lm=.13)
 
-    def draw_rel_signal_vs_angle(self, a_max=4, **dkw):
-        f = Draw.make_tf1('a', lambda x: 1 / cos(deg2rad(x)), -a_max, a_max)
-        self.Draw(f, lm=.121, **prep_kw(dkw, file_name='SigAngle', x_tit='Track Angle [deg]', y_tit='Relative Signal', y_off=1.6, y_range=[1, 1.01]))
+    def draw_rel_signal_vs_angle(self, ph0=1, amax=4, amin=None, **dkw):
+        a0, a1 = sorted([choose(amin, -amax), amax])
+        f = Draw.make_tf1('a', lambda x: ph0 / cos(deg2rad(x)), a0, a1)
+        self.Draw(f, **prep_kw(dkw, file_name='SigAngle', x_tit='Track Angle [deg]', y_tit='Relative Signal', lm=.144, y_off=1.5, y_range=[1, 1.01]))
 
     def draw_beam_profile(self, mode='x', fit=True, res=.7, **dkw):
         p = getattr(self.Ana.draw_hitmap(res, show=False, prnt=False), f'Projection{mode.title()}')()
