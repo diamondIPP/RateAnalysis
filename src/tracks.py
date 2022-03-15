@@ -6,11 +6,13 @@
 
 from ROOT import TCut, TF1, TMultiGraph, THStack
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
-from src.sub_analysis import SubAnalysis
-from src.dut import Plane
-from plotting.draw import *
-from helpers.utils import do_pickle, arctan, save_pickle
 from scipy.stats import norm
+
+from helpers.utils import arctan, save_pickle, update_pbar, quiet
+from plotting.draw import *
+from plotting.fit import Gauss
+from src.dut import Plane
+from src.sub_analysis import SubAnalysis
 
 
 class Tracks(SubAnalysis):
@@ -27,34 +29,33 @@ class Tracks(SubAnalysis):
         a = self.get_tree_vec(var='angle_{}'.format(mode))
         return a[a != -999]
 
-    def get_mean_angle(self, mode='x', redo=False):
-        def f():
-            return mean_sigma(self.get_angles(mode))
-        return do_pickle(self.make_simple_pickle_path('TrackAngle{}'.format(mode)), f, redo=redo)
+    @save_pickle('TrackAngle', suf_args='all')
+    def get_mean_angle(self, mode='x', _redo=False):
+        return mean_sigma(self.get_angles(mode))
 
-    def get_residual(self, roc=0, mode='x', cut='', redo=False):
-        pickle_path = self.make_simple_pickle_path('Res{}{}'.format(mode.title(), roc), self.Cut.get_name(cut))
-        return do_pickle(pickle_path, self.draw_residual, redo=redo, roc=roc, cut=cut, ret_res=True, show=False, mode=mode)
+    @save_pickle('Res', suf_args='all')
+    def get_residual(self, roc=0, mode='x', cut='', _redo=False):
+        return self.draw_residual(roc, mode, cut, ret_res=True, show=False)
 
     @save_pickle('URes', suf_args='all')
     def get_unbiased_residual(self, roc=0, mode='x', cut='', _redo=False):
         return self.draw_unbiased_residual(roc, mode, cut, fit=True, show=False)
 
     def get_residuals(self, mode='x', cut='', unbias=False, redo=False):
-        return array([(self.get_unbiased_residual(roc, mode, cut, _redo=redo) if unbias else self.get_residual(roc, mode, cut, redo)) for roc in range(self.Run.NTelPlanes)])
+        return array([(self.get_unbiased_residual(roc, mode, cut, _redo=redo) if unbias else self.get_residual(roc, mode, cut, _redo=redo)) for roc in range(self.Run.NTelPlanes)])
 
     def get_resolution(self, mode='x', cut='', unbias=False, redo=False):
         return self.draw_resolution(mode, cut=cut, unbias=unbias, show=False, redo=redo)
 
+    @update_pbar
     def get_mean_resolution(self, cut='', unbias=True, redo=False):
         return mean([self.get_resolution(m, cut, unbias, redo) for m in ['x', 'y']])
 
-    def get_chi2_residual(self, roc, chi2, mode='x', redo=False):
-        def f():
-            self.Cut.set_chi2(chi2)
-            values = self.get_tree_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
-            return mean_sigma(values)[1]
-        return do_pickle(self.make_simple_pickle_path('Res{}'.format(mode.title()), chi2, dut=roc), f, redo=redo)
+    @save_pickle('Res', suf_args='all')
+    def get_chi2_residual(self, roc, chi2, mode='x', _redo=False):
+        self.Cut.set_chi2(chi2)
+        values = self.get_tree_vec(var='residuals_{m}[{r}]*1e4'.format(m=mode, r=roc), cut=self.Cut())
+        return mean_sigma(values)[1]
 
     def get_chi2_residuals(self, roc, chi2s=None, mode='x'):
         chi2s = choose(chi2s, arange(10, 101, 10))
@@ -191,10 +192,10 @@ class Tracks(SubAnalysis):
     def draw_residual(self, roc, mode='x', cut='', fit=False, ret_res=False, **dkw):
         x = self.get_tree_vec(f'{self.get_res_var(mode)}[{roc}]', self.Cut(cut)) * 1e4  # convert to [um]
         tit = f'{mode.title() if mode else ""} Residuals for Plane {roc}'
-        h = self.Draw.distribution(x, show=False, title=tit, x_tit='Distance [#mum]', normalise=True)
-        res = self.fit_residual(h, show=fit)
-        self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', y_off=2.0, lm=.14, stats=set_statbox(fit=fit, all_stat=True)))
-        return res if ret_res else h
+        h = self.Draw.distribution(x, **prep_kw(dkw, show=False, title=tit, x_tit='Distance [#mum]', normalise=True))
+        f = self.fit_residual(h)
+        self.Draw(h, **prep_kw(dkw, file_name=f'{mode.title() if mode else ""}ResidualRoc{roc}', leg=f.Fit, y_off=1.5, lm=.14, stats=set_statbox(fit=fit, all_stat=True, fit_opt=10)))
+        return f[2] if ret_res else h
 
     def get_residual_fit(self, plane=0, m='x', cut=None):
         """ :return FWHM fit of the residual with a Gaussian."""
@@ -213,8 +214,8 @@ class Tracks(SubAnalysis):
         fits = polyfit(delete(x, roc), delete(y, roc, axis=0), deg=1)
         v = (polyval(fits, x[roc]) - y[roc]) * 1e3  # to mm -> um
         tit = 'Unbiased Residuals in {} for Plane {}'.format(mode.title(), roc)
-        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, **prep_kw(dkw, y_off=2.0, x_tit='Distance [#mum]', normalise=True, lm=.14))
-        res = mean_sigma(v, err=0)[1] if 'chi2' in self.Cut.get_name(cut) else self.fit_residual(h, show=fit)
+        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, **prep_kw(dkw, y_off=1.5, x_tit='Distance [#mum]', normalise=True, lm=.14, stats=set_statbox(fit=fit, all_stat=True, fit_opt=10)))
+        res = mean_sigma(v, err=0)[1] if 'chi2' in self.Cut.get_name(cut) else self.fit_residual(h, show=fit)[2]
         return res if fit else h
 
     def draw_raw_residuals(self, roc=None, steps=0, show=True):
@@ -253,23 +254,6 @@ class Tracks(SubAnalysis):
             da = self.align(x, y, dx, dy)
         return dx, dy, da
 
-    def draw_resolution(self, mode='x', cut='', n=1e5, unbias=False, redo=False, **dkw):
-        z_ = self.get_z_positions()[:self.Run.NTelPlanes]
-        r = self.get_residuals(mode=mode, cut=cut, unbias=unbias, redo=redo)
-        x_range = -20, max(z_) + 20
-        self.Draw.graph(z_, [ufloat(0, ex) for ex in r], **prep_kw(dkw, x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=[-200, 200], x_range=x_range))
-        x = array([norm.rvs(0, ir, size=int(n)) for ir in r])
-        fits = array(polyfit(z_, x, deg=1))
-        p = linspace(*x_range, 100)
-        z0 = polyval(fits, p.reshape(p.size, 1))
-        ex = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in z0]])
-        g = self.Draw.make_tgrapherrors(p, ex, fill_color=634, opacity=.5)
-        g.Draw('e3')
-        xm, ym = mean(z_), mean_sigma(polyval(fits, mean(z_)))[1].n
-        Draw.arrow(xm, xm, -ym, ym, width=2, opt='<|>', size=.02)
-        Draw.tlatex(xm, ym + 10, '{:2.0f}#mum'.format(ym), align=21)
-        return min(e.s for e in ex)
-
     @staticmethod
     def calc_residual_step(x, y, z_positions):
         x_fits, y_fits = [polyfit(z_positions, vec, 1) for vec in [x, y]]
@@ -297,7 +281,13 @@ class Tracks(SubAnalysis):
         return angles
 
     @staticmethod
-    def fit_residual(h, show=True):
+    def fit_residual(h, r=.2, show=True):
+        ymax = FitRes(h.Fit('gaus', 'qs0', '', -1000, 1000))[0].n
+        fit_range = [h.GetBinCenter(f(ymax * r)) for f in [h.FindFirstBinAbove, h.FindLastBinAbove]]
+        return Gauss(h, fit_range, npx=500, fl=0, fh=0).fit(draw=show)
+
+    @staticmethod
+    def fit_residual_old(h, show=True):
         fit = Draw.make_f('f', 'gaus(0) + gaus(3)', npx=500)
         sigma = (get_fwhm(h) / (2 * sqrt(2 * log(2)))).n
         fit.SetParLimits(2, sigma / 2, 5 * sigma)
@@ -323,6 +313,34 @@ class Tracks(SubAnalysis):
         print(polyval(f, 0) * 1000)
         return f
     # endregion RESIDUALS
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region RESOLUTION
+    def draw_resolution(self, mode='x', cut='', n=1e5, unbias=False, redo=False, **dkw):
+        z_ = self.get_z_positions()[:self.Run.NTelPlanes]
+        r = uarr2n(self.get_residuals(mode=mode, cut=cut, unbias=unbias, redo=redo))
+        x_range = -20, max(z_) + 20
+        self.Draw.graph(z_, [ufloat(0, ex) for ex in r], **prep_kw(dkw, x_tit='z [mm]', y_tit='{} [#mum]'.format(mode.lower()), y_range=[-195, 195], x_range=x_range))
+        x = array([norm.rvs(0, ir, size=int(n)) for ir in r])
+        fits = array(polyfit(z_, x, deg=1))
+        p = linspace(*x_range, 100)
+        z0 = polyval(fits, p.reshape(p.size, 1))
+        ex = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in z0]])
+        g = self.Draw.make_tgrapherrors(p, ex, fill_color=634, opacity=.5)
+        g.Draw('e3')
+        xm, ym = mean(z_), mean_sigma(polyval(fits, mean(z_)))[1].n
+        Draw.arrow(xm, xm, -ym, ym, width=2, opt='<|>', size=.02)
+        Draw.tlatex(xm, ym + 10, f'{ym:2.0f}#kern[.1]{{#mum}}', align=21)
+        return min(e.s for e in ex)
+
+    @quiet
+    def draw_resolution_vs_chi2(self, np=10, **dkw):
+        x = linspace(100 // np, 100, np, dtype='i')
+        self.PBar.start(x.size, counter=True)
+        y = [self.get_mean_resolution(self.Cut.make(f'q{q}', self.Cut.generate_chi2s(q))) for q in x]
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Mean Resolution [#mum]'))
+    # endregion RESOLUTION
     # ----------------------------------------
 
 
