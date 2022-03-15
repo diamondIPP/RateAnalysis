@@ -336,10 +336,10 @@ class Tracks(SubAnalysis):
 
     @quiet
     def draw_resolution_vs_chi2(self, np=10, **dkw):
-        x = linspace(100 // np, 100, np, dtype='i')
+        x = linspace(max(6, 100 // np), 100, np, dtype='i')
         self.PBar.start(x.size, counter=True)
-        y = [self.get_mean_resolution(self.Cut.make(f'q{q}', self.Cut.generate_chi2s(q))) for q in x]
-        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Mean Resolution [#mum]'))
+        y = [self.get_mean_resolution(self.Cut.make(f'chi{q}', self.Cut.generate_chi2s(q))) for q in x]
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Mean Resolution [#mum]', y_range=[0, max(y) * 1.2]))
     # endregion RESOLUTION
     # ----------------------------------------
 
