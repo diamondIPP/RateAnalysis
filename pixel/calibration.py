@@ -5,7 +5,8 @@
 # --------------------------------------------------------
 
 from helpers.utils import join, file_exists, save_pickle, choose, prep_kw, deepcopy, warning, is_iter
-from plotting.draw import FitRes
+from plotting.draw import FitRes, Draw
+from plotting.fit import Erf
 from numpy import genfromtxt, arange, array, concatenate, full
 from src.sub_analysis import SubAnalysis
 from src.dut import Plane
@@ -137,6 +138,14 @@ class Calibration(SubAnalysis):
     def draw_chi2(self, **dkw):
         x = self.get_chi2s()
         self.Draw.distribution(x[x != 999], **prep_kw(dkw, lf=.1, q=.001, x_tit='#chi^{2} / DOF', title='#chi^{2} distribution of the calibration fits'))
+
+    @staticmethod
+    def draw_erf():
+        e0 = Erf(fit_range=[0, 100], pars=[20, 200, 20, 20], npx=1000)
+        e0.draw(line_style=7, x_tit='Charge [au]', y_tit='Pulse Height [adc]', **Draw.mode(2), gridy=True, ndivy=3, l_off_x=5, tick_size=0, center_tit=True)
+        Draw.make_tf1('b', lambda x: 0 if x < e0.Fit.GetX(0) else e0.Fit(x), 0, 100, npx=1000).Draw('same')
+        # Erf(fit_range=[0, 100], pars=[20, 150, 20, 30]).draw(draw_opt='same', line_style=7, color=1)
+        # Erf(fit_range=[0, 100], pars=[50, 200, 20, 20]).draw(draw_opt='same', line_style=7, color=2)
     # endregion DRAW
     # ----------------------------------------
 
