@@ -59,9 +59,9 @@ class Efficiency(PixAnalysis):
         """ in pixel of ROC"""
         return self.draw_in(Plane.PX, Plane.PY, ox, oy, nbins, cut, max_angle, **prep_kw(dkw, title='In Pixel Efficiency', z_tit='Efficiency [%]'))
 
-    def draw_vs_chi2(self, **dkw):
+    def draw_vs_chi2(self, n=2, **dkw):
         x, e = self.get_tree_vec(['chi2_tracks', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
-        self.Draw.efficiency(x, e, find_bins(x, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(dkw, x_tit='Track #chi^{2}'))
+        self.Draw.efficiency(x, e, find_bins(x, n=n, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(dkw, x_tit='Track #chi^{2}', file_name='EffChi'))
 
     def draw_vs_chi2_cut(self, step=5, **dkw):
         cx, cy, e = self.get_tree_vec(['chi2_x', 'chi2_y', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
