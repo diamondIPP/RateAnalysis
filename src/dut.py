@@ -28,6 +28,7 @@ class DUT:
         self.Specs = load_json(join(self.Dir, 'Runinfos', 'dia_info.json'))[self.Key]
         self.Type = self.load_spec('type', default='pad')
         self.Irradiation = self.load_spec('irradiation')
+        self.Version = self.load_spec('version')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
         self.Size = self.load_spec('size', lst=True, default=[5, 5])
@@ -40,6 +41,9 @@ class DUT:
 
     def __repr__(self):
         return f'{self.__class__.__name__} {self.Number}, {self.Name}, Bias: {self.Bias:1.0f}V'
+
+    def full_name(self, tc):
+        return str(self) if self.Version is None else f'{self}-V{next((i for i, v in enumerate(self.Version) if v > tc), len(self.Version))}'
 
     def load_irradiation(self):
         with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
