@@ -5,8 +5,8 @@
 # --------------------------------------------------------
 from plotting.draw import *  # import everything so that methods are available in ipython
 from helpers.utils import *
-from src.binning import Bins
-_ = Bins.Verbose
+from src.binning import Bins  # noqa
+from numpy import *
 
 
 def analysis_selector(run_, dut_, tc, tree, verbose=False, prnt=True):
@@ -89,6 +89,7 @@ if __name__ == '__main__':
         except AttributeError:
             pass
         if pargs.draw:
+            from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
     elif isfloat(pargs.runplan) or pargs.collection:
         z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
