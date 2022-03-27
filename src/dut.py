@@ -2,8 +2,9 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose, add_err
-from numpy import multiply
+from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose, add_err, prep_kw, update_pbar, PBar, do_nothing
+from numpy import multiply, deg2rad, tan, rad2deg, arange, cos, sin, arctan, linspace, mean, invert, isnan
+from plotting.draw import Draw, bins_from_vec
 
 
 class DUT:
@@ -105,6 +106,9 @@ class PixelDUT(DUT):
         self.ColArea = (self.ColDia / 2) ** 2 * pi if self.Is3D else None
         self.ColRatio = 2 * self.ColArea / self.A if self.Is3D else None  # two columns per cell
 
+        self.Draw = Draw()
+        self.PBar = PBar()
+
     def get_area(self, bcm=False):
         return Plane.PixArea * multiply(*self.Size) * .01
 
@@ -115,6 +119,169 @@ class PixelDUT(DUT):
     @property
     def r_col2area(self):
         return f'{self.ColRatio * 100:.2f} %'
+    
+    def crit_angle(self, n=1, x=None):
+        return arctan(n * choose(x, self.PX) / self.Thickness)
+
+    def n_cells(self, a):
+        return tan(a) * self.Thickness / self.PX
+
+    def draw_n_cells(self, amax=30, **dkw):
+        f = Draw.make_tf1('n cells', lambda x: self.n_cells(deg2rad(x)) + 1, 0, amax, npx=200)
+        return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Number of Intersected Cells', y_range=[0, f.GetMaximum() * 1.1]))
+
+    def draw_crit_angles(self, n=4, **dkw):
+        def tmp(x, n_):
+            return rad2deg(self.crit_angle(n_, x))
+        f = [Draw.make_tf1(None, tmp, 0, 160, n_=i, color=self.Draw.get_color(n), npx=160) for i in arange(n) + 1]
+        [self.Draw(i, draw_opt=o, **prep_kw(dkw, x_tit='Cell Size', y_tit='Rotation Angle', ndivx=503, grid=True)) for i, o in zip(reversed(f), [''] + ['same'] * 3)]
+        Draw.legend(f, [f'n pixels = {i + 1}' for i in arange(n)], 'l', left=True)
+
+    def path_per_cell(self, a):
+        a = deg2rad(a)
+        return self.Thickness / cos(a) if a < self.crit_angle() else (self.PX - self.ColDia) / sin(a)
+
+    def draw_path_per_cell(self, amax=30, **dkw):
+        f = Draw.make_tf1('cellpath', self.path_per_cell, 0, amax, npx=200)
+        return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Max Path Length Per Cell [#mum]', y_range=[0, f.GetMaximum() * 1.1]))
+
+    def min_path(self, a):
+        a, t, d, s = deg2rad(a), self.Thickness, self.ColDia, self.PX
+        if not a:
+            return 0
+        l, l0 = t / cos(a), d / sin(a)
+        if a < self.crit_angle(1):
+            return max(0, l - l0) / t
+        if a < self.crit_angle(1, s + d):
+            l1 = (t * tan(a) - s) / sin(a)
+            return (l - l0 - l1) / t
+        if a < arctan(2 * s / t):
+            return l - 2 * l0
+        if a < arctan((2 * s + d) / t):
+            l2 = (t * tan(a) - 2 * s) / sin(a)
+            return l - 2 * l0 - l2
+        if a < arctan(3 * s / t):
+            return l - 3 * l0
+        return 1
+
+    def draw_min_path(self, max_a=5, **dkw):
+        f = Draw.make_tf1('path', self.min_path, 0, max_a, npx=200)
+        self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Relative Minimum Path Length', file_name='MinPath', y_range=[0, 1.1], gridy=True))
+
+    # ----------------------------------------
+    # region PATH
+    @update_pbar
+    def path_length(self, a=0, x=0, y=0, cols=1, _no_update=False):
+        """ returns path lenght of a track through 3D detectors. coordinate centre is in centre of 3D column"""
+        a, t, d, s = deg2rad(a), self.Thickness, self.ColDia, self.PX
+        lt = t / cos(a)                                                 # total path length
+        d *= sqrt(cols)                                                 # account for several cols by increasing area of a single one
+        f = sqrt(1 - (2 * y / d) ** 2) if abs(y) < d / 2 else 0         # y dependence (chord of the circle / d)
+        if f == 0:
+            return lt
+        d *= f
+        x = (x - d / 2) % s                                             # move col from centre to right edge
+        ld = min(lt, d / sin(a) if a else lt)                           # max path through one column
+        n = int(self.n_cells(a))                                        # min number of intersected columns
+        xd = t * tan(a) % s                                             # distance in x travelled through the detector
+        xc = s - xd - d                                                 # x pos when next col is hit
+        max_path = lt - n * ld
+        if x < xc:
+            return max_path
+        xf = min(xd, d)                                                 # max distance in x travelled through column
+        if x < xc + xf:
+            return max_path - (x - xc) / xf * ld
+        if x < s - xf:
+            return max_path - ld
+        return max_path - (1 - (x - s + xf) / xf) * ld
+
+    def px(self, a=0, y=0, n=1000):
+        return mean([self.path_length(a, x, y) for x in linspace(-self.PX / 2, self.PX / 2, n)])
+
+    def p_mean(self, a=0, n=1000, pbar=True):
+        x, y = [linspace(-i / 2, i / 2, n + 1) for i in [self.PX, self.PY]]
+        self.PBar.start(x.size ** 2) if pbar else do_nothing()
+        d = array([self.path_length(a, ix, iy, cols=2) for ix in x for iy in y])
+        return mean(d[invert(isnan(d))])
+
+    def draw_pa(self, max_a=30, x=0, y=0, cols=1, **dkw):
+        f = Draw.make_tf1('xpath', self.path_length, 0, max_a, npx=200, cols=cols, y=y, x=x)
+        return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Path Length [#mum]', y_range=[0, f.GetMaximum() * 1.1]))
+
+    def draw_px(self, a=0, y=0, cols=1, xmax=None, **dkw):
+        xmax = choose(xmax, self.PX)
+        f = Draw.make_tf1('xpath', lambda x: self.path_length(a=a, x=x, y=y, cols=cols), -xmax / 2, xmax / 2, npx=500)
+        return self.Draw(f, **prep_kw(dkw, x_tit='X [#mum]', y_tit='Path Length [#mum]', y_range=[0, f.GetMaximum() * 1.1]))
+
+    def draw_pxy(self, a=0, n=100, rx=None, ry=None, **dkw):
+        x, y = [linspace(-i / 2, i / 2, n + 1) for i in [choose(rx, self.PX), choose(ry, self.PY)]]
+        self.PBar.start(x.size ** 2)
+        d = array([[ix, iy, self.path_length(a, ix, iy)] for ix in x for iy in y]).T
+        bins = sum([bins_from_vec(i, centre=True) for i in [x, y]], [])
+        return self.Draw.prof2d(*d, bins, f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Path Length [#mum]', stats=False, z_range=[0, max(d[2])]))
+
+    def draw_pxa(self, y=0, amax=30, n=20, **dkw):
+        x = linspace(0, amax, n)
+        self.Draw.graph(x, [self.px(a, y) for a in x], **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Average Path Length', draw_opt='al', lw=2, color=2))
+
+    def draw_path_length(self, amax=10, n=10, ns=200, **dkw):
+        sx, sy = [linspace(-i / 2, i / 2, ns + 1) for i in [self.PX, self.PY]]  # noqa
+        self.PBar.start(sx.size ** 2 * (n + 1))
+        x = linspace(0, amax, n + 1)
+        y = array([self.p_mean(a, ns, pbar=False) for a in x]) / self.Thickness
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Normalised Average Path Length', draw_opt='al', lw=2, color=2, lm=.14, y_off=1.5))
+    # endregion PATH
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region EFFICIENCY
+    @update_pbar
+    def eff(self, thresh=.2, a=0, x=0, y=0, cols=1):
+        return self.path_length(a, x, y, cols, _no_update=True) > thresh * self.Thickness if abs(y) < self.ColDia / 2 else True
+
+    def ex(self, thresh=.2, a=0, y=0, cols=1, n=10000):
+        return mean([self.eff(thresh, a, x, y, cols) for x in linspace(-self.PX / 2, self.PX / 2, n)])
+
+    def mean_eff(self, thresh=.2, a=0, n=1000, cols=2, pbar=True):
+        x, y = [linspace(-i / 2, i / 2, n + 1) for i in [self.PX, self.PY]]
+        self.PBar.start(x.size ** 2) if pbar else do_nothing()
+        e = mean([self.eff(thresh, a, ix, iy) for ix in x for iy in y])
+        return 1 - (1 - e) * cols
+
+    def draw_ea(self, thresh=.2, x=0, y=0, amax=30, **dkw):
+        f = Draw.make_tf1('xpath', lambda a: 100 * self.eff(thresh, a, x, y), 0, amax, npx=500)
+        return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Efficiency [%]', y_range=[0, 105]))
+
+    def draw_ex(self, thresh=.2, a=0, y=0, xmax=None, **dkw):
+        xmax = choose(xmax, self.PX)
+        f = Draw.make_tf1('xpath', lambda x: 100 * self.eff(thresh, a, x, y), -xmax / 2, xmax / 2, npx=500)
+        return self.Draw(f, **prep_kw(dkw, x_tit='X [#mum]', y_tit='Efficiency [%]', y_range=[0, 105]))
+
+    def draw_exy(self, thresh=.2, a=0, n=100, bw=1, **dkw):
+        x, y = [linspace(-i / 2, i / 2, n + 1) for i in [self.PX, self.PY]]
+        self.PBar.start(x.size ** 2)
+        d = array([[ix, iy, self.eff(thresh, a, ix, iy)] for ix in x for iy in y]).T
+        bins = [bins_from_vec(linspace(-i / 2, i / 2, n // bw + 1), centre=True) for i in [self.PX, self.PY]]
+        return self.Draw.prof2d(*d, bins[0] + bins[1], f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Efficiency', stats=False))
+
+    def draw_eax(self, thresh=.2, y=0, cols=1, amax=1, n=20, **dkw):
+        x = linspace(0, amax, n)
+        self.Draw.graph(x, [self.ex(thresh, a, y, cols) for a in x], **prep_kw(dkw, draw_opt='al', lw=2, color=2))
+
+    def draw_eff(self, thresh=.2, amax=1, n=10, ns=200, pbar=True, **dkw):
+        sx, sy = [linspace(-i / 2, i / 2, ns + 1) for i in [self.PX, self.PY]]  # noqa
+        self.PBar.start(sx.size ** 2 * (n + 1)) if pbar else do_nothing()
+        x = linspace(0, amax, n + 1)
+        y = array([self.mean_eff(thresh, a, ns, pbar=False) for a in x]) * 100
+        return self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Efficiency [%]', draw_opt='al', lw=2, color=2))
+
+    def draw_effs(self, tmax=.6, amax=1, n=10, np=10, ns=200, **dkw):
+        self.PBar.start((ns + 1) ** 2 * n * (np + 1))
+        x = linspace(tmax / n, tmax, n)
+        g = [self.draw_eff(t, amax, np, ns, pbar=False, show=False) for t in x]
+        self.Draw.multigraph(g, 'EffThresh', [f'{t:.2f}' for t in x], **prep_kw(dkw, draw_opt='l'))
+    # endregion EFFICIENCY
+    # ----------------------------------------
 
 
 class Plane(object):

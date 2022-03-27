@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 
-from numpy import insert, sum as nsum, deg2rad, tan, rad2deg
+from numpy import insert, sum as nsum
 from scipy.stats import poisson
 
 from pixel.calibration import Calibration
@@ -404,53 +404,6 @@ class PixAnalysis(DUTAnalysis):
         Draw.legend(pl[::-1], [f'{f:.0f} kHz/cm^{{2}}' for f in self.get_flux().n * array([1, fac])])
     # endregion DRAW
     # ----------------------------------------
-
-    def min_path(self, a):
-        a, t, d, s = deg2rad(a), self.DUT.Thickness, self.DUT.ColDia, self.DUT.PX
-        if not a:
-            return 0
-        l, l0 = t / cos(a), d / sin(a)
-        if a < self.crit_angle(1):
-            return max(0, l - l0) / t
-        if a < self.crit_angle(1, s + d):
-            l1 = (t * tan(a) - s) / sin(a)
-            return (l - l0 - l1) / t
-        if a < arctan(2 * s / t):
-            return l - 2 * l0
-        if a < arctan((2 * s + d) / t):
-            l2 = (t * tan(a) - 2 * s) / sin(a)
-            return l - 2 * l0 - l2
-        if a < arctan(3 * s / t):
-            return l - 3 * l0
-        return 1
-
-    def mpath(self, a, cols=1):
-        # TODO: integrate over other direction ...
-        a, t, d, s = deg2rad(a), self.DUT.Thickness, self.DUT.ColDia, self.DUT.PX
-        l, xd = t / cos(a), max(d, t * tan(a))
-        ld = min(l, d / sin(a)) * cols
-        n = next(i for i in range(10) if a < self.crit_angle(i + 1))
-        return ((l - n * ld) * (s - xd) + (l - (n + 1) * ld) * xd) / s
-
-    def crit_angle(self, n=1, x=None):
-        return arctan(n * choose(x, self.DUT.PX) / self.DUT.Thickness)
-
-    def t(self, x, n):
-        return rad2deg(self.crit_angle(n, x))
-
-    def draw_crit_angles(self, n=4, **dkw):
-        f = [Draw.make_tf1(None, self.t, 0, 160, n=i, color=self.Draw.get_color(n), npx=160) for i in arange(n) + 1]
-        [self.Draw(i, draw_opt=o, **prep_kw(dkw, x_tit='Cell Size', y_tit='Rotation Angle', ndivx=503, grid=True)) for i, o in zip(reversed(f), [''] + ['same'] * 3)]
-        Draw.legend(f, [f'n pixels = {i + 1}' for i in arange(n)], 'l', left=True)
-        self.Draw.save_plots('CritAngles')
-
-    def draw_mpath(self, max_a=30, cols=1):
-        f = Draw.make_tf1('xpath', self.mpath, 0, max_a, npx=200, cols=cols)
-        return self.Draw(f, x_tit='Rotation Angle', y_tit='Mean Path Length', file_name='MPath', y_range=[0, f.GetMaximum() * 1.1])
-
-    def draw_min_path(self, max_a=5, **dkw):
-        f = Draw.make_tf1('path', self.min_path, 0, max_a, npx=200)
-        self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Relative Minimum Path Length', file_name='MinPath', y_range=[0, 1.1], gridy=True))
 
 
 if __name__ == '__main__':
