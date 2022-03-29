@@ -127,27 +127,38 @@ class PixelDUT(DUT):
     def crit_angle(self, n=1, x=None):
         return arctan(n * choose(x, self.PX) / self.Thickness)
 
-    def n_cells(self, a):
-        return tan(a) * self.Thickness / self.PX
+    def n_cells(self, a, x=None):
+        return tan(a) * self.Thickness / choose(x, self.PX)
 
-    def draw_n_cells(self, amax=30, **dkw):
-        f = Draw.make_tf1('n cells', lambda x: self.n_cells(deg2rad(x)) + 1, 0, amax, npx=200)
+    def draw_n_cells(self, amax=30, x=None, **dkw):
+        f = Draw.make_tf1('n cells', lambda a: self.n_cells(deg2rad(a), x), 0, amax, npx=200)
         return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Number of Intersected Cells', y_range=[0, f.GetMaximum() * 1.1]))
 
+    def draw_n_cellsx(self, amax=30, x=None, **dkw):
+        x = choose(x, [50, 150])
+        f = [self.draw_n_cells(amax, ix, show=False) for ix in x]
+        self.Draw.functions(f, [f'{ix} #mum' for ix in x], **prep_kw(dkw, grid=True, left=True))
+
+    def draw_crit_angle(self, n=1, **dkw):
+        f = Draw.make_tf1('crit angle', lambda x: rad2deg(self.crit_angle(n, x)), 0, 160, npx=160)
+        return self.Draw(f, **prep_kw(dkw, x_tit='Cell Size', y_tit='Rotation Angle', grid=True, ndivx=503))
+
     def draw_crit_angles(self, n=4, **dkw):
-        def tmp(x, n_):
-            return rad2deg(self.crit_angle(n_, x))
-        f = [Draw.make_tf1(None, tmp, 0, 160, n_=i, color=self.Draw.get_color(n), npx=160) for i in arange(n) + 1]
-        [self.Draw(i, draw_opt=o, **prep_kw(dkw, x_tit='Cell Size', y_tit='Rotation Angle', ndivx=503, grid=True)) for i, o in zip(reversed(f), [''] + ['same'] * 3)]
-        Draw.legend(f, [f'n pixels = {i + 1}' for i in arange(n)], 'l', left=True)
+        f = [self.draw_crit_angle(i, show=False) for i in arange(n) + 1]
+        self.Draw.functions(f, [f'n pixels = {i + 1}' for i in arange(n)], **prep_kw(dkw, ndivx=503, grid=True, left=True))
 
-    def path_per_cell(self, a):
+    def path_per_cell(self, a, x=None):
         a = deg2rad(a)
-        return self.Thickness / cos(a) if a < self.crit_angle() else (self.PX - self.ColDia) / sin(a)
+        return self.Thickness / cos(a) if a < self.crit_angle(x=x) else (choose(x, self.PX) - self.ColDia) / sin(a)
 
-    def draw_path_per_cell(self, amax=30, **dkw):
-        f = Draw.make_tf1('cellpath', self.path_per_cell, 0, amax, npx=200)
+    def draw_path_per_cell(self, amax=30, x=None, **dkw):
+        f = Draw.make_tf1('cellpath', self.path_per_cell, 0, amax, x=x, npx=200)
         return self.Draw(f, **prep_kw(dkw, x_tit='Rotation Angle', y_tit='Max Path Length Per Cell [#mum]', y_range=[0, f.GetMaximum() * 1.1]))
+
+    def draw_path_per_x(self, amax=30, x=None, **dkw):
+        x = choose(x, [50, 150])
+        f = [self.draw_path_per_cell(amax, ix, show=False) for ix in x]
+        self.Draw.functions(f, [f'{ix} #mum' for ix in x], **prep_kw(dkw, grid=True, y_range=[0, f[1].GetMaximum() * 1.1]))
 
     def min_path(self, a):
         a, t, d, s = deg2rad(a), self.Thickness, self.ColDia, self.PX
@@ -233,7 +244,11 @@ class PixelDUT(DUT):
         self.PBar.start(sx.size ** 2 * (n + 1))
         x = linspace(0, amax, n + 1)
         y = array([self.p_mean(a, ns, pbar=False) for a in x]) / self.Thickness
-        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Normalised Average Path Length', draw_opt='al', lw=2, color=2, lm=.14, y_off=1.5))
+        return self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Rotation Angle [deg]', y_tit='Normalised Average Path Length', draw_opt='al', lw=2, color=2, lm=.14, y_off=1.5))
+
+    def draw_path_lengths(self, ana, amax=10, n=10, ns=200, **dkw):
+        g = [f(amax, n, ns, show=False) for f in [self.draw_path_length, ana.DUT.draw_path_length]]  # noqa
+        self.Draw.multigraph(g, 'b', [str(self), str(ana.DUT)], **prep_kw(dkw, lm=.14, draw_opt='l'))
     # endregion PATH
     # ----------------------------------------
 
@@ -283,7 +298,7 @@ class PixelDUT(DUT):
         self.PBar.start((ns + 1) ** 2 * n * (np + 1))
         x = linspace(tmax / n, tmax, n)
         g = [self.draw_eff(t, amax, np, ns, pbar=False, show=False) for t in x]
-        self.Draw.multigraph(g, 'EffThresh', [f'{t:.2f}' for t in x], **prep_kw(dkw, draw_opt='l'))
+        self.Draw.multigraph(g, 'EffThresh', [f'{t:.2f}' for t in x], **prep_kw(dkw, draw_opt='l', wleg=.1))
     # endregion EFFICIENCY
     # ----------------------------------------
 
