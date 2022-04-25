@@ -401,8 +401,8 @@ class AnalysisCollection(Analysis):
         x0 = x[where((f >= fmin) & (f <= fmax))]
         return x / mean(x0).n  # no error to keep correct errors of single measurements
 
-    def make_pulse_height_graph(self, bin_width=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False):
-        x, (ph0, ph) = self.get_x_var(vs_time, avrg=avrg), [self.get_pulse_heights(bin_width, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
+    def make_pulse_height_graph(self, bw=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False, vs_irrad=False):
+        x, (ph0, ph) = self.get_x_var(vs_time, vs_irrad, avrg), [self.get_pulse_heights(bw, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
         ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
@@ -443,13 +443,13 @@ class AnalysisCollection(Analysis):
         self.Draw.save_plots(fname('ScaledPulseHeights', avrg, vs_time))
         return mg.GetListOfGraphs()[0]
 
-    def draw_pulse_heights(self, bin_width=None, vs_time=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
+    def draw_pulse_heights(self, bw=None, vs_time=False, vs_irrad=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
         """ Shows the pulse heights of the runs. """
-        mg = self.make_pulse_height_graph(bin_width, vs_time, show_first_last, redo, legend, corr, err, avrg, peaks)
+        mg = self.make_pulse_height_graph(bw, vs_time, vs_irrad, show_first_last, redo, legend, corr, err, avrg, peaks)
         mg.GetListOfGraphs()[0].Fit('pol0', f'qs') if fit else do_nothing()
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
-        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None, **m))
+        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None, **m))
 
     @save_pickle('Full', sub_dir='PH', suf_args='all')
     def get_full_ph(self, bin_size=None, _redo=False):
