@@ -4,7 +4,7 @@
 # revised on Oct 4th 2020 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TF2
-from numpy import delete, prod, insert
+from numpy import delete, prod, insert, split, cumsum
 from uncertainties.umath import log as ulog  # noqa
 from src.binning import Bins
 from plotting.draw import *
@@ -157,6 +157,25 @@ class Telescope(SubAnalysis):
     def draw_cluster_size(self, roc=0, name=None, cut='', **dkw):
         x, tit = self.get_tree_vec(f'cluster_size[{roc}]', self.Cut(cut)), f'Cluster Size {f"ROC {roc}" if name is None else name}'
         return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, normalise=True, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
+
+    def get_all_cs(self, pl=0, cut=''):
+        cut = self.Cut(cut) + f'n_clusters[{pl}] == 1'
+        self.Tree.SetEstimate(self.Run.NEvents * 10)
+        s = self.get_tree_vec(f'cluster_size[{pl}]', cut, 'i2')
+        x, y = self.get_tree_vec(['col', 'row'], cut + f'plane=={pl} && col > 0 && row > 0 && col < {self.Run.Plane.NCols - 1} && row < {self.Run.Plane.NRows - 1} ', 'i2')
+        x, y = (split(i, cumsum(s)[:-1]) for i in [x, y])
+        xs, ys = array([[max(a) - min(a) + 1 for a in i] for i in [x, y]])
+        return s, xs, ys
+
+    def draw_cluster_sizes(self, pl=0, cut='', **dkw):
+        h = [self.Draw.distribution(i, x0=0, w=1, show=False, x_tit='Cluster Size', **rm_key(prep_kw(dkw, rf=2, lw=2), 'show')) for i in self.get_all_cs(pl, cut)]
+        return self.Draw.stack(h, f'Cluster Size Pl{pl}', ['total', 'x', 'y'], **prep_kw(dkw, logy=True))
+
+    def draw_plane_css(self, cut='', **dkw):
+        n = self.Run.NTelPlanes
+        v = [self.get_all_cs(pl, cut) for pl in range(n)]
+        g = [self.Draw.graph(range(n), [mean_sigma(v[i][j])[0] for i in range(n)], x_tit='Plane', y_tit='Mean Cluster Size', show=False) for j in range(3)]
+        return self.Draw.multigraph(g,  f'Cluster Sizes', ['total', 'x', 'y'], **prep_kw(dkw))
 
     def draw_n_clusters(self, roc=0, name=None, cut='', f=1, **dkw):
         x, tit = self.get_tree_vec(f'n_clusters[{roc}]', self.Cut(cut)), f'Number of Clusters {f"ROC {roc}" if name is None else name}'
