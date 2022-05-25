@@ -174,7 +174,7 @@ class Telescope(SubAnalysis):
     def draw_plane_css(self, cut='', **dkw):
         n = self.Run.NTelPlanes
         v = [self.get_all_cs(pl, cut) for pl in range(n)]
-        g = [self.Draw.graph(range(n), [mean_sigma(v[i][j])[0] for i in range(n)], x_tit='Plane', y_tit='Mean Cluster Size', show=False) for j in range(3)]
+        g = [self.Draw.graph(range(n), [mean_sigma(v[i][j])[0] for i in range(n)], x_tit='Plane', markersize=1.5, y_tit='Mean Cluster Size', show=False) for j in range(3)]
         return self.Draw.multigraph(g,  f'Cluster Sizes', ['total', 'x', 'y'], **prep_kw(dkw))
 
     def draw_n_clusters(self, roc=0, name=None, cut='', f=1, **dkw):
