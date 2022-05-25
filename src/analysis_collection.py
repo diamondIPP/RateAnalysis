@@ -814,7 +814,7 @@ class AnalysisCollection(Analysis):
 
     def draw_occupancies(self):
         self.get_values('occupancies', self.Analysis.draw_occupancies, show=False, prnt=False, cluster=True)
-    # end region GENERATE PLOTS
+    # endregion GENERATE PLOTS
     # ----------------------------------------
 
     def draw_efficiencies(self, avrg=False, t=False, **dkw):
@@ -824,6 +824,11 @@ class AnalysisCollection(Analysis):
     def draw_eff_vs_current(self, **dkw):
         x, y = self.get_currents(), self.get_efficiencies()
         self.Draw.graph(x, y, 'Eff vs Current', **prep_kw(dkw, x_tit='Current [nA]', y_tit='Effciency [%]', file_name='EffCurrent'))
+
+    def draw_gain_s129(self, **dkw):
+        v = self.get_pulse_heights()
+        x, y = self.get_x_var(vs_time=True), add_perr(v[::2] / v[1::2], .01)
+        return self.Draw.graph(x[::2], y, **prep_kw(dkw, y_tit='Gain Ratio', tform='%y/%m', **self.get_x_args(True, draw=True, x_tit='Time [YY/MM]'), file_name='GainRatio', markersize=1.5))
 
 
 def fname(n, avrg=False, t=False):
