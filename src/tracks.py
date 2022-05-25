@@ -17,6 +17,8 @@ from src.sub_analysis import SubAnalysis
 
 class Tracks(SubAnalysis):
 
+    M = ['x', 'y']
+
     def __init__(self, analysis):
         super().__init__(analysis, sub_dir=analysis.Run.Number, pickle_dir='Tracks', dut=False)
 
@@ -104,7 +106,7 @@ class Tracks(SubAnalysis):
     def draw_chi2(self, mode=None, bin_size=None, fit=False, cut='', x_range=None, show_cut=False, **kwargs):
         x, m = self.get_tree_vec(f'chi2_{choose(mode, "tracks").lower()}', self.Cut(cut)), choose(mode, "tracks").title()
         x_range = choose(x_range, [0, quantile(x[(x > -900) & (x < 100)], .99)])
-        h = self.Draw.distribution(x[x > -900], self.Bins.get_chi2(bin_size), f'Chisquare {m}', x_tit='#chi^{2}', x_range=x_range, **kwargs, lm=.12, y_off=1.8)
+        h = self.Draw.distribution(x[x > -900], self.Bins.get_chi2(bin_size), f'Chisquare {m}', x_tit='#chi^{2}', x_range=x_range, **kwargs)
         fit_chi2(h, mode, show=fit)
         self.draw_chi2_cut(mode, show=show_cut)
         format_statbox(h, entries=True, fit=fit)
@@ -121,6 +123,10 @@ class Tracks(SubAnalysis):
         x_range = [0, get_last_canvas().GetUxmax()]
         self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
         self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
+
+    def draw_xy_chi2(self, **dkw):
+        h = [self.draw_chi2(m, show=False, normalise=True, **rm_key(dkw, 'show')) for m in Tracks.M]
+        self.Draw.stack(h, 'Chi-squares', Tracks.M, **prep_kw(dkw))
 
     def draw_angle(self, mode='x', bin_size=.05, cut='', show_cut=False, prnt=True, **kwargs):
         """ Shows the angle distribution of the tracks. """
