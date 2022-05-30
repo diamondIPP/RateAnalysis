@@ -12,6 +12,9 @@ from plotting.fit import ErfLand
 
 
 class Waveform(PadSubAnalysis):
+
+    Opacity = .2
+
     def __init__(self, pad_analysis):
         super().__init__(pad_analysis, pickle_dir='WF')
         self.NChannels = self.Run.NChannels
@@ -308,7 +311,7 @@ class Waveform(PadSubAnalysis):
         for region in regions:
             x1, x2 = self.Ana.get_region(region=region) * self.BinWidth
             color = self.Draw.get_color(len(regions))
-            lines.append(Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=choose(opacity, .2)))
+            lines.append(Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color if fill else None, opacity=choose(opacity, self.Opacity)))
         if show_leg:
             Draw.legend(Draw.Objects[-len(regions):], regions, 'l', scale=1.5, w=.1)
         return lines
@@ -344,10 +347,10 @@ class Waveform(PadSubAnalysis):
         format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
         self.draw_integral(h, xmin, xmax, color)
 
-    def draw_ped_time(self, color=4, lw=2, opacity=.2):
+    def draw_ped_time(self, color=4, lw=2, opacity=None):
         """ draws filled box with size of peak integral around pedestal time."""
         x1, x2 = (self.Ana.PeakIntegral * [-1, 1] + self.Ana.Pedestal.Region) * self.BinWidth
-        return Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color, opacity=opacity)
+        return Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color, opacity=choose(opacity, self.Opacity))
 
     def draw_pedestal(self, peakint=None):
         x, y = self.Ana.get_region('pedestal')[0] * self.BinWidth, 20 * self.Polarity
