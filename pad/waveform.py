@@ -54,7 +54,7 @@ class Waveform(PadSubAnalysis):
 
     @save_hdf5()
     def get_all(self, _redo=False):
-        """ extracts all dut waveforms after all cuts from the root tree and saves it as an hdf5 file """
+        """ extracts all dut waveforms after all cuts from the root tree and saves it as a hdf5 file """
         with Pool() as pool:
             self.info('Saving signal waveforms to hdf5 ...')
             result = pool.starmap(self._get_all, [(i, ) for i in array_split(arange(self.Run.NEvents), cpu_count())])
@@ -267,7 +267,7 @@ class Waveform(PadSubAnalysis):
     # ----------------------------------------
     # region SHOW INTEGRATION
     def draw_ex(self, i=0, **dkw):
-        self.draw_single(ind=i, **prep_kw(dkw, grid=False, gridy=True, tm=.14, x_range=[0, 512]))
+        self.draw_single(ind=i, **prep_kw(dkw, grid=False, gridy=True, tm=.15, x_range=[0, 512]))
         self.draw_buckets(-2, 25, ts=.07)
         self.draw_sig_ped()
 
@@ -300,7 +300,7 @@ class Waveform(PadSubAnalysis):
             Draw.vertical_line(x, style=3)
             Draw.vertical_line(x, c.GetUymax() * (1 - tl) + tl * c.GetUymin())
             Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42, size=ts)
-        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=ts)
+        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 5 * tl) + 5 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=ts)
 
     def draw_region(self, region=None, lw=2, show_leg=True, fill=False, opacity=None):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
@@ -344,10 +344,10 @@ class Waveform(PadSubAnalysis):
         format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
         self.draw_integral(h, xmin, xmax, color)
 
-    def draw_ped_time(self, color=4, lw=2, opacity=True):
+    def draw_ped_time(self, color=4, lw=2, opacity=.2):
         """ draws filled box with size of peak integral around pedestal time."""
         x1, x2 = (self.Ana.PeakIntegral * [-1, 1] + self.Ana.Pedestal.Region) * self.BinWidth
-        return Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color, opacity=choose(opacity, .2))
+        return Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color, opacity=opacity)
 
     def draw_pedestal(self, peakint=None):
         x, y = self.Ana.get_region('pedestal')[0] * self.BinWidth, 20 * self.Polarity
