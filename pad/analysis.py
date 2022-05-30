@@ -28,7 +28,7 @@ class PadAnalysis(DUTAnalysis):
             self.SignalRegionName = self.load_region_name()
             self.SignalRegion = self.get_region()
             self.PeakIntegralName = self.load_peak_integral()
-            self.PeakIntegral = self.Run.PeakIntegrals[self.DUT.Number - 1][self.PeakIntegralName]
+            self.PeakIntegral = array(self.Run.PeakIntegrals[self.DUT.Number - 1][self.PeakIntegralName])
 
             # Signal Names
             self.SignalName = self.get_signal_name()

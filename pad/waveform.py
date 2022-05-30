@@ -246,7 +246,7 @@ class Waveform(PadSubAnalysis):
         n = cut.size // 2
         ind1, ind2 = choose(ind1, concatenate([cut[:n], zeros(cut.size - n, dtype=bool)])), choose(ind2, concatenate([zeros(cut.size - n, dtype=bool), cut[n:]]))
         leg = Draw.make_legend(nentries=2, w=.25)
-        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, cut=ind, n=None)) for ind in [ind1, ind2]]
+        graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, cut=ind)) for ind in [ind1, ind2]]
         for i, g in enumerate(graphs):
             scale_graph(g, 1 / max(get_graph_y(g)).n) if normalise else do_nothing()
             x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
@@ -266,8 +266,13 @@ class Waveform(PadSubAnalysis):
 
     # ----------------------------------------
     # region SHOW INTEGRATION
+    def draw_ex(self, i=0, **dkw):
+        self.draw_single(ind=i, **prep_kw(dkw, grid=False, gridy=True, tm=.14, x_range=[0, 512]))
+        self.draw_buckets(-2, 25, ts=.07)
+        self.draw_sig_ped()
+
     def draw_avrg(self, c, cut=None, s=None, n=50000, t_off=0):
-        p = self.draw_all_average(cut=cut, n=n, show=0, redo=1)
+        p = self.draw_all_average(cut=cut, n=n, show=False, redo=False)
         if s is not None:
             p.Scale(s / p.GetMaximum())
         x, y = get_hist_vecs(p, err=0)
@@ -313,6 +318,7 @@ class Waveform(PadSubAnalysis):
 
     def draw_sig_ped(self):
         s, p = self.draw_sig_region(), self.draw_ped_time()
+        self.draw_ped_time()
         Draw.legend([s, p], ['Signal Region', 'Pedestal Time'], scale=2, x2=.95)
 
     @staticmethod
@@ -338,12 +344,13 @@ class Waveform(PadSubAnalysis):
         format_histo(h, x_range=ax_range(xmin, xmax, 2, 2))
         self.draw_integral(h, xmin, xmax, color)
 
-    def draw_ped_time(self, color=4, lw=2):
-        return Draw.vertical_line(self.Ana.Pedestal.Region * self.BinWidth, -1000, 1000, color=color, w=lw)
+    def draw_ped_time(self, color=4, lw=2, opacity=True):
+        """ draws filled box with size of peak integral around pedestal time."""
+        x1, x2 = (self.Ana.PeakIntegral * [-1, 1] + self.Ana.Pedestal.Region) * self.BinWidth
+        return Draw.box(x1, -1e6, x2, 1e6, line_color=color, style=2, width=lw, fillcolor=color, opacity=choose(opacity, .2))
 
     def draw_pedestal(self, peakint=None):
         x, y = self.Ana.get_region('pedestal')[0] * self.BinWidth, 20 * self.Polarity
-        print(x, y)
         Draw.vertical_line(x, -1000, 1000, color=4, w=3)
         Draw.tlatex(x + 1, -y, 'Pedestal', color=4, align=12)
         self.draw_peakint(x, peakint)
