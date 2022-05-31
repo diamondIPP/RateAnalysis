@@ -326,14 +326,15 @@ class PeakAnalysis(PadSubAnalysis):
         y, t = self.get_spacings(n, cut), self.get_times(flat=True, cut=cut)[::2]
         self.Draw.profile(t, y, self.get_binning(bin_size, n1=1), x_tit='Signal Peak Time [ns]', y_tit='Bunch Spacing [ns]', **kwargs)
 
-    def draw_all_spacings(self, ecut=True, redo=False, **dkw):
+    def draw_all_spacings(self, ecut=True, n_last=8, redo=False, **dkw):
         self.PBar.start(self.NBunches) if redo or not file_exists(self.make_simple_pickle_path(f'Spacing{self.NBunches + 2}')) else do_nothing()
         x, y = self.get_bunch_nrs(), [self.get_spacing(i, ecut=ecut, _redo=redo) for i in self.get_bunch_nrs()]
         self.Draw.graph(x, y, 'Bunch Spacings', **prep_kw(dkw, x_tit='Bunch Number', y_tit='Spacing [ns]', **Draw.mode(2, lm=.11, y_off=.95), y_range=ax_range(y, 0, .5, .2)))
-        a, b, xa, c = [mean_sigma(y[-10:])[0]] * 2, [1e9 / ufloat(self.BeamFrequency, 1e4)] * 2, self.MaxBunch + array([-10, 0]), get_last_canvas()
+        a, b, xa, c = [mean_sigma(y[-n_last:])[0]] * 2, [1e9 / ufloat(self.BeamFrequency, 1e4)] * 2, self.MaxBunch + array([-n_last, 0]), get_last_canvas()
         g = [self.Draw.graph(x0, v, '', canvas=c, fill_color=col, color=col, draw_opt='le3', lw=2, opacity=.2) for v, col, x0 in [(a, 2, xa), (b, 4, [0, self.MaxBunch + 2])]]
         self.Draw.legend(g, ['fit', 'PSI bunch spacing'], w=.3, scale=1.2)
-        return mean_sigma(y[-10:])
+        self.Draw.save_plots('BunchSpacings')
+        return mean_sigma(y[-n_last:])
 
     def draw_spacings(self, bin_size=.5, show=True):
         t = self.get_times(flat=True)
