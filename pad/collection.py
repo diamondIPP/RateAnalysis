@@ -262,7 +262,10 @@ class PadCollection(AnalysisCollection):
 
     def draw_momentum(self, fit=True, **dkw):
         x, y = self.get_fluxes(), self.get_momenta()
-        g = self.Draw.graph(x[y > 0], y[y > 0], 'P-Beam', **prep_kw(dkw, **self.get_x_args(draw=True), y_tit='Beam Momentum [MeV/c]', file_name='P-Beam', stats=set_statbox(fit=fit)))
-        return FitRes(g.Fit('pol0', 'qs')) if fit else g
+        g = self.Draw.graph(x[y > 0], y[y > 0], 'P-Beam', show=False, y_tit='Beam Momentum [MeV/c]')
+        ret = FitRes(g.Fit('pol0', 'qs')) if fit else g
+        self.Draw(g, **prep_kw(dkw, **self.get_x_args(draw=True), file_name='P-Beam', stats=set_statbox(fit=fit, form='.1f')))
+        return ret
+
     # endregion PEAKS
     # ----------------------------------------
