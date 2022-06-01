@@ -17,7 +17,7 @@ class Analysis(object):
 
     # Beam
     Momentum = MainConfig.getfloat('BEAM', 'momentum')
-    PathLength = MainConfig.getfloat('BEAM', 'path length')
+    PathLength = ufloat(MainConfig.getfloat('BEAM', 'path length'), 1)
     BeamFrequency = MainConfig.getfloat('BEAM', 'frequency') * 1e6  # [HZ]
     BunchSpacing = 1 / BeamFrequency * 1e9  # [ns]
 
@@ -157,7 +157,7 @@ class Analysis(object):
         return t_diff(self.PathLength, choose(p, self.Momentum), m1, m2) % self.BunchSpacing
 
     def get_time_differences(self, s=None, p=None, spacing=None):
-        t = array([t_diff(choose(s, self.PathLength), choose(p, self.Momentum), m1, m2) for m1, m2 in [(M_PI, M_E), (M_PI, M_MU), (M_E, M_PI), (M_MU, M_PI)]])
+        t = array([t_diff(choose(s, self.PathLength.n), choose(p, self.Momentum), m1, m2) for m1, m2 in [(M_PI, M_E), (M_PI, M_MU), (M_E, M_PI), (M_MU, M_PI)]])
         return sort(t % choose(spacing, self.BunchSpacing))
 
     def draw_time_differences(self):

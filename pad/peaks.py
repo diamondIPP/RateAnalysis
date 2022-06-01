@@ -31,6 +31,7 @@ class PeakAnalysis(PadSubAnalysis):
         self.WF = self.Ana.Waveform
         if self.WF.Exists:
             self.IsDigital = 'digital' in self.DUT.Name
+            self.NoiseThreshold = self.calc_noise_threshold()
             self.NoiseThreshold = 60
             self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
             self.BinWidth = self.DigitiserBinWidth
@@ -79,13 +80,13 @@ class PeakAnalysis(PadSubAnalysis):
         return self.get_corrected_times(True, thresh, fit) if corr else self.get(flat, thresh, fit, cut, i=0)
 
     def get_corrected_times(self, pcut=True, thresh=None, fit=False):
-        pcut = self.get_bunch_cut(n=1) & pcut
+        pcut = pcut & self.get_bunch_cut(n=1, thresh=thresh, fit=fit) & self.get_1_per_bucket(1, thresh, fit) & self.get_pulser_cut(thresh)
         times = self.get_times(True, thresh, fit, cut=...)
         t1 = times[pcut]
         times = times[self.p2e2pcut(pcut)]  # select all peaks if the event has a peak in bunch 1
-        return times + mean(t1) - t1.repeat(self.get_npeaks(cut=self.p2ecut(pcut)))
+        return times + mean(t1) - t1.repeat(self.get_n(cut=self.p2ecut(pcut)))
 
-    def get_npeaks(self, thresh=None, cut=...):
+    def get_n(self, thresh=None, cut=...):
         hdf5_path = self.make_simple_hdf5_path(suf=f'{choose(thresh, self.Threshold):.1f}_1', dut=self.Channel)
         return self.get_all(..., thresh, fit=file_exists(hdf5_path))[-1][cut]
 
@@ -181,7 +182,7 @@ class PeakAnalysis(PadSubAnalysis):
         return f.Fit.Integral(0, self.Run.NSamples) / bw
 
     def get_n_additional(self, n=None, end=None, thresh=None, fit=False, pcut=None):
-        cut, n = self.get_bunch_cut(n, end, thresh, fit), self.get_npeaks(thresh, cut=...)
+        cut, n = self.get_bunch_cut(n, end, thresh, fit), self.get_n(thresh, cut=...)
         filled = insert(cut, insert(cumsum(n)[:-1], 0, 0).repeat(max(n) - n).astype('i'), False)  # make all events the same length and fill with False
         npeaks = sum(filled.reshape(filled.size // max(n), max(n)), axis=1)
         if pcut is not None:
@@ -231,25 +232,27 @@ class PeakAnalysis(PadSubAnalysis):
         t = self.get_times(True, fit=True, cut=cut)
         return (t[1::2] - t[::2]) / (n - 1)
 
-    def get_bunch_spacing(self, redo=False):
-        return do_pickle(self.make_simple_pickle_path('BunchSpacing'), self.draw_all_spacings, redo=redo, show=False)[0]
+    @save_pickle('BS')
+    def get_bunch_spacing(self, _redo=False):
+        return self.draw_all_spacings(redo=_redo, show=False)[0]
 
-    def get_peak_range(self, n, nsigma=3, fit=True, redo=False):
-        def f():
-            m, s = fit_fwhm(self.draw_bunch_times(n, show=False, fit=fit))[1:]
-            return [m - s * nsigma,  m + s * nsigma]
-        return do_pickle(self.make_simple_pickle_path('Range', f'{n}_{nsigma}_{int(fit)}'), f, redo=redo)
+    @save_pickle('Range', suf_args='all')
+    def get_peak_range(self, n, nsigma=3, fit=True, _redo=False):
+        m, s = fit_fwhm(self.draw_bunch_times(n, show=False, fit=fit))[1:]
+        return m - s * nsigma, m + s * nsigma
     # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
     # region CUT
+    def get_e(self, pcut, thresh=None):
+        return arange(self.Run.NEvents).repeat(self.get_n(thresh))[pcut]
+
     def p2ecut(self, pcut, thresh=None, ecut=True):
-        e = arange(self.Run.NEvents).repeat(self.get_npeaks(thresh=thresh))[pcut]
-        return self.Ana.make_event_cut(e) & ecut
+        return self.Ana.make_event_cut(self.get_e(pcut, thresh)) & ecut
 
     def e2pcut(self, ecut, thresh=None):
-        return ecut.repeat(self.get_npeaks(thresh=thresh))
+        return ecut.repeat(self.get_n(thresh=thresh))
 
     def p2e2pcut(self, pcut, thresh=None):
         return self.e2pcut(self.p2ecut(pcut, thresh), thresh)
@@ -280,7 +283,7 @@ class PeakAnalysis(PadSubAnalysis):
         # find events with peaks in buckets before and after, invert and repeat cut again
         if all_:
             return self.get_all_isolated(thresh, fit)
-        t1, t2, np = self.get_bunch_cut(n - 1, fit=fit, thresh=thresh), self.get_bunch_cut(n + 1, fit=fit, thresh=thresh), self.get_npeaks(thresh=thresh)
+        t1, t2, np = self.get_bunch_cut(n - 1, fit=fit, thresh=thresh), self.get_bunch_cut(n + 1, fit=fit, thresh=thresh), self.get_n(thresh=thresh)
         t1 = self.get_time_cut(*self.get_bunch_range(n - 1, n) + [0, 1 / 3 * self.BunchSpacing], thresh, fit) if n == 2 else t1
         return invert(self.p2ecut(t1, thresh)).repeat(np) & invert(self.p2ecut(t2, thresh)).repeat(np) & self.get_pulser_cut(thresh) & self.get_bunch_cut(n, fit=fit, thresh=thresh)
 
@@ -290,7 +293,12 @@ class PeakAnalysis(PadSubAnalysis):
         return do_pickle(self.make_simple_pickle_path('AllIso', f'{thresh}{int(fit)}'), f)
 
     def get_spacing_cut(self, n, ecut=True):
-        return ecut & (self.get_npeaks() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=True)) & self.p2ecut(self.get_isolated_cut(n, fit=True))
+        return ecut & (self.get_n() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=True)) & self.p2ecut(self.get_isolated_cut(n, fit=True))
+
+    def get_1_per_bucket(self, n=1, thresh=None, fit=False):
+        """:returns cut excluding all times with more than one peak per bucket """
+        e = self.get_e(self.get_bunch_cut(n=n, thresh=thresh, fit=fit), thresh)
+        return self.e2pcut(invert(self.Ana.make_event_cut(e[:-1][diff(e) == 0])), thresh)  # max number of peaks per bucket is 2
     # endregion CUT
     # ----------------------------------------
 
@@ -318,7 +326,10 @@ class PeakAnalysis(PadSubAnalysis):
         return self.draw_spacing(n, ecut, fit=True, show=False)[1]
 
     def draw_spacing(self, n=3, ecut=True, fit=True, **dkw):
-        h = self.Draw.distribution(self.get_spacings(n, ecut=ecut), **prep_kw(dkw, title=f'Bunch {n} Spacing', x_tit='Time Delta [ns]', draw_opt='', stats=set_statbox(fit=fit, all_stat=True)))
+        x = self.get_spacings(n, ecut=ecut)
+        if x.size < 10:
+            return [ufloat(0, 0)] * 2
+        h = self.Draw.distribution(x, **prep_kw(dkw, title=f'Bunch {n} Spacing', x_tit='Time Delta [ns]', draw_opt='', stats=set_statbox(fit=fit, all_stat=True)))
         return fit_fwhm(h, show=True) if fit else h
 
     def draw_spacing_vs_peaktime(self, n=3, bin_size=.2, ecut=True, **kwargs):
@@ -339,14 +350,14 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_spacings(self, bin_size=.5, show=True):
         t = self.get_times(flat=True)
         c1, c2 = self.get_bunch_cut(1, fit=True), self.get_bunch_cut(fit=True)
-        ecut = (self.get_npeaks() > 1) & (self.get_n_additional(1, fit=True) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
+        ecut = (self.get_n() > 1) & (self.get_n_additional(1, fit=True) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
         t = t[c2 & self.e2pcut(ecut)] - t[c1 & self.e2pcut(ecut)].repeat(self.get_n_additional(fit=True)[ecut])
         self.Draw.distribution(t, self.get_binning(bin_size), 'Peak Spacing', x_tit='Peak Spacing [ns]', **Draw.mode(2), show=show, stats=set_statbox(entries=True))
 
-    def draw_overlayed_times(self, bin_size=.1, off=0, cut=True, thresh=None, fit=True, **kwargs):
+    def draw_overlayed_times(self, bw=None, off=0, cut=True, thresh=None, fit=True, **dkw):
         t = self.get_corrected_times(cut, thresh, fit)
         t = (t[t > self.get_bunch_time(n=1).n + 5] + off) % self.get_spacing().n
-        return self.Draw.distribution(t, make_bins(0, self.BunchSpacing, bin_size), 'Overlayed Times', x_tit='Peak Time [ns]', y_off=1.8, lm=.12, stats=set_statbox(entries=True), **kwargs)
+        return self.Draw.distribution(t, **prep_kw(dkw, w=bw, title='Overlayed Times', x_tit='Peak Time [ns]', stats=set_statbox(entries=True), file_name='TOver'))
 
     def draw_additional(self, h=None, show=True):
         """draw heights of the additinoal peaks in the peak time distribution"""
@@ -381,7 +392,7 @@ class PeakAnalysis(PadSubAnalysis):
             return update_canvas(c)
 
     def draw_bucket_pedestal(self, n1=0, n2=5, npeaks=1, i=None, **kwargs):
-        cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial'], name='buc')) & (self.get_npeaks() == npeaks)
+        cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial'], name='buc')) & (self.get_n() == npeaks)
         x, y = self.get_times(flat=True, cut=cut, fit=True)[::npeaks], choose(i, self.Ana.get_ph_values, cut='')[cut]
         self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]', gridy=True, logz=True, **kwargs)
 
@@ -605,31 +616,35 @@ class PeakAnalysis(PadSubAnalysis):
         j = j[-1] if j.size else None
         return -999 if j is None or j >= 3 * delay - 1 or j == t.size - 1 else get_x(t[j], t[j + 1], v[j], v[j + 1], 0)  # interpolate the zero crossing
 
-    def find_particle_pos(self, h=None, off=0, bin_size=.1):
-        h = self.draw_overlayed_times(bin_size, off, show=False) if h is None else h
+    def find_particle_pos(self, h=None, off=0, sigma=6, bw=None):
+        h = self.draw_overlayed_times(bw, off, show=False) if h is None else h
         x0, w0 = fit_fwhm(h)[1:]
         spec = TSpectrum(6)
-        x = [spec.GetPositionX()[i] for i in range(spec.Search(h, 2, '', .001))][1:]
-        return append(x0, sorted([FitRes(h.Fit('gaus', 'qs0', '', ix - w0.n, ix + w0.n))[1] for ix in x]))
+        x = [spec.GetPositionX()[i] for i in range(spec.Search(h, sigma, '', .005))]
+        return append(x0, sorted([FitRes(h.Fit('gaus', 'qs0', '', ix - w0.n, ix + w0.n))[1] for ix in x[1:5]]))  # max 5 peaks
 
-    def find_composition(self, off=0, bin_size=.1):
-        h = self.draw_overlayed_times(bin_size, off, show=False)
+    def find_composition(self, off=0, bw=None):
+        h = self.draw_overlayed_times(bw, off, show=False)
         w = fit_fwhm(h)[2].n
-        ints = array([Gauss(h, [ix.n - w, ix.n + w]).fit(draw=True).get_integral(-10, 30) for ix in self.find_particle_pos(h)]) / bin_size
+        ints = array([Gauss(h, [ix.n - w, ix.n + w]).fit(draw=True).get_integral(-10, 30) for ix in self.find_particle_pos(h)]) / h.GetBinWidth(1)
         ints = array([i + ufloat(0, sqrt(i.n)) for i in ints])
         n, nb, nc = h.Integral(), ints[1], mean_sigma(ints[3:])[0]
         na = n - 2 * nb - 2 * nc  # all events but the four additional peaks
         pa = usqrt(na + usqrt(na ** 2 - 4 * (nb ** 2 + nc ** 2))) / sqrt(2 * n)
         return pa, nb / n / pa, nc / n / pa
 
-    def find_momentum(self, off=0, bin_size=.1, e_pl=1):
-        h, s = self.draw_overlayed_times(bin_size, off, show=False), self.get_spacing()
+    @save_pickle('P')
+    def find_momentum(self, off=0, bw=None, _redo=False):
+        h, s = self.draw_overlayed_times(bw, off, show=False), self.get_bunch_spacing()
         x, r = self.find_particle_pos(h), self.Momentum + array([-10, 10])
+        if x.size != 5:  # there must be 5 peaks
+            return -1, 0, 0
         x = sort((x[1:] - x[0]) % s)
         f = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(None, p, s)) ** 2), *r)
+        self.Draw(f, file_name='f')
         y0, p0 = f.GetMinimum(), f.GetMinimumX()
-        e: Variable = sum([i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2])
-        e_sys = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(self.PathLength + e_pl, p, s)) ** 2), *r).GetMinimumX()
+        e: Variable = sum([i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2])  # error on chi2
+        e_sys = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(self.PathLength.n + self.PathLength.s, p, s)) ** 2), *r).GetMinimumX()
         return p0, abs(f.GetX(y0 + e.s) - p0), abs(e_sys - p0)
     # endregion FIND
     # ----------------------------------------

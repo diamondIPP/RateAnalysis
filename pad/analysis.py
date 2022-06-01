@@ -243,6 +243,9 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_region(self, region=None):
         self.Waveform.draw_region(region)
+
+    def get_momentum(self, redo=False):
+        return self.Peaks.find_momentum(_redo=redo)
     # endregion ALIASES
     # ----------------------------------------
 

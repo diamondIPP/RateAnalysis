@@ -44,7 +44,7 @@ class PulserAnalysis(PadSubAnalysis):
 
     def get_event_cut(self, cut=None, redo=False):
         cut = self.make_event_cut(self.get_events(cut, redo))
-        return cut & (self.Peaks.get_npeaks() == (1 if self.Type == 'extern' else 2))
+        return cut & (self.Peaks.get_n() == (1 if self.Type == 'extern' else 2))
 
     def get_signal_range(self, lfac=0, rfac=0, t_corr=True):
         return ax_range(self.SignalRegion / (1 if t_corr else self.DigitiserBinWidth), None, lfac, rfac)

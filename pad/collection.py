@@ -256,5 +256,13 @@ class PadCollection(AnalysisCollection):
         """draws the number of additional peaks in bunch <n> relative to the average number of additional peaks per bunch vs. flux"""
         x, y, y0 = self.get_fluxes(), self.get_additional_peaks(bunch, bunch + 1), self.get_additional_peaks() / self.FirstAnalysis.Peaks.NBunches
         self.Draw.graph(x, y / y0, 'Bunch Systematics',  **self.get_x_args(), show=show, logx=True, y_tit='N Peaks in Bunch {} / Average Peaks per Bunch'.format(bunch))
+
+    def get_momenta(self, redo=False):
+        return arr2u(*self.get_values('beam momenta', self.Analysis.get_momentum, redo=redo, picklepath=self.get_pickle_path('P', '', 'Peaks'))[:, :2].T)
+
+    def draw_momentum(self, fit=True, **dkw):
+        x, y = self.get_fluxes(), self.get_momenta()
+        g = self.Draw.graph(x[y > 0], y[y > 0], 'P-Beam', **prep_kw(dkw, **self.get_x_args(draw=True), y_tit='Beam Momentum [MeV/c]', file_name='P-Beam', stats=set_statbox(fit=fit)))
+        return FitRes(g.Fit('pol0', 'qs')) if fit else g
     # endregion PEAKS
     # ----------------------------------------
