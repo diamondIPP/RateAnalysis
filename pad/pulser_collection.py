@@ -46,13 +46,13 @@ class PulserCollection(SubCollection):
         self.Draw.profile(x, y, self.get_time_bins(bin_size), 'Pulser Pulse Height Trend', **self.get_x_args(True, rel_t), y_tit='Pulser Pulse Height [mV]', w=2, show=show, stats=0,
                           y_range=ax_range(y, 0, .3, .3))
 
-    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, fl=True, redo=False, **kwargs):
+    def draw_pulse_heights(self, sigma=False, vs_time=False, scaled=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, fl=True, redo=False, **dkw):
         x, y = self.get_x(vs_time), (self.get_sigmas if sigma else self.get_pulse_heights)(corr, beam_on, redo=redo)
         y /= mean(y) if scaled else 1
         marker, colors, ms = [20, 22, 23], [self.Draw.get_color(10, 6)] + [int(Draw.Colors[0])] * 2, [1, 2, 2]
         g = [self.Draw.make_tgrapherrors(ix, iy, markersize=ms[i], color=colors[i], marker=marker[i]) for i, (ix, iy) in enumerate([(x, y), ([x[0].n], [y[0].n]), ([x[-1].n], [y[-1].n])])]
         g = g[:(1 if vs_time or not fl else 3)]
-        mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **self.get_x_draw(vs_time), color=None, **kwargs)
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Height', ['data', 'first', 'last'] if legend and fl else None, **prep_kw(dkw, **self.get_x_draw(vs_time), color=None))
         format_histo(mg, **self.get_x_args(vs_time), y_range=ax_range(y, 0, .5, 1), y_tit=f'{"Relative " if scaled else ""}Pulser Pulse Height {"" if scaled else "[mV]"}')
         Draw.info(f'{self.Type}al pulser')
         self.Draw.save_plots(f'Pulser{"Sigma" if sigma else "PH"}')

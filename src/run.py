@@ -113,7 +113,7 @@ class Run(Analysis):
         return self.Config.get('BASIC', 'type') if self.Number is not None else None
 
     def set_estimate(self, n=None):
-        self.Tree.SetEstimate(choose(n, self.NEvents))
+        self.Tree.SetEstimate(choose(n, -1))
 
     def is_volt_scan(self):
         return any(name in self.Info['runtype'] for name in ['voltage', 'hv'])
