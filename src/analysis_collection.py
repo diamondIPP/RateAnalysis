@@ -438,7 +438,7 @@ class AnalysisCollection(Analysis):
         """ Shows the scaled pulse heights of the single runs. """
         mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks, scale=True)
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
-        self.Draw(mg, **self.get_x_args(vs_time, draw=True), **prep_kw(dkw, gridy=True, y_tit=f'Scaled {self.PhTit}', y_range=[.95, 1.05], ndivx=503, color=None, **m))
+        self.Draw(mg, **prep_kw(dkw, **self.get_x_args(vs_time, draw=True), gridy=True, y_tit=f'Scaled {self.PhTit}', y_range=[.95, 1.05], ndivx=503, color=None, **m))
         Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
         self.Draw.save_plots(fname('ScaledPulseHeights', avrg, vs_time))
         return mg.GetListOfGraphs()[0]
