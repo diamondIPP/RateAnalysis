@@ -365,6 +365,8 @@ class Waveform(PadSubAnalysis):
     # endregion SHOW INTEGRATION
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region COMPUTE
     def integrate(self, i, r1=None, r2=None, t1=4, t2=6):
         t, v = self.get_calibrated_times(self.get_trigger_cell(i)), self[i] * self.Polarity
         r1, r2 = (r1, r2) if r1 is not None else self.Ana.SignalRegion * self.BinWidth
@@ -380,6 +382,8 @@ class Waveform(PadSubAnalysis):
         v = concatenate([[get_y(t[0], t[1], v[0], v[1], tmax - t1)], v[1:-1], [get_y(t[-2], t[-1], v[-2], v[-1], tmax + t2)]])
         t = concatenate([[tmax - t1], t[1:-1], [tmax + t2]])
         return sum((t[1:] - t[:-1]) * (v[:-1] + v[1:])) / 2 / (t1 + t2)
+    # endregion
+    # ----------------------------------------
 
     def get_integrals(self, sig_region=None, peak_int=None, redo=False):
         def f():
