@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TCut, TF1, TMultiGraph, THStack
+from ROOT import TCut, TF1, TMultiGraph, THStack, TMath
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
 from scipy.stats import norm
 
@@ -85,7 +85,7 @@ class Tracks(SubAnalysis):
         ntel, loc = self.Run.NTelPlanes, array(self.get_tree_vec(self.get_vars(local), self.Cut['tracks'] + add_cut)).T * 10
         n = self.get_tree_vec('total_clusters', self.Cut['tracks'] + add_cut, dtype='i')
         self.add_to_info(t)
-        return loc[append(0, cumsum(n)[:-1]).repeat(ntel) + tile(arange(ntel, dtype='i'), n.size)].T.reshape((2, n.size, ntel))
+        return loc.T.reshape((2, -1, ntel)) if ntel == self.NRocs else loc[append(0, cumsum(n)[:-1]).repeat(ntel) + tile(arange(ntel, dtype='i'), n.size)].T.reshape((2, n.size, ntel))
     # endregion GET
     # ----------------------------------------
 
@@ -347,6 +347,34 @@ class Tracks(SubAnalysis):
         y = [self.get_mean_resolution(self.Cut.make(f'chi{q}', self.Cut.generate_chi2s(q))) for q in x]
         self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Mean Resolution [#mum]', y_range=[0, max(y) * 1.2]))
     # endregion RESOLUTION
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region CHI2
+    def get_chi2s(self, e=18, g=None):
+        x, y = self.get_z_positions(), self.get_plane_hits(local=False, add_cut='cluster_size == 1')
+        e, g = e * Plane.P / sqrt(12), choose(g, sqrt(5))
+        return [polyfit(x, y[i].T, deg=1, full=True, w=1 / array([1e-5, e[i] / g, e[i] / g * 1.2, e[i]]))[1] / 2 for i in range(2)]
+
+    @save_pickle('ChiF', suf_args='all')
+    def get_chi2_cut(self, q=.9, e: Any = 15, g=None, _redo=False):
+        return quantile(self.get_chi2s(e[0] if is_iter(e) else e, g)[0], q=q)
+
+    def get_chi2_x(self, e=18, g=None):
+        return self.get_chi2s(e, g)[0]
+
+    def get_chi2_y(self, e=18, g=None):
+        return self.get_chi2s(e, g)[1]
+
+    def draw_fit_chi2s(self, e=18, g=None, fit=False, show_cut=False, **dkw):
+        h = [self.Draw.distribution(x, normalise=True, x0=0, x_tit='#chi^{2} / DOF', show=False, file_name=f'chi_{["x", "y"][i]}') for i, x in enumerate(self.get_chi2s(e, g))]
+        s = self.Draw.stack(h, 'FitChi2', None, **dkw)
+        self.Draw.make_tf1('fd', lambda x: TMath.GammaDist(x, 1, 0, 2) * h[1].GetBinWidth(1), 0, 20, npx=500).Draw('same') if fit else do_nothing()
+        b = self.Draw.box(self.get_chi2_cut(e=e, g=g), -1, 100, 1, line_color=2, width=2, fillcolor=2, style=7, opacity=.2) if show_cut else do_nothing()
+        self.Draw.legend(h + [b], ['x', 'y', 'cut'], styles='l')
+        format_histo(s, **prep_kw(dkw, lw=2))
+        self.Draw.save_plots('FitChi2')
+    # endregion CHI2
     # ----------------------------------------
 
 
