@@ -28,6 +28,9 @@ class Waveform(PadSubAnalysis):
     def __getitem__(self, item):
         return self.get_all()[item]
 
+    def __repr__(self):
+        return f'{self.Run.NEvents} waveforms of {self.DUT.Name} ({"" if self.Exists else "NOT "}SAVED)'
+
     def reset(self):
         self.Count = 0
 
