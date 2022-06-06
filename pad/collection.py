@@ -200,6 +200,10 @@ class PadCollection(AnalysisCollection):
     def create_bucket_estimate(self):
         print(f'bucket scale = {FitRes(self.draw_bucket_ratio(show=False).GetListOfFunctions()[0])[1]:.2e}')
         print(f'bucket tpr = {eff2u(self.get_bucket_tpr() / 100):.4f}')
+
+    def draw_p_saturated(self, **dkw):
+        x, y = self.get_fluxes(), self.get_values('p saturated', PadAnalysis.get_p_sat, picklepath=self.get_pickle_path('Sat', '', 'WF'))
+        self.Draw.graph(x, y, **prep_kw(dkw, y_tit='Fraction of Saturated Events [%]', file_name='Saturated', **self.get_x_args(draw=True)))
     # endregion CUTS
     # ----------------------------------------
 

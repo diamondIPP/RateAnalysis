@@ -468,7 +468,6 @@ class PeakAnalysis(PadSubAnalysis):
         tit = 'Time over Threshold vs Time of Arrival'
         bins = find_bins(x, .5, .5) + find_bins(y, 1, 1, .001)
         self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='ToA [ns]', y_tit='ToT [ns]', file_name=f'ToT{t0}-ToA{t1}{"All" if cut is None else ""}'))
-
     # endregion DRAW
     # ----------------------------------------
 
@@ -646,6 +645,16 @@ class PeakAnalysis(PadSubAnalysis):
         e: Variable = sum([i / i.s for i in (x - self.get_time_differences(None, p0, s)) ** 2])  # error on chi2
         e_sys = self.Draw.make_tf1(None, lambda p: sum(i.n / i.s for i in (x - self.get_time_differences(self.PathLength.n + self.PathLength.s, p, s)) ** 2), *r).GetMinimumX()
         return p0, abs(f.GetX(y0 + e.s) - p0), abs(e_sys - p0)
+
+    @save_pickle('Sat', suf_args='all')
+    def find_saturated(self, n=1):
+        cut = self.Ana.get_event_cut(self.Ana.Cut.exclude('saturated', name='no_sat'))
+        v, t = array(self.WF.get_all())[cut], self.WF.get_times(signal_corr=False, cut=cut).reshape(-1, 1024)
+        s = any(v == 500, axis=1)  # select all wf with saturated events
+        v, t = v[s], t[s]
+        t0, t1 = self.get_bunch_range(n, n + 1)
+        s_n = [any(v[i][(t[i] >= t0) & (t[i] <= t1)] == 500) for i in range(v.shape[0])]  # check if the saturated values are in bunch n
+        return arange(self.Run.NEvents)[cut][s][s_n]
     # endregion FIND
     # ----------------------------------------
 

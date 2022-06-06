@@ -209,9 +209,13 @@ class PadAnalysis(DUTAnalysis):
         rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
 
-    @save_pickle(suf_args='all', sub_dir='Effciency')
+    @save_pickle(suf_args='all', sub_dir='Efficiency')
     def get_efficiency(self, n_sigma=3, redo=False):
         return calc_eff(values=self.get_tree_vec(self.get_eff_var(n_sigma), self.Cut()))
+
+    @save_pickle('Sat', sub_dir='WF')
+    def get_p_sat(self):
+        return calc_eff(self.Peaks.find_saturated().size, self.get_n_entries(self.Cut.exclude('saturated', name='no_sat')))
     # endregion GET
     # ----------------------------------------
 
