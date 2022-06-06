@@ -310,7 +310,8 @@ class Plane(object):
     Type = conf.get('PLANE', 'name')
     NCols, NRows = conf.get_list('PLANE', 'pixel')
     NPixels = NCols * NRows
-    PX, PY = conf.get_list('PLANE', 'pitch')  # mm
+    P = array(conf.get_list('PLANE', 'pitch'))  # mm
+    PX, PY = P
     PixArea = PX * PY
     Area = PixArea * NPixels
     WX, WY = PX * NCols, PY * NRows
