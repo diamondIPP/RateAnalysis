@@ -382,6 +382,11 @@ class Cut(SubAnalysis):
 
     def draw_fid(self, scale=10):
         self.get_fid(scale).Draw()
+
+    def get_p(self, cut, redo=False):
+        cut = Cut.to_string(cut)
+        n, n0 = [self.Ana.get_n_entries(c, _redo=redo) for c in [self(), self.exclude(cut, name=f'p-{cut}')]]
+        return (n0 - n) / n
     # endregion CONTRIBUTIONS
     # ----------------------------------------
 
