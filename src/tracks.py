@@ -174,7 +174,7 @@ class Tracks(SubAnalysis):
         """ Shows the angle distribution of the tracks. """
         x, m = self.get_tree_vec(f'angle_{self.M[i]}', self.Cut(cut)), self.M[i].title()
         h = self.Draw.distribution(x[x > -900], **prep_kw(dkw, rf=1, lf=1, title=f'Track Angle in {m}', x_tit=f'Track Angle {m} [deg]', stats=set_statbox(all_stat=True, form='.2f')))
-        self.draw_angle_cut() if show_cut else do_nothing()
+        self.draw_angle_cut(i) if show_cut else do_nothing()
         self.Draw.save_plots(f'TrackAngle{m}', **dkw)
         return h
 
