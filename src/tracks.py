@@ -128,31 +128,6 @@ class Tracks(SubAnalysis):
         h = [self.draw_chi2(m, show=False, normalise=True, **rm_key(dkw, 'show')) for m in Tracks.M]
         self.Draw.stack(h, 'Chi-squares', Tracks.M, **prep_kw(dkw))
 
-    def draw_angle(self, mode='x', bin_size=.05, cut='', show_cut=False, prnt=True, **kwargs):
-        """ Shows the angle distribution of the tracks. """
-        x, m = self.get_tree_vec(f'angle_{mode.lower()}', self.Cut(cut)), mode.title()
-        h = self.Draw.distribution(x[x > -900], self.Bins.get_angle(bin_size), f'Track Angle in {m}', x_tit=f'Track Angle {m} [deg]', **kwargs, lm=.12, y_off=1.8)
-        self.draw_angle_cut(show=show_cut)
-        format_statbox(h, all_stat=True, form='.2f')
-        self.Draw.save_plots(f'TrackAngle{m}', prnt=prnt)
-        return h
-
-    def draw_angle_cut(self, show=True):
-        if show:
-            x = self.Cut.get_track_angle()
-            b = Draw.box(-x, -10, x, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
-            self.Draw.legend([b], [f'cut ({x} deg)'], 'lf', y2=.773, margin=.45, w=.3)
-
-    def draw_angles(self, show=True, prnt=True):
-        histos = [self.draw_angle(mode, show=False, prnt=False) for mode in ['x', 'y']]
-        leg = Draw.make_legend(nentries=2, w=.25)
-        stack = THStack('has', 'Track Angles')
-        for h in histos:
-            format_histo(h, stats=False, color=self.Draw.get_color(2))
-            leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
-            stack.Add(h)
-        self.Draw(stack, 'TrackAngles', lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
-
     def draw_residual_vs_chi2(self, roc, mode='x', step_size=10, y_range=None, show=True):
         chi2s = arange(10, 101, step_size)
         residuals = self.get_chi2_residuals(roc, chi2s, mode)
@@ -191,6 +166,33 @@ class Tracks(SubAnalysis):
         xmin, xmax = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(thresh), p.FindLastBinAbove(thresh)]]
         return FitRes(p.Fit('gaus', f'qs{"" if show else 0}', '', *ax_range(xmin, xmax, -.2, -.2))).get_pars()[1:]  # fit only inner 60%
     # endregion DRAW
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # endregion ANGLE
+    def draw_angle(self, i=0, cut='', show_cut=False, **dkw):
+        """ Shows the angle distribution of the tracks. """
+        x, m = self.get_tree_vec(f'angle_{self.M[i]}', self.Cut(cut)), self.M[i].title()
+        h = self.Draw.distribution(x[x > -900], **prep_kw(dkw, rf=1, lf=1, title=f'Track Angle in {m}', x_tit=f'Track Angle {m} [deg]', stats=set_statbox(all_stat=True, form='.2f')))
+        self.draw_angle_cut() if show_cut else do_nothing()
+        self.Draw.save_plots(f'TrackAngle{m}', **dkw)
+        return h
+
+    def draw_angle_cut(self, i=0):
+        (m, s), n = self.Cut.calc_angle(i), self.Cut.get_config('track angle sigma', dtype=float)
+        b = [Draw.box(m + f * s * n, -10, f * 100, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2) for f in [-1, 1]][1:]
+        self.Draw.legend(b, [f'cut ({n} #sigma)'], 'lf', y2=.773, margin=.45, w=.3)
+
+    def draw_angles(self, show=True, prnt=True):
+        histos = [self.draw_angle(mode, show=False, prnt=False) for mode in range(2)]
+        leg = Draw.make_legend(nentries=2, w=.25)
+        stack = THStack('has', 'Track Angles')
+        for h in histos:
+            format_histo(h, stats=False, color=self.Draw.get_color(2))
+            leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
+            stack.Add(h)
+        self.Draw(stack, 'TrackAngles', lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
+    # endregion ANGLE
     # ----------------------------------------
 
     # ----------------------------------------

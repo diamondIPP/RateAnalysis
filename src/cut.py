@@ -16,6 +16,8 @@ import plotting.latex as latex
 class Cut(SubAnalysis):
     """ Contains methods to generate the cut strings for the TelescopeAnalysis and holds the dictionaries for the settings and all cut strings. """
 
+    M = ['x', 'y']
+
     def __init__(self, analysis):
 
         super().__init__(analysis, pickle_dir='Cuts')
@@ -111,8 +113,8 @@ class Cut(SubAnalysis):
         low, high = [self.Ana.Run.get_event_at_time(seconds=abs(v * 60)) if v < 0 else v for v in self.Config.get_list('CUT', 'event range', default=[0, 0])]
         return array([low, self.Run.NEvents if high == 0 else high])
 
-    def get_track_angle(self, v):
-        return sum([self.generate_track_angle(m, v)() for m in ['x', 'y']], start=TCut('track angle', ''))
+    def get_track_angle(self, sigma=None):
+        return sum([self.generate_track_angle(m, sigma)() for m in range(2)], start=TCut('track angle', ''))
 
     def get_chi2(self, mode='x', value=None):
         return choose(value, self.get_config('chi2{}'.format(mode.title()), dtype=int))
@@ -210,8 +212,8 @@ class Cut(SubAnalysis):
         self.CutStrings.register(self.generate_tracks(), 22)
         self.CutStrings.register(self.generate_chi2('x'), 72)
         self.CutStrings.register(self.generate_chi2('y'), 73)
-        self.CutStrings.register(self.generate_track_angle('x'), 74)
-        self.CutStrings.register(self.generate_track_angle('y'), 75)
+        self.CutStrings.register(self.generate_track_angle(0), 74)
+        self.CutStrings.register(self.generate_track_angle(1), 75)
 
     def generate_dut(self):
         pass
@@ -236,11 +238,13 @@ class Cut(SubAnalysis):
         description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, self.get_chi2(mode, q))
         return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
 
-    def generate_track_angle(self, mode='x', amin=None, amax=None):
-        amin, amax = (array([-1, 1]) * self.get_config('track angle', dtype=int, required=True)) if amin is None else (-amin, amin) if amax is None else (amin, amax)
-        string = '{v}>{} && {v}<{}'.format(amin, amax, v='angle_{}'.format(mode))
-        description = '{:1.1f} < tracking angle in {} < {:1.1f} [degrees]'.format(amin, mode, amax)
-        return CutString(f'track angle {mode}', string if amax > 0 else '', description)
+    def generate_track_angle(self, mode=0, sigma=None):
+        n = self.get_config('track angle sigma', dtype=float, default=sigma, required=True)
+        m, s = self.calc_angle(mode)
+        amin, amax = m - n * s, m + n * s
+        string = f'angle_{Cut.M[mode]} > {amin} && angle_{Cut.M[mode]} < {amax}'
+        description = f'{amin:1.1f} < tracking angle in {Cut.M[mode]} < {amax:1.1f} [degrees] ({n} sigma)'
+        return CutString(f'track angle {Cut.M[mode]}', string, description)
 
     def generate_beam_interruptions(self):
         """ This adds the restrictions to the cut string such that beam interruptions are excluded each time the cut is applied. """
@@ -306,6 +310,11 @@ class Cut(SubAnalysis):
     def calc_chi2(self, mode='x', q=None, redo=False):
         q = choose(q, self.get_chi2(mode))
         return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
+
+    @save_pickle('Angle', print_dur=True, suf_args='all')
+    def calc_angle(self, m=0, _redo=False):
+        x = self.get_tree_vec(f'angle_{Cut.M[m]}', cut=self())
+        return mean_sigma(x[x > -900], err=False)
 
     @save_pickle('EventMax', print_dur=True)
     def find_signal_drops(self, thresh=.6, pol=1, _redo=False):
