@@ -257,15 +257,16 @@ class PadAnalysis(DUTAnalysis):
     # region SIZES
     def draw_active_area(self):
         size = [self.DUT.PadSize.n] * 2 if self.DUT.PadSize is not None else None
-        self.draw_size(size, color=923, name='metal')
+        return self.draw_size(size, color=923, name='metal')
 
     def draw_guard_ring(self):
         size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
-        self.draw_size(size, color=417, name='guard ring')
+        return self.draw_size(size, color=417, name='guard ring')
 
     def draw_all_sizes(self):
-        super(PadAnalysis, self).draw_all_sizes()
-        self.draw_guard_ring()
+        s = super(PadAnalysis, self).draw_all_sizes()
+        s += [self.draw_guard_ring()]
+        self.Draw.legend(s, [i.GetName() for i in s], styles='l', left=True)
     # endregion SIZES
     # ----------------------------------------
 

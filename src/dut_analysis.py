@@ -361,18 +361,21 @@ class DUTAnalysis(Analysis):
         cx, cy = self.find_center()
         x, y = size
         c.cd()
-        Draw.box(cx - x / 2, cy - y / 2, cx + x / 2, cy + y / 2, line_color=color, width=3, name=name, fillstyle=4000)
+        return Draw.box(cx - x / 2, cy - y / 2, cx + x / 2, cy + y / 2, line_color=color, width=3, name=name, fillstyle=4000)
 
     def draw_detector_size(self):
-        self.draw_size(self.DUT.Size, color=432, name='detector')
+        return self.draw_size(self.DUT.Size, color=432, name='sensor')
 
     def draw_active_area(self):
         pass
 
     def draw_all_sizes(self):
-        self.draw_fid_cut()
-        self.draw_detector_size()
-        self.draw_active_area()
+        s0 = self.draw_fid_cut()
+        s0.SetName('fiducial')
+        s1 = self.draw_detector_size()
+        s2 = self.draw_active_area()
+        return [s0, s1, s2]
+
 
     @save_pickle('Center', sub_dir='Maps')
     def find_center(self, _redo=False, h=None, _no_save=False):

@@ -390,7 +390,9 @@ class Cut(SubAnalysis):
         return sorted_cuts
 
     def draw_fid(self, scale=10):
-        self.get_fid(scale).Draw()
+        f = self.get_fid(scale)
+        f.Draw()
+        return f
 
     def get_p(self, cut, redo=False):
         cut = Cut.to_string(cut)
