@@ -156,6 +156,10 @@ class Cut(SubAnalysis):
     def no_fid(self, fid=False, cut=None):
         return self(cut) if cut is not None or fid else self.exclude('fiducial')
 
+    def ph(self, high, low=None):
+        low, high = (high, low) if low is not None and low > high else (low, high)
+        return Cut.make('', f'{self.Ana.get_signal_var()} < {high}') + (f'{self.Ana.get_signal_var()} > {low}' if low is not None else '')
+
     def get_raw_pulse_height(self):
         return mean_sigma(self.Run.get_tree_vec(var=self.Ana.get_signal_var(), cut=self()), err=False)[0]
     # endregion GET
@@ -287,11 +291,6 @@ class Cut(SubAnalysis):
 
     def generate_flux_cut(self):
         return self.generate_custom(include=['beam stops', 'event range'], name='flux', prnt=False)
-
-    def gen_ph(self, high, low=None):
-        low, high = (high, low) if low is not None and low > high else (low, high)
-        low_cut = f'{self.Ana.get_signal_var()} > {low}' if low is not None else ''
-        return CutString('ph', Cut.make('', f'{self.Ana.get_signal_var()} < {high}') + low_cut, f'{low} < ph < {high}')
 
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', add=None, prnt=True):
         self.Ana.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
