@@ -80,6 +80,7 @@ if __name__ == '__main__':
                     pul = z.Pulser
                     ped = z.Pedestal
                     w = z.Waveform
+                    tm = z.Timing
                 tr = z.Tracks
                 t = z.Tel
             run = z.Run

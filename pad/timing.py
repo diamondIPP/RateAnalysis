@@ -137,20 +137,21 @@ class TimingAnalysis(PadSubAnalysis):
 
     # --------------------------
     # region PEAK TIMING
-    def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=True, show=True, prnt=True, redo=False, save=True, show_cut=False, normalise=None):
-        def f():
-            x = self.get_tree_vec(var=self.get_peak_var(corr, fine_corr, self.TimingCut(cut), redo=redo), cut=self.TimingCut(cut))
-            x *= self.DigitiserBinWidth if not corr else 1
-            bin_width = max(.1, min(.4, mean_sigma(x[(x > mean(x) - 5) & (x < mean(x) + 5)])[1].n / 8)) if corr else self.DigitiserBinWidth  # adjust bin width according to width of values
-            return self.Draw.distribution(x, make_bins(*self.Ana.get_signal_range(.5, .5), bin_width), '{}Peak Positions'.format('Time Corrected ' if corr else ''), show=False)
-        h = do_pickle(self.make_simple_pickle_path('Peak', '{}_{}{}'.format(self.TimingCut(cut).GetName(), int(corr), int(fine_corr))), f, redo=redo)
+    @save_pickle('Dist', suf_args='all')
+    def get_dist(self, cut=None, corr=True, fine_corr=True, _redo=False):
+        x = self.get_tree_vec(var=self.get_peak_var(corr, fine_corr, self.TimingCut(cut), redo=_redo), cut=self.TimingCut(cut))
+        x *= self.DigitiserBinWidth if not corr else 1
+        x0, x1 = self.Ana.get_signal_range(.5, .5)
+        return self.Draw.distribution(x, x0=x0, x1=x1, title=f'{"Time Corrected " if corr else ""}Peak Positions', x_tit='Time [ns]', show=False)
+
+    def draw_peaks(self, fit=True, cut=None, corr=True, fine_corr=False, show_cut=False, redo=False, **dkw):
+        h = self.get_dist(cut, corr, fine_corr, _redo=redo)
         if not h.GetEntries():
             return warning('histogram has no entries')
-        format_histo(h, x_tit='Time [ns]', y_off=2.0, normalise=normalise, x_range=ax_range(h=h, thresh=.05 * h.GetMaximum(), fl=.2, fh=.7))
         self.fit_peaks(h, fit)
-        self.Draw(h, lm=.13, show=show, prnt=prnt, stats=set_statbox(fit=fit, all_stat=not fit, entries=True))
+        self.Draw(h, **prep_kw(dkw, x_range=ax_range(h=h, thresh=.05 * h.GetMaximum(), fl=.2, fh=.7), stats=set_statbox(fit=fit, all_stat=not fit, entries=True)))
         self.__draw_cut(h, show_cut)
-        self.Draw.save_plots('{}PeakPos{}'.format('Raw' if not corr else 'Fine' if fine_corr else '', 'Fit' if fit else ''), show=show, prnt=prnt, save=save)
+        self.Draw.save_plots(f'{"Raw" if not corr else "Fine" if fine_corr else ""}PeakPos{"Fit" if fit else ""}', **dkw)
         return h
 
     @staticmethod
