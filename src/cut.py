@@ -288,12 +288,20 @@ class Cut(SubAnalysis):
     def generate_flux_cut(self):
         return self.generate_custom(include=['beam stops', 'event range'], name='flux', prnt=False)
 
+    def gen_ph(self, high, low=None):
+        low, high = (high, low) if low is not None and low > high else (low, high)
+        low_cut = f'{self.Ana.get_signal_var()} > {low}' if low is not None else ''
+        return CutString('ph', Cut.make('', f'{self.Ana.get_signal_var()} < {high}') + low_cut, f'{low} < ph < {high}')
+
     def generate_custom(self, exclude=None, include=None, invert=None, name='custom', add=None, prnt=True):
         self.Ana.info('generated {name} cut with {num} cuts'.format(name=name, num=self.CutStrings.get_n_custom(exclude, include)), prnt=prnt)
         return self.CutStrings.generate_custom(exclude, include, invert, name) + TCut(Cut.to_string(add))
 
     def exclude(self, *exclude, name='custom'):
         return self.CutStrings.generate_custom(exclude, name=name)
+
+    def include(self, *include, name='incl'):
+        return self.CutStrings.generate_custom(include=include, name=name)
 
     def add(self, *add, name='custom'):
         return TCut(name, Cut.to_string(self() + sum([Cut.make('', cut) for cut in add], start=TCut())))
