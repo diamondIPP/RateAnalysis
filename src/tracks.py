@@ -380,6 +380,10 @@ class Tracks(SubAnalysis):
     # ----------------------------------------
 
 
+def get_chi2(k=2, s=1):
+    return Draw.make_tf1('fd', lambda x: TMath.GammaDist(x, k / 2, 0, 2) * s, 0, 20, npx=500)
+
+
 def fit_chi2(h, mode, show=True):
     fit = TF1('f', '[0]*TMath::GammaDist(x, {ndf}/2, 0, 2)'.format(ndf=4 if mode == 'tracks' else 2))
     h.Fit(fit, 'qs{}'.format('' if show else 0))
