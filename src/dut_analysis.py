@@ -564,9 +564,7 @@ class DUTAnalysis(Analysis):
         return ratio
 
     def draw_low_sig_map(self, high=10, low=None, fid=False, cut=None, hit_map=True):
-        low = '&&{}>{}'.format(self.get_signal_var(), low) if low is not None else ''
-        fid_cut = self.Cut.generate_custom(exclude='fiducial') if cut is None else self.Cut(cut)
-        kwargs = {'redo': True, 'cut': TCut('{}<{}{}'.format(self.get_signal_var(), high, low)) + (self.Cut(cut) if fid else fid_cut)}
+        kwargs = {'redo': True, 'cut': self.Cut.no_fid(fid, cut) + self.Cut.ph(high, low)}
         self.draw_hitmap(**kwargs) if hit_map else self.draw_signal_map(**kwargs)
 
     def correlate_sm(self, run, col=True, **kwargs):
