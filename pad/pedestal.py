@@ -70,7 +70,7 @@ class PedestalAnalysis(PadSubAnalysis):
 
     @save_pickle('SigPed')
     def _get_under_signal(self, _redo=False):
-        return FitRes(self.draw_under_signal(show=False).Fit('gaus', 'qs'))
+        return FitRes(self.draw_under_signal(show=False, prnt=False).Fit('gaus', 'qs'))
 
     def get_under_signal(self, err=True, redo=False):
         return self._get_under_signal(_redo=redo).get_pars(err)[1:]
