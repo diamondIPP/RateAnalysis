@@ -53,6 +53,9 @@ class PadCut(Cut):
 
     def get_ped_sigma(self, sigma=None):
         return choose(sigma, self.Config.get_value('CUT', 'pedestal sigma', dtype=int))
+
+    def no_bucket(self, cut=None):
+        return self.exclude('bucket', 'bucket2', name='nobuc') if cut is None else self(cut)
     # endregion GET
     # ----------------------------------------
 
