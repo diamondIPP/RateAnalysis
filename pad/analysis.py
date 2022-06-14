@@ -272,9 +272,9 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region 2D MAPS
-    def draw_efficiency_vs_threshold(self, thresh=None, bin_width=.5, show=True):
+    def draw_efficiency_vs_threshold(self, thresh=None, bw=.5, show=True):
         thresh = self.Pedestal.get_noise().n * 4 if thresh is None else thresh
-        h = self.draw_signal_distribution(show=False, bin_width=bin_width)
+        h = self.draw_signal_distribution(show=False, bw=bw)
         bins = range(h.FindBin(0), h.FindBin(thresh) + 2)
         err = zeros(1)
         efficiencies = [ufloat(h.IntegralAndError(ibin, h.GetNbinsX(), err), err[0]) / h.Integral(0, h.GetNbinsX()) * 100 for ibin in bins]
@@ -289,9 +289,9 @@ class PadAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region PULSE HEIGHT
-    def draw_disto_vs_time(self, bin_width=.2, signal=None, evnt_corr=False, off_corr=False, rel_t=False, show=True):
+    def draw_disto_vs_time(self, bw=.2, signal=None, evnt_corr=False, off_corr=False, rel_t=False, show=True):
         t, ph = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal, evnt_corr, off_corr)], cut=self.Cut())
-        bins = self.Bins.get_time() + self.Bins.get_pad_ph(bin_width)
+        bins = self.Bins.get_time() + self.Bins.get_pad_ph(bw)
         h = self.Draw.histo_2d(t, ph, bins, 'Signal vs. Time', pal=53, x_tit='Time [min]', y_tit='Pulse Height [au]', t_ax_off=self.get_t_off(rel_t), show=False)
         self.Draw(h, 'SignalTime', show, draw_opt='colz', rm=.15)
         return h
@@ -339,17 +339,17 @@ class PadAnalysis(DUTAnalysis):
         return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
-    def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, _redo=False):
+    def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bw=None, _redo=False):
         x = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut))
-        bin_width = choose(bin_width, Bins.find_width, x=x)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bin_width), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=1.65)
+        bw = choose(bw, Bins.find_width, x=x)
+        return self.Draw.distribution(x, self.Bins.get_pad_ph(bw), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=1.65)
 
-    def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bin_width=None, redo=False, **kwargs):
-        h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bin_width, _redo=redo)
+    def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bw=None, redo=False, **kwargs):
+        h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bw, _redo=redo)
         return self.Draw(h, **prep_kw(kwargs, lm=.15, y_off=1.65, file_name='SignalDistribution'))
 
-    def draw_raw_signal_distribution(self, cut=None, bin_width=None, redo=False, **kwargs):
-        return self.draw_signal_distribution(self.RawName, cut, False, True, bin_width, redo, file_name='RawSignalDistribution', **kwargs)
+    def draw_raw_signal_distribution(self, cut=None, bw=None, redo=False, **kwargs):
+        return self.draw_signal_distribution(self.RawName, cut, False, True, bw, redo, file_name='RawSignalDistribution', **kwargs)
 
     def find_bunch_region(self, n=1):
         w = self.BunchSpacing / self.DigitiserBinWidth
@@ -358,17 +358,17 @@ class PadAnalysis(DUTAnalysis):
             if 'signal' in key and r[0] < m0 < r[1] and r[1] - r[0] < 1.1 * w:
                 return key
 
-    def draw_bunch_distribution(self, n=1, region=None, corr=False, bin_width=5, cut=True, show=True):
+    def draw_bunch_distribution(self, n=1, region=None, corr=False, bw=5, cut=True, show=True):
         cut = self.get_pulser_cut() & invert(self.Peaks.get_ebunch_cut(n - 1)) & invert(self.Peaks.get_ebunch_cut(n + 1)) & cut
         x = self.get_tree_vec(self.get_signal_var(region=choose(region, self.find_bunch_region(n)), evnt_corr=corr))
-        h = self.Draw.distribution(x[cut], self.Bins.get_pad_ph(bin_width), 'Bunch {} Distribution'.format(n), x_tit='Pulse Height [mV]', show=show)
+        h = self.Draw.distribution(x[cut], self.Bins.get_pad_ph(bw), 'Bunch {} Distribution'.format(n), x_tit='Pulse Height [mV]', show=show)
         if h.GetBinCenter(h.GetMaximumBin()) < 10:
             m, s = self.Pedestal()
             x, y = get_hist_vecs(h, err=False)
             format_histo(h, y_range=ax_range(0, max(y[x > m + 6 * s]), 0, .05))
 
-    def draw_bunch_comparison(self, n, regions, bin_width=5, show=True):
-        histos = [self.draw_bunch_distribution(i, r, bin_width=bin_width, show=False) for i, r in zip(n, regions)]
+    def draw_bunch_comparison(self, n, regions, bw=5, show=True):
+        histos = [self.draw_bunch_distribution(i, r, bw=bw, show=False) for i, r in zip(n, regions)]
         self.Draw.stack(histos, 'Bunch Distributions', ['Bucket {}'.format(i + 2) for i in n], scale=True, show=show)
 
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
@@ -406,9 +406,9 @@ class PadAnalysis(DUTAnalysis):
         x, y, zz = array(self.Peaks.get_from_tree()), self.Peaks.get_cft(), self.get_ph_values()
         self.Draw.prof2d(x, y, zz, self.get_t_bins(bin_size) * 2, 'Signal vs. CFD and Peak Time', y_tit='Constant Fraction Time [ns]', x_tit='Peak Time [ns]', z_tit='Pulse Height [mV]', show=show)
 
-    def draw_ph_triggercell(self, bin_width=10, t_corr=True, cut=None, show=True):
+    def draw_ph_triggercell(self, bw=10, t_corr=True, cut=None, show=True):
         x, y = self.get_tree_vec(var=['trigger_cell', self.get_signal_var(t_corr=t_corr)], cut=self.Cut(cut))
-        return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bin_width), 'Signal vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Pulse Height [mV]', show=show)
+        return self.Draw.profile(x, y, Bins.make(0, self.Run.NSamples, bw), 'Signal vs. Trigger Cell', x_tit='Trigger Cell', y_tit='Pulse Height [mV]', show=show)
 
     def draw_ph_pathlength(self, bin_size=.1, show=True):
         x, y = self.get_tree_vec(var=[self.get_track_length_var(), self.get_signal_var()], cut=self.Cut.generate_custom(exclude=['slope_x', 'slope_y']))
@@ -436,6 +436,9 @@ class PadAnalysis(DUTAnalysis):
     def get_bucket_ph(self, cut=None):
         return self.get_tree_vec(self.get_b2_var(), cut=self.Cut(cut))
 
+    def get_wf_phs(self, cut=None, redo=False):
+        return [self.Waveform.get_integrals(r, redo=redo)[self.get_event_cut(cut, redo)] for r in [None, self.get_bucket_region()]]
+
     def get_bucket_region(self, w=.5):
         """ width [w] in bunch spacings"""
         return round(self.Peaks.get_bunch_centre(2) + self.BunchSpacing * array([-w / 2, w / 2]), 2)
@@ -454,11 +457,11 @@ class PadAnalysis(DUTAnalysis):
         nb = n - self.get_n_entries(self.Cut['bucket2' if b2 else 'bucket'] + c, _redo=_redo)
         return ufloat(nb, sqrt(nb)) / n if nb else ufloat(0, 0)
 
-    def draw_b2_disto(self, n=5, **dkw):
-        x = self.get_ph_values(cut=self.Cut.exclude('bucket2') + self.Cut.generate_b2(n).invert())
+    def draw_b2_dist(self, cut=None, n=5, **dkw):
+        x = self.get_bucket_ph(cut=choose(cut, self.Cut.exclude('bucket2') + self.Cut.generate_b2(n).invert()))
         return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='B2PhDisto'))
 
-    def draw_bucket_disto(self, **dkw):
+    def draw_bucket_dist(self, **dkw):
         x = self.get_ph_values(cut=self.Cut.exclude('bucket', 'bucket2') + Cut.invert(self.Cut['bucket2'] + self.Cut['bucket']))
         return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='BucketDisto'))
 
@@ -491,24 +494,17 @@ class PadAnalysis(DUTAnalysis):
     def estimate_bucket_ratio(self, e=.8):
         return self.get_sc_tp_scale(e) * self.get_flux()
 
-    def draw_bucket_ph(self, cut=None, fid=False, bw=2, logz=True, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **dkw):
-        if use_wf_int:
-            cut = choose(cut, self.get_event_cut(self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False, name=f'bph{fid}')))
-            x, y = [self.Waveform.get_integrals(r, redo=redo)[cut] for r in [None, self.get_bucket_region()]]
-        else:
-            cut = choose(cut, self.Cut.generate_custom(include=['pulser', 'ped sigma', 'event range'] + (['fiducial'] if fid else []), prnt=False))
-            x, y = self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut)
-        h = self.Draw.histo_2d(x, y, Bins.get_pad_ph(bw) * 2, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz))
-        if draw_cut and not draw_fit:
-            m, s = self.Pedestal.get_under_signal()
-            v = m.n + 3 * s.n
-            lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
-            f = self.draw_b2_cut(color=1)
-            Draw.fypolygon(f, -100, 600, 1000, fill_color=2, opacity=.2, line_color=1)
-            Draw.legend([b, f], ['excluded', 'pedestal fit'], ['lf', 'l'], y2=.822)
-            format_statbox(h, entries=True, w=.2)  # draw above cut
-        if draw_fit:
-            self.draw_b2_fit(c=get_last_canvas())
+    def draw_ph_vs_b2(self, cut=None, **dkw):
+        cut = choose(cut, self.Cut.include('pulser', 'ped sigma', 'event range', 'fiducial', 'chi2_x', 'chi2_y'))
+        x, y = self.get_bucket_ph(cut=cut), self.get_ph_values(cut=cut)
+        self.Draw.histo_2d(x, y, **prep_kw(dkw, y_tit='Signal Pulse Height [mV]', x_tit='Bucket 2 Pulse Height [mV]', file_name='PHvB2', logz=True))
+
+    def draw_b2_vs_ph(self, cut=None, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **dkw):
+        cut = self.Cut.no_bucket(cut)
+        x, y = self.get_wf_phs(cut, redo) if use_wf_int else (self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut))
+        h = self.Draw.histo_2d(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=True))
+        self.draw_b2_cut(h, color=1) if draw_cut and not draw_fit else do_nothing()
+        self.draw_b2_fit(c=get_last_canvas()) if draw_fit else do_nothing()
         self.Draw.save_plots('BucketPH')
 
     def draw_b2_fit(self, c=None, n=100):
@@ -516,17 +512,20 @@ class PadAnalysis(DUTAnalysis):
         x = linspace(-50, 500, n)
         self.Draw.graph(x, [ufloat(fit(i), 5 * s + abs(m)) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
 
-    def draw_b2_cut(self, draw_opt='same', **kwargs):
+    def draw_b2_cut(self, h, draw_opt='same', **dkw):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
-        return self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 4 * s}', -50, 500, **kwargs), draw_opt=draw_opt)
+        f = self.Draw.function(self.Draw.make_f(None, f'{fit[0].n} + {fit[1].n} * x + {fit[2].n} * pow(x, 2) + {m + 4 * s}', -50, 500, **dkw), draw_opt=draw_opt)
+        m, s = self.Pedestal.get_under_signal()
+        v = m.n + 3 * s.n
+        lv, lh, b = Draw.vertical_line(v, color=2, w=2), Draw.horizontal_line(v, color=2, w=2), Draw.box(-100, v, v, 1000, line_color=2, opacity=.2, fillcolor=2)
+        Draw.fypolygon(f, -100, 600, 1000, fill_color=2, opacity=.2, line_color=1)
+        Draw.legend([b, lv, f], ['excluded', 'sig ped + 4#sigma', 'b2 ped + 4#sigma'], ['f', 'l', 'l'], y2=.822)
+        format_statbox(h, entries=True, w=.25)  # draw above cut
 
-    def draw_bucket_pedestal(self, bin_width=1, cut=None, **kwargs):
-        self.Draw.distribution(self.get_bucket_ph(cut), Bins.get_pad_ph(bin_width), x_tit='Pulse Height [mV]', **kwargs)
-
-    def draw_bucket_profile(self, cut=None, bin_width=2, logz=True, **kwargs):
+    def draw_bucket_profile(self, cut=None, bw=2, logz=True, **kwargs):
         cut = self.get_event_cut(Cut.to_string(self.Cut() if cut is None else cut))
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
-        return self.Draw.profile(x, y, Bins.get_pad_ph(bin_width), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+        return self.Draw.profile(x, y, Bins.get_pad_ph(bw), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
 
     def draw_bucket_fraction(self, redo=False, **dkw):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
