@@ -376,7 +376,6 @@ class DUTAnalysis(Analysis):
         s2 = self.draw_active_area()
         return [s0, s1, s2]
 
-
     @save_pickle('Center', sub_dir='Maps')
     def find_center(self, _redo=False, h=None, _no_save=False):
         h = choose(h, self.get_signal_map(cut='', _redo=_redo))
