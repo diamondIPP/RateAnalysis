@@ -373,7 +373,7 @@ class Tracks(SubAnalysis):
         s = self.Draw.stack(h, 'FitChi2', None, **dkw)
         self.Draw.make_tf1('fd', lambda x: TMath.GammaDist(x, 1, 0, 2) * h[1].GetBinWidth(1), 0, 20, npx=500).Draw('same') if fit else do_nothing()
         b = self.Draw.box(self.get_chi2_cut(e=e, g=g), -1, 100, 1, line_color=2, width=2, fillcolor=2, style=7, opacity=.2) if show_cut else do_nothing()
-        self.Draw.legend(h + [b], ['x', 'y', 'cut'], styles='l')
+        self.Draw.legend(h + [b], ['x', 'y', 'cut'], styles=['l', 'l', 'lf'])
         format_histo(s, **prep_kw(dkw, lw=2))
         self.Draw.save_plots('FitChi2')
     # endregion CHI2
