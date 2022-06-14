@@ -261,7 +261,8 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_guard_ring(self):
         size = [self.DUT.GuardRing] * 2 if self.DUT.GuardRing is not None else None
-        return self.draw_size(size, color=417, name='guard ring')
+        w = self.MainConfig.get_value('DUT', 'guard ring width', dtype=float) / 1e3
+        return self.Draw.segment(*make_box_args(0, 0, *size), -w, *-self.find_center() + size[0] / 2, color=417, opacity=.2, name='guard ring')
 
     def draw_all_sizes(self):
         s = super(PadAnalysis, self).draw_all_sizes()

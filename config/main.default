@@ -12,6 +12,10 @@ path length = 23.1
 # [MHz]
 frequency = 50.63
 
+[DUT]
+# [um]
+guard ring width = 143
+
 [SAVE]
 waveforms = False
 pickle directory = metadata
