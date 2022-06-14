@@ -509,7 +509,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_b2_fit(self, c=None, n=100):
         fit, (m, s) = self.Cut.get_fb2(), self.Pedestal()
-        x = linspace(-50, 500, n)
+        x = linspace(0, 500, n)
         self.Draw.graph(x, [ufloat(fit(i), 5 * s + abs(m)) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
 
     def draw_b2_cut(self, h, draw_opt='same', **dkw):
@@ -522,10 +522,12 @@ class PadAnalysis(DUTAnalysis):
         Draw.legend([b, lv, f], ['excluded', 'sig ped + 4#sigma', 'b2 ped + 4#sigma'], ['f', 'l', 'l'], y2=.822)
         format_statbox(h, entries=True, w=.25)  # draw above cut
 
-    def draw_bucket_profile(self, cut=None, bw=2, logz=True, **kwargs):
+    def draw_b2_profile(self, cut=None, draw_fit=False, **dkw):
         cut = self.get_event_cut(Cut.to_string(self.Cut() if cut is None else cut))
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
-        return self.Draw.profile(x, y, Bins.get_pad_ph(bw), x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=logz, **kwargs)
+        p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', show=False))
+        self.draw_b2_fit(get_last_canvas()) if draw_fit else do_nothing()
+        self.Draw(p, draw_opt='same', file_name='B2Profile')
 
     def draw_bucket_fraction(self, redo=False, **dkw):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
