@@ -358,9 +358,9 @@ class Tracks(SubAnalysis):
         e, g = e * Plane.P / sqrt(12), choose(g, sqrt(5))
         return [polyfit(x, y[i].T, deg=1, full=True, w=1 / array([1e-5, e[i] / g, e[i] / g * 1.2, e[i]]))[1] / 2 for i in range(2)]
 
-    @save_pickle('ChiF', suf_args='all')
-    def get_chi2_cut(self, q=.9, e: Any = 15, g=None, _redo=False):
-        return quantile(self.get_chi2s(e[0] if is_iter(e) else e, g)[0], q=q)
+    @save_pickle('ChiQ', suf_args='all')
+    def get_chi2_cut(self, q=None, e: Any = 15, g=None, _redo=False):
+        return quantile(self.get_chi2s(e[0] if is_iter(e) else e, g)[0], q=choose(q, self.Cut.get_chi2() / 100))
 
     def get_chi2_x(self, e=18, g=None):
         return self.get_chi2s(e, g)[0]
