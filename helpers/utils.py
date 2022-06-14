@@ -694,7 +694,7 @@ def prep_kw(dic, **default):
 
 
 def make_suffix(ana, *values):
-    suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') else suf for suf in values]
+    suf_vals = [ana.get_short_name(suf) if type(suf) is str and suf.startswith('TimeIntegralValues') and ana is not None else suf for suf in values]
     return '_'.join(str(int(val) if isint(val) else val.GetName() if hasattr(val, 'GetName') else val) for val in suf_vals if val is not None)
 
 
