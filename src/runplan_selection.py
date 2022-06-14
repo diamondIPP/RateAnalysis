@@ -563,10 +563,11 @@ class DiaScans(Analysis):
     # endregion PULSER
     # ----------------------------------------
 
-    def draw_bucket_ratios(self, avrg=False, redo=False, **kwargs):
-        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', f'{avrg:d}'), redo=redo, avrg=avrg, show=False, stats=False)
-        mg = self.Draw.multigraph(g, 'Bucket Ratios', self.get_titles(irr=True), **self.Ana.get_x_args(draw=True), wleg=.3)
-        format_histo(mg, **prep_kw(kwargs, **self.Ana.get_x_args()))
+    def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', avrg, fit), redo=redo, avrg=avrg, show=False, stats=False, fit=fit, all_cuts=False)
+        self.Draw.multigraph(g, 'Bucket Ratios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True), wleg=.3))
+        self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
+        self.Draw.save_plots('BucketRatios')
 
 
 class SelectionInfo:
@@ -605,7 +606,7 @@ class PickleInfo:
     def __init__(self, name=None, *suf):
         self.SubDir = 'selections'
         self.Name = name if name else None
-        self.Suffix = '_'.join(str(int(i) if type(i) is bool else i) for i in suf) if suf else None
+        self.Suffix = make_suffix(None, *suf)
 
     def __call__(self, *args, **kwargs):
         return self.SubDir is not None

@@ -163,8 +163,8 @@ class PadCollection(AnalysisCollection):
         self.Draw.save_plots(f'Bucket{2 if b2 else ""}Ratio')
         return g
 
-    def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
-        g = [self.draw_bucket_ratio(b2, fit, avrg, redo, show=False, **dkw) for b2 in [False, True]]
+    def draw_bucket_ratios(self, all_cuts=True, fit=False, avrg=False, redo=False, **dkw):
+        g = [self.draw_bucket_ratio(b2, all_cuts, fit, avrg, redo, show=False, **dkw) for b2 in [False, True]]
         return self.Draw.multigraph(g, 'Bucket Ratios', ['flat waveform', 'bucket 2 pedestal'], **prep_kw(dkw, file_name='BucketRatios', wleg=.35, **self.get_x_args(draw=True)))
 
     def draw_tp_ratio(self, e=.8, avrg=False, redo=False, **dkw):

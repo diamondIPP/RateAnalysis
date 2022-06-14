@@ -452,7 +452,7 @@ class PadAnalysis(DUTAnalysis):
     def get_bucket_ratio(self, b2=False, cut=None, all_cuts=False, _redo=False):
         """ return fraction of bucket events with no signal in the signal region. """
         default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
-        c = choose(cut, self.Cut.exclude('bucket', 'bucket2', name=f'br{2 if b2 else ""}') if all_cuts else default)
+        c = choose(cut, self.Cut.no_bucket() if all_cuts else default)
         n = self.get_n_entries(c + (self.Cut['bucket'] if b2 else ''), _redo=_redo)
         nb = n - self.get_n_entries(self.Cut['bucket2' if b2 else 'bucket'] + c, _redo=_redo)
         return ufloat(nb, sqrt(nb)) / n if nb else ufloat(0, 0)
