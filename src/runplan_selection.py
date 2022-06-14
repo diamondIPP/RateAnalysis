@@ -246,7 +246,7 @@ class DiaScans(Analysis):
         dut = choose(dut, len(set(self.get_dut_names())) > 1)
         duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
         tcs = lambda x: tc2str(x.TCString, short=False) if tc or not dut else ''
-        tits = [w for i in self.Info for w in [duts(i), tcs(i), bias(i), irr(i)] if w]
+        tits = [w for i in self.Info for w in [duts(i), bias(i), tcs(i), irr(i)] if w]
         cols = len(tits) // len(g)
         styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
         return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
