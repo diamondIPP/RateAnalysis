@@ -103,31 +103,6 @@ class Tracks(SubAnalysis):
                               t_ax_off=0, fill_color=Draw.FillColor, show=False)
         self.Draw(p, 'NTracksTime', draw_opt='hist', show=show, stats=set_statbox(all_stat=True, center_y=True))
 
-    def draw_chi2(self, mode=None, bin_size=None, fit=False, cut='', x_range=None, show_cut=False, **kwargs):
-        x, m = self.get_tree_vec(f'chi2_{choose(mode, "tracks").lower()}', self.Cut(cut)), choose(mode, "tracks").title()
-        x_range = choose(x_range, [0, quantile(x[(x > -900) & (x < 100)], .99)])
-        h = self.Draw.distribution(x[x > -900], self.Bins.get_chi2(bin_size), f'Chisquare {m}', x_tit='#chi^{2}', x_range=x_range, **kwargs)
-        fit_chi2(h, mode, show=fit)
-        self.draw_chi2_cut(mode, show=show_cut)
-        format_statbox(h, entries=True, fit=fit)
-        self.Draw.save_plots(f'Chi2{m}', **kwargs)
-        return h
-
-    def draw_chi2_cut(self, mode, show=True):
-        if show:
-            b = Draw.box(0, -10, self.Cut.calc_chi2(mode), 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
-            self.Draw.legend([b], [f'cut ({self.Cut.get_chi2(mode):d}#kern[.3]{{%}} qu.)'], 'lf', y2=.817, margin=.45, w=.3)
-
-    def draw_chi2s(self, show=True, prnt=True):
-        self.draw_chi2(fit=True, show=show, prnt=prnt)
-        x_range = [0, get_last_canvas().GetUxmax()]
-        self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
-        self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
-
-    def draw_xy_chi2(self, **dkw):
-        h = [self.draw_chi2(m, show=False, normalise=True, **rm_key(dkw, 'show')) for m in Tracks.M]
-        self.Draw.stack(h, 'Chi-squares', Tracks.M, **prep_kw(dkw))
-
     def draw_residual_vs_chi2(self, roc, mode='x', step_size=10, y_range=None, show=True):
         chi2s = arange(10, 101, step_size)
         residuals = self.get_chi2_residuals(roc, chi2s, mode)
@@ -197,6 +172,39 @@ class Tracks(SubAnalysis):
 
     # ----------------------------------------
     # region CHI2
+    def chi2_var(self, m=None):
+        return f'chi2_{"tracks" if m is None else self.M[m]}'
+
+    def chi2_vars(self):
+        return [self.chi2_var(i) for i in range(2)]
+
+    def chi2_tit(self, m=None):
+        return 'Tracks' if m is None else self.M[m].title()
+    
+    def draw_chi2(self, m=None, bin_size=None, fit=False, cut='', x_range=None, show_cut=False, **dkw):
+        x, t = self.get_tree_vec(self.chi2_var(m), cut=self.Cut(cut)), self.chi2_tit(m)
+        x_range = choose(x_range, [0, quantile(x[(x > -900) & (x < 100)], .99)])
+        h = self.Draw.distribution(x[x > -900], self.Bins.get_chi2(bin_size), f'Chisquare {t}', x_tit='#chi^{2}', x_range=x_range, **dkw)
+        fit_chi2(h, m, show=fit)
+        self.draw_chi2_cut(m) if show_cut else do_nothing()
+        format_statbox(h, entries=True, fit=fit)
+        self.Draw.save_plots(f'Chi2{t}', **dkw)
+        return h
+
+    def draw_chi2_cut(self, m):
+        b = Draw.box(0, -10, self.Cut.calc_chi2(m), 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+        self.Draw.legend([b], [f'cut ({self.Cut.get_chi2(m):d}#kern[.3]{{%}} qu.)'], 'lf', y2=.817, margin=.45, w=.3)
+
+    def draw_chi2s(self, show=True, prnt=True):
+        self.draw_chi2(fit=True, show=show, prnt=prnt)
+        x_range = [0, get_last_canvas().GetUxmax()]
+        self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
+        self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
+
+    def draw_xy_chi2(self, **dkw):
+        h = [self.draw_chi2(m, show=False, normalise=True, **rm_key(dkw, 'show')) for m in Tracks.M]
+        self.Draw.stack(h, 'Chi-squares', Tracks.M, **prep_kw(dkw))
+        
     def get_chi2s(self, e=18, g=None):
         x, y = self.get_z_positions(), self.get_plane_hits(local=False, add_cut='cluster_size == 1')
         e, g = e * Plane.P / sqrt(12), choose(g, sqrt(5))
