@@ -83,7 +83,7 @@ class AnalysisCollection(Analysis):
         runs = choose(runs, self.Runs)
         legend = self.Draw.make_legend(x1, y2, nentries=len(runs))
         for h, run in zip(histos, runs):
-            legend.AddEntry(h, make_flux_string(self.get_fluxes()[list(self.Runs).index(run)].n, prec=0), draw_style)
+            legend.AddEntry(h, flux2str(self.get_fluxes()[list(self.Runs).index(run)].n, prec=0), draw_style)
         return legend
 
     def set_verbose(self, status):
@@ -240,8 +240,8 @@ class AnalysisCollection(Analysis):
         values = self.get_values('fluxes', DUTAnalysis.get_flux, runs, pbar, avrg=avrg, picklepath=picklepath, plane=plane, corr=corr, full_size=full_size, redo=redo)
         return array([ufloat(v.n, v.n * .01) for v in values]) if rel else values
 
-    def get_flux_strings(self, prec=0, runs=None):
-        return [make_flux_string(flux.n, prec=prec) for flux in self.get_fluxes(runs=runs)]
+    def flux_strings(self, prec=0, runs=None):
+        return flux2str(uarr2n(self.get_fluxes(runs)), prec)
 
     @save_pickle('Splits', sub_dir='Flux')
     def get_flux_splits(self, corr=True, w=.1, n=50, _redo=False):

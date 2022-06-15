@@ -5,7 +5,8 @@
 from pad.pulser_collection import PulserCollection
 from src.analysis_collection import *
 from pad.analysis import PadAnalysis, in1d
-from helpers.utils import print_elapsed_time, quiet, split, do_pickle, make_flux_string, save_pickle, eff2u
+from pad.ped_collection import PedCollection
+from helpers.utils import print_elapsed_time, quiet, split, do_pickle, flux2str, save_pickle, eff2u
 
 
 class PadCollection(AnalysisCollection):
@@ -14,6 +15,7 @@ class PadCollection(AnalysisCollection):
     def __init__(self, run_plan, dut_nr, test_campaign=None, load_tree=True, verbose=False):
         AnalysisCollection.__init__(self, run_plan, dut_nr, test_campaign, load_tree, verbose)
         # Sub Classes
+        self.Pedestal = PedCollection(self)
         self.Pulser = PulserCollection(self)
 
     # ----------------------------------------
@@ -135,7 +137,7 @@ class PadCollection(AnalysisCollection):
             (x0, y0), y1 = get_hist_vecs(func(self.Analyses[i0], show=False)), get_hist_vec(func(self.Analyses[i1], show=False))
             return x0, y1 / where(y0 == 0, 1e10, y0)  # make ratio of zero entries 0
         x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', int(cft), sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
-        flux0, flux1 = [make_flux_string(self.Analyses[i].get_flux().n) for i in [i0, i1]]
+        flux0, flux1 = [flux2str(self.Analyses[i].get_flux().n) for i in [i0, i1]]
         self.Draw.graph(x, y, title='Signal Ratio of {} and {}'.format(flux0, flux1), x_tit='Signal Peak Time [ns]', y_tit='Signal Ratio', y_range=array([-ym, ym]) + 1, gridy=True, show=show)
         return mean_sigma(y[y > .1])[0]
 

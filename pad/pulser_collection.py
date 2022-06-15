@@ -72,7 +72,7 @@ class PulserCollection(SubCollection):
 
     def draw_distributions(self, show=True, corr=True):
         histos = self.get_plots('pulser distributions', PulserAnalysis.draw_distribution, show=False, corr=corr, picklepath=self.Analysis.make_simple_pickle_path('Disto', '{}12'.format(int(corr))))
-        self.Draw.stack(histos, 'Pulser Distributions', self.Ana.get_flux_strings(), scale=True, show=show)
+        self.Draw.stack(histos, 'Pulser Distributions', self.Ana.flux_strings(), scale=True, show=show)
 
     def compare_pulse_heights(self, sigma=False, scaled=False, show=True):
         graphs = [self.draw_pulse_heights(sigma, scaled=scaled, show=False, beam_on=ib, corr=ic).GetListOfGraphs()[0] for ib, ic in [(1, 1), (1, 0), (0, 1), (0, 0)]]

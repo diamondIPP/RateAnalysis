@@ -4,7 +4,6 @@
 # --------------------------------------------------------
 from src.sub_ana_collection import SubCollection
 from plotting.draw import *
-from helpers.utils import flux2str
 from pad.pedestal import PedestalAnalysis
 
 
@@ -27,4 +26,4 @@ class PedCollection(SubCollection):
 
     def draw_dists(self, **dkw):
         h = self.get_plots('pedestal distributions', PedestalAnalysis.get_dist, picklepath=self.get_pickle_path('Dist'), prnt=False)
-        return self.Draw.stack(h, 'PedDists', flux2str(uarr2n(self.get_fluxes())), **prep_kw(dkw, scale=True))
+        return self.Draw.stack(h, 'PedDists', self.flux_strings(), **prep_kw(dkw, scale=True))

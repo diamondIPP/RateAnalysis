@@ -31,6 +31,9 @@ class SubCollection(Analysis):
     def get_fluxes(self, pbar=False):
         return self.Ana.get_fluxes(pbar=pbar)
 
+    def flux_strings(self, prec=0, runs=None):
+        return self.Ana.flux_strings(prec, runs)
+
     def get_x(self, vs_time=False, avrg=False):
         return self.Ana.get_x_var(vs_time, avrg)
 
