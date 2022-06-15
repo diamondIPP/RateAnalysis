@@ -124,10 +124,10 @@ class PedestalAnalysis(PadSubAnalysis):
         self.Run.set_estimate()
         x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
         bins = self.get_bins(max(.1, self.Bins.find_width(x)) * choose(bin_scale, 1))
-        return self.Draw.distribution(x, bins, 'Pedestal Distribution', x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5), **dkw)
+        return self.Draw.distribution(x, bins, 'Pedestal Distribution', **prep_kw(dkw, x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5)))
 
     def draw_distribution(self, sig=None, bin_scale=None, cut=None, redo=False, prefix='', **kwargs):
-        h = self.get_dist(sig, bin_scale, cut, _redo=redo)
+        h = self.get_dist(sig, bin_scale, cut, _redo=redo, **kwargs)
         return self.Draw.distribution(h, **prep_kw(kwargs, file_name=f'{prefix}PedestalDistribution'))
 
     def draw_disto_fit(self, name=None, bin_scale=None, cut=None, redo=False, draw_cut=False, prefix='', **kwargs):
