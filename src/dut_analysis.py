@@ -425,6 +425,18 @@ class DUTAnalysis(Analysis):
         x, y = self.get_tree_vec(['trigger_phase[{}]'.format([0, 1][dut]), self.get_signal_var()], self.Cut(cut))
         self.Draw.profile(x, y, make_bins(11), 'Signal vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Pulse Height [mV]', show=show)
 
+    def draw_signal_vs_chi2(self, m=0, **dkw):
+        x, y = self.get_tree_vec([self.Tracks.chi2_var(m), self.get_ph_var()], cut=self.Cut.no_chi2())
+        self.Draw.profile(x, y, **prep_kw(dkw, x_tit=f'#chi^{{2}} in {self.Tracks.chi2_tit(m)}', y_tit=self.PhTit))
+
+    def draw_signal_vs_chi2_cut(self, n=16, x0=20, **dkw):
+        xx, xy, y = self.get_tree_vec(self.Tracks.chi2_vars() + [self.get_ph_var()], self.Cut.no_chi2())
+        x = linspace(x0, 100, n + 1)
+        qx, qy = [quantile(c, x / 100) for c in [xx, xy]]
+        y = [mean_sigma(y[(xx < qx[i]) & (xy < qy[i])])[0] for i in range(qx.size)]
+        self.Draw.graph(x, y, 'PH V Chi2Cut', **prep_kw(dkw, x_tit='#chi^{2} Cut Quantile [%]', y_tit=self.PhTit, draw_opt='ae3', opacity=.2, fill_color=2))
+        return self.Draw.graph(x, uarr2n(y), draw_opt='samel', lw=2)
+
     # ----------------------------------------
     # region SIGNAL MAP
     @save_pickle('SMRange', sub_dir='Maps', suf_args='all')
