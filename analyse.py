@@ -96,6 +96,8 @@ if __name__ == '__main__':
         z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             e = z.Ensemble
+            p = z.Pedestal
+            pul = z.Pulser
         except AttributeError:
             pass
         if pargs.draw:
