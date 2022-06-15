@@ -834,6 +834,20 @@
       ],
       "type": "rate scan"
     },
+    "01.4": {
+      "attenuators": {
+        "dia1": "?",
+        "dia2": "?",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        138,
+        141,
+        143
+      ],
+      "type": "up scan"
+    },
     "02": {
       "attenuators": {
         "dia1": "?",
@@ -1234,6 +1248,20 @@
         381,
         383,
         384
+      ],
+      "type": "up scan"
+    },
+    "08.4": {
+      "attenuators": {
+        "dia1": "None",
+        "dia2": "None",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        392,
+        395,
+        398
       ],
       "type": "up scan"
     },
