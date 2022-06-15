@@ -155,6 +155,9 @@ class Cut(SubAnalysis):
     def no_fid(self, fid=False, cut=None):
         return self(cut) if cut is not None or fid else self.exclude('fiducial')
 
+    def no_chi2(self, cut=None):
+        return self.exclude('chi2_x', 'chi2_y') if cut is None else self(cut)
+
     def ph(self, high, low=None):
         low, high = (high, low) if low is not None and low > high else (low, high)
         return Cut.make('', f'{self.Ana.get_signal_var()} < {high}') + (f'{self.Ana.get_signal_var()} > {low}' if low is not None else '')
