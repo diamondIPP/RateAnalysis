@@ -528,7 +528,7 @@ class PadAnalysis(DUTAnalysis):
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
         p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', show=False))
         self.draw_b2_fit(get_last_canvas()) if draw_fit else do_nothing()
-        self.Draw(p, draw_opt='same', file_name='B2Profile')
+        return self.Draw(p, draw_opt='same', file_name='B2Profile')
 
     def draw_bucket_fraction(self, redo=False, **dkw):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}

@@ -128,7 +128,7 @@ class PeakAnalysis(PadSubAnalysis):
     def get_flux(self, lam=None, n_bunches=None, thresh=None, fit=True, prnt=True, corr=True):
         n_bunches = 1 if lam is None else choose(n_bunches, self.NBunches)
         flux = choose(lam, self.get_lambda(thresh=thresh, fit=fit, corr=corr)) / (self.BunchSpacing * n_bunches * self.DUT.get_area()) * 1e6  # ns -> ms (kHz)
-        self.info('Estimated flux by number of peaks: {}'.format(make_flux_string(flux, term=True)), prnt=prnt)
+        self.info('Estimated flux by number of peaks: {}'.format(flux2str(flux, term=True)), prnt=prnt)
         return flux
 
     def get_pad_gr_ratio(self, thresh=None):

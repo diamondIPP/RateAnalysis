@@ -4,7 +4,7 @@
 # created on Jan 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.utils import make_tc_str, timedelta, make_flux_string, make_irr_string, mean, plural, uarr2n
+from helpers.utils import make_tc_str, timedelta, flux2str, make_irr_string, mean, plural, uarr2n
 from numpy import sort
 from plotting.info import Info
 from plotting.draw import get_window_ratio
@@ -49,8 +49,8 @@ class AnaInfo(Info):
     def get_rate_string(self):
         if self.is_collection:
             fluxes = uarr2n(self.Ana.get_fluxes(pbar=False))
-            return make_flux_string(mean(fluxes), prec=0) if 'voltage' in self.Ana.Type else ' - '.join(make_flux_string(i) for i in sort(fluxes)[[0, -1]])
-        return make_flux_string(self.Ana.Run.Flux.n)
+            return flux2str(mean(fluxes), prec=0) if 'voltage' in self.Ana.Type else ' - '.join(flux2str(i) for i in sort(fluxes)[[0, -1]])
+        return flux2str(self.Ana.Run.Flux.n)
 
     def get_info_string(self):
         voltage = '{0:+4.0f}V'.format(self.Ana.DUT.Bias) if self.has_dut else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Ana.Run.DUTs)
