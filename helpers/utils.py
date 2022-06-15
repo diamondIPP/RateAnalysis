@@ -494,7 +494,7 @@ def fit2u(fit, par):
 
 
 def eff2u(eff):
-    return ufloat(eff[0], mean(eff[1:]))
+    return ufloat(eff[0], mean(eff[1:])) if eff.shape == (3,) else array([eff2u(e) for e in eff])
 
 
 def eff2str(eff, u='\\percent', f='.2f'):
