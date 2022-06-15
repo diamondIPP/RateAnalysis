@@ -800,7 +800,7 @@ class AnalysisCollection(Analysis):
     # region CUTS
     def draw_purity(self, avrg=False, redo=False, **dkw):
         x, y = self.get_fluxes(avrg=avrg), self.get_values('purity', self.Analysis.purity, picklepath=self.get_pickle_path('Purity', sub_dir='Cuts'), avrg=avrg, redo=redo)
-        self.Draw.graph(x, y * 100, **prep_kw(dkw, title='Purity', **self.get_x_args(draw=True), y_tit='Purity [%]'))
+        self.Draw.graph(x, y * 100, **prep_kw(dkw, title='Purity', **self.get_x_args(draw=True), y_tit='Purity [%]', y_range=[0, 105], file_name='CutPurity', gridy=True))
     # endregion CUTS
     # ----------------------------------------
 
