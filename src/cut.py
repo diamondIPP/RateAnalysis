@@ -99,14 +99,13 @@ class Cut(SubAnalysis):
         n = self.Ana.get_n_entries(self.get(name) if name in self.get_names() else name)
         return self.Run.NEvents - n if excluded else n
 
-    def get_sizes(self, consecutive=True, redo=False):
-        def f():
-            return array([self.get_size(cut) for cut in (self.get_consecutive().values() if consecutive else self.get_all())])
-        return do_pickle(self.Ana.make_simple_pickle_path('Sizes', int(consecutive), 'Cuts'), f, redo=redo)
+    @save_pickle('Sizes', suf_args='all')
+    def get_sizes(self, consecutive=True, _redo=False):
+        return array([self.get_size(cut) for cut in (self.get_consecutive().values() if consecutive else self.get_all())])
 
     def get_short(self, n=6, redo=False):
-        """get a list of names of the n biggest cuts"""
-        return ['raw'] + list(array(self.get_names())[diff(self.get_sizes(redo=redo)).argsort()][-n:])
+        """:returns a list of names of the <n> biggest cuts"""
+        return ['raw'] + list(array(self.get_names())[diff(self.get_sizes(_redo=redo)).argsort()][-n:])
 
     def get_event_range(self):
         """ :return: event range. Negative values are interpreted as minutes. Example: [-10, 700k] => 10 min < events < 700k, type [ndarray]"""
@@ -116,8 +115,8 @@ class Cut(SubAnalysis):
     def get_track_angle(self, sigma=None):
         return sum([self.generate_track_angle(m, sigma)() for m in range(2)], start=TCut('track angle', ''))
 
-    def get_chi2(self, mode='x', value=None):
-        return choose(value, self.get_config('chi2{}'.format(mode.title()), dtype=int))
+    def get_chi2(self, m=0, value=None):
+        return choose(value, self.get_config(f'chi2{Cut.M[m]}', dtype=int, required=True))
 
     def get_min_event(self):
         """ :return: number of the first event, type [int] """
@@ -189,8 +188,8 @@ class Cut(SubAnalysis):
         return self if ret else self.Ana.Bins.remove_pickle()
 
     def set_chi2(self, value):
-        self.update('chi2_x', self.generate_chi2('x', value).Value)
-        self.update('chi2_y', self.generate_chi2('y', value).Value)
+        self.update('chi2 x', self.generate_chi2(0, value).Value)
+        self.update('chi2 y', self.generate_chi2(1, value).Value)
 
     def reload(self):
         self.update_config()
@@ -214,8 +213,8 @@ class Cut(SubAnalysis):
 
         # --TRACKS --
         self.CutStrings.register(self.generate_tracks(), 22)
-        self.CutStrings.register(self.generate_chi2('x'), 72)
-        self.CutStrings.register(self.generate_chi2('y'), 73)
+        self.CutStrings.register(self.generate_chi2(0), 72)
+        self.CutStrings.register(self.generate_chi2(1), 73)
         self.CutStrings.register(self.generate_track_angle(0), 74)
         self.CutStrings.register(self.generate_track_angle(1), 75)
 
@@ -232,15 +231,12 @@ class Cut(SubAnalysis):
         return CutString('event range', 'event_number>={} && event_number<={}'.format(*event_range), description)
 
     def generate_chi2s(self, q=None):
-        string = (self.generate_chi2('x', q) + self.generate_chi2('y', q)).Value
-        return CutString('chi2', string, 'chi2 x&y < {}'.format(self.get_chi2(value=q)))
+        string = sum([self.generate_chi2(i, q).Value for i in range(2)], start=TCut())
+        return CutString('chi2', string, f'chi2 x & y < {self.get_chi2(value=q)}')
 
-    def generate_chi2(self, mode='x', q=None):
-        cut_value = self.calc_chi2(mode, q)
-        if cut_value is None:
-            return CutString('chi2_{}'.format(mode), '')
-        description = 'chi2 in {} < {:1.1f} ({:d}% quantile)'.format(mode, cut_value, self.get_chi2(mode, q))
-        return CutString('chi2_{}'.format(mode), 'chi2_{}>=0'.format(mode) + ' && chi2_{mod}<{val}'.format(val=cut_value, mod=mode), description)
+    def generate_chi2(self, m=0, q=None):
+        v, q, m = self.calc_chi2(m, q), self.get_chi2(m, q), Cut.M[m]
+        return CutString(f'chi2 {m}', Cut.sum(f'chi2_{m} >= 0', f'chi2_{m} < {v}'), description=f'chi2 in {m} < {v:1.1f} ({q:d}% quantile)')
 
     def generate_track_angle(self, mode=0, sigma=None):
         n = self.get_config('track angle sigma', dtype=float, default=sigma, required=True)
@@ -310,13 +306,13 @@ class Cut(SubAnalysis):
     # ----------------------------------------
     # region COMPUTE
     @save_pickle('Chi2', print_dur=True, suf_args=0)
-    def calc_chi2_(self, mode='x', _redo=False):
-        x = self.Ana.get_tree_vec(f'chi2_{mode}')
+    def calc_chi2_(self, m=0, _redo=False):
+        x = self.Ana.get_tree_vec(f'chi2_{Cut.M[m]}')
         return quantile(x[(x > -998) & (x < 100)], linspace(0, 1, 101))
 
-    def calc_chi2(self, mode='x', q=None, redo=False):
-        q = choose(q, self.get_chi2(mode))
-        return self.calc_chi2_(mode, _redo=redo)[q] if q != 100 else None
+    def calc_chi2(self, m=0, q=None, redo=False):
+        q = choose(q, self.get_chi2(m))
+        return self.calc_chi2_(m, _redo=redo)[q] if q != 100 else None
 
     @save_pickle('Angle', print_dur=True, suf_args='all')
     def calc_angle(self, m=0, _redo=False):
@@ -443,6 +439,10 @@ class Cut(SubAnalysis):
     def make(name, cut, invert=False):
         return TCut(name, Cut.invert(cut) if invert else Cut.to_string(cut))
 
+    @staticmethod
+    def sum(*c, name='sum'):
+        return sum([TCut(i) for i in c], start=TCut(name, ''))
+
 
 class CutString:
 
@@ -456,10 +456,10 @@ class CutString:
         return TCut(self.Name, self.Value) if cut is None else TCut(cut)
 
     def __str__(self):
-        return f'{self.Level:2d}: Cut {self.Description}'
+        return self.Value
 
     def __repr__(self):
-        return self.__str__()
+        return f'{self.Level:2d}: Cut {self.Description}'
 
     def __add__(self, other):
         if other is not None:
@@ -470,7 +470,7 @@ class CutString:
         self.Value = ''
 
     def set(self, value):
-        self.Value = value
+        self.Value = Cut.to_string(value)
 
     def set_description(self, txt):
         self.Description = txt
