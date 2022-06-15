@@ -61,12 +61,9 @@ class PulserAnalysis(PadSubAnalysis):
         h = self.draw_distribution(name, show=False, save=False)
         return h.GetBinCenter(h.FindFirstBinAbove(h.GetMaximum() * .01))
 
-    def get_rate(self, prnt=True, redo=False):
-        def f():
-            return calc_eff(values=self.Run.get_tree_vec(dtype=bool, var='pulser', cut=self.Ana.Cut.CutStrings.get('beam stops')))
-        r = do_pickle(self.make_simple_pickle_path('Rate'), f, redo=redo)
-        self.info(f'pulser rate: {r[0]:.2f}+({r[1]:.2f})-({r[2]:.2f}) %', prnt=prnt)
-        return r
+    @save_pickle('Rate')
+    def rate(self, _redo=False):
+        return calc_eff(values=self.Run.get_tree_vec('pulser', dtype=bool, cut=self.Ana.Cut.include('beam stops', 'event range')))
 
     def get_rate_stability(self, bin_size=10, bins=None, show=False):
         return self.Draw.pull(self.draw_rate(bin_size, show=False, cut=self.Ana.Cut['beam stops']), bins, show=show)

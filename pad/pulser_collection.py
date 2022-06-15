@@ -95,12 +95,15 @@ class PulserCollection(SubCollection):
 
     # ----------------------------------------
     # region RATE
+    def get_rates(self, avrg=False, redo=False):
+        return self.get_values('pulser rates', PulserAnalysis.rate, avrg=avrg, _redo=redo, picklepath=self.get_pickle_path('Rate'))
+
     def draw_rate(self, bin_size=50, cut=None, rel_t=True, show=True):
         x, y = get_hist_vecs(self.get_plots('pulser rate', PulserAnalysis.draw_rate, show=False, prnt=False, bin_size=bin_size, cut=cut), err=False)
         self.Draw.profile(x, y, self.Ana.get_raw_time_bins(bin_size), 'Pulser Rate', **self.get_x_args(True, rel_t), y_tit='Pulser Rate [%]', w=2, show=show, stats=0,  y_range=ax_range(y, 0, .3, .3))
 
     def draw_rates(self, vs_time=False, redo=False, show=True):
-        x, y = self.get_x(vs_time), self.get_values('pulser rates', PulserAnalysis.get_rate, prnt=False, redo=redo, picklepath=self.get_pickle_path('Rate'))
+        x, y = self.get_x(vs_time), self.get_rates(redo=redo)
         self.Draw.graph(x, y, 'Pulser Rates', y_tit='Pulser Rate [%]', **self.get_x_args(vs_time, draw=True), show=show, y_range=[0, y.max() * 1.2], **Draw.mode(2))
 
     def draw_fractions(self, vs_time=False, show=True):
