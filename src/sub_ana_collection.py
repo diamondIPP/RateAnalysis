@@ -18,6 +18,7 @@ class SubCollection(Analysis):
         self.DUT = ana_collection.DUT
         self.Ensemble = ana_collection.Ensemble
         self.RunPlan = ana_collection.RunPlan
+        self.Type = ana_collection.Type
         super().__init__(ana_collection.TCString, sub_dir=choose(sub_dir, ana_collection.Draw.SubDir), pickle_dir=pickle_dir)
         self.Config = ana_collection.Config
 
