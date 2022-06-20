@@ -35,6 +35,11 @@ class PedCollection(SubCollection):
         h = self.get_plots('pedestal distributions', PedestalAnalysis.get_dist, picklepath=self.get_pickle_path('Dist'), prnt=False)
         return self.Draw.stack(h, 'PedDists', self.flux_strings(), **prep_kw(dkw, scale=True))
 
+    def draw_trends(self, **dkw):
+        g = self.get_plots('pedestal trends', PedestalAnalysis.get_trend, picklepath=self.get_pickle_path('Trend'))
+        g = [shift_graph(ig, ox=-get_graph_x(ig)[0].n) for ig in g]
+        return self.Draw.multigraph(g, 'PedTrends', self.flux_strings(), **prep_kw(dkw, gridy=True, **self.get_x_args(vs_time=True, off=-1, draw=True), file_name='PedTrends'))
+
     def print(self, prec=2):
         header = tex.bold(f'Flux {tex.unit("khzcm")}', f'Pedestal {tex.unit("mV")}', f'Noise {tex.unit("mV")}')
         m, s, f = self.mean(), self.noise(), uarr2n(self.get_fluxes())
