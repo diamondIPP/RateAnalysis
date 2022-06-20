@@ -368,16 +368,16 @@ class AnalysisCollection(Analysis):
         return {'logx': not vs_time, 'grid': vs_time}
 
     @staticmethod
-    def get_tax_off(vs_time, rel_time=False):
-        return None if not vs_time else AnalysisCollection.StartTime if rel_time else 0
+    def get_tax_off(vs_time, rel_time=False, off=0):
+        return None if not vs_time else AnalysisCollection.StartTime if rel_time else off
 
     @staticmethod
     def get_range(vs_time, x_range=None):
         return x_range if vs_time else Bins.FluxRange
 
     @staticmethod
-    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, **kwargs):
-        kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time),
+    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, off=0, **kwargs):
+        kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time, off),
                          x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.1)
         return {**kwargs, **AnalysisCollection.get_x_draw(vs_time or vs_irrad)} if draw else kwargs
 
