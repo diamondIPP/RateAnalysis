@@ -335,6 +335,9 @@ class DUTAnalysis(Analysis):
     def draw_pulse_height(self, *args, **kwargs):
         return TProfile()
 
+    def get_signal_distribution(self, *args, **kwargs):
+        pass
+
     def draw_signal_distribution(self, *args, **kwargs):
         pass
 

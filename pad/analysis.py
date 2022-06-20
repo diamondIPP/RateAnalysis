@@ -180,7 +180,7 @@ class PadAnalysis(DUTAnalysis):
     @save_pickle('Fit', sub_dir='PH', suf_args='[0, 1, 2, 3]')
     def _get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, _redo=False):
         """ :returns: fitted (pol0) pulse height over time """
-        return self.draw_pulse_height(sig=sig, bin_size=bin_size, cut=cut, corr=corr, show=False, save=False, redo=_redo)[1][0]
+        return self.draw_pulse_height(sig=sig, bw=bin_size, cut=cut, corr=corr, show=False, save=False, redo=_redo)[1][0]
 
     @update_pbar
     def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, peaks=False, corr_ph=True, redo=False):
@@ -299,7 +299,7 @@ class PadAnalysis(DUTAnalysis):
 
     def draw_pulse_height_vs_binsize(self, show=True):
         bin_sizes = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-        pulse_heights = [fit2u(self.draw_pulse_height(bin_size=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
+        pulse_heights = [fit2u(self.draw_pulse_height(bw=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
         g = Draw.make_tgrapherrors(bin_sizes, pulse_heights, title='Pulse Height vs Number of Events per Bin', x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2, x_off=1.2)
         self.Draw(g, lm=.12, show=show, gridy=True, logx=True)
 
@@ -311,16 +311,16 @@ class PadAnalysis(DUTAnalysis):
         g = Draw.make_tgrapherrors(x, means, title='Mean vs Bin Size', x_tit='Bin Size', y_tit='Pulse Height [mV]', x_range=[min(x) / 2, max(x) * 2])
         self.Draw(g, lm=.14, show=show, gridy=True, logx=True)
 
-    @save_pickle('Trend', sub_dir='PH', suf_args='[0, 1, 2, 3]')
-    def get_pulse_height_trend(self, bin_size=None, sig=None, cut=None, corr=True, _redo=False):
-        ph, t = self.get_tree_vec(var=[self.get_signal_var(sig, corr), self.get_t_var()], cut=self.Cut(cut))
-        return self.Draw.profile(t, ph, self.Bins.get_time(bin_size, cut), 'Pulse Height Trend', y_tit='Mean Pulse Height [mV]', **self.get_t_args(), graph=True, show=False)
+    @save_pickle('Trend', sub_dir='PH', suf_args='all')
+    def get_pulse_height_trend(self, sig=None, cut=None, corr=True, n=20, bw=None, _redo=False):
+        x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(sig, corr)], cut=self.Cut(cut))
+        return self.Draw.trend(x, y, 'Pulse Height Trend', bw, n, y_tit='Mean Pulse Height [mV]', **self.get_t_args(), show=False)
 
-    def draw_pulse_height(self, bin_size=None, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **kwargs):
-        g = self.get_pulse_height_trend(bin_size, sig, cut, corr, _redo=redo)
+    def draw_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **kwargs):
+        g = self.get_pulse_height_trend(sig, cut, corr, bw, n, _redo=redo)
         f = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
         kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
-        g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bin_size)}', **self.get_t_args(rel_t), **kwargs)
+        g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bw)}', **self.get_t_args(rel_t), **kwargs)
         return g, f
 
     def __get_max_fit_pos(self, g, thresh=.8):
@@ -335,15 +335,14 @@ class PadAnalysis(DUTAnalysis):
         return x[-1] + 1000
 
     def fit_expo(self, bw=None, n=3, **dkw):
-        g = self.draw_pulse_height(bin_size=bw, fit=False, show=False)[0]
+        g = self.draw_pulse_height(bw=bw, fit=False, show=False)[0]
         f = Expo(g).fit(n=n)
         return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
-    @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='[0, 1, 2, 3, 4]')
+    @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='all')
     def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bw=None, _redo=False):
         x = self.get_tree_vec(var=self.get_signal_var(sig, evnt_corr, off_corr, cut), cut=self.Cut(cut))
-        bw = choose(bw, Bins.find_width, x=x)
-        return self.Draw.distribution(x, self.Bins.get_pad_ph(bw), 'Pulse Height Distribution', show=False, x_tit='Pulse Height [mV]', y_off=1.65)
+        return self.Draw.distribution(x, w=bw, x0=Bins.PHMIN, x1=Bins.PHMAX, title='Pulse Height Distribution',  show=False, x_tit='Pulse Height [mV]', y_off=1.65)
 
     def draw_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bw=None, redo=False, **kwargs):
         h = self.get_signal_distribution(sig, cut, evnt_corr, off_corr, bw, _redo=redo)

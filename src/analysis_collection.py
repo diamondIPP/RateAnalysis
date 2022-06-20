@@ -231,7 +231,7 @@ class AnalysisCollection(Analysis):
             values = self.parallel(f, runs=runs, pbar=pbar, **kwargs)
         return values if plots else array(self.get_flux_average(array(values))) if avrg else array(values, dtype=object)[self.get_fluxes().argsort() if flux_sort else ...]
 
-    def get_plots(self, string, f, runs=None, pbar=None, avrg=False, picklepath=None, **kwargs):
+    def get_plots(self, string, f, runs=None, pbar=True, avrg=False, picklepath=None, **kwargs):
         return self.get_values(string, f, runs, pbar, avrg, picklepath, False, True, **kwargs)
 
     def get_fluxes(self, plane=None, corr=True, full_size=False, runs=None, avrg=False, pbar=None, rel=False, redo=False):
@@ -256,7 +256,7 @@ class AnalysisCollection(Analysis):
 
     def find_flux_binning(self, h, width=.1):
         maxima = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
-        bins = [0] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
+        bins = [0.] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
         return bins if all(diff(bins) > 0) else self.find_flux_binning(h, width - .01)
 
     def get_flux_average(self, values):
@@ -476,25 +476,25 @@ class AnalysisCollection(Analysis):
     def draw_signal_legend(self):
         pass
 
-    def draw_signal_distributions(self, bin_width=None, redo=False, logy=False, show=True):
+    def draw_signal_distributions(self, bw=None, redo=False, **dkw):
         """Shows a stack of the signal distributions."""
-        stack = THStack('hsd', 'Pulse Height Distributions')
-        histos = self.get_values('signal distributions', self.Analysis.draw_signal_distribution, show=False, prnt=False, redo=redo, bin_width=bin_width)
-        for i, h in enumerate(histos):
-            format_histo(h, lw=2, color=self.Draw.get_color(len(histos)), fill_color=0, fill_style=4000, stats=0)
-            h.Scale(1 / h.GetMaximum())
-            stack.Add(h, 'hist')
-        format_histo(stack, y_off=1.55, draw_first=True, x_tit='Pulse Height [au]', y_tit='Number of Entries')
-        self.Draw(stack, 'SignalDistributions{}'.format('Log' if logy else ''), show=show, lm=.13, draw_opt='nostack', logy=logy, leg=self.make_flux_legend(histos))
+        h = self.get_plots('signal distributions', self.Analysis.get_signal_distribution, picklepath=self.get_pickle_path('Disto', '1_0', 'PH'),  _redo=redo, bw=bw)
+        return self.Draw.stack(h, 'PHDists', self.flux_strings(), **prep_kw(dkw, y_off=1, scale=True, file_name='PHDists'))
 
-    def draw_pulls_below_flux(self, bin_width=.5, flux=150, show=True):
-        suffix = '{}_{}'.format(bin_width, flux)
-        return do_pickle(self.make_simple_pickle_path('PhPullBel', suffix, 'Ph_fit'), self.draw_pulls, redo=show, runs=self.get_runs_below_flux(flux), bin_width=bin_width, show=show)
+    def draw_ph_trends(self, bw=None, redo=False, **dkw):
+        bw = choose(bw, Bins.Size)
+        g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, picklepath=self.get_pickle_path('Trend', f'1_20_{bw}', 'PH'), bw=bw, _redo=redo)
+        g = [shift_graph(ig, ox=-get_graph_x(ig)[0].n) for ig in g]
+        return self.Draw.multigraph(g, 'PHTrends', self.flux_strings(), **prep_kw(dkw, gridy=True, **self.get_x_args(vs_time=True, off=-1, draw=True), file_name='PHTrends'))
 
-    def draw_pulls(self, runs=None, bin_width=.5, show=True):
+    def draw_pulls_below_flux(self, bw=.5, flux=150, show=True):
+        suffix = '{}_{}'.format(bw, flux)
+        return do_pickle(self.make_simple_pickle_path('PhPullBel', suffix, 'Ph_fit'), self.draw_pulls, redo=show, runs=self.get_runs_below_flux(flux), bin_width=bw, show=show)
+
+    def draw_pulls(self, runs=None, bw=.5, show=True):
         s = THStack('s_phd', 'Pulse Height Distributions')
         runs = choose(runs, self.Runs)
-        histos = self.get_values('Generate ph pulls ...', self.Analysis.draw_ph_pull, runs, show=False, bin_width=bin_width, fit=False, save=False)
+        histos = self.get_values('Generate ph pulls ...', self.Analysis.draw_ph_pull, runs, show=False, bin_width=bw, fit=False, save=False)
         for i, h in enumerate(histos):
             format_histo(h, fill_color=4000, stats=0, line_color=self.Draw.get_color(len(runs)))
             s.Add(h)

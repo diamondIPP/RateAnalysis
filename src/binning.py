@@ -24,7 +24,7 @@ class Bins(SubAnalysis):
     Vcal2Ke = Vcal2El / 1000
 
     # Pad
-    PHMIN, PHMAX = [-50, 500]
+    PHMIN, PHMAX = [-50, 499]
     PadPHRange = [PHMIN, PHMAX]
     PadPHBinWidth = 1
 
