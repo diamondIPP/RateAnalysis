@@ -24,7 +24,8 @@ class Bins(SubAnalysis):
     Vcal2Ke = Vcal2El / 1000
 
     # Pad
-    PadPHRange = [-50, 500]
+    PHMIN, PHMAX = [-50, 500]
+    PadPHRange = [PHMIN, PHMAX]
     PadPHBinWidth = 1
 
     def __init__(self, analysis=None):
