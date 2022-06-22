@@ -261,7 +261,7 @@ class AnalysisCollection(Analysis):
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
-        return array([mean(lst, axis=0) for lst in split(values, self.get_flux_splits())])  # split into sub-lists of similar flux and take average
+        return array([mean_sigma(lst)[0] for lst in split(values, self.get_flux_splits())])  # split into sub-lists of similar flux and take average
 
     def get_times(self, runs=None):
         return self.get_values('times', DUTAnalysis.get_time, runs, pbar=False)
@@ -401,7 +401,7 @@ class AnalysisCollection(Analysis):
         x0 = x[where((f >= fmin) & (f <= fmax))]
         return x / mean(x0).n  # no error to keep correct errors of single measurements
 
-    def make_pulse_height_graph(self, bw=None, vs_time=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False, vs_irrad=False):
+    def make_pulse_height_graph(self, bw=None, vs_time=False, vs_irrad=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False):
         x, (ph0, ph) = self.get_x_var(vs_time, vs_irrad, avrg), [self.get_pulse_heights(bw, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
         ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
@@ -409,7 +409,7 @@ class AnalysisCollection(Analysis):
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
         graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
-        if legend:
+        if legend and not avrg:
             mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True))
         if vs_time:
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
@@ -449,7 +449,7 @@ class AnalysisCollection(Analysis):
         mg.GetListOfGraphs()[0].Fit('pol0', f'qs') if fit else do_nothing()
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
-        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad, draw=True), file_name=f'PulseHeight{self.get_mode(vs_time)}', stats=stats, color=None, **m))
+        return self.Draw(mg, **prep_kw(kwargs, **self.get_x_args(vs_time, vs_irrad=vs_irrad, draw=True), file_name=fname('PH', avrg, vs_time, vs_irrad), stats=stats, color=None, **m))
 
     @save_pickle('Full', sub_dir='PH', suf_args='all')
     def get_full_ph(self, bin_size=None, _redo=False):
@@ -844,8 +844,8 @@ class AnalysisCollection(Analysis):
         return self.Draw.graph(x[::2], y, **prep_kw(dkw, y_tit='Gain Ratio', tform='%y/%m', **self.get_x_args(True, draw=True, x_tit='Time [YY/MM]'), file_name='GainRatio', markersize=1.5))
 
 
-def fname(n, avrg=False, t=False):
-    return f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}'
+def fname(n, avrg=False, t=False, i=False):
+    return f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}{"Irr" if i else ""}'
 
 
 def dfname(n, avrg=False, t=False):
