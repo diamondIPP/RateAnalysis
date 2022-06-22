@@ -407,7 +407,7 @@ class AnalysisCollection(Analysis):
         g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
-        graphs = [g_errors, g] + ([g1, g_last] if first_last and not avrg and not vs_time else [])
+        graphs = [g_errors] + ([] if avrg else [g]) + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend and not avrg:
             mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True))
@@ -442,6 +442,12 @@ class AnalysisCollection(Analysis):
         Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
         self.Draw.save_plots(fname('ScaledPulseHeights', avrg, vs_time))
         return mg.GetListOfGraphs()[0]
+
+    def draw_avrg_ph(self, bw=None, t=False, i=False, corr=True, err=True, fit=False, redo=False, **dkw):
+        x, y = self.get_x_var(t, i, avrg=True), self.get_pulse_heights(bw, corr=corr, err=err, redo=redo, avrg=True)
+        g = self.Draw.graph(x, y, 'AvrPH', y_tit=self.PhTit)
+        g.Fit('pol0', 'qs') if fit else do_nothing()
+        return self.Draw.graph(g, **prep_kw(dkw, **self.get_x_args(t, vs_irrad=i, draw=True), stats=set_statbox(fit=fit, form='2.1f', stats=fit), file_name=fname('PH', True, t, i)))
 
     def draw_pulse_heights(self, bw=None, vs_time=False, vs_irrad=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
         """ Shows the pulse heights of the runs. """
