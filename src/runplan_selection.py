@@ -9,7 +9,7 @@ from json import dump
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
-from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph
+from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma
 import plotting.latex as latex
 from src.analysis import *
 from src.binning import Bins
@@ -48,6 +48,9 @@ class DiaScans(Analysis):
 
     def __str__(self):
         return self.Name
+
+    def __repr__(self):
+        return self.show_selection(ret=True)
 
     @property
     def is_volt_scan(self):
@@ -113,8 +116,9 @@ class DiaScans(Analysis):
     def get_dut_names(self):
         return [sel.DUTName for sel in self.Info]
 
-    def get_run_types(self):
-        return [sel.Type.lower() for sel in self.Info]
+    @property
+    def run_types(self):
+        return [sel.Type.lower().replace('rate', 'normal') for sel in self.Info]
 
     def get_irradiations(self, string=True):
         return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info])
@@ -240,7 +244,7 @@ class DiaScans(Analysis):
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, e_field=False, **kwargs):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
-    def make_legend(self, g, dut=None, tc=None, irrad=False, **kw):
+    def make_legend(self, g, dut=None, tc=None, irrad=False, custom=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {make_bias_str(x.Bias)}'
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
         dut = choose(dut, len(set(self.get_dut_names())) > 1)
@@ -249,6 +253,8 @@ class DiaScans(Analysis):
         tits = [w for i in self.Info for w in [duts(i), bias(i), tcs(i), irr(i)] if w]
         cols = len(tits) // len(g)
         styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
+        if custom:
+            return self.Draw.legend(g, custom, show=False, **prep_kw(kw, styles='p'))
         return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
     # endregion GET
     # ----------------------------------------
@@ -266,9 +272,10 @@ class DiaScans(Analysis):
         self.set_selection_name(old_sel)
         print_table(rows, header)
 
-    def show_selection(self):
+    def show_selection(self, ret=False):
         """ Gives detailed information about the chosen selection """
-        print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type', 'Irrad']) if self.Info else warning('Selection is empty!')
+        t = print_table(rows=[sel() for sel in self.Info], header=['TC', 'RunPlan', 'DUT', 'Nr', 'Runs', 'Bias', 'Type', 'Irrad'], prnt=not ret) if self.Info else warning('Selection is empty!')
+        return t if ret else None
 
     def show_all_runplans(self):
         old_sel = deepcopy(self.Name)
@@ -365,7 +372,7 @@ class DiaScans(Analysis):
         x, y = self.get_x(avrg, redo), self.get_scaled_pulse_heights(avrg, redo)
         g = [self.Draw.graph(ix, iy, title='PH', y_tit='Normalised Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
         f, yr = fname('NormalPH', avrg), None if yr is None else [1 - yr, 1 + yr]
-        return self.Draw.multigraph(g, 'Scaled Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', file_name=f, y_range=yr))
+        return self.Draw.multigraph(g, 'Scaled Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), gridy=True, draw_opt='pl', file_name=f, y_range=yr))
 
     def draw_dia_rate_scans(self, redo=False, irr=True, corr=True):
         mg = TMultiGraph('mg_ph', '{dia} Rate Scans{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
@@ -461,7 +468,7 @@ class DiaScans(Analysis):
         if len(set(self.get_dut_names())) > 1:
             return [f'{dut}{" - " if irr else ""}{irr}' for dut, irr in zip(self.get_dut_names(), self.get_irradiations() if irr else [''] * self.NPlans)]
         tits = self.get_irradiations() if irr else [make_tc_str(tc) for tc in self.TestCampaigns]
-        if any(['rand' in word for word in self.get_run_types()]):
+        if any(['rand' in word for word in self.run_types]):
             for i, sel in enumerate(self.Info):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
         return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else [f'@ {make_bias_str(bias)}']) for t, bias in zip(tits, self.get_bias_voltages())]
