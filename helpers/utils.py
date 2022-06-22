@@ -16,7 +16,7 @@ from threading import Thread
 from time import time, sleep
 
 from gtts import gTTS
-from numpy import sqrt, array, average, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
+from numpy import sqrt, array, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
 from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, all, column_stack
 from os import makedirs, remove, devnull, stat, getenv, _exit
 from os import path as pth
@@ -184,24 +184,6 @@ def make_irr_string(val):
         return 'nonirradiated'
     val, power = [float(i) for i in val.split('e')]
     return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{{{}}}'.format(int(power)))
-
-
-def mean_sigma(values, weights=None, err=True):
-    """ Return the weighted average and standard deviation. values, weights -- Numpy ndarrays with the same shape. """
-    if len(values) == 1:
-        value = make_ufloat(values[0])
-        return (value, ufloat(value.s, 0)) if err else (value.n, value.s)
-    weights = full(len(values), 1) if weights is None else weights
-    if is_ufloat(values[0]):
-        errors = array([v.s for v in values])
-        weights = full(errors.size, 1) if all(errors == errors[0]) else [1 / e if e else 0 for e in errors]
-        values = array([v.n for v in values], 'd')
-    if all(weights == 0):
-        return [0, 0]
-    n, avrg = values.size, average(values, weights=weights)
-    sigma = sqrt(n / (n - 1) * average((values - avrg) ** 2, weights=weights))  # Fast and numerically precise
-    m, s = ufloat(avrg, sigma / (sqrt(len(values)) - 1)), ufloat(sigma, sigma / sqrt(2 * len(values)))
-    return (m, s) if err else (m.n, s.n)
 
 
 def binned_stats(x, values, f, bins):
