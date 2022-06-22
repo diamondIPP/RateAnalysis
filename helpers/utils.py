@@ -516,7 +516,7 @@ def add_err(u, e):
 
 
 def add_perr(u, e):
-    return u * ufloat(1, e)
+    return u * ufloat(1, e) if is_ufloat(u) else array([add_perr(i, e) for i in u])
 
 
 def is_iter(v):
