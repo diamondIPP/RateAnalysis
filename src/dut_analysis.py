@@ -622,12 +622,10 @@ class DUTAnalysis(Analysis):
         format_statbox(h, w=.35, all_stat=True)
         (low, high), m = get_fwhm(h, ret_edges=True), get_fw_center(h) if use_fwc else ufloat(h.GetMean(), h.GetMeanError())
         fwhm, half_max = high - low, h.GetMaximum() / 2
-        if noise > fwhm:
-            return fwhm, noise, 0
         li = Draw.vertical_line(m.n, style=7, w=2)
         a = Draw.arrow(low.n, high.n, half_max, half_max, col=2, width=3, opt='<>', size=.02)
         Draw.legend([a, li], ['FWHM', 'FWC' if use_fwc else 'Mean'], 'l', y2=.72, w=.2)
-        fwhm = usqrt(fwhm ** 2 - noise ** 2)  # correct fwhm for noise
+        fwhm = usqrt(fwhm ** 2 - noise ** 2) if fwhm > noise else usqrt((noise + ufloat(1, 1)) ** 2 - noise ** 2)   # correct fwhm for noise
         fwhm = add_err(fwhm, 2 * h.GetBinWidth(1))  # add error for false estimate
         value = fwhm / m
         Draw.add_stats_entry(h, f'FWHM/{"FWC" if use_fwc else "Mean"}', value, line=3)

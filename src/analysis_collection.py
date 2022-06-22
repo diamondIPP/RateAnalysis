@@ -352,7 +352,7 @@ class AnalysisCollection(Analysis):
 
     def get_uniformities(self, use_fwc=True, low_flux=False, high_flux=False, avrg=False, redo=False):
         runs = self.get_runs_below_flux(110) if low_flux else self.get_runs_above_flux(2000) if high_flux else self.Runs
-        picklepath = self.make_simple_pickle_path('Uniformity', int(use_fwc), 'Signal', run='{}')
+        picklepath = self.get_pickle_path('Uniformity', int(use_fwc), 'Signal')
         return self.get_values('uniformities', self.Analysis.get_uniformity, runs, picklepath=picklepath, _redo=redo, use_fwc=use_fwc, avrg=avrg)
 
     def get_mean_uniformity(self, use_fwc=True, redo=False, low_flux=False, high_flux=False):
@@ -516,12 +516,17 @@ class AnalysisCollection(Analysis):
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return values
 
-    def draw_fwhm(self, arg=1, t=False, vs_irrad=False, use_fwc=True, avrg=False, redo=False, **kwargs):
+    def draw_fwhm(self, arg=1, t=False, vs_irrad=False, use_fwc=True, avrg=False, redo=False, **dkw):
         x, y = self.get_x_var(t, vs_irrad, avrg), self.get_uniformities(use_fwc, redo, avrg=avrg)[:, arg]
         ph_var = 'FWC' if use_fwc else 'Mean'
         var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], f' {self.PhUnit}' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
-        f = fname('Uni' if arg == 2 else var, avrg, t)
-        return self.Draw.graph(x[y != 0], y[y != 0], title=tit, y_tit=f'{var}{unit}', **prep_kw(kwargs, **self.get_x_args(t, vs_irrad=vs_irrad, draw=True), file_name=f))
+        g = self.Draw.graph(x[y != 0], y[y != 0], **prep_kw(dkw, title=tit, y_tit=f'{var}{unit}', **self.get_x_args(t, vs_irrad=vs_irrad, draw=True)))
+        if vs_irrad and arg == 2:
+            g_scvd = self.Draw.make_tgrapherrors([0, 10], [ufloat(0.27, .01)] * 2, color=634, fill_color=634, opacity=.2)
+            g_scvd.Draw('le3')
+            self.Draw.legend([g, g_scvd], ['pCVD', 'scCVD'], ['p', 'lf'])
+        self.Draw.save_plots(fname('Uni' if arg == 2 else var, avrg, t))
+        return g
 
     def draw_means(self, vs_time=False, vs_irrad=False, avrg=False, redo=False, **kwargs):
         return self.draw_fwhm(0, vs_time, vs_irrad, False, avrg, redo, **kwargs)
