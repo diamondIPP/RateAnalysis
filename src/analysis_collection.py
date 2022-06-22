@@ -181,17 +181,17 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region BINNING
-    def get_binning(self, bin_width=None, rel_time=False):
-        bins = concatenate([ana.Bins.get_raw_time(bin_width, t_from_event=True)[1] for ana in self.Analyses])
+    def get_binning(self, bw=None, rel_time=False):
+        bins = concatenate([ana.Bins.get_raw_time(bw, t_from_event=True)[1] for ana in self.Analyses])
         return [bins.size - 1, bins - (self.FirstAnalysis.Run.StartTime if rel_time else 0)]
 
-    def get_time_bins(self, bin_width=None, only_edges=False):
-        bins = self.fix_t_arrays([ana.Bins.get_time(bin_width)[1] for ana in self.Analyses])
+    def get_time_bins(self, bw=None, only_edges=False):
+        bins = self.fix_t_arrays([ana.Bins.get_time(bw)[1] for ana in self.Analyses])
         bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
         return [bins.size - 1, bins]
 
-    def get_raw_time_bins(self, bin_width=None, only_edges=False, t_from_event=False):
-        bins = self.fix_t_arrays([ana.Bins.get_raw_time(bin_width, t_from_event=t_from_event)[1] for ana in self.Analyses])
+    def get_raw_time_bins(self, bw=None, only_edges=False, t_from_event=False):
+        bins = self.fix_t_arrays([ana.Bins.get_raw_time(bw, t_from_event=t_from_event)[1] for ana in self.Analyses])
         bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
         return [bins.size - 1, bins]
 
@@ -628,9 +628,9 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region TELESCOPE
-    def draw_beam_current(self, bin_width=60, rel_t=True, show=True):
-        h = TH1F('hr1', 'Beam Current of Run Plan {r}'.format(r=self.RunPlan), *self.get_raw_time_bins(bin_width))
-        values = [get_hist_vec(ana.Tel.draw_beam_current(bin_width, show=False, save=False)) for ana in self.Analyses]
+    def draw_beam_current(self, bw=60, rel_t=True, show=True):
+        h = TH1F('hr1', 'Beam Current of Run Plan {r}'.format(r=self.RunPlan), *self.get_raw_time_bins(bw))
+        values = [get_hist_vec(ana.Tel.draw_beam_current(bw, show=False, save=False)) for ana in self.Analyses]
         values = concatenate([append(run_values, run_values[-1]) for run_values in values])  # add last flux value for time bin between runs
         for i, value in enumerate(values, 1):
             h.SetBinContent(i, value.n)
@@ -639,13 +639,13 @@ class AnalysisCollection(Analysis):
         self.Draw(h, 'AllBeamRate', show=show, draw_opt='hist', x=1.5, y=.75, lm=.065)
 
     @save_pickle('Prof', sub_dir='Flux', suf_args='[0]')
-    def get_flux_prof(self, bin_width=5, _redo=False):
-        x = [get_hist_vec(ana.Tel.draw_flux(bin_width, show=False, prnt=False)) for ana in self.Analyses]
+    def get_flux_prof(self, bw=5, _redo=False):
+        x = [get_hist_vec(ana.Tel.draw_flux(bw, show=False, prnt=False)) for ana in self.Analyses]
         x = concatenate([append(run_values, ufloat(0, 0)) for run_values in x])  # add extra zero for time bin between runs
-        return self.Draw.distribution(x, self.get_raw_time_bins(bin_width), 'Flux Profile', **self.get_x_args(True), y_tit='Flux [kHz/cm^{2}]', show=False)
+        return self.Draw.distribution(x, self.get_raw_time_bins(bw), 'Flux Profile', **self.get_x_args(True), y_tit='Flux [kHz/cm^{2}]', show=False)
 
-    def draw_flux(self, bin_width=5, rel_time=True, redo=False, **kwargs):
-        h = self.get_flux_prof(bin_width, _redo=redo)
+    def draw_flux(self, bw=5, rel_time=True, redo=False, **kwargs):
+        h = self.get_flux_prof(bw, _redo=redo)
         return self.Draw.distribution(h, **prep_kw(kwargs, file_name='FluxProfile', **self.get_x_args(True, rel_time, draw=True), **Draw.mode(2), logy=True,
                                                    y_tit='Flux [kHz/cm^{2}]', stats=False))
 
