@@ -67,9 +67,10 @@ class PadCollection(AnalysisCollection):
     def get_pulse_heights(self, bw=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False, peaks=False, flux_sort=False):
         picklepath = None if peaks else self.get_pickle_path('Fit', make_suffix(bw, 20, corr), 'PH')
         pbar = False if peaks else pbar
-        x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, avrg, picklepath, bw=bw, redo=redo, corr=corr, peaks=peaks, flux_sort=flux_sort)
+        x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, False, picklepath, bw=bw, redo=redo, corr=corr, peaks=peaks, flux_sort=flux_sort)
         # https://physics.stackexchange.com/questions/23441/how-to-combine-measurement-error-with-statistic-error
-        return add_perr(x, self.get_sys_error() if err and not avrg else 0)
+        x = add_perr(x, self.get_sys_error() * 2 if err else 0)  # add sys error to all runs
+        return self.get_flux_average(x) if avrg else x
 
     def get_pedestals(self, runs=None, sigma=False, flux_sort=False, avrg=False, redo=False):
         picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')
