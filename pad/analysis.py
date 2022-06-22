@@ -177,14 +177,14 @@ class PadAnalysis(DUTAnalysis):
         """ :returns: all pulse height values for a given cut. """
         return self.Run.get_tree_vec(var=self.get_signal_var(name, evnt_corr, cut=cut, region=region), cut=self.Cut(cut))
 
-    @save_pickle('Fit', sub_dir='PH', suf_args='[0, 1, 2, 3]')
-    def _get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, _redo=False):
+    @save_pickle('Fit', sub_dir='PH', suf_args='all')
+    def _get_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, _redo=False):
         """ :returns: fitted (pol0) pulse height over time """
-        return self.draw_pulse_height(sig=sig, bw=bin_size, cut=cut, corr=corr, show=False, save=False, redo=_redo)[1][0]
+        return self.draw_pulse_height(bw, n, sig, cut, corr, show=False, save=False, redo=_redo)[1][0]
 
     @update_pbar
-    def get_pulse_height(self, bin_size=None, cut=None, corr=True, sig=None, peaks=False, corr_ph=True, redo=False):
-        return self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bin_size, cut, corr, sig, _redo=redo), cut, corr_ph)
+    def get_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, peaks=False, corr_ph=True, redo=False):
+        return self.Peaks.get_bunch_height() if peaks else self.correct_ph(self._get_pulse_height(bw, n, sig, cut, corr, _redo=redo), cut, corr_ph)
 
     def correct_ph(self, ph=None, cut=None, corr=True):
         ph = choose(ph, self._get_pulse_height, cut=self.Cut.get_tp())
@@ -312,12 +312,12 @@ class PadAnalysis(DUTAnalysis):
         self.Draw(g, lm=.14, show=show, gridy=True, logx=True)
 
     @save_pickle('Trend', sub_dir='PH', suf_args='all')
-    def get_pulse_height_trend(self, sig=None, cut=None, corr=True, n=20, bw=None, _redo=False):
+    def get_pulse_height_trend(self, bw=None, n=20, sig=None, cut=None, corr=True, _redo=False):
         x, y = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(sig, corr)], cut=self.Cut(cut))
         return self.Draw.trend(x, y, 'Pulse Height Trend', bw, n, y_tit='Mean Pulse Height [mV]', **self.get_t_args(), show=False)
 
     def draw_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **kwargs):
-        g = self.get_pulse_height_trend(sig, cut, corr, bw, n, _redo=redo)
+        g = self.get_pulse_height_trend(bw, n, sig, cut, corr, _redo=redo)
         f = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
         kwargs = prep_kw(kwargs, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
         g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bw)}', **self.get_t_args(rel_t), **kwargs)
