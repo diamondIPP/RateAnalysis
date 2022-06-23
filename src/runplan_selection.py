@@ -151,6 +151,9 @@ class DiaScans(Analysis):
     def get_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
 
+    def get_mean_ph(self, redo=False):
+        return array([mean_sigma(i)[0] for i in self.get_pulse_heights(redo=redo)])
+
     def get_scaled_pulse_heights(self, avrg=False, redo=False):
         """ scale the ph to the mean of the pulse heights in the 'min flux range' """
         def scale_ph(x, y):
