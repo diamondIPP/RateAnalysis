@@ -173,14 +173,14 @@ class PadCut(Cut):
         return '"{}": [{}]'.format(self.Ana.DUT.Name, ', '.join('{:0.3f}'.format(i) for i in x + y))
 
     @save_pickle('BeamStops', suf_args='all')
-    def find_beam_interruptions(self, bin_width=100, thresh=.2):
+    def find_beam_interruptions(self, bw=100, thresh=.2):
         """ Looking for the beam interruptions by investigating the pulser rate. """
         x, y = self.get_tree_vec(var=['Entry$', 'pulser'], dtype='i4')
-        rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bin_width, dtype=int), 2])
-        rates = rates[:, 1] / bin_width
+        rates, x_bins, y_bins = histogram2d(x, y, bins=[arange(0, x.size, bw, dtype=int), 2])
+        rates = rates[:, 1] / bw
         thresh = min(1, mean(rates) + thresh)
-        events = x_bins[:-1][rates > thresh] + bin_width / 2
-        not_connected = where(concatenate([[False], events[:-1] != events[1:] - bin_width]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
+        events = x_bins[:-1][rates > thresh] + bw / 2
+        not_connected = where(concatenate([[False], events[:-1] != events[1:] - bw]))[0]  # find the events where the previous event is not related to the event (more than a bin width away)
         events = split(events, not_connected)  # events grouped into connecting events
         interruptions = [(ev[0], ev[0]) if ev.size == 1 else (ev[0], ev[-1]) for ev in events] if events[0].size else []
         return array(interruptions, 'i4')
