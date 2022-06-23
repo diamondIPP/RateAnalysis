@@ -37,8 +37,8 @@ class SubCollection(Analysis):
     def get_x(self, vs_time=False, avrg=False):
         return self.Ana.get_x_var(vs_time, avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, draw=True, **kwargs):
-        return self.Ana.get_x_args(vs_time, rel_time, draw, **kwargs)
+    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=True, **kwargs):
+        return self.Ana.get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
 
     def get_x_draw(self, vs_time=False):
         return self.Ana.get_x_draw(vs_time)
@@ -65,3 +65,7 @@ class SubCollection(Analysis):
 
     def get_pickle_path(self, name='', suf='', sub_dir=None, dut=None, camp=None):
         return self.Analysis.make_simple_pickle_path(name, suf, sub_dir, run='{}', dut=dut, camp=camp)
+
+
+def fname(n, avrg=False, t=False, i=False):
+    return f'{n}{"Time" if t else ""}{"Avr" if avrg else ""}{"Irr" if i else ""}'
