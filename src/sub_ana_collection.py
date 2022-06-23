@@ -37,7 +37,7 @@ class SubCollection(Analysis):
     def get_x(self, vs_time=False, avrg=False):
         return self.Ana.get_x_var(vs_time, avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, draw=False, **kwargs):
+    def get_x_args(self, vs_time=False, rel_time=False, draw=True, **kwargs):
         return self.Ana.get_x_args(vs_time, rel_time, draw, **kwargs)
 
     def get_x_draw(self, vs_time=False):

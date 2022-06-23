@@ -376,7 +376,7 @@ class AnalysisCollection(Analysis):
         return x_range if vs_time else Bins.FluxRange
 
     @staticmethod
-    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=False, off=0, **kwargs):
+    def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=True, off=0, **kwargs):
         kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time, off),
                          x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.1)
         return {**kwargs, **AnalysisCollection.get_x_draw(vs_time or vs_irrad)} if draw else kwargs
