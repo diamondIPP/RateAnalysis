@@ -61,9 +61,15 @@ if __name__ == '__main__':
     pargs = aparser.parse_args()
 
     from src.analysis import Analysis
-    this_tc = Analysis.find_testcampaign(pargs.testcampaign)
+    from src.run import Run
 
-    if not pargs.collection and isint(pargs.runplan):
+    this_tc = Analysis.find_testcampaign(pargs.testcampaign)
+    run = Run(None, this_tc, load_tree=False, verbose=False)
+    runs = list(run.load_run_info_file().keys())
+    runplans = list(load_json(Dir.joinpath(run.MainConfig.get('MISC', 'run plan path')))[this_tc].keys())
+    is_collection = pargs.runplan in runplans and (pargs.collection or not isint(pargs.runplan) or pargs.runplan not in runs)
+
+    if not is_collection:
         if pargs.reconvert:
             analysis_selector(pargs.runplan, pargs.dut, this_tc, False, False, False).Run.Converter.reconvert()
         if pargs.remove:
@@ -93,7 +99,7 @@ if __name__ == '__main__':
         if pargs.draw:
             from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    elif isfloat(pargs.runplan) or pargs.collection:
+    elif is_collection:
         if pargs.remove:
             z = collection_selector(pargs.runplan, pargs.dut, this_tc, False, False)
             z.remove_metadata(all_subdirs=True)
