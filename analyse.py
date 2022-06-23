@@ -4,6 +4,7 @@
 # created on Oct 15th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from plotting.draw import *  # import everything so that methods are available in ipython
+import plotting.latex as tex  # noqa
 from src.binning import Bins  # noqa
 from numpy import *
 from helpers.utils import *
