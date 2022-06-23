@@ -198,8 +198,8 @@ class Tracks(SubAnalysis):
     def draw_chi2s(self, show=True, prnt=True):
         self.draw_chi2(fit=True, show=show, prnt=prnt)
         x_range = [0, get_last_canvas().GetUxmax()]
-        self.draw_chi2('x', show_cut=True, show=show, x_range=x_range, prnt=prnt)
-        self.draw_chi2('y', show_cut=True, show=show, x_range=x_range, prnt=prnt)
+        self.draw_chi2(0, show_cut=True, show=show, x_range=x_range, prnt=prnt)
+        self.draw_chi2(1, show_cut=True, show=show, x_range=x_range, prnt=prnt)
 
     def draw_xy_chi2(self, **dkw):
         h = [self.draw_chi2(m, show=False, normalise=True, **rm_key(dkw, 'show')) for m in Tracks.M]
