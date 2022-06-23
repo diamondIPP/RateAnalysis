@@ -312,9 +312,8 @@ def make_bias_str(bias):
     return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
 
 
-def make_runplan_string(nr):
-    nr = str(nr)
-    return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
+def rp2str(nr):
+    return f'{nr:0>2}' if len(str(nr)) <= 2 else f'{nr:0>4}'
 
 
 def make_ev_str(v):

@@ -319,7 +319,7 @@ class DiaScans(Analysis):
         self.Selection = {}
 
     def select_runplan(self, runplan, dut=1, testcampaign=None):
-        rp = make_runplan_string(runplan)
+        rp = rp2str(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
         if rp in self.RunPlans[tc]:
             if tc not in self.Selection:
@@ -329,7 +329,7 @@ class DiaScans(Analysis):
             warning('The runplan {0} does not exist in {1}!'.format(rp, tc))
 
     def unselect_runplan(self, runplan, testcampaign=None):
-        rp = make_runplan_string(runplan)
+        rp = rp2str(runplan)
         tc = str(testcampaign) if testcampaign is not None else self.TestCampaigns[-1]
         try:
             self.Selection[tc].pop(rp)

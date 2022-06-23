@@ -98,7 +98,7 @@ if __name__ == '__main__':
         if pargs.draw:
             from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    elif pargs.runplan in runplans or pargs.collection:
+    elif rp2str(pargs.runplan) in runplans or pargs.collection:
         if pargs.remove:
             z = collection_selector(pargs.runplan, pargs.dut, this_tc, False, False)
             z.remove_metadata(all_subdirs=True)

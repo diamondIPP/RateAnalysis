@@ -8,7 +8,7 @@ from helpers.utils import *
 from src.run import Run
 
 
-def make_runplan_string(nr):
+def rp2str(nr):
     return f'{nr:0>2}' if len(str(nr)) <= 2 else f'{nr:0>4}'
 
 
@@ -109,13 +109,13 @@ class RunPlan(Ensemble):
         super().__init__(name, verbose)
 
     def __str__(self):
-        return f'RP{make_runplan_string(self.Name)}'.replace('.', '-')
+        return f'RP{rp2str(self.Name)}'.replace('.', '-')
 
     def init_run(self, verbose):
         return Run(testcampaign=self.TestCampaign, load_tree=False, verbose=verbose)
 
     def load_data(self):
-        data = load_json(join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path')))[self.TCString][make_runplan_string(self.Name)]
+        data = load_json(join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path')))[self.TCString][rp2str(self.Name)]
         self.Type = data['type']
         return [(run, self.DUTNr, self.TCString) for run in data['runs']]
 
@@ -524,7 +524,7 @@ class RunSelector(object):
         self.Selection = old_selection
 
     def get_n_duts(self, run_number=None, run_plan=None):
-        run_number = run_number if run_plan is None else self.RunPlan[make_runplan_string(run_plan)]['runs'][0]
+        run_number = run_number if run_plan is None else self.RunPlan[rp2str(run_plan)]['runs'][0]
         return len([x for x in (self.RunInfos[run_number].keys()) if x.startswith('dia') and len(x) == 4])
 
     def get_max_duts(self):
@@ -599,7 +599,7 @@ class RunSelector(object):
 
     def save_data(self, rp, dut_nr, redo=False, verbose=False):
         from analyse import collection_selector
-        rp = make_runplan_string(rp)
+        rp = rp2str(rp)
         try:
             _a = collection_selector(rp, dut_nr, self.TCString, tree=False, verbose=False).remove_metadata(all_subdirs=isint(rp)) if redo else do_nothing()
             del _a
@@ -613,7 +613,7 @@ class RunSelector(object):
 
     def save_all_data(self, redo=False, rp0=None):
         rps = list(self.RunPlan)
-        for rp in (rps if rp0 is None else rps[rps.index(make_runplan_string(rp0)):]):
+        for rp in (rps if rp0 is None else rps[rps.index(rp2str(rp0)):]):
             for dut_nr in range(1, self.get_n_duts(run_plan=rp) + 1):
                 self.save_data(rp, dut_nr, redo)
 
