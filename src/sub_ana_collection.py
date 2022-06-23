@@ -34,8 +34,8 @@ class SubCollection(Analysis):
     def flux_strings(self, prec=0, runs=None):
         return self.Ana.flux_strings(prec, runs)
 
-    def get_x(self, vs_time=False, avrg=False):
-        return self.Ana.get_x_var(vs_time, avrg)
+    def get_x(self, vs_time=False, vs_irrad=False, avrg=False):
+        return self.Ana.get_x_var(vs_time, vs_irrad, avrg)
 
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=True, **kwargs):
         return self.Ana.get_x_args(vs_time, rel_time, vs_irrad, draw, **kwargs)
