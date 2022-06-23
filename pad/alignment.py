@@ -6,7 +6,7 @@
 from numpy import histogram2d, sum, insert, delete
 from src.event_alignment import *
 from src.binning import make_bins
-from plotting.draw import get_hist_vec, get_hist_vecs, ax_range
+from plotting.draw import get_hist_vec, get_hist_vecs, ax_range, mean_sigma
 
 
 class PadAlignment(EventAligment):

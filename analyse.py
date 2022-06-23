@@ -94,6 +94,11 @@ if __name__ == '__main__':
             from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
     elif isfloat(pargs.runplan) or pargs.collection:
+        if pargs.remove:
+            z = collection_selector(pargs.runplan, pargs.dut, this_tc, False, False)
+            z.remove_metadata(all_subdirs=True)
+            z.remove_tc_metadata()
+            info(f'removed all pickles for {z}', blank_lines=1)
         z = collection_selector(pargs.runplan, pargs.dut, this_tc, pargs.tree, pargs.verbose)
         try:
             e = z.Ensemble
