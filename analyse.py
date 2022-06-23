@@ -23,27 +23,27 @@ def analysis_selector(run_, dut_, tc, tree, verbose=False, prnt=True):
         critical('wrong run type: has to be in [pad, pixel]')
 
 
-def collection_selector(name, dut_, tc, tree, verbose=False):
+def collection_selector(tag, dut_, tc, tree, verbose=False):
     from src.run_selection import RunPlan, RunSelection
-    dummy = RunPlan(name, tc, dut_, verbose) if isfloat(name) else RunSelection(name, verbose)
+    dummy = RunPlan(tag, tc, dut_, verbose) if isfloat(tag) else RunSelection(tag, verbose)
     if dummy.DUTType == 'pad':
         from pad.collection import PadCollection
         if 'voltage' in dummy.Type:
             from src.voltage_scan import PadVScan
-            return PadVScan(name, dut_, tc, tree, verbose)
+            return PadVScan(tag, dut_, tc, tree, verbose)
         if 'angle' in dummy.Type:
             from src.angle_scan import PadAScan
-            return PadAScan(name, dut_, tc, tree, verbose)
-        return PadCollection(name, dut_, tc, tree, verbose)
+            return PadAScan(tag, dut_, tc, tree, verbose)
+        return PadCollection(tag, dut_, tc, tree, verbose)
     elif dummy.DUTType == 'pixel':
         from pixel.collection import PixCollection
         if 'voltage' in dummy.Type:
             from src.voltage_scan import PixVScan
-            return PixVScan(name, dut_, tc, tree, verbose)
+            return PixVScan(tag, dut_, tc, tree, verbose)
         if 'angle' in dummy.Type:
             from src.angle_scan import PixAScan
-            return PixAScan(name, dut_, tc, tree, verbose)
-        return PixCollection(name, dut_, tc, tree, verbose)
+            return PixAScan(tag, dut_, tc, tree, verbose)
+        return PixCollection(tag, dut_, tc, tree, verbose)
     else:
         critical('wrong run type: has to be in [pad, pixel]')
 
@@ -66,10 +66,9 @@ if __name__ == '__main__':
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
     run = Run(None, this_tc, load_tree=False, verbose=False)
     runs = list(run.load_run_info_file().keys())
-    runplans = list(load_json(Dir.joinpath(run.MainConfig.get('MISC', 'run plan path')))[this_tc].keys())
-    is_collection = pargs.runplan in runplans and (pargs.collection or not isint(pargs.runplan) or pargs.runplan not in runs)
+    runplans = list(load_json(Dir.joinpath(run.MainConfig.get('MISC', 'run plan path')))[run.TCString].keys())
 
-    if not is_collection:
+    if pargs.runplan in runs:
         if pargs.reconvert:
             analysis_selector(pargs.runplan, pargs.dut, this_tc, False, False, False).Run.Converter.reconvert()
         if pargs.remove:
@@ -99,7 +98,7 @@ if __name__ == '__main__':
         if pargs.draw:
             from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    elif is_collection:
+    elif pargs.runplan in runplans or pargs.collection:
         if pargs.remove:
             z = collection_selector(pargs.runplan, pargs.dut, this_tc, False, False)
             z.remove_metadata(all_subdirs=True)
