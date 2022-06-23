@@ -17,7 +17,7 @@ from time import time, sleep
 
 from gtts import gTTS
 from numpy import sqrt, array, mean, arange, log10, concatenate, where, count_nonzero, full, ndarray, exp, sin, cos, arctan, zeros, dot, roll, arctan2, frombuffer, split, cumsum
-from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, all, column_stack
+from numpy import histogram, log2, diff, isfinite, pi, corrcoef, quantile, column_stack
 from os import makedirs, remove, devnull, stat, getenv, _exit
 from os import path as pth
 from os.path import dirname, realpath, join
@@ -43,7 +43,7 @@ OFF = False
 ON = True
 DEGREE_SIGN = u'\N{DEGREE SIGN}'
 COUNT = 0
-Dir = dirname(dirname(realpath(__file__)))
+Dir = Path(__file__).resolve().parent.parent
 
 M_PI = 139.57018  # MeV/c^2
 M_MU = constants.physical_constants['muon mass'][0] / constants.e * constants.c**2 / 1e6
