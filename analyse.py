@@ -62,11 +62,15 @@ if __name__ == '__main__':
 
     from src.analysis import Analysis
     from src.run import Run
+    from src.run_selection import Ensemble
 
     this_tc = Analysis.find_testcampaign(pargs.testcampaign)
     run = Run(None, this_tc, load_tree=False, verbose=False)
     runs = list(run.load_run_info_file().keys())
-    runplans = list(load_json(Dir.joinpath(run.MainConfig.get('MISC', 'run plan path')))[run.TCString].keys())
+    e = Ensemble()
+
+    run_plans = list(load_json(e.Dir.joinpath(run.MainConfig.get('SELECTION', f'run plan file')))[run.TCString].keys())
+    run_plans += list(load_json(e.Dir.joinpath(run.MainConfig.get('SELECTION', f'run selection file'))))
 
     if pargs.runplan in runs:
         if pargs.reconvert:
@@ -98,7 +102,7 @@ if __name__ == '__main__':
         if pargs.draw:
             from json import loads
             get_attribute(z, pargs.command)(**loads(pargs.kwargs))
-    elif rp2str(pargs.runplan) in runplans or pargs.collection:
+    elif rp2str(pargs.runplan) in run_plans or pargs.collection:
         if pargs.remove:
             z = collection_selector(pargs.runplan, pargs.dut, this_tc, False, False)
             z.remove_metadata(all_subdirs=True)
