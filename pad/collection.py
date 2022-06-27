@@ -32,8 +32,8 @@ class PadCollection(AnalysisCollection):
         t0 = self.info('Generate all plots ... ')
         self.draw_pulse_heights(show=False, redo=redo)
         self.Pulser.draw_pulse_heights(show=False, redo=redo)
-        self.draw_pedestals(show=False, redo=redo)
-        self.draw_pedestals(show=False, sigma=True, redo=redo)
+        self.Pedestal.draw(show=False, redo=redo)
+        self.Pedestal.draw_noise(show=False, redo=redo)
         self.Pulser.draw_pedestals(show=False, redo=redo)
         self.Pulser.draw_pedestals(show=False, redo=redo, sigma=True)
         if 'voltage' not in self.Type.lower():
@@ -55,8 +55,8 @@ class PadCollection(AnalysisCollection):
     @quiet
     def save_coll_plots(self):
         super(PadCollection, self).save_coll_plots()
-        self.draw_pedestals(show=False)
-        self.draw_pedestals(show=False, sigma=True)
+        self.Pedestal.draw(show=False)
+        self.Pedestal.draw_noise(show=False)
         self.Pulser.draw_pulse_heights(show=False)
         self.Pulser.draw_sigmas(show=False)
     # endregion RESULTS
@@ -109,15 +109,6 @@ class PadCollection(AnalysisCollection):
         x_range = ax_range(cur.GetX()[0], cur.GetX()[cur.GetN() - 1], .1, .1)
         format_histo(mg, y_range=[1 - yr, 1 + yr], **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5, ndivy=504)
         format_histo(cur, **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5)
-
-    def draw_pedestals(self, vs_time=False, sigma=False, redo=False, avrg=False, **kwargs):
-        x, y = self.get_x_var(vs_time, avrg=avrg), self.get_pedestals(redo=redo, sigma=sigma, avrg=avrg)
-        y_tit, tit = f'{["Pedestal", "Noise"][sigma]}', f'{["Pedestal", "Noise"][sigma]} {["Flux", "Time"][vs_time]} {"Avrg" if avrg else ""}'
-        kwargs = prep_kw(kwargs, title=tit, y_tit=f'{y_tit} [mV]', **self.get_x_args(vs_time, draw=True), color=810, file_name=tit.replace(' ', ''), markersize=.8)
-        return self.Draw.graph(x, y, **kwargs)
-
-    def draw_noise(self, vs_time=False, redo=False, show=True):
-        return self.draw_pedestals(vs_time, True, redo, show)
 
     def draw_ped_spread(self, redo=False, show=True):
         values = self.get_pedestals(redo=redo, flux_sort=True)
