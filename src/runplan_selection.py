@@ -186,9 +186,6 @@ class DiaScans(Analysis):
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, self.Ana.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
 
-    def get_pedestals(self, redo=False):
-        return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals'), redo=redo)
-
     def get_noise_spread(self, redo=False):
         noise = array(self.get_pedestals(redo), object)[:, 1]
         return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
@@ -207,8 +204,8 @@ class DiaScans(Analysis):
     def get_fluxes(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
 
-    def get_x(self, avrg=False, e_field=False, redo=False):
-        return (self.get_e_fields() if e_field else self.get_biases()) if self.is_volt_scan else self.get_fluxes(avrg, redo)
+    def get_x(self, avrg=False, e_field=False, irr=False, redo=False):
+        return (self.get_e_fields() if e_field else self.get_biases()) if self.is_volt_scan else (self.get_irradiations(string=False) if irr else self.get_fluxes(avrg, redo))
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -365,13 +362,13 @@ class DiaScans(Analysis):
     # ----------------------------------------
     # region DRAWING
     def draw_pulse_heights(self, avrg=False, ef_ax=False, redo=False, **dkw):
-        g = [self.Draw.graph(x, y, title='PH', y_tit=self.Ana.PhTit) for x, y in zip(self.get_x(avrg, redo), self.get_pulse_heights(avrg, redo))]
+        g = [self.Draw.graph(x, y, title='PH', y_tit=self.Ana.PhTit) for x, y in zip(self.get_x(avrg, redo=redo), self.get_pulse_heights(avrg, redo))]
         mg = self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', tm=.116 if ef_ax else None))
         self.draw_ef_axis(mg, ef_ax)
         self.Draw.save_plots(fname('PH', avrg))
 
     def draw_scaled_pulse_heights(self, avrg=False, redo=False, yr=None, **dkw):
-        x, y = self.get_x(avrg, redo), self.get_scaled_pulse_heights(avrg, redo)
+        x, y = self.get_x(avrg, redo=redo), self.get_scaled_pulse_heights(avrg, redo)
         g = [self.Draw.graph(ix, iy, title='PH', y_tit='Normalised Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
         f, yr = fname('NormalPH', avrg), None if yr is None else [1 - yr, 1 + yr]
         return self.Draw.multigraph(g, 'Scaled Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), gridy=True, draw_opt='pl', file_name=f, y_range=yr))
@@ -391,18 +388,6 @@ class DiaScans(Analysis):
         y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
         format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, max(y).n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
         self.Draw(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True)
-
-    def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
-        mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        for i, (values, sel, fluxes) in enumerate(zip(self.get_pedestals(redo), self.Info, self.get_fluxes())):
-            pedestals = array([make_ufloat(*tup) for tup in array(values).T])
-            if rel:
-                pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).values()]) * .01
-            g = Draw.make_tgrapherrors(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
-            mg.Add(g)
-        legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
-        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
-        self.Draw(mg, '{}Pedestals'.format(self.Name), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True, show=show)
 
     def make_full_legend(self, graphs, irr=True):
         same_bias = len(set(self.get_bias_voltages())) == 1
@@ -484,17 +469,6 @@ class DiaScans(Analysis):
         for i, sel in enumerate(self.Info):
             h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), f'{make_tc_str(sel.TCString, 0)}{f" - {sel.RunPlan}" if rp else ""}')
 
-    def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
-        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
-        x = self.get_irradiations(string=False) / 1e14 if irr else arange(y.size)
-        g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
-        format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
-        self.set_bin_labels(g) if not irr else do_nothing()
-        self.Draw(g, self.get_savename('PedestalMeans'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
-
-    def draw_mean_noise(self, irr=False, redo=False, show=True):
-        self.draw_mean_pedestals(True, irr, redo, show)
-
     def draw_means(self, **dkw):
         y = array([ufloat(*mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
         g = self.Draw.graph(arange(y.size), y, title='Pulse Height Evolution', x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', show=False, x_range=ax_range(0, y.size - 1, .3, .3))
@@ -570,6 +544,47 @@ class DiaScans(Analysis):
         mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **self.Ana.get_x_args(draw=True), wleg=.3)
         format_histo(mg, **self.Ana.get_x_args(), y_range=1 + array([-ym, ym]))
     # endregion PULSER
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region PEDESTAL
+    def get_pedestals(self, avrg=True, redo=False):
+        return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals'), redo=redo, avrg=avrg)
+
+    def get_noise(self, avrg=True, redo=False):
+        return self.get_values(PadCollection.get_noise, PickleInfo('NoiseVals'), redo=redo, avrg=avrg)
+
+    def get_ped_spreads(self, avrg=True, redo=False):
+        x = self.get_pedestals(avrg, redo)
+        return array([max(i) - min(i) for i in x])
+
+    def draw_spreads(self, avrg=True, redo=False, **dkw):
+        x, y = self.get_x(avrg, irr=True), self.get_ped_spreads(avrg, redo)
+        self.Draw.graph(x, y, 'Ped Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Pedestal Spread [mV]', file_name='PedSpread'))
+
+    def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
+        mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
+        for i, (values, sel, fluxes) in enumerate(zip(self.get_pedestals(redo), self.Info, self.get_fluxes())):
+            pedestals = array([make_ufloat(*tup) for tup in array(values).T])
+            if rel:
+                pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).values()]) * .01
+            g = Draw.make_tgrapherrors(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
+            mg.Add(g)
+        legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
+        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
+        self.Draw(mg, '{}Pedestals'.format(self.Name), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True, show=show)
+
+    def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
+        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
+        x = self.get_irradiations(string=False) / 1e14 if irr else arange(y.size)
+        g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
+        format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
+        self.set_bin_labels(g) if not irr else do_nothing()
+        self.Draw(g, self.get_savename('PedestalMeans'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
+
+    def draw_mean_noise(self, irr=False, redo=False, show=True):
+        self.draw_mean_pedestals(True, irr, redo, show)
+    # endregion PEDESTAL
     # ----------------------------------------
 
     def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
