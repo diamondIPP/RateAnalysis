@@ -2,13 +2,17 @@
 #       Pulser sub class for AnalysisCollection
 # created by Michael Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from src.sub_ana_collection import SubCollection
+from src.sub_ana_collection import SubCollection, fname
 from plotting.draw import *
 import plotting.latex as tex
 from pad.pedestal import PedestalAnalysis
 
 
 class PedCollection(SubCollection):
+
+    PhTit = 'Pedestal [mV]'
+    NoiseTit = 'Noise [mV]'
+    ErrSys = SubCollection.MainConfig.get_value('MAIN', 'systematic ped error', default=0.)
 
     def __init__(self, ana_collection):
         super().__init__(ana_collection)
@@ -23,13 +27,23 @@ class PedCollection(SubCollection):
     def get_pickle_path(self, name='', suf='', sub_dir=None, dut=None, camp=None):
         return super().get_pickle_path(name, suf, 'Pedestal', dut, camp)
 
-    def noise(self, redo=False):
-        return self.get_values('noise', PedestalAnalysis.get_noise, picklepath=self.get_pickle_path(), redo=redo)
+    def noise(self, avrg=False, flux_sort=False, runs=None, redo=False):
+        return self.get_values('noise', PedestalAnalysis.get_noise, runs, None, avrg, self.get_pickle_path(), flux_sort, redo=redo)
 
-    def mean(self, redo=False):
-        return self.get_values('mean', PedestalAnalysis.get_mean, picklepath=self.get_pickle_path(), redo=redo)
+    def mean(self, avrg=False, flux_sort=False, runs=None, err=True, redo=False):
+        x = self.get_values('mean', PedestalAnalysis.get_mean, runs, None, False, self.get_pickle_path(), flux_sort, redo=redo)
+        x = add_err(x, PedCollection.ErrSys if err else 0)  # add sys error to all runs
+        return self.Ana.get_flux_average(x) if avrg else x
     # endregion GET
     # ----------------------------------------
+
+    def draw(self, t=False, avrg=False, redo=False, **dkw):
+        x, y = self.get_x(t, avrg=avrg), self.mean(avrg, redo=redo)
+        self.Draw.graph(x, y, **prep_kw(dkw, title='Ped', y_tit=self.PhTit, **self.get_x_args(t), color=810, file_name=fname('Ped', avrg, t)))
+
+    def draw_noise(self, t=False, avrg=False, redo=False, **dkw):
+        x, y = self.get_x(t, avrg=avrg), self.noise(avrg, redo=redo)
+        self.Draw.graph(x, y, **prep_kw(dkw, title='Noise', y_tit=self.NoiseTit, **self.get_x_args(t), color=810, file_name=fname('Noise', avrg, t)))
 
     def draw_dists(self, **dkw):
         h = self.get_plots('pedestal distributions', PedestalAnalysis.get_dist, picklepath=self.get_pickle_path('Dist'), prnt=False)
