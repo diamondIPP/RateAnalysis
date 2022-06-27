@@ -72,9 +72,11 @@ class PadCollection(AnalysisCollection):
         x = add_perr(x, self.get_sys_error() * 2 if err else 0)  # add sys error to all runs
         return self.get_flux_average(x) if avrg else x
 
-    def get_pedestals(self, runs=None, sigma=False, flux_sort=False, avrg=False, redo=False):
-        picklepath = self.FirstAnalysis.Pedestal.make_simple_pickle_path(suf='AllCuts_ab2', run='{}')
-        return self.get_values('pedestals', self.Analysis.get_pedestal, runs, par=[1, 2][sigma], redo=redo, flux_sort=flux_sort, picklepath=picklepath, avrg=avrg)
+    def get_pedestals(self, runs=None, flux_sort=False, avrg=False, redo=False):
+        return self.Pedestal.mean(avrg, flux_sort, runs, redo=redo)
+
+    def get_noise(self, runs=None, flux_sort=False, avrg=False, redo=False):
+        return self.Pedestal.noise(avrg, flux_sort, runs, redo=redo)
 
     def get_peak_fluxes(self, corr=True, avrg=False, rel=False):
         values = self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg, corr=corr)
@@ -109,15 +111,6 @@ class PadCollection(AnalysisCollection):
         x_range = ax_range(cur.GetX()[0], cur.GetX()[cur.GetN() - 1], .1, .1)
         format_histo(mg, y_range=[1 - yr, 1 + yr], **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5, ndivy=504)
         format_histo(cur, **self.get_x_args(True, x_range=x_range), lab_size=.08, tit_size=.085, center_y=True, y_off=.5)
-
-    def draw_ped_spread(self, redo=False, show=True):
-        values = self.get_pedestals(redo=redo, flux_sort=True)
-        values = [v - mean(lst) for lst in split(values, self.get_flux_splits(show=False)) for v in lst if len(lst) > 1]  # subtract flux group mean
-        self.Draw.distribution(values, Bins.make(-.5, .5, n=20), 'Relative Pedestal Spread', x_tit='Relative Pedestal', file_name='PedestalSpread', show=show)
-
-    def draw_noise_spread(self, redo=False, show=True):
-        x = self.get_pedestals(sigma=True, redo=redo)
-        return self.Draw.distribution([(v - mean(x)).n for v in x], Bins.make(-.3, .3, n=20), 'Relative Noise Spread', file_name='NoiseSpread', x_tit='Relative Noise', show=show)
 
     def draw_snrs(self, vs_time=False, avrg=False, **dkw):
         x, y = self.get_x_var(vs_time, avrg=avrg), self.get_snrs(avrg=avrg)
