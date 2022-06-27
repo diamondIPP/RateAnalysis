@@ -11,7 +11,6 @@ class Analysis(object):
     """ This class provides default behaviour objects in the analysis framework and is the parent of all analyses.
         It contains, among other things, the root drawing methods, the main config and information about the directory structure. """
 
-    Dir = get_base_dir()
     MainConfig = load_main_config()
     Verbose = False
 
@@ -44,7 +43,7 @@ class Analysis(object):
         self.PBar = PBar()
 
     def load_config(self):
-        file_name = join(self.Dir, 'config', self.TCString, 'AnalysisConfig.ini')
+        file_name = Dir.joinpath('config', self.TCString, 'AnalysisConfig.ini')
         if not file_exists(file_name):
             critical('AnalysisConfig.ini does not exist for {0}! Please create it in config/{0}!'.format(self.TestCampaign))
         return Config(file_name)

@@ -29,10 +29,10 @@ server mount directory = ~/mounts/psi
 show = True
 
 [MISC]
-run plan path = Runinfos/run_plans.json
-runplan selection file = Runinfos/selection.json
-irradiation file = Runinfos/irradiation.json
-plane errors = False
+selection dir = Runinfos
+run plan file = run_plans.json
+run selection file = run_selections.json
+runplan selection file = selection.json
 
 [PLANE]
 name = cmspixel
@@ -41,6 +41,7 @@ pitch = [0.15, 0.10]
 # [columns, row]
 pixel = [52, 80]
 clock frequency = 40e6
+errors = False
 
 [Directories]
 data = ...

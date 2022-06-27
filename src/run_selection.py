@@ -5,7 +5,7 @@ from subprocess import check_call
 
 from src.dut import DUT
 from helpers.utils import *
-from src.run import Run
+from src.run import Run, Analysis
 
 
 def rp2str(nr):
@@ -15,7 +15,9 @@ def rp2str(nr):
 class Ensemble(object):
     """ General enseble class for runs. """
 
-    def __init__(self, name, verbose=False):
+    Dir = Dir.joinpath(Analysis.MainConfig.get('SELECTION', 'dir'))
+
+    def __init__(self, name=None, verbose=False):
         self.Name = name
         self.Type = 'custom'
         self.Run = self.init_run(verbose)
@@ -25,7 +27,6 @@ class Ensemble(object):
         self.N = len(self.Runs)
         self.DUT = self.init_dut()
         self.DUTType = self.Runs[0].Type
-        self.PBar = PBar(counter=True, t='min')
 
     def __getitem__(self, item):
         return self.Runs[item]
@@ -43,7 +44,7 @@ class Ensemble(object):
         return [Run(data[0], data[2], load_tree=False, verbose=False) for data in self.Data]
 
     def load_data(self):
-        pass
+        return [[None, 1, None]]
 
     def save_dir(self):
         pass
@@ -65,7 +66,7 @@ class Ensemble(object):
         return all([file_exists(run.RootFilePath) for run in self.Runs])
 
     def init_dut(self):
-        return self.Runs[0].DUTs[self.Data[0][1] - 1]
+        return self.Runs[0].DUTs[self.Data[0][1] - 1] if self.Runs[0].DUTs is not None else None
 
     def get_runs(self):
         return array([run.Number for run in self.Runs])
@@ -96,7 +97,7 @@ class Ensemble(object):
         run.Converter.copy_raw_file(out=False)
 
     def copy_raw_files(self):
-        self.PBar.start(self.N)
+        PBAR.start(self.N)
         [self.copy_raw_file(run) for run in self.Runs]
 
 
@@ -115,7 +116,7 @@ class RunPlan(Ensemble):
         return Run(testcampaign=self.TestCampaign, load_tree=False, verbose=verbose)
 
     def load_data(self):
-        data = load_json(join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path')))[self.TCString][rp2str(self.Name)]
+        data = load_json(self.Dir.joinpath(self.Run.MainConfig.get('SELECTION', 'run plan file')))[self.TCString][rp2str(self.Name)]
         self.Type = data['type']
         return [(run, self.DUTNr, self.TCString) for run in data['runs']]
 
@@ -166,7 +167,7 @@ class RunSelector(object):
 
         # Info
         self.TCString = self.Run.TCString
-        self.RunPlanPath = join(self.Run.Dir, self.Run.MainConfig.get('MISC', 'run plan path'))
+        self.RunPlanPath = Dir.joinpath(self.Run.MainConfig.get('SELECTION', 'dir'), self.Run.MainConfig.get('SELECTION', 'run plan file'))
         self.RunPlan = self.load_runplan()
         self.RunInfos = self.load_run_infos()
         self.RunNumbers = self.load_runs()
@@ -750,8 +751,6 @@ class RunSelector(object):
     def get_irradiation(self, dia=None):
         if self.SelectedDUT is not None and dia is None:
             return self.SelectedDUT.get_irradiation(self.TCString)
-        with open(self.Run.IrradiationFile) as f:
-            return load(f)[self.TCString][dia]
 
     def get_runplan_runs(self):
         return sorted(list(set(run for dic in self.RunPlan.values() for run in dic['runs'])))

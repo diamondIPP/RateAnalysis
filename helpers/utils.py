@@ -1039,3 +1039,6 @@ def alternate(l0, l1):
 
 def do_nothing():
     pass
+
+
+PBAR = PBar()

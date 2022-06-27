@@ -170,7 +170,7 @@ class Converter(object):
         check_call(cmd_list)
 
     def add_plane_errors(self):
-        if self.MainConfig.getboolean('MISC', 'plane errors'):
+        if self.MainConfig.getboolean('PLANE', 'errors'):
             with open(self.get_alignment_file_path()) as f:
                 if len(f.readlines()[3].split()) == 8:  # check if errors are already in the alignment file
                     self.Run.info('Plane errors already added')

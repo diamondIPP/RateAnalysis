@@ -95,7 +95,7 @@ class PadAnalysis(DUTAnalysis):
         return PadCut(self)
 
     def update_config(self):
-        self.Config.read(join(self.Dir, 'config', self.TCString, 'PadConfig.ini'))
+        self.Config.read(Dir.joinpath('config', self.TCString, 'PadConfig.ini'))
 
     def load_region_name(self, sig_type='signal', region=None):
         short = choose(region, self.Config.get_value('SIGNAL', '{} region'.format(sig_type), default=''))

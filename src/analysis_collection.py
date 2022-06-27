@@ -11,8 +11,6 @@ from plotting.draw import *
 import plotting.latex as latex
 from helpers.utils import *
 
-PBAR = PBar()
-
 
 class AnalysisCollection(Analysis):
     """ Analysis of the various runs of a single runplan. """

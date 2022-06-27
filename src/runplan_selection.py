@@ -19,6 +19,10 @@ from src.dut import PixelDUT
 
 
 class DiaScans(Analysis):
+
+    Dir = Dir.joinpath(Analysis.MainConfig.get('SELECTION', 'dir'))
+    Selections = load_json(Dir.joinpath(Analysis.MainConfig.get('SELECTION', 'runplan selection file')))
+
     def __init__(self, selection_name=None, verbose=False):
 
         self.Name = selection_name
@@ -27,7 +31,6 @@ class DiaScans(Analysis):
         self.print_start(run=selection_name, tc=False, prnt=verbose)
 
         # Main
-        self.Selections = self.load_selections()
         self.Selection = self.load_selection(selection_name)
 
         # Config
@@ -58,10 +61,6 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region INIT
-    def load_selections(self):
-        with open(join(self.Dir, self.MainConfig.get('MISC', 'runplan selection file'))) as f:
-            return load(f, object_pairs_hook=OrderedDict)
-
     def load_selection(self, name):
         if name is None:
             return
@@ -352,7 +351,7 @@ class DiaScans(Analysis):
         if not self.Selection:
             warning('Selection is empty!')
             return
-        with open(join(self.Dir, self.MainConfig.get('MISC', 'runplan selection file')), 'w') as f:
+        with open(DiaScans.Dir.joinpath(self.MainConfig.get('SELECTION', 'runplan selection file')), 'w') as f:
             if name in self.Selections:
                 query = input('{} does already exist. Do you want to overwrite it? (y/n) '.format(name))
                 if query.lower().strip() in ['no', 'n']:

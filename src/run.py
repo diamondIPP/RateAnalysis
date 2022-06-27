@@ -24,9 +24,6 @@ class Run(Analysis):
         super(Run, self).__init__(testcampaign, verbose=verbose, pickle_dir='Run')
         self.Number = number
 
-        # Directories / Test Campaign
-        self.IrradiationFile = join(self.Dir, self.MainConfig.get('MISC', 'irradiation file'))
-
         # Configuration & Root Files
         self.Config = self.load_run_config()
         self.RootFileDir = self.load_rootfile_dirname()
@@ -171,9 +168,9 @@ class Run(Analysis):
             critical("The DUT type {0} has to be either 'pixel' or 'pad'".format(dut_type))
         return dut_type
 
-    def load_default_info(self):
-        with open(join(self.Dir, 'Runinfos', 'defaultInfo.json')) as f:
-            return load(f)
+    @staticmethod
+    def load_default_info():
+        return load_json(Dir.joinpath('Runinfos', 'defaultInfo.json'))
 
     def load_run_info_file(self):
         if not file_exists(self.InfoFile):
@@ -323,11 +320,11 @@ class Run(Analysis):
 
     def translate_dia(self, dia):
         name, suf = dia.split('_')[0].lower(), '_'.join(dia.split('_')[1:])
-        if name not in Config(join(self.Dir, 'config', 'DiamondAliases.ini')).options('ALIASES'):
+        if name not in Config(Dir.joinpath('config', 'DiamondAliases.ini')).options('ALIASES'):
             warning(f'{dia} was not found in config/DiamondAliases.ini!')
             if not self.register_new_dut():
                 critical(f'unknown diamond {dia}')
-        parser = Config(join(self.Dir, 'config', 'DiamondAliases.ini'))
+        parser = Config(Dir.joinpath('config', 'DiamondAliases.ini'))
         return '_'.join([parser.get('ALIASES', name)] + ([suf] if suf else []))
 
     def reload_run_config(self, run_number):

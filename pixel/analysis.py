@@ -41,7 +41,7 @@ class PixAnalysis(DUTAnalysis):
         return PixCut(self)
 
     def update_config(self):
-        self.Config.read(join(self.Dir, 'config', self.TCString, 'PixelConfig.ini'))
+        self.Config.read(Dir.joinpath('config', self.TCString, 'PixelConfig.ini'))
 
     def make_eff(self):
         from pixel.efficiency import Efficiency

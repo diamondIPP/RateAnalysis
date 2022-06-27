@@ -2,7 +2,7 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, get_base_dir, OrderedDict, critical, load_main_config, join, ufloat, load, loads, sqrt, pi, array, choose, add_err, prep_kw, update_pbar, PBar, do_nothing
+from helpers.utils import load_json, Dir, critical, load_main_config, ufloat, loads, sqrt, pi, array, choose, add_err, prep_kw, update_pbar, PBar, do_nothing
 from numpy import multiply, deg2rad, tan, rad2deg, arange, cos, sin, arctan, linspace, mean, invert, isnan
 from plotting.draw import Draw, bins_from_vec
 
@@ -15,7 +15,6 @@ class DUT:
     def __init__(self, number, run_info):
 
         self.Config = load_main_config()
-        self.Dir = get_base_dir()
 
         # Info
         self.Number = 1 if number is None else number
@@ -25,7 +24,7 @@ class DUT:
         self.Attenuator = run_info['att_dia{}'.format(self.Number)] if 'att_dia{}'.format(self.Number) in run_info else None
 
         # Specs
-        self.Specs = load_json(join(self.Dir, 'Runinfos', 'dia_info.json'))[self.Key]
+        self.Specs = load_json(Dir.joinpath('Runinfos', 'dia_info.json'))[self.Key]
         self.Type = self.load_spec('type', default='pad')
         self.Irradiation = self.load_spec('irradiation')
         self.Version = self.load_spec('version')
@@ -44,11 +43,6 @@ class DUT:
 
     def full_name(self, tc):
         return str(self) if self.Version is None else f'{self}-V{next((i for i, v in enumerate(self.Version) if v > tc), len(self.Version))}'
-
-    def load_irradiation(self):
-        with open(join(self.Dir, self.Config.get('MISC', 'irradiation file'))) as f:
-            data = load(f)
-            return OrderedDict([(key, dic[self.Key]) for key, dic in sorted(data.items()) if self.Key in dic])
 
     def get_irradiation(self, tc):
         return self.Irradiation[tc] if tc in self.Irradiation else critical(f'Please make an irradiation entry in the dia_info.json for "{self.Key}" in {tc}')
