@@ -29,7 +29,7 @@ class Analysis(object):
         self.InitTime = time()
 
         Analysis.Verbose = choose(verbose, Analysis.Verbose)
-        self.PickleSubDir = self.PickleDir.joinpath(str(sub_dir))
+        self.PickleSubDir = self.PickleDir.joinpath(str(pickle_dir))
 
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
