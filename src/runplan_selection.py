@@ -558,9 +558,17 @@ class DiaScans(Analysis):
         x = self.get_pedestals(avrg, redo)
         return array([max(i) - min(i) for i in x])
 
-    def draw_spreads(self, avrg=True, redo=False, **dkw):
+    def get_noise_spreads(self, avrg=True, redo=False):
+        x = self.get_noise(avrg, redo)
+        return array([max(i) - min(i) for i in x])
+
+    def draw_ped_spreads(self, avrg=True, redo=False, **dkw):
         x, y = self.get_x(avrg, irr=True), self.get_ped_spreads(avrg, redo)
-        self.Draw.graph(x, y, 'Ped Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Pedestal Spread [mV]', file_name='PedSpread'))
+        return self.Draw.graph(x, y, 'Ped Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Pedestal Spread [mV]', file_name='PedSpread'))
+
+    def draw_noise_spreads(self, avrg=True, redo=False, **dkw):
+        x, y = self.get_x(avrg, irr=True), self.get_noise_spreads(avrg, redo)
+        return self.Draw.graph(x, y, 'Noise Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Noise Spread [mV]', file_name='NoiseSpread'))
 
     def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
         mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
