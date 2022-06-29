@@ -21,15 +21,15 @@ class Analysis(object):
     BunchSpacing = 1 / BeamFrequency * 1e9  # [ns]
 
     # Directories
-    PickleDir = join(Dir, MainConfig.get('SAVE', 'pickle directory'))
-    DataDir = MainConfig.get('Directories', 'data')
+    PickleDir = Dir.joinpath(MainConfig.get('SAVE', 'pickle directory'))
+    DataDir = Path(MainConfig.get('Directories', 'data'))
 
     def __init__(self, testcampaign=None, results_dir=None, sub_dir='', pickle_dir='', verbose=None):
 
         self.InitTime = time()
 
         Analysis.Verbose = choose(verbose, Analysis.Verbose)
-        self.PickleSubDir = pickle_dir
+        self.PickleSubDir = self.PickleDir.joinpath(str(sub_dir))
 
         # Test Campaign
         self.TCString = self.load_test_campaign(testcampaign)
@@ -114,7 +114,7 @@ class Analysis(object):
         return join(self.PickleDir, sub_dir, '{name}{tc}{run}{ch}{suf}.pickle'.format(name=name, tc=campaign, run=run, ch=ch, suf=suf))
 
     def make_simple_pickle_path(self, name='', suf='', sub_dir=None, run=None, dut=None, camp=None):
-        directory = join(self.PickleDir, self.PickleSubDir if sub_dir is None else sub_dir)
+        directory = self.PickleSubDir if sub_dir is None else self.PickleDir.joinpath(sub_dir)
         ensure_dir(directory)
         campaign = self.TCString if camp is None else camp
         dut = str(dut if dut is not None else self.DUT.Number if hasattr(self, 'DUT') and hasattr(self.DUT, 'Number') else '')
@@ -134,9 +134,9 @@ class Analysis(object):
     def get_meta_files(self, all_=False):
         runs = self.Runs if hasattr(self, 'Runs') else [self.Run.Number] if hasattr(self, 'Run') else []
         dut_nr = f'_{self.DUT.Number}' if hasattr(self, 'DUT') else ''
-        rp_files = glob(join(self.PickleDir, '*', f'*{self.TCString}_{self.RunPlan}{dut_nr}*')) if hasattr(self, 'RunPlan') else []
-        sel_files = [n for i in self.Info for n in glob(join(self.PickleDir, 'selections', f'*{i.TCString}_{i.RunPlan}_{i.DUTNr}*'))] if hasattr(self, 'Info') else []
-        return sel_files + rp_files + [f for run in runs for f in glob(join(self.PickleDir, '*' if all_ else self.PickleSubDir, f'*{self.TCString}_{run}{dut_nr}*'))]
+        rp_files = list(self.PickleDir.rglob(f'*{self.TCString}_{self.RunPlan}{dut_nr}*')) if hasattr(self, 'RunPlan') else []
+        sel_files = [n for i in self.Info for n in self.PickleDir.joinpath('selections').rglob(f'*{i.TCString}_{i.RunPlan}_{i.DUTNr}*')] if hasattr(self, 'Info') and hasattr(self, 'Selection') else []
+        return sel_files + rp_files + [f for run in runs for f in (self.PickleDir if all_ else self.PickleSubDir).rglob(f'*{self.TCString}_{run}{dut_nr}*')]
 
     def remove_metadata(self, all_subdirs=False):
         for f in self.get_meta_files(all_subdirs):

@@ -120,7 +120,7 @@ class DiaScans(Analysis):
         return [sel.Type.lower().replace('rate', 'normal') for sel in self.Info]
 
     def get_irradiations(self, string=True):
-        return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) for sel in self.Info])
+        return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) / 1e15 for sel in self.Info])
 
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
@@ -486,7 +486,7 @@ class DiaScans(Analysis):
         ph_var = 'FWC' if use_fcw else 'Mean'
         var, unit, tit = [ph_var, 'FWHM', 'FWHM/{}'.format(ph_var)][arg], ' [mV]' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
         y_values = [v[arg][0] for v in self.get_mean_uniformities(redo=redo, low=low, high=high)]
-        x_values = array([ufloat(v, v * .2) for v in self.get_irradiations(string=False)]) / 1e15
+        x_values = array([ufloat(v, v * .2) for v in self.get_irradiations(string=False)])
         return self.Draw.graph(x_values, y_values, title=tit, x_tit='Irradiation [10^{15}n/cm^{2}]', y_tit='{}{}'.format(var, unit), draw_opt='ap', x_off=1.2)
 
     def draw_peak_flux(self, show=True):
@@ -576,7 +576,7 @@ class DiaScans(Analysis):
 
     def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
         y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
-        x = self.get_irradiations(string=False) / 1e14 if irr else arange(y.size)
+        x = self.get_irradiations(string=False) if irr else arange(y.size)
         g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
         format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
         self.set_bin_labels(g) if not irr else do_nothing()

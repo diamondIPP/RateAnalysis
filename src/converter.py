@@ -126,7 +126,7 @@ class Converter(object):
     def convert_raw_to_root(self, tree=None, max_events=None, rm_config=True):
         if not file_exists(self.RawFilePath):
             critical('The raw file {} does not exist ...'.format(self.RawFilePath))
-        self.remove_pickle_files()
+        self.Run.remove_metadata(all_subdirs=True)
         curr_dir = getcwd()
         chdir(self.Run.RootFileDir)  # go to root directory
         # prepare converter command
@@ -177,12 +177,6 @@ class Converter(object):
                     return
                 print_banner('START FINDING PLANE ERRORS FOR RUN {}'.format(self.Run.Number))
                 self.tracking_tel(action=2)
-
-    def remove_pickle_files(self):
-        files = glob(join(self.Run.Dir, 'metadata', '*', '*{tc}*_{run}*'.format(run=self.Run.Number, tc=self.Run.TCString)))
-        self.Run.info('Removing {} pickle files for run {}'.format(len(files), self.Run.Number))
-        for f in files:
-            remove_file(f)
 
     def rename_tracking_file(self):
         rename(self.get_trackingfile_path(), self.Run.RootFilePath)
