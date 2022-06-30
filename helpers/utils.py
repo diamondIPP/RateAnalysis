@@ -154,38 +154,6 @@ def move_element(odict, thekey, newpos):
     return odict
 
 
-def get_bias_root_string(biases):
-    if type(biases) == list:
-        retval = ''
-        for b in biases:
-            if -1 * b in biases:
-                b_str = '+-{:4.0f} V'.format(abs(b))
-            else:
-                b_str = '{:+4.0f} V'.format(b)
-            if b_str not in retval:
-                if retval != '':
-                    retval += ', '
-                retval += b_str
-    elif type(biases) in [float, int]:
-        retval = '{:+5.0f} V'.format(biases)
-    else:
-        retval = '{}'.format(biases)
-    retval = retval.replace('+-', '#pm')
-    retval = retval.replace('+/-', '#pm')
-    retval = retval.replace('+', '#plus')
-    retval = retval.replace('-', '#minus')
-    return retval
-
-
-def irr2str(val, fmt='.1f'):
-    if '?' in val:
-        return val
-    if val == '0':
-        return 'non-irradiated'
-    val, power = [float(i) for i in val.split('e')]
-    return f'{val:{fmt}}#upoint10^{{{power:.0f}}} n/cm^{{2}}'
-
-
 def binned_stats(x, values, f, bins):
     return array([f(v) for v in split(values, cumsum(histogram(x, bins)[0].astype('i'))[:-1])])
 
@@ -308,8 +276,23 @@ def flux2str(rate, prec=1, term=False):
     return f'{rate / (1000 if rate > 1000 else 1):2.{prec if rate > 1000 else 0}f} {unit}'
 
 
-def bias2str(bias):
-    return [bias2str(i) for i in bias] if is_iter(bias) else f'{bias:+.0f} V'
+def bias2str(bias, root=False):
+    return [bias2rootstr(i) if root else bias2str(i) for i in bias] if is_iter(bias) else f'{bias:+.0f} V'
+
+
+def bias2rootstr(bias):
+    if is_iter(bias) and type(bias) is not str:
+        return ', '.join(set([bias2str(i) for i in bias]))
+    return f'{bias:+.0f}'.replace('+-', '#pm').replace('+/-', '#pm').replace('+', '#plus').replace('-', '#minus')
+
+
+def irr2str(val, fmt='.1f'):
+    if '?' in val:
+        return val
+    if val == '0':
+        return 'non-irradiated'
+    val, power = [float(i) for i in val.split('e')]
+    return f'{val:{fmt}}#upoint10^{{{power:.0f}}} n/cm^{{2}}'
 
 
 def rp2str(nr):
