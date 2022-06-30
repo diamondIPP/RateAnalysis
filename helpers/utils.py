@@ -283,7 +283,7 @@ def bias2str(bias, root=False):
 def bias2rootstr(bias):
     if is_iter(bias) and type(bias) is not str:
         return ', '.join(set([bias2str(i) for i in bias]))
-    return f'{bias:+.0f}'.replace('+-', '#pm').replace('+/-', '#pm').replace('+', '#plus').replace('-', '#minus')
+    return f'{bias:+.0f} V'.replace('+-', '#pm').replace('+/-', '#pm').replace('+', '#plus').replace('-', '#minus')
 
 
 def irr2str(val, fmt='.1f'):
