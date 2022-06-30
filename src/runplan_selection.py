@@ -125,8 +125,8 @@ class DiaScans(Analysis):
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
 
-    def get_bias_strs(self):
-        return bias2str(self.get_bias_voltages())
+    def get_bias_strs(self, root=True):
+        return bias2str(self.get_bias_voltages(), root=root)
 
     def get_bias_str(self):
         return ' at {bias} V'.format(bias=self.Info[0].Bias) if len(set(self.get_bias_voltages())) == 1 else ''
@@ -372,7 +372,7 @@ class DiaScans(Analysis):
 
     def draw_scaled_pulse_heights(self, avrg=False, redo=False, yr=None, **dkw):
         x, y = self.get_x(avrg, redo=redo), self.get_scaled_pulse_heights(avrg, redo)
-        g = [self.Draw.graph(ix, iy, title='PH', y_tit='Normalised Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
+        g = [self.Draw.graph(ix, iy, title='PH', y_tit='Relative Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
         f, yr = fname('NormalPH', avrg), None if yr is None else [1 - yr, 1 + yr]
         return self.Draw.multigraph(g, 'Scaled Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), gridy=True, draw_opt='pl', file_name=f, y_range=yr))
 
@@ -399,7 +399,7 @@ class DiaScans(Analysis):
         for i, (g, sel) in enumerate(zip(graphs, self.Info)):
             legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString, long_=False)), 'lp')
             legend.AddEntry(0, irr2str(sel.Irradiation), '') if irr else do_nothing()
-            legend.AddEntry(0, get_bias_root_string(sel.Bias), '') if not same_bias else do_nothing()
+            legend.AddEntry(0, bias2rootstr(sel.Bias), '') if not same_bias else do_nothing()
         return legend
 
     def draw_title_pad(self, h, x0, lm, c_height):
