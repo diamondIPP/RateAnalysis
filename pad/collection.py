@@ -6,7 +6,7 @@ from pad.pulser_collection import PulserCollection
 from src.analysis_collection import *
 from pad.analysis import PadAnalysis, in1d
 from pad.ped_collection import PedCollection
-from helpers.utils import print_elapsed_time, quiet, split, do_pickle, flux2str, save_pickle, eff2u
+from helpers.utils import print_elapsed_time, quiet, do_pickle, flux2str, save_pickle, eff2u
 
 
 class PadCollection(AnalysisCollection):
@@ -38,7 +38,7 @@ class PadCollection(AnalysisCollection):
         self.Pulser.draw_pedestals(show=False, redo=redo, sigma=True)
         if 'voltage' not in self.Type.lower():
             self.draw_scaled_pulse_heights(show=False)
-            self.draw_scaled_pulse_heights(show=False, vs_time=True)
+            self.draw_scaled_pulse_heights(show=False, t=True)
         self.draw_currents(show=False, draw_opt='al')
         self.draw_flux(show=False)
         self.draw_ph_currents(show=False)

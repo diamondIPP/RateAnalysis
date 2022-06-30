@@ -177,13 +177,13 @@ def get_bias_root_string(biases):
     return retval
 
 
-def make_irr_string(val):
+def irr2str(val, fmt='.1f'):
     if '?' in val:
         return val
-    if not float(val):
-        return 'nonirradiated'
+    if val == '0':
+        return 'non-irradiated'
     val, power = [float(i) for i in val.split('e')]
-    return '{v:1.1f}#upoint10^{p} n/cm^{{2}}'.format(v=val, p='{{{}}}'.format(int(power)))
+    return f'{val:{fmt}}#upoint10^{{{power:.0f}}} n/cm^{{2}}'
 
 
 def binned_stats(x, values, f, bins):

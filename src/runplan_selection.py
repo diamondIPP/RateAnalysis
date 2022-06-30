@@ -120,7 +120,7 @@ class DiaScans(Analysis):
         return [sel.Type.lower().replace('rate', 'normal') for sel in self.Info]
 
     def get_irradiations(self, string=True):
-        return array([make_irr_string(sel.Irradiation) if string else float(sel.Irradiation) / 1e15 for sel in self.Info])
+        return array([irr2str(sel.Irradiation) if string else float(sel.Irradiation) / 1e15 for sel in self.Info])
 
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
@@ -248,7 +248,7 @@ class DiaScans(Analysis):
 
     def make_legend(self, g, dut=None, tc=None, irrad=False, custom=False, **kw):
         bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {bias2str(x.Bias)}'
-        irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
+        irr = lambda x: irr2str(x.Irradiation) if irrad else ''
         dut = choose(dut, len(set(self.get_dut_names())) > 1)
         duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
         tcs = lambda x: tc2str(x.TCString, short=False) if tc or not dut else ''
@@ -398,7 +398,7 @@ class DiaScans(Analysis):
         legend = Draw.make_legend(y2=.4, w=.12 * cols, nentries=4, cols=cols)
         for i, (g, sel) in enumerate(zip(graphs, self.Info)):
             legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString, long_=False)), 'lp')
-            legend.AddEntry(0, make_irr_string(sel.Irradiation), '') if irr else do_nothing()
+            legend.AddEntry(0, irr2str(sel.Irradiation), '') if irr else do_nothing()
             legend.AddEntry(0, get_bias_root_string(sel.Bias), '') if not same_bias else do_nothing()
         return legend
 

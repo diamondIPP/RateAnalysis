@@ -4,7 +4,7 @@
 # created on Jan 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.utils import make_tc_str, timedelta, flux2str, make_irr_string, mean, plural, uarr2n
+from helpers.utils import make_tc_str, timedelta, flux2str, irr2str, mean, plural, uarr2n
 from numpy import sort
 from plotting.info import Info
 from plotting.draw import get_window_ratio
@@ -54,6 +54,6 @@ class AnaInfo(Info):
 
     def get_info_string(self):
         voltage = '{0:+4.0f}V'.format(self.Ana.DUT.Bias) if self.has_dut else '/'.join('{0:+4.0f}V'.format(dut.Bias) for dut in self.Ana.Run.DUTs)
-        irradiation = make_irr_string(self.Ana.DUT.Irradiation[self.Ana.TCString]) if self.has_dut else '/'.join(make_irr_string(dut.get_irradiation(self.Ana.TCString)) for dut in self.Ana.Run.DUTs)
+        irradiation = irr2str(self.Ana.DUT.Irradiation[self.Ana.TCString]) if self.has_dut else '/'.join(irr2str(dut.get_irradiation(self.Ana.TCString)) for dut in self.Ana.Run.DUTs)
         attenuator = 'Att: {}'.format(str(self.Ana.DUT.Attenuator)) if self.has_dut and self.Ana.DUT.Attenuator and 'Pad' in self.Ana.__class__.__name__ else ''
         return 'Info: {v}, {i}{a}'.format(v=voltage, i=irradiation, a=', {}'.format(attenuator) if attenuator else '')
