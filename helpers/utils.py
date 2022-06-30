@@ -308,8 +308,8 @@ def flux2str(rate, prec=1, term=False):
     return f'{rate / (1000 if rate > 1000 else 1):2.{prec if rate > 1000 else 0}f} {unit}'
 
 
-def make_bias_str(bias):
-    return '{s}{bias}V'.format(bias=int(bias), s='+' if bias > 0 else '')
+def bias2str(bias):
+    return [bias2str(i) for i in bias] if is_iter(bias) else f'{bias:+.0f} V'
 
 
 def rp2str(nr):

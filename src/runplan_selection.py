@@ -125,6 +125,12 @@ class DiaScans(Analysis):
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]
 
+    def get_bias_strs(self):
+        return bias2str(self.get_bias_voltages())
+
+    def get_bias_str(self):
+        return ' at {bias} V'.format(bias=self.Info[0].Bias) if len(set(self.get_bias_voltages())) == 1 else ''
+
     def get_biases(self):
         return [array([float(i.RunInfo[run][f'dia{i.DUTNr}hv']) for run in i.Runs]) for i in self.Info]
 
@@ -218,9 +224,6 @@ class DiaScans(Analysis):
         rs = RunSelector(tc)
         return [SelectionInfo(rs.select_runs_from_runplan(rp, dut + 1, unselect=True)) for rp in sorted(self.RunPlans[tc]) for dut in range(rs.get_n_duts(run_plan=rp))]
 
-    def get_bias_str(self):
-        return ' at {bias} V'.format(bias=self.Info[0].Bias) if len(set(self.get_bias_voltages())) == 1 else ''
-
     def get_all_ana_strings(self, dut=None, tc=None, redo=False):
         selections = self.get_all_infos() if dut is None and tc is None else self.get_dia_infos(dut) if tc is None else self.get_tc_infos(tc)
         selections = [sel for sel in selections if self.RS.Run.translate_dia(dut) == sel.DUTName] if dut is not None else selections
@@ -244,7 +247,7 @@ class DiaScans(Analysis):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
     def make_legend(self, g, dut=None, tc=None, irrad=False, custom=False, **kw):
-        bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {make_bias_str(x.Bias)}'
+        bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {bias2str(x.Bias)}'
         irr = lambda x: make_irr_string(x.Irradiation) if irrad else ''
         dut = choose(dut, len(set(self.get_dut_names())) > 1)
         duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
@@ -402,7 +405,7 @@ class DiaScans(Analysis):
     def draw_title_pad(self, h, x0, lm, c_height):
         if Draw.Title:
             biases = list(set(self.get_bias_voltages()))
-            bias_str = ' at {b}'.format(b=make_bias_str(biases[0])) if len(biases) == 1 else ''
+            bias_str = ' at {b}'.format(b=bias2str(biases[0])) if len(biases) == 1 else ''
             Draw.tpad('p0', pos=[x0, 1 - h / c_height, 1, 1], margins=[0, 0, 0, 0], transparent=True)
             Draw.tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
@@ -458,7 +461,7 @@ class DiaScans(Analysis):
         if any(['rand' in word for word in self.run_types]):
             for i, sel in enumerate(self.Info):
                 tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
-        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else [f'@ {make_bias_str(bias)}']) for t, bias in zip(tits, self.get_bias_voltages())]
+        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else [f'@ {bias2str(bias)}']) for t, bias in zip(tits, self.get_bias_voltages())]
 
     def draw_legend(self, i, gr, irr, c):
         tits = self.get_titles(irr)
@@ -541,7 +544,7 @@ class DiaScans(Analysis):
     def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01):
         data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg))
         g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
-        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {make_bias_str(i.Bias)}' for i in self.Info], **self.Ana.get_x_args(draw=True), wleg=.3)
+        mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {bias2str(i.Bias)}' for i in self.Info], **self.Ana.get_x_args(draw=True), wleg=.3)
         format_histo(mg, **self.Ana.get_x_args(), y_range=1 + array([-ym, ym]))
     # endregion PULSER
     # ----------------------------------------
@@ -625,7 +628,7 @@ class SelectionInfo:
         self.DUT = PixelDUT(self.DUT.Number, self.RunInfo[self.Runs[0]])
 
     def __str__(self):
-        return f'Selection instance: {self.TCString:<8} {self.RunPlan:<4} {self.DUTName}, {make_bias_str(self.Bias)}'
+        return f'Selection instance: {self.TCString:<8} {self.RunPlan:<4} {self.DUTName}, {bias2str(self.Bias)}'
 
     def __repr__(self):
         return self.__str__()
