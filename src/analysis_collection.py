@@ -432,14 +432,12 @@ class AnalysisCollection(Analysis):
         self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
         self.print_rate_dependence(y)
 
-    def draw_scaled_pulse_heights(self, binning=None, vs_time=False, redo=False, avrg=False, peaks=False, **dkw):
+    def draw_scaled_pulse_heights(self, bw=None, t=False, redo=False, avrg=False, yr=.05, irr=True, **dkw):
         """ Shows the scaled pulse heights of the single runs. """
-        mg = self.make_pulse_height_graph(binning, vs_time, first_last=not vs_time, redo=redo, avrg=avrg, peaks=peaks, scale=True)
-        m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
-        self.Draw(mg, **prep_kw(dkw, **self.get_x_args(vs_time, draw=True), gridy=True, y_tit=f'Scaled {self.PhTit}', y_range=[.95, 1.05], ndivx=503, color=None, **m))
-        Draw.irradiation(make_irr_string(self.Ensemble.get_irradiation()))
-        self.Draw.save_plots(fname('ScaledPulseHeights', avrg, vs_time))
-        return mg.GetListOfGraphs()[0]
+        x, y = self.get_x_var(t, avrg=avrg), self.scale_ph(self.get_pulse_heights(avrg=avrg, bw=bw, redo=redo), avrg)
+        g = self.Draw.graph(x, y, 'RelPH', **prep_kw(dkw, y_tit=f'Relative Pulse Height', y_range=[1 - yr, 1 + yr], ndivx=503, show=False))
+        leg = Draw.irradiation(irr2str(self.Ensemble.get_irradiation())) if irr else None
+        return self.Draw.graph(g, **prep_kw(dkw, **Draw.mode(2 if t else 1), **self.get_x_args(t), gridy=True, leg=leg, file_name=fname('RelPH', avrg, t)))
 
     def draw_avrg_ph(self, bw=None, t=False, i=False, corr=True, err=True, fit=False, redo=False, **dkw):
         x, y = self.get_x_var(t, i, avrg=True), self.get_pulse_heights(bw, corr=corr, err=err, redo=redo, avrg=True)
@@ -623,7 +621,7 @@ class AnalysisCollection(Analysis):
         g = self.Draw.graph(x, y, title='Current vs. Flux', show=show, **self.get_x_args(draw=True))
         format_histo(g, y_tit='Current [nA]', y_range=choose(c_range, [0, max(y).n * 1.5]))
         g.Fit(Draw.make_f('fcf', 'pol1', .1, 5e5, pars=[.2, 1e-3], limits=[[.1, 5], [1e-6, 5e-3]]), f'q{"" if fit else "0"}')
-        Draw.irradiation(make_irr_string(self.get_irradiation()))
+        Draw.irradiation(irr2str(self.get_irradiation()))
         format_statbox(g, fit=fit, w=.3, form='.1e')
         self.Draw.save_plots('FluxCurrent', show=show)
         return g
