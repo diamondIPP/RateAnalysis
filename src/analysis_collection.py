@@ -389,6 +389,11 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region PULSE HEIGHT
+    def ph_spread(self, avrg=True, rel=True):
+        x = self.get_pulse_heights(avrg=avrg)
+        x = self.scale_ph(x, avrg) if rel else x
+        return max(x) - min(x)
+
     @staticmethod
     def draw_legend(graphs, x=.17):
         return Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l' if i < 2 else 'p' for i in range(len(graphs))], x1=x, y1=.21, w=.2)

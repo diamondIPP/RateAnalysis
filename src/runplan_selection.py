@@ -364,6 +364,10 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region DRAWING
+    def ph_spreads(self, avrg=True, rel=True):
+        x = self.get_scaled_pulse_heights(avrg) if rel else self.get_pulse_heights(avrg)
+        return array([max(i) - min(i) for i in x])
+
     def draw_pulse_heights(self, avrg=False, ef_ax=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y, title='PH', y_tit=self.Ana.PhTit) for x, y in zip(self.get_x(avrg, redo=redo), self.get_pulse_heights(avrg, redo))]
         mg = self.Draw.multigraph(g, 'Pulse Heights', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True), draw_opt='pl', tm=.116 if ef_ax else None))
