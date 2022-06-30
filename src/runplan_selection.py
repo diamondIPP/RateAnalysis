@@ -53,7 +53,7 @@ class DiaScans(Analysis):
         return self.Name
 
     def __repr__(self):
-        return self.show_selection(ret=True)
+        return f'{self.Name} ({self.DUTName})\n{self.show_selection(ret=True)}'
 
     @property
     def is_volt_scan(self):
@@ -565,6 +565,10 @@ class DiaScans(Analysis):
     def draw_ped_spreads(self, avrg=True, redo=False, **dkw):
         x, y = self.get_x(avrg, irr=True), self.get_ped_spreads(avrg, redo)
         return self.Draw.graph(x, y, 'Ped Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Pedestal Spread [mV]', file_name='PedSpread'))
+
+    def draw_rel_ped_change(self, avrg=True, redo=False, **dkw):
+        x, y, s = self.get_x(avrg, irr=True), self.get_ped_spreads(avrg, redo), self.get_mean_ph(redo)
+        return self.Draw.graph(x, y / s * 100, 'Rel Ped Spread', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Pedestal Spread / Mean Pulse Height [%]', file_name='RelPedSpread'))
 
     def draw_noise_spreads(self, avrg=True, redo=False, **dkw):
         x, y = self.get_x(avrg, irr=True), self.get_noise_spreads(avrg, redo)
