@@ -850,8 +850,8 @@ class AnalysisCollection(Analysis):
         x, y = self.get_x_var(vs_time=not irr, vs_irrad=irr), add_perr(v[1::2] / v[::2], .005)
         g = self.Draw.graph(x[::2], y, y_tit='Gain Ratio')
         g.Fit('pol0', 'qs') if fit else do_nothing()
-        x_args = self.get_x_args(not irr, draw=True, vs_irrad=irr, tform='%y/%m', **{} if irr else {'x_tit': 'Time [YY/MM]', 'tform': '%y/%m'})
-        return self.Draw(g, **prep_kw(dkw, file_name=fname('GainRatio', i=irr), **x_args, stats=set_statbox(fit=fit, form='.3f')))
+        x_args = self.get_x_args(not irr, draw=True, vs_irrad=irr, **{} if irr else {'x_tit': 'Time [YY/MM]', 'tform': '%y/%m'})
+        return self.Draw(g, **prep_kw(dkw, file_name=fname('GainRatio', i=irr), **x_args, stats=set_statbox(fit=fit, form='.3f', center_y=True)))
 
 
 def fname(n, avrg=False, t=False, i=False):
