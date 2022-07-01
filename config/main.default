@@ -2,6 +2,7 @@
 default test campaign = 201908
 systematic error = .00316
 systematic ped error = .05
+gain ratio = 1.085+/-.005
 ;hv config file = ''
 ;hv data path = ''
 
@@ -56,5 +57,6 @@ bin size = 5000
 palette = 55
 contours = 255
 flux range = [1, 40000]
+fluence range = [-0.5, 10.5]
 fill color = 821
 legend font = 42

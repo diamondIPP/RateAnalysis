@@ -15,6 +15,7 @@ class Bins(SubAnalysis):
     Config = load_main_config()
     Size = Config.get_value('PLOTS', 'bin size', int)
     FluxRange = Config.get_list('PLOTS', 'flux range')
+    FluenceRange = Config.get_list('PLOTS', 'fluence range')
 
     # Pixel
     ADCBits = 2 ** 8

@@ -370,13 +370,13 @@ class AnalysisCollection(Analysis):
         return None if not vs_time else AnalysisCollection.StartTime if rel_time else off
 
     @staticmethod
-    def get_range(vs_time, x_range=None):
-        return x_range if vs_time else Bins.FluxRange
+    def get_range(t, i, x_range=None):
+        return x_range if t else Bins.FluenceRange if i else Bins.FluxRange
 
     @staticmethod
     def get_x_args(vs_time=False, rel_time=False, vs_irrad=False, draw=True, off=0, **kwargs):
         kwargs = prep_kw(kwargs, x_tit=AnalysisCollection.get_x_tit(vs_time, vs_irrad), t_ax_off=AnalysisCollection.get_tax_off(vs_time, rel_time, off),
-                         x_range=AnalysisCollection.get_range(vs_time or vs_irrad), x_off=None if vs_time or vs_irrad else 1.1)
+                         x_range=AnalysisCollection.get_range(vs_time, vs_irrad), x_off=None if vs_time or vs_irrad else 1.1)
         return {**kwargs, **AnalysisCollection.get_x_draw(vs_time or vs_irrad)} if draw else kwargs
 
     def get_cmd_strings(self, cmd, kwargs):
@@ -845,12 +845,13 @@ class AnalysisCollection(Analysis):
         x, y = self.get_currents(), self.get_efficiencies()
         self.Draw.graph(x, y, 'Eff vs Current', **prep_kw(dkw, x_tit='Current [nA]', y_tit='Effciency [%]', file_name='EffCurrent'))
 
-    def draw_gain_s129(self, fit=True, **dkw):
+    def draw_gain(self, fit=True, irr=False, **dkw):
         v = self.get_pulse_heights()
-        x, y = self.get_x_var(vs_time=True), add_perr(v[1::2] / v[::2], .005)
+        x, y = self.get_x_var(vs_time=not irr, vs_irrad=irr), add_perr(v[1::2] / v[::2], .005)
         g = self.Draw.graph(x[::2], y, y_tit='Gain Ratio')
         g.Fit('pol0', 'qs') if fit else do_nothing()
-        return self.Draw(g, **prep_kw(dkw, file_name='GainRatio', **self.get_x_args(True, draw=True, x_tit='Time [YY/MM]'), tform='%y/%m', stats=set_statbox(fit=fit, form='.3f')))
+        x_args = self.get_x_args(not irr, draw=True, vs_irrad=irr, tform='%y/%m', **{} if irr else {'x_tit': 'Time [YY/MM]', 'tform': '%y/%m'})
+        return self.Draw(g, **prep_kw(dkw, file_name=fname('GainRatio', i=irr), **x_args, stats=set_statbox(fit=fit, form='.3f')))
 
 
 def fname(n, avrg=False, t=False, i=False):
