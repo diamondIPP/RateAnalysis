@@ -120,7 +120,7 @@ class DiaScans(Analysis):
         return [sel.Type.lower().replace('rate', 'normal') for sel in self.Info]
 
     def get_irradiations(self, string=True):
-        return array([irr2str(sel.Irradiation) if string else float(sel.Irradiation) / 1e15 for sel in self.Info])
+        return array([irr2str(sel.Irradiation) if string else sel.Irradiation / 1e15 for sel in self.Info])
 
     def get_bias_voltages(self):
         return [sel.Bias for sel in self.Info]

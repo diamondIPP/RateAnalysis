@@ -113,6 +113,7 @@ if __name__ == '__main__':
             e = z.Ensemble
             p = z.Pedestal
             pul = z.Pulser
+            dut = z.DUT
         except AttributeError:
             pass
         if pargs.draw:

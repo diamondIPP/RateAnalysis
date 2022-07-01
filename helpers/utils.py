@@ -287,11 +287,11 @@ def bias2rootstr(bias):
 
 
 def irr2str(val, fmt='.1f'):
-    if '?' in val:
+    if '?' in str(val):
         return val
-    if val == '0':
+    if val == 0:
         return 'non-irradiated'
-    val, power = [float(i) for i in val.split('e')]
+    val, power = [float(i) for i in f'{val.n:.1e}'.split('e')]
     return f'{val:{fmt}}#upoint10^{{{power:.0f}}} n/cm^{{2}}'
 
 
@@ -480,7 +480,7 @@ def add_err(u, e):
 
 
 def add_perr(u, e):
-    return u * ufloat(1, e) if is_ufloat(u) else array([add_perr(i, e) for i in u])
+    return array([add_perr(i, e) for i in u]) if is_iter(u) else u * ufloat(1, e)
 
 
 def is_iter(v):

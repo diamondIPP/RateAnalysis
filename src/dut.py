@@ -2,8 +2,8 @@
 #       cut sub class to handle all the cut strings for the DUTs with digitiser
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
-from helpers.utils import load_json, Dir, critical, load_main_config, ufloat, loads, sqrt, pi, array, choose, add_err, prep_kw, update_pbar, PBar, do_nothing
-from numpy import multiply, deg2rad, tan, rad2deg, arange, cos, sin, arctan, linspace, mean, invert, isnan
+from helpers.utils import load_json, Dir, critical, load_main_config, ufloat, loads, sqrt, pi, array, choose, add_err, add_perr, prep_kw, update_pbar, PBar, do_nothing
+from numpy import multiply, deg2rad, tan, rad2deg, arange, cos, sin, arctan, linspace, mean, invert, isnan, unique, diff, cumsum, append
 from plotting.draw import Draw, bins_from_vec
 
 
@@ -26,7 +26,7 @@ class DUT:
         # Specs
         self.Specs = load_json(Dir.joinpath('Runinfos', 'dia_info.json'))[self.Key]
         self.Type = self.load_spec('type', default='pad')
-        self.Irradiation = self.load_spec('irradiation')
+        self.Irradiation = self.load_irradiation()
         self.Version = self.load_spec('version')
         self.Thickness = self.load_spec('thickness', typ=int, default=500)
         self.CCD = self.load_spec('CCD', typ=int)
@@ -52,6 +52,13 @@ class DUT:
             return default
         spec = self.Specs[section] if typ is None else typ(self.Specs[section])
         return loads(spec) if lst and spec is not None else ufloat(spec, error) if error is not None and spec is not None else spec
+
+    def load_irradiation(self, e=.1):
+        d = self.load_spec('irradiation')
+        v = append(0, array(list(d.values()), 'd'))  # there was a zero at some point...
+        i = diff(unique(v))  # get the fluences that were added
+        fluences = append(ufloat(0, 0), cumsum(add_perr(i, e)))  # calculate the accumulated errors
+        return {key: next(f for f in fluences if f.n == float(i)) for key, i in d.items()}
 
     def set_number(self, value):
         self.Number = value

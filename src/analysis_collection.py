@@ -277,7 +277,7 @@ class AnalysisCollection(Analysis):
         return self.FirstAnalysis.get_irradiation()
 
     def get_irradiations(self):
-        return array([ufloat(i, .2 * i) for i in [float(ana.get_irradiation()) for ana in self.get_analyses()]]) / 1e15
+        return array([ana.get_irradiation() for ana in self.Analyses]) / 1e15
 
     def get_attenuator(self):
         return self.FirstAnalysis.get_attenuator()
