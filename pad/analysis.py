@@ -8,7 +8,6 @@ from pad.pulser import PulserAnalysis
 from pad.run import PadRun
 from pad.timing import TimingAnalysis
 from pad.waveform import Waveform
-from plotting.fit import Expo
 from src.dut_analysis import *
 from src.mc_signal import MCSignal
 
@@ -333,11 +332,6 @@ class PadAnalysis(DUTAnalysis):
                 warning(f'Found PH fluctiation in {self.Run}! Stopping fit after {100 * j / y.size:2.0f}%')
                 return x[j - 2]
         return x[-1] + 1000
-
-    def fit_expo(self, bw=None, n=3, **dkw):
-        g = self.draw_pulse_height(bw=bw, fit=False, show=False)[0]
-        f = Expo(g).fit(n=n)
-        return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
     @save_pickle('Disto', sub_dir='PH', print_dur=True, suf_args='all')
     def get_signal_distribution(self, sig=None, cut=None, evnt_corr=True, off_corr=False, bw=None, _redo=False):

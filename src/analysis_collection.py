@@ -547,6 +547,11 @@ class AnalysisCollection(Analysis):
     def draw_ph_slope(self, vs_time=False, show=True):
         y = [fit2u(ana.draw_pulse_height(show=False)[0].Fit('pol1', 'qs0'), par=1) * 60 for ana in self.get_analyses()]
         self.Draw.graph(self.get_x_var(vs_time), y, 'Pulse Height Slope', **self.get_x_args(vs_time, draw=True), y_tit='Slope [mV/min]', show=show)
+
+    def draw_expo(self, bw=None, fr=None, **dkw):
+        g = [ana.fit_expo(bw, show=False, save=False, shift=True, fr=fr) for ana in self.Analyses]
+        l_tits = [f'{t}, {flux2str(f.n)}' for t, f in zip(['down scan', 'up scan'], self.get_fluxes())]
+        return self.Draw.multigraph(g, 'PHExpo', l_tits, **prep_kw(dkw, gridy=True, **self.get_x_args(vs_time=True, off=-1, draw=True), file_name='PHExpo', wleg=.3))
     # endregion PULSE HEIGHT
     # ----------------------------------------
 

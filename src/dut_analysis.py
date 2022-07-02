@@ -16,7 +16,7 @@ from src.telescope import Telescope
 from plotting.save import *
 from helpers.utils import *
 from src.analysis import Analysis
-from plotting.fit import Langau
+from plotting.fit import Langau, Expo
 from src.binning import Bins
 from functools import wraps
 
@@ -442,6 +442,12 @@ class DUTAnalysis(Analysis):
         y = [mean_sigma(y[(xx < qx[i]) & (xy < qy[i])])[0] for i in range(qx.size)]
         self.Draw.graph(x, y, 'PH V Chi2Cut', **prep_kw(dkw, x_tit='#chi^{2} Cut Quantile [%]', y_tit=self.PhTit, draw_opt='ae3', opacity=.2, fill_color=2))
         return self.Draw.graph(x, uarr2n(y), draw_opt='samel', lw=2)
+
+    def fit_expo(self, bw=None, n=3, shift=False, fr=None, **dkw):
+        g = self.draw_pulse_height(bw=bw, fit=False, show=False, prnt=False)[0]
+        g = shift_graph(g, ox=-get_graph_x(g)[0].n) if shift else g
+        f = (Expo(g) if fr is None else Expo(g, *fr)).fit(n=n)
+        return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2])))
 
     # ----------------------------------------
     # region SIGNAL MAP
