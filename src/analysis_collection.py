@@ -416,7 +416,7 @@ class AnalysisCollection(Analysis):
             mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True))
         if vs_time:
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.02))
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.03))
         return mg
 
     def draw_low_scale(self, avrg=True, yoff=.07):

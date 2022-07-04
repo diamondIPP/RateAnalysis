@@ -242,6 +242,10 @@ class DUTAnalysis(Analysis):
         dx2, dy2 = ['TMath::Power(TMath::Tan(TMath::DegToRad() * {}_{}), 2)'.format('slope' if self.Run.has_branch('slope_x') else 'angle', direction) for direction in ['x', 'y']]
         return '{} * TMath::Sqrt({} + {} + 1)'.format(self.DUT.Thickness, dx2, dy2)
 
+    @property
+    def flux(self):
+        return self.get_flux()
+
     def get_flux(self, plane=None, corr=True, full_size=False, redo=False):
         return self.Tel.get_flux(plane, corr, True, full_size, _redo=redo)
 
