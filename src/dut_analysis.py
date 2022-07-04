@@ -443,6 +443,10 @@ class DUTAnalysis(Analysis):
         self.Draw.graph(x, y, 'PH V Chi2Cut', **prep_kw(dkw, x_tit='#chi^{2} Cut Quantile [%]', y_tit=self.PhTit, draw_opt='ae3', opacity=.2, fill_color=2))
         return self.Draw.graph(x, uarr2n(y), draw_opt='samel', lw=2)
 
+    @save_pickle('ExpoFit', sub_dir='PH', suf_args='all')
+    def expo_fit(self, bw=None, n=3, _redo=False):
+        return FitRes(self.fit_expo(bw, n, show=False, prnt=False).GetListOfFunctions()[0])
+
     def fit_expo(self, bw=None, n=3, shift=False, fr=None, y2=None, **dkw):
         g = self.draw_pulse_height(bw=bw, fit=False, show=False, prnt=False)[0]
         g = shift_graph(g, ox=-get_graph_x(g)[0].n) if shift else g
@@ -652,8 +656,8 @@ class DUTAnalysis(Analysis):
         self.Draw(g, draw_opt='ap', lm=.13, show=show)
         return n_traps[-1]
 
-    def draw_n_traps(self, t=1, max_traps=1e5, nbins=20):
-        x, y = log_bins(nbins, 100, 1e6)[1], []
+    def draw_n_traps(self, t=1, max_traps=1e5, n_bins=20):
+        x, y = log_bins(n_bins, 100, 1e6)[1], []
         self.PBar.start(x.size)
         for f in x:
             y.append(self.model_trap_number(f, t, int(max_traps), show=False))

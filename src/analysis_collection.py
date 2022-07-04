@@ -552,6 +552,11 @@ class AnalysisCollection(Analysis):
         g = [ana.fit_expo(bw, show=False, save=False, shift=True, fr=fr, y2=y) for ana, y in zip(self.Analyses, [None] * self.NRuns if y2 is None else y2)]
         l_tits = [f'{t}, {flux2str(f.n)}' for t, f in zip(['down scan', 'up scan'], self.get_fluxes())]
         return self.Draw.multigraph(g, 'PHExpo', l_tits, **prep_kw(dkw, gridy=True, **self.get_x_args(vs_time=True, off=-1, draw=True), file_name='PHExpo', wleg=.3))
+
+    def draw_tconst(self, bw=None, avrg=False, **dkw):
+        x, y = self.get_x_var(avrg=avrg), self.get_values('expo fits', self.Analysis.expo_fit, bw=bw, picklepath=self.get_pickle_path('ExpoFit', 3, 'PH'))
+        y = self.get_flux_average(y[:, -1]) if avrg else y[:, -1]
+        self.Draw.graph(x, y / 60, **prep_kw(dkw, **self.get_x_args(), y_tit='Time Constant [min]', file_name='TConst'))
     # endregion PULSE HEIGHT
     # ----------------------------------------
 

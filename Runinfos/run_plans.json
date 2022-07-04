@@ -284,6 +284,24 @@
       ],
       "type": "rate scan"
     },
+    "02.4": {
+      "attenuators": {
+        "dia1": "None",
+        "dia2": "None",
+        "pulser1": "?",
+        "pulser2": "?"
+      },
+      "runs": [
+        96,
+        100,
+        101,
+        108,
+        109,
+        110,
+        111
+      ],
+      "type": "expo"
+    },
     "03": {
       "attenuators": {
         "dia1": "6dB_?",
