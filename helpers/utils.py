@@ -299,6 +299,10 @@ def rp2str(nr):
     return f'{nr:0>2}' if len(str(nr)) <= 2 else f'{nr:0>4}'
 
 
+def u2str(v, prec=2):
+    return f'{v:.{prec}f}'
+
+
 def make_ev_str(v):
     n = int(log10(v) // 3)
     return f'{v / 10 ** (3 * n):.{2 if n > 1 else 0}f}{["", "k", "M"][n]}'
@@ -610,10 +614,6 @@ def measure_time(f, rep=1, *args, **kwargs):
     for _ in range(int(rep)):
         f(*args, **kwargs)
     add_to_info(t, '')
-
-
-def u_to_str(v, prec=2):
-    return '{{:1.{0}f}} ({{:1.{0}f}})'.format(prec).format(v.n, v.s)
 
 
 def poly_area(x, y):

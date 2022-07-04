@@ -205,7 +205,7 @@ class PadAnalysis(DUTAnalysis):
         return PadAlignment
 
     def print_results(self, prnt=True):
-        rows = [[u_to_str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
+        rows = [[u2str(v, prec=2) for v in [self.get_pulse_height(), self.Pedestal.get_mean(), self.Pulser.get_pulse_height()]]]
         print_table(header=['Signal [mV]', 'Pedestal [mV]', 'Pulser [mV]'], rows=rows, prnt=prnt)
 
     @save_pickle(suf_args='all', sub_dir='Efficiency')
