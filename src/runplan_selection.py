@@ -626,6 +626,10 @@ class DiaScans(Analysis):
         v = f.GetX(1)  # get the error size such that the chi2 is 1
         return ufloat(v, abs(v - f.GetX(1.1))) / mean_sigma(self.get_mean_ph())[0].n
 
+    def print_err(self, redo=False):
+        h = latex.bold('Detector', f'Rel. Sys. Error {latex.unit("percent")}', f'Bias {latex.unit("V")}')
+        print(latex.table(h, [[self.DUTName] + latex.si(self.calc_rel_sys_error(_redo=redo) * 100, fmt='.2f') + latex.si(self.Info[0].Bias, fmt='+.0f')], align_header=True))
+
     def draw_0fit(self, err=True, ey=0, **dkw):
         x, y = self.subtract_means(err, ey)
         g = self.Draw.graph(x, y, y_tit='Shifted Pulse Heigt [mV]')
