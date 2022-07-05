@@ -9,7 +9,7 @@ from json import dump
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
-from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma
+from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
 import plotting.latex as latex
 from src.analysis import *
 from src.binning import Bins
@@ -243,7 +243,7 @@ class DiaScans(Analysis):
     def get_efficiency(self, avrg=False, redo=False):
         return self.get_values(PixCollection.get_efficiencies, PickleInfo('Eff', avrg), redo=redo, avrg=avrg)
 
-    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=False, e_field=False, **kwargs):
+    def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=True, e_field=False, **kwargs):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
     def make_legend(self, g, dut=None, tc=None, irrad=False, custom=False, **kw):
@@ -611,6 +611,27 @@ class DiaScans(Analysis):
     def draw_mean_noise(self, irr=False, redo=False, show=True):
         self.draw_mean_pedestals(True, irr, redo, show)
     # endregion PEDESTAL
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region SYS ERROR
+    def subtract_means(self, err=True, ey=0):
+        x, y = self.get_fluxes(avrg=True), self.flux_avrg([add_err(y, ey) for y in self.get_pulse_heights(err=err)])  # rate scans must have the same flux points
+        return concatenate(array(x).T), array([iy - mean_sigma(g)[0].n for g in array(y).T for iy in g])
+
+    @save_pickle('RelSErr')
+    def calc_rel_sys_error(self, _redo=False):
+        """ vary the error of the indiviual ph points such that the avrg measurements of two rate scans agree. """
+        f = Draw.make_tf1('chi', lambda x: FitRes(Draw.make_tgraph(*self.subtract_means(err=False, ey=x)).Fit('pol0', 'qs')).get_chi2(), 0, 1)
+        v = f.GetX(1)  # get the error size such that the chi2 is 1
+        return ufloat(v, abs(v - f.GetX(1.1))) / mean_sigma(self.get_mean_ph())[0].n
+
+    def draw_0fit(self, err=True, ey=0, **dkw):
+        x, y = self.subtract_means(err, ey)
+        g = self.Draw.graph(x, y, y_tit='Shifted Pulse Heigt [mV]')
+        g.Fit('pol0', 'qs')
+        return self.Draw(g, **prep_kw(dkw, **self.get_x_args(), stats=set_statbox(fit=True), file_name='ShiftedPHFit'))
+    # endregion ERROR
     # ----------------------------------------
 
     def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
