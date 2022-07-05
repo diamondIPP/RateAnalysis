@@ -230,7 +230,7 @@ class Currents(Analysis):
             gv = self.Ana.draw_flux(rel_time=rel_time, show=False)
             format_histo(gv, title=self.get_title(), fill_color=4000, fill_style=4000, lw=3, y_range=choose(f_range, [5, 20000]), y_tit='Flux [kHz/cm^{2}]')
         c = array(c) / {'nA': 1, '#muA': 1000}[cunit]
-        gc = Draw.make_tgrapherrors(t, c)
+        gc = Draw.make_tgraph(t, c)
         format_histo(gc, x_tit='Time [hh:mm]', y_tit=f'Current [{cunit}]', yax_col=self.CCol, color=self.CCol, y_range=choose(c_range, [round_down_to(min(c)), round_up_to(max(c))]))
         x_range = [gv.GetBinLowEdge(1), gv.GetBinLowEdge(gv.GetNbinsX() + 1)] if with_flux else [t[0], t[-1]]
         for g in [gc, gv]:

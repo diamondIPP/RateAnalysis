@@ -278,7 +278,7 @@ class PadAnalysis(DUTAnalysis):
         bins = range(h.FindBin(0), h.FindBin(thresh) + 2)
         err = zeros(1)
         efficiencies = [ufloat(h.IntegralAndError(ibin, h.GetNbinsX(), err), err[0]) / h.Integral(0, h.GetNbinsX()) * 100 for ibin in bins]
-        g = Draw.make_tgrapherrors([h.GetBinCenter(ibin) for ibin in bins], efficiencies, title='Detector Efficiency')
+        g = Draw.make_tgraph([h.GetBinCenter(ibin) for ibin in bins], efficiencies, title='Detector Efficiency')
         format_histo(g, x_tit='Threshold [mV]', y_tit='Efficiency [%]', y_off=1.3)
         self.Draw(g, draw_opt='ap', lm=.12, show=show)
         Draw.vertical_line(x=self.Pedestal.get_noise().n * 3, ymin=0, ymax=110, w=2)
@@ -299,7 +299,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_pulse_height_vs_binsize(self, show=True):
         bin_sizes = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
         pulse_heights = [fit2u(self.draw_pulse_height(bw=bin_size, show=False)[1], par=0) for bin_size in bin_sizes]
-        g = Draw.make_tgrapherrors(bin_sizes, pulse_heights, title='Pulse Height vs Number of Events per Bin', x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2, x_off=1.2)
+        g = Draw.make_tgraph(bin_sizes, pulse_heights, title='Pulse Height vs Number of Events per Bin', x_tit='Number of Events per Bin', y_tit='Pulse Height [mV]', y_off=1.2, x_off=1.2)
         self.Draw(g, lm=.12, show=show, gridy=True, logx=True)
 
     def draw_mean_vs_binsize(self, steps=10, show=True):
@@ -307,7 +307,7 @@ class PadAnalysis(DUTAnalysis):
         splits = 2 ** arange(min(steps, int(log2(values.size))) + 1)
         x = values.size / splits
         means = [mean_sigma([mean(ar) for ar in split(values[:-(values.size % s)] if values.size % s else values, s)])[0] for s in splits]
-        g = Draw.make_tgrapherrors(x, means, title='Mean vs Bin Size', x_tit='Bin Size', y_tit='Pulse Height [mV]', x_range=[min(x) / 2, max(x) * 2])
+        g = Draw.make_tgraph(x, means, title='Mean vs Bin Size', x_tit='Bin Size', y_tit='Pulse Height [mV]', x_range=[min(x) / 2, max(x) * 2])
         self.Draw(g, lm=.14, show=show, gridy=True, logx=True)
 
     @save_pickle('Trend', sub_dir='PH', suf_args='all')

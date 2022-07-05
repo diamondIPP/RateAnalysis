@@ -278,7 +278,7 @@ class PixAnalysis(DUTAnalysis):
             x0, x1, y0, y1 = c.GetUxmin(), c.GetUxmax(), c.GetUymin(), c.GetUymax()
             b = [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=602, fill=True, show=show) for x in arange(-2 * wx, x1, wx) for y in arange(-2 * wy, y1, wy) if x > x0 and y > y0]      # bias
             r = [Draw.circle(self.DUT.ColDia / 2, x, y, fill_color=799, fill=True, show=show) for x in arange(-2.5 * wx, x1, wx) for y in arange(-2.5 * wy, y1, wy) if x > x0 and y > y0]  # readout
-            g = [Draw.make_tgrapherrors([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
+            g = [Draw.make_tgraph([1e3], [1e3], color=i, show=False, markersize=2) for i in [602, 799]]  # dummy graphs for legend
             return [Draw.legend(g, ['bias', 'readout'], 'p', y2=.82, show=show)] + b + r
         return []
     # endregion 3D

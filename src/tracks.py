@@ -106,7 +106,7 @@ class Tracks(SubAnalysis):
     def draw_residual_vs_chi2(self, roc, mode='x', step_size=10, y_range=None, show=True):
         chi2s = arange(10, 101, step_size)
         residuals = self.get_chi2_residuals(roc, chi2s, mode)
-        g = Draw.make_tgrapherrors(x=chi2s, y=residuals, title='Tracking Resolution in {} for Plane {}'.format(mode.title(), roc))
+        g = Draw.make_tgraph(x=chi2s, y=residuals, title='Tracking Resolution in {} for Plane {}'.format(mode.title(), roc))
         format_histo(g, y_tit='Residual Standard Deviation [#mum]', y_off=1.4, y_range=y_range)
         self.Draw(g, 'TrackRes', draw_opt='alp', show=show)
         return g
@@ -369,7 +369,7 @@ class Tracks(SubAnalysis):
         p = linspace(*x_range, 100)
         z0 = polyval(fits, p.reshape(p.size, 1))
         ex = array([ufloat(m, s) for m, s in [mean_sigma(iz, err=False) for iz in z0]])
-        g = self.Draw.make_tgrapherrors(p, ex, fill_color=634, opacity=.5)
+        g = self.Draw.make_tgraph(p, ex, fill_color=634, opacity=.5)
         g.Draw('e3')
         xm, ym = mean(z_), mean_sigma(polyval(fits, mean(z_)))[1].n
         Draw.arrow(xm, xm, -ym, ym, width=2, opt='<|>', size=.02)

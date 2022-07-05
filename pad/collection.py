@@ -102,7 +102,7 @@ class PadCollection(AnalysisCollection):
     # region SIGNAL/PEDESTAL
     def draw_ph_currents(self, yr=.06, show=True):
         ph, pul, t = self.get_pulse_heights(err=False), self.Pulser.get_pulse_heights(), self.get_times()
-        graphs, cur = [self.Draw.make_tgrapherrors(t, y / mean(y), color=col) for y, col in [(ph, 2), (pul, 4)]], self.Currents.draw(show=False)
+        graphs, cur = [self.Draw.make_tgraph(t, y / mean(y), color=col) for y, col in [(ph, 2), (pul, 4)]], self.Currents.draw(show=False)
         mg = self.Draw.multigraph(graphs, 'signal', bm=0, color=False, show=False, y_tit='Pulse Height [mV]')
         c = Draw.canvas('Pulse Height Current', w=2, h=1.2, transp=True, show=show)
         self.Draw.Legends.draw(c.cd(), all_pads=False)
@@ -171,7 +171,7 @@ class PadCollection(AnalysisCollection):
     def draw_bucket_ph(self, show=True, redo=False):
         pickle_path = self.make_simple_pickle_path('Fit', '{}_1_b2_nobucket'.format(Bins.Size), 'Ph_fit', '{}')
         x, y = self.get_fluxes(), self.get_values('bucket ph', self.Analysis.get_bucket_pulse_heights, picklepath=pickle_path, redo=redo).T
-        graphs = [Draw.make_tgrapherrors(x, iy) for iy in y]
+        graphs = [Draw.make_tgraph(x, iy) for iy in y]
         mg = self.Draw.multigraph(graphs, 'Bucket Pulse Heights', ['no bucket', 'w/o thresh', 'with thresh'], y_tit='Pulse Height [mV]', show=show, logx=True)
         format_histo(mg, **self.get_x_args(), y_range=ax_range(concatenate(y), 0, .3, .3))
 
@@ -219,17 +219,17 @@ class PadCollection(AnalysisCollection):
         peak_heights = array([ana.Peaks.find_additional(scale=True, show=False) for ana in self.get_analyses()]) / self.get_fluxes()
         peak_heights /= mean(peak_heights)
         pulse_heights = self.get_pulse_heights()
-        g = Draw.make_tgrapherrors('gpr', 'Pulse Height vs Normalised Peak Height', y=pulse_heights, x=peak_heights)
+        g = Draw.make_tgraph('gpr', 'Pulse Height vs Normalised Peak Height', y=pulse_heights, x=peak_heights)
         format_histo(g, y_tit='Pulse Height', x_tit='Normalised Peak Height')
         self.Draw(g, show=show, lm=.12)
 
     def draw_fluxes(self, show=True):
-        g = [self.Draw.make_tgrapherrors(arange(1, self.NRuns + 1), v) for v in [self.get_fluxes(pl, 1, 1) for pl in [1, 2, None]] + [self.get_peak_fluxes()]]
+        g = [self.Draw.make_tgraph(arange(1, self.NRuns + 1), v) for v in [self.get_fluxes(pl, 1, 1) for pl in [1, 2, None]] + [self.get_peak_fluxes()]]
         self.Draw.multigraph(g, 'Flux Comparison', ['Plane 1', 'Plane 2', 'Mean 1 & 2', 'Peaks'], x_tit='Run', y_tit=self.get_x_tit(), show=show)
 
     def draw_flux_ratios(self, show=True):
         peak_flux = self.get_peak_fluxes(rel=True)
-        g = [self.Draw.make_tgrapherrors(self.get_fluxes(), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
+        g = [self.Draw.make_tgraph(self.get_fluxes(), v / peak_flux) for v in [self.get_fluxes(pl, 1, 1, rel=True) for pl in [1, 2, None]]]
         mg = self.Draw.multigraph(g, 'Plane/Peak Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], y_tit='Plane/Peak Flux Ratio', show=show, **self.get_x_draw())
         format_histo(mg, **self.get_x_args(x_tit='Mean Plane Flux [kHz/cm^{2}]'))
 

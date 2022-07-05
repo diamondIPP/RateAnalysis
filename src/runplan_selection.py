@@ -455,10 +455,10 @@ class DiaScans(Analysis):
         currents = self.get_currents()
         fluxes = self.get_fluxes()
         for i, (x, y) in enumerate(zip(fluxes, currents)):
-            g = Draw.make_tgrapherrors(x, y)
+            g = Draw.make_tgraph(x, y)
             if align:
                 fit = g.Fit('pol1', 'qs0')
-                g = Draw.make_tgrapherrors(fluxes[i], array(currents[i]) - fit.Parameter(0) + .1)
+                g = Draw.make_tgraph(fluxes[i], array(currents[i]) - fit.Parameter(0) + .1)
             format_histo(g, color=self.Draw.get_color(self.NPlans))
             legend.AddEntry(g, '{tc} - {hv}'.format(tc=self.Info[i].TCString, hv=self.get_rp_values(self.Info[i], self.Ana.get_hv_name, load_tree=False)), 'pl')
             mg.Add(g)
@@ -491,7 +491,7 @@ class DiaScans(Analysis):
 
     def draw_sigmas(self, y_range=None, show=True):
         y = array([mean_sigma(ph_list)[1] for ph_list in self.get_pulse_heights()])
-        g = Draw.make_tgrapherrors(arange(y.size), y=y, title='Pulse Height STD Evolution', x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]')
+        g = Draw.make_tgraph(arange(y.size), y=y, title='Pulse Height STD Evolution', x_tit='Run Plan', y_tit='Pulse Height Standard Deviation [%]')
         format_histo(g, y_off=1.2, x_range=ax_range(0, y.size - 1, .3, .3), x_off=2.5, y_range=y_range)
         self.set_bin_labels(g)
         self.Draw(g, self.get_savename('Sigmas'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)
@@ -509,7 +509,7 @@ class DiaScans(Analysis):
         values_list = self.get_values(PadCollection.get_peak_fluxes, PickleInfo('PeakFlux'))
         flux_list = self.get_fluxes()
         for sel, values, fluxes in zip(self.Info, values_list, flux_list):
-            g = Draw.make_tgrapherrors('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
+            g = Draw.make_tgraph('g{}'.format(sel.RunPlan), '', x=fluxes, y=values)
             format_histo(g, color=self.Draw.get_color())
             leg.AddEntry(g, '{} @ {:+1.0f}V'.format(sel.DUTName, sel.Bias), 'pl')
             mg.Add(g, 'p')
@@ -594,7 +594,7 @@ class DiaScans(Analysis):
             pedestals = array([make_ufloat(*tup) for tup in array(values).T])
             if rel:
                 pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).values()]) * .01
-            g = Draw.make_tgrapherrors(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
+            g = Draw.make_tgraph(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
             mg.Add(g)
         legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
         format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
@@ -603,7 +603,7 @@ class DiaScans(Analysis):
     def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
         y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
         x = self.get_irradiations(string=False) if irr else arange(y.size)
-        g = Draw.make_tgrapherrors(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
+        g = Draw.make_tgraph(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
         format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)
         self.set_bin_labels(g) if not irr else do_nothing()
         self.Draw(g, self.get_savename('PedestalMeans'), show, draw_opt='ap', bm=.2, w=1.5, h=.75, gridy=True)

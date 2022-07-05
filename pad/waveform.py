@@ -146,7 +146,7 @@ class Waveform(PadSubAnalysis):
         y, times = self.get_tree_values(n, cut, t_corr, channel, raw)
         y = choose(y0, y)
         h = self.Draw.histo_2d(times, y, [1024, 0, 512, 2048, -512, 512], title, show=False)
-        h = Draw.make_tgrapherrors(times, y, title=title) if n == 1 else h
+        h = Draw.make_tgraph(times, y, title=title) if n == 1 else h
         self.Draw(h, f'WaveForms{n}', x_tit='Time [ns]', y_tit='Signal [mV]', **prep_kw(dkw, y_range=ax_range(y, 0, .1, .2), draw_opt='col' if n > 1 else 'apl', **Draw.mode(3), gridy=True,
                                                                                         **Draw.mode(3), stats=0, markersize=.5))
         return h, self.Count - start_count
@@ -220,7 +220,7 @@ class Waveform(PadSubAnalysis):
         y, t = self.get_all()[i], self.get_calibrated_times(tc)
         imin, imax = self.Ana.SignalRegion
         ip = choose(peak_i, argmax(y[imin:imax])) + imin
-        g = Draw.make_tgrapherrors(t[max(0, ip - 6):ip + 8], y[max(0, ip - 6):ip + 8], x_tit='Time [s]', y_tit='Signal [mV]')
+        g = Draw.make_tgraph(t[max(0, ip - 6):ip + 8], y[max(0, ip - 6):ip + 8], x_tit='Time [s]', y_tit='Signal [mV]')
         f = TF1('f', 'landau', 0, 512)
         g.Fit(f, 'q')
         m = f.GetMaximumX()
@@ -282,7 +282,7 @@ class Waveform(PadSubAnalysis):
         if s is not None:
             p.Scale(s / p.GetMaximum())
         x, y = get_hist_vecs(p, err=0)
-        g = self.Draw.make_tgrapherrors(x + t_off, y, color=2)
+        g = self.Draw.make_tgraph(x + t_off, y, color=2)
         c.cd()
         self.Draw.legend([g], ['average'], 'l')
         g.Draw('l')

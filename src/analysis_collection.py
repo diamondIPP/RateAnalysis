@@ -418,9 +418,9 @@ class AnalysisCollection(Analysis):
     def make_pulse_height_graph(self, bw=None, vs_time=False, vs_irrad=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False, ls=.04):
         x, (ph0, ph) = self.get_x_var(vs_time, vs_irrad, avrg), [self.get_pulse_heights(bw, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
         ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
-        g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7, y_tit=self.PhTit)
-        g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
-        g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
+        g = Draw.make_tgraph(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7, y_tit=self.PhTit)
+        g_errors = Draw.make_tgraph(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
+        g1, g_last = [Draw.make_tgraph([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
         graphs = ([g_errors] if err else []) + ([] if avrg else [g]) + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend and not avrg:
@@ -540,7 +540,7 @@ class AnalysisCollection(Analysis):
         var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], f' {self.PhUnit}' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
         g = self.Draw.graph(x[y != 0], y[y != 0], **prep_kw(dkw, title=tit, y_tit=f'{var}{unit}', **self.get_x_args(t, vs_irrad=vs_irrad, draw=True)))
         if vs_irrad and arg == 2:
-            g_scvd = self.Draw.make_tgrapherrors([0, 10], [ufloat(0.27, .01)] * 2, color=634, fill_color=634, opacity=.2)
+            g_scvd = self.Draw.make_tgraph([0, 10], [ufloat(0.27, .01)] * 2, color=634, fill_color=634, opacity=.2)
             g_scvd.Draw('le3')
             self.Draw.legend([g, g_scvd], ['pCVD', 'scCVD'], ['p', 'lf'])
         self.Draw.save_plots(fname('Uni' if arg == 2 else var, avrg, t))
@@ -607,7 +607,7 @@ class AnalysisCollection(Analysis):
 
     def fit_pulse_height(self, logx=True):
         values = self.get_pulse_heights(pbar=False)
-        g = Draw.make_tgrapherrors('gfph', 'Pulse Height Fit', x=self.get_fluxes(), y=values)
+        g = Draw.make_tgraph('gfph', 'Pulse Height Fit', x=self.get_fluxes(), y=values)
 
         def f1(x, pars):
             v = pars[0] * x[0] + pars[1]
@@ -732,14 +732,14 @@ class AnalysisCollection(Analysis):
 
     def draw_signal_spreads(self, vs_time=True, rel_time=True, show=True):
         spreads = [ana.get_signal_spread(prnt=False) for ana in self.get_analyses()]
-        g = Draw.make_tgrapherrors(self.get_x_var(vs_time), spreads, title='Relative Spread')
+        g = Draw.make_tgraph(self.get_x_var(vs_time), spreads, title='Relative Spread')
         format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='Relative Spread [%]', y_off=1.2, t_ax_off=self.get_tax_off(vs_time, rel_time))
         self.Draw(g, 'RelativeSpread', lm=.12, logx=not vs_time, show=show)
 
     def draw_sm_std(self, vs_time=False, redo=False, show=True):
         y_values = list(self.get_sm_stds(redo).values())
         x_values = self.get_times() if vs_time else self.get_fluxes()
-        g = Draw.make_tgrapherrors(x_values, y_values, title='STD of the Signal Map')
+        g = Draw.make_tgraph(x_values, y_values, title='STD of the Signal Map')
         format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='rel. STD', y_off=1.3, t_ax_off=0 if vs_time else None)
         self.Draw(g, 'STDSigMap', show, lm=.12, logx=not vs_time)
     # endregion SIGNAL MAP
@@ -751,7 +751,7 @@ class AnalysisCollection(Analysis):
         tits = ['Mean', 'Sigma']
         values = self.get_values('beam profile {}'.format(mode), self.Analysis.draw_beam_profile, show=False, fit=True, fit_range=fit_margin, mode=mode, prnt=False)
         values = [[fit2u(value, par=par) for value in values] for par in [1, 2]]
-        graphs = [Draw.make_tgrapherrors(self.get_x_var(vs_time, rel_time), vals, title='{} of the Beam Profile in {}'.format(tit, mode.title())) for tit, vals in zip(tits, values)]
+        graphs = [Draw.make_tgraph(self.get_x_var(vs_time, rel_time), vals, title='{} of the Beam Profile in {}'.format(tit, mode.title())) for tit, vals in zip(tits, values)]
         c = Draw.canvas('Beam Infos {}'.format(mode.title()), x=1.5, y=.75, divide=2, show=show)
         for i, g in enumerate(graphs, 1):
             format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='{tit} [cm]'.format(tit=tits[i - 1]), y_off=1.8, t_ax_off=self.get_tax_off(vs_time, rel_time))
@@ -830,7 +830,7 @@ class AnalysisCollection(Analysis):
 
     def draw_mean_angles(self, mode='x', vs_time=True, rel_time=True, show=True, redo=False):
         values = [value[0] for value in self.get_values('mean angles {}'.format(mode), self.Analysis.get_mean_angle, mode=mode, redo=redo)]
-        g = Draw.make_tgrapherrors(self.get_x_var(vs_time, rel_time), values, title='Mean Track Angles in {}'.format(mode.title()))
+        g = Draw.make_tgraph(self.get_x_var(vs_time, rel_time), values, title='Mean Track Angles in {}'.format(mode.title()))
         format_histo(g, y_tit='Mean Angle [deg]', y_off=1.3, **self.get_x_args(vs_time, rel_time))
         self.Draw(g, 'MeanTrackAngle'.format(mode.title()), show, logx=not vs_time)
     # endregion TRACKS

@@ -264,7 +264,7 @@ class PadCut(Cut):
         if normalise:
             v = v / mean(v, axis=0) + arange(3) / 100
         names = self.get_names(with_raw=True)
-        graphs = [self.Draw.make_tgrapherrors(arange(v.shape[0]), v[:, i]) for i in arange(v.shape[1])]
+        graphs = [self.Draw.make_tgraph(arange(v.shape[0]), v[:, i]) for i in arange(v.shape[1])]
         return self.Draw.multigraph(graphs, '{}Cut Variables'.format('Consecutive ' if consecutive else ''), ['mean', 'median', 'fwc'], names, x_tit='Cut Name',
                                     y_tit='{}Pulse Height [mV]'.format('Norm ' if normalise else ''), gridy=True, lm=.12)
     # endregion ANA

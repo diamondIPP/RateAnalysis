@@ -96,7 +96,7 @@ class MCSignal(object):
         s = arange(.5, max_sig + step, step)
         data = [self.get_bucket(), self.get_signal()]
         res = array([self.get_bucket_stats(data, i, i, False) for i in s])
-        g = [Draw.make_tgrapherrors(s, res[:, i]) for i in [0, 1]]
+        g = [Draw.make_tgraph(s, res[:, i]) for i in [0, 1]]
         self.Draw.multigraph(g, 'Bucket Cut Stats', ['Sensitivity', 'Specificity'], x_tit='N Sigma', y_tit='Efficiency [%]', draw_opt='l', lw=2)
 
     def draw_signals(self, step=.1, max_sig=10, rel=True):

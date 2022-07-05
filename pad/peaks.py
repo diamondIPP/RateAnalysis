@@ -435,8 +435,8 @@ class PeakAnalysis(PadSubAnalysis):
         self.PBar.start(self.MaxBunch)
         x = self.get_bunch_nrs(1)
         y = [self.get_bunch_height(i, thresh=thresh, peak_cut=peak_cut, cut=self.get_pre_bunch_cut(i, cut), fit=fit, isolated=cut is None) for i in x]
-        g = Draw.make_tgrapherrors(x, y, x_tit='Bucket Number', y_tit='Peak Height [mV]')
-        ga = Draw.make_tgrapherrors([ufloat(mean(x[2:]), (x[-1] - x[2]) / 2)], [mean_sigma(y[2:])[0]], color=2)
+        g = Draw.make_tgraph(x, y, x_tit='Bucket Number', y_tit='Peak Height [mV]')
+        ga = Draw.make_tgraph([ufloat(mean(x[2:]), (x[-1] - x[2]) / 2)], [mean_sigma(y[2:])[0]], color=2)
         return self.Draw.multigraph([g, ga], 'Bunch Heights', ['single', 'average'], **prep_kw(dkw, color=None, gridy=True, file_name='BunchHeights'))
 
     def draw_pre_bunch_heights(self, b=-1, thresh=150, y_range=None):

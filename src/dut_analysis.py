@@ -557,7 +557,7 @@ class DUTAnalysis(Analysis):
 
     def draw_sm_profile(self, mode='x', factor=1.5, cut=None, fid=False, hitmap=False, redo=False, show=True):
         s = self.draw_signal_map(factor, cut, fid, hitmap=hitmap, redo=redo, show=False)
-        g = Draw.make_tgrapherrors('g_smp', 'Signal Map Profile')
+        g = Draw.make_tgraph('g_smp', 'Signal Map Profile')
         values = [[] for _ in range(s.GetNbinsX() if mode == 'x' else s.GetNbinsY())]
         for xbin in range(s.GetNbinsX()):
             for ybin in range(s.GetNbinsY()):
@@ -655,7 +655,7 @@ class DUTAnalysis(Analysis):
             filled_traps[i] = f
             filled_traps = decay(filled_traps, t)
             n_traps.append(min(sum(filled_traps), max_traps))
-        g = Draw.make_tgrapherrors(x=arange(steps), y=n_traps)
+        g = Draw.make_tgraph(x=arange(steps), y=n_traps)
         format_histo(g, title='Number of Filled Traps', x_tit='Time [s]', y_tit='Number of Traps', y_off=1.7)
         self.Draw(g, draw_opt='ap', lm=.13, show=show)
         return n_traps[-1]
@@ -666,7 +666,7 @@ class DUTAnalysis(Analysis):
         for f in x:
             y.append(self.model_trap_number(f, t, int(max_traps), show=False))
             self.PBar.update()
-        g = Draw.make_tgrapherrors(x=x / 1000, y=y)
+        g = Draw.make_tgraph(x=x / 1000, y=y)
         format_histo(g, title='Number of Filled Traps vs Flux', x_tit='Flux [kHz/cm^{2}]', y_tit='Number of Filled Traps', y_off=1.7)
         self.Draw(g, draw_opt='ap', lm=.13, logx=True)
 
