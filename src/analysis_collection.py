@@ -343,10 +343,13 @@ class AnalysisCollection(Analysis):
         e_stat, (m, e_full) = mean_sigma([v.s for v in x])[0], mean_sigma(x)
         return usqrt(e_full ** 2 - e_stat ** 2) / m
 
+    def subtract_grp_mean(self, err=True):
+        x, y = sorted(self.get_fluxes()), self.get_pulse_heights(err=err, flux_sort=True)
+        return array([[iy, ix - mean_sigma(g[:, 1])[0].n] for g in split(array([x, y]).T, self.get_flux_splits()) for iy, ix in g if g.shape[0] > 1]).T  # take only groups with more than 1 entry
+
     @save_pickle('RelSErr')
     def calc_rel_sys_error(self, _redo=False):
-        groups = split(self.get_pulse_heights(redo=0, err=False, flux_sort=True), self.get_flux_splits())
-        x, y = sorted(self.get_fluxes()), array([value - mean_sigma(grp)[0].n for grp in groups for value in grp])
+        x, y = self.subtract_grp_mean(err=False)
         f = Draw.make_tf1('chi', lambda i: FitRes(self.Draw.graph(x, add_err(y, i), show=False, save=False).Fit('pol0', 'qs')).get_chi2(), 0, 1)
         v = f.GetX(1)  # get the error size such that the chi2 is 1
         return ufloat(v, abs(v - f.GetX(1.1))) / self.get_pulse_height(err=False)[0]
