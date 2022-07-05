@@ -412,19 +412,19 @@ class AnalysisCollection(Analysis):
         x0 = x[where((f >= fmin) & (f <= fmax))]
         return x / mean(x0).n  # no error to keep correct errors of single measurements
 
-    def make_pulse_height_graph(self, bw=None, vs_time=False, vs_irrad=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False):
+    def make_pulse_height_graph(self, bw=None, vs_time=False, vs_irrad=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False, ls=.04):
         x, (ph0, ph) = self.get_x_var(vs_time, vs_irrad, avrg), [self.get_pulse_heights(bw, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks) for i, e in enumerate([False, err])]
         ph0, ph = [self.scale_ph(iph, avrg) for iph in [ph0, ph]] if scale else [ph0, ph]
-        g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7)
+        g = Draw.make_tgrapherrors(x, ph0, title='stat. error', color=Draw.color(2, 1), markersize=.7, y_tit=self.PhTit)
         g_errors = Draw.make_tgrapherrors(x, ph, title='full error', marker=0, color=Draw.color(2, 0), markersize=0, y_tit=self.PhTit)
         g1, g_last = [Draw.make_tgrapherrors([x[i].n], [ph[i].n], title='{} run'.format('last' if i else 'first'), marker=22 - i, color=2, markersize=1.5) for i in [0, -1]]
-        graphs = [g_errors] + ([] if avrg else [g]) + ([g1, g_last] if first_last and not avrg and not vs_time else [])
+        graphs = ([g_errors] if err else []) + ([] if avrg else [g]) + ([g1, g_last] if first_last and not avrg and not vs_time else [])
         mg = self.Draw.multigraph(graphs, 'Pulse Height', color=None, show=False)
         if legend and not avrg:
-            mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l', 'l', 'p', 'p'], bottom=True, left=True))
+            mg.GetListOfFunctions().Add(self.Draw.legend(graphs, [g.GetTitle() for g in graphs], ['p' if 'run' in g.GetTitle() else 'l' for g in graphs], bottom=True, left=True))
         if vs_time:
             for ix, iph, flux in zip(x, ph0, self.get_fluxes()):
-                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=.03))
+                mg.GetListOfGraphs()[0].GetListOfFunctions().Add(Draw.tlatex(ix.n, iph.n + iph.s * 1.2, '{:0.0f}'.format(flux.n), color=1, align=21, size=ls))
         return mg
 
     def draw_low_scale(self, avrg=True, yoff=.07):
@@ -458,9 +458,9 @@ class AnalysisCollection(Analysis):
         g.Fit('pol0', 'qs') if fit else do_nothing()
         return self.Draw.graph(g, **prep_kw(dkw, **self.get_x_args(t, vs_irrad=i, draw=True), stats=set_statbox(fit=fit, form='2.1f', stats=fit), file_name=fname('PH', True, t, i)))
 
-    def draw_pulse_heights(self, bw=None, vs_time=False, vs_irrad=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, **kwargs):
+    def draw_pulse_heights(self, bw=None, vs_time=False, vs_irrad=False, show_first_last=True, legend=True, corr=True, redo=False, err=True, avrg=False, fit=False, peaks=False, ls=.04, **kwargs):
         """ Shows the pulse heights of the runs. """
-        mg = self.make_pulse_height_graph(bw, vs_time, vs_irrad, show_first_last, redo, legend, corr, err, avrg, peaks)
+        mg = self.make_pulse_height_graph(bw, vs_time, vs_irrad, show_first_last, redo, legend, corr, err, avrg, peaks, ls=ls)
         mg.GetListOfGraphs()[0].Fit('pol0', f'qs') if fit else do_nothing()
         stats = set_statbox(fit=fit, form='2.1f', stats=fit)
         m = Draw.mode(2, y_off=.85, lm=.1) if vs_time else Draw.mode(1, lm=.14, y_off=1.45)
