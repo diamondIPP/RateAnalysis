@@ -305,8 +305,8 @@ class AnalysisCollection(Analysis):
     def get_pulse_heights(self, *args, **kwargs):
         return array([])
 
-    def get_pulse_height(self):
-        return mean_sigma(self.get_pulse_heights())
+    def get_pulse_height(self, *args, **kwargs):
+        return mean_sigma(self.get_pulse_heights(*args, **kwargs))
 
     def get_efficiencies(self, suf='3', avrg=False, redo=False):
         return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.get_pickle_path(suf=suf, sub_dir='Efficiency'), avrg=avrg, redo=redo)
@@ -338,10 +338,18 @@ class AnalysisCollection(Analysis):
     def get_sys_error(self):
         return self.MainConfig.get_value('MAIN', 'systematic error', dtype=float)
 
-    def calc_rel_sys_error(self):
+    def calc_rel_sys_error_old(self):
         x = self.get_pulse_heights(err=False)
         e_stat, (m, e_full) = mean_sigma([v.s for v in x])[0], mean_sigma(x)
         return usqrt(e_full ** 2 - e_stat ** 2) / m
+
+    @save_pickle('RelSErr')
+    def calc_rel_sys_error(self, _redo=False):
+        groups = split(self.get_pulse_heights(redo=0, err=False, flux_sort=True), self.get_flux_splits())
+        x, y = sorted(self.get_fluxes()), array([value - mean_sigma(grp)[0].n for grp in groups for value in grp])
+        f = Draw.make_tf1('chi', lambda i: FitRes(self.Draw.graph(x, add_err(y, i), show=False, save=False).Fit('pol0', 'qs')).get_chi2(), 0, 1)
+        v = f.GetX(1)  # get the error size such that the chi2 is 1
+        return ufloat(v, abs(v - f.GetX(1.1))) / self.get_pulse_height(err=False)[0]
 
     @save_pickle('LowFlux', sub_dir='Errors', suf_args=0)
     def get_low_flux_std(self, flux, _redo=False):
