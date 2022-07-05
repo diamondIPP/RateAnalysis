@@ -153,8 +153,8 @@ class DiaScans(Analysis):
     def get_values(self, f, pickle_info=None, redo=False, load_tree=True, *args, **kwargs):
         return [self.get_rp_values(sel, f, pickle_info, redo, load_tree, *args, **kwargs) for sel in self.Info]
 
-    def get_pulse_heights(self, avrg=False, redo=False):
-        return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', f'{avrg:d}'), redo=redo, avrg=avrg)
+    def get_pulse_heights(self, avrg=False, err=True, redo=False):
+        return self.get_values(self.Ana.get_pulse_heights, PickleInfo('PHVals', avrg, err), redo=redo, avrg=avrg, err=err)
 
     def get_mean_ph(self, redo=False):
         return array([mean_sigma(i)[0] for i in self.get_pulse_heights(redo=redo)])
@@ -258,6 +258,13 @@ class DiaScans(Analysis):
         if custom:
             return self.Draw.legend(g, custom, show=False, **prep_kw(kw, styles='p'))
         return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
+
+    def flux_splits(self, redo=False):
+        return self.get_values(self.Ana.get_flux_splits, PickleInfo('FluxSplit'), redo=redo)
+
+    def flux_avrg(self, x):
+        x = [ix[f.argsort()] for ix, f in zip(x, self.get_fluxes())]  # sort by ascending fluxes
+        return [array([mean_sigma(lst)[0] for lst in split(ix, s)]) for ix, s in zip(x, self.flux_splits())]
     # endregion GET
     # ----------------------------------------
 
