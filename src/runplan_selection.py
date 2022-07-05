@@ -619,7 +619,7 @@ class DiaScans(Analysis):
         x, y = self.get_fluxes(avrg=True), self.flux_avrg([add_err(y, ey) for y in self.get_pulse_heights(err=err)])  # rate scans must have the same flux points
         return concatenate(array(x).T), array([iy - mean_sigma(g)[0].n for g in array(y).T for iy in g])
 
-    @save_pickle('RelSErr')
+    @save_pickle('RelSErr', field='Name')
     def calc_rel_sys_error(self, _redo=False):
         """ vary the error of the indiviual ph points such that the avrg measurements of two rate scans agree. """
         f = Draw.make_tf1('chi', lambda x: FitRes(Draw.make_tgraph(*self.subtract_means(err=False, ey=x)).Fit('pol0', 'qs')).get_chi2(), 0, 1)
