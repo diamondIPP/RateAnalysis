@@ -568,6 +568,13 @@ class AnalysisCollection(Analysis):
         x, y = self.get_x_var(avrg=avrg), self.get_values('expo fits', self.Analysis.expo_fit, bw=bw, picklepath=self.get_pickle_path('ExpoFit', 3, 'PH'))
         y = self.get_flux_average(y[:, -1]) if avrg else y[:, -1]
         self.Draw.graph(x, y / 60, **prep_kw(dkw, **self.get_x_args(), y_tit='Time Constant [min]', file_name='TConst'))
+
+    def draw_0fit(self, err=True, ey=0, **dkw):
+        x, y = self.subtract_grp_mean(err)
+        y = add_err(y, ey)
+        g = self.Draw.graph(x, y, y_tit='Shifted Pulse Heigt [mV]')
+        g.Fit('pol0', 'qs')
+        return self.Draw(g, **prep_kw(dkw, **self.get_x_args(), stats=set_statbox(fit=True), file_name='ShiftedPHFit'))
     # endregion PULSE HEIGHT
     # ----------------------------------------
 
