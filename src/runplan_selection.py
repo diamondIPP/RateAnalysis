@@ -210,8 +210,17 @@ class DiaScans(Analysis):
     def get_fluxes(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
 
-    def get_x(self, avrg=False, e_field=False, irr=False, redo=False):
-        return (self.get_e_fields() if e_field else self.get_biases()) if self.is_volt_scan else (self.get_irradiations(string=False) if irr else self.get_fluxes(avrg, redo))
+    def times(self):
+        return self.get_values(self.Ana.get_times, PickleInfo('Times'))
+
+    def mean_times(self):
+        t = array([[mean(t).n, t[0].n + t[0].s, t[-1].n + t[-1].s] for t in self.times()])
+        return array([[it, it - s, e - it] for it, s, e in t])
+
+    def get_x(self, avrg=False, e_field=False, irr=False, t=False, redo=False):
+        if self.is_volt_scan:
+            return self.get_e_fields() if e_field else self.get_biases()
+        return self.times() if t else self.get_irradiations(string=False) if irr else self.get_fluxes(avrg, redo)
 
     def get_all_infos(self):
         return [sel for tc in self.RunPlans.keys() for sel in self.get_tc_infos(tc)]
@@ -484,10 +493,9 @@ class DiaScans(Analysis):
             h.GetXaxis().SetBinLabel(h.GetXaxis().FindBin(i), f'{make_tc_str(sel.TCString, 0)}{f" - {sel.RunPlan}" if rp else ""}')
 
     def draw_means(self, **dkw):
-        y = array([ufloat(*mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
-        g = self.Draw.graph(arange(y.size), y, title='Pulse Height Evolution', x_tit='Run Plan', y_tit='Mean Pulse Height [mV]', show=False, x_range=ax_range(0, y.size - 1, .3, .3))
-        self.set_bin_labels(g, rp=False)
-        self.Draw(g, file_name=self.get_savename('Means'), **prep_kw(dkw, **Draw.mode(2), gridy=True, x_off=2.5))
+        x, y = self.mean_times(), array([ufloat(*mean_sigma(ph_list, err=False)) for ph_list in self.get_pulse_heights()])
+        x_args = self.get_x_args(vs_time=True, x_tit='Time [YY/MM]', tform='%y/%m')
+        return self.Draw.graph(x, y, **prep_kw(dkw, title='MeanPH', **x_args, **Draw.mode(2), gridy=True, y_tit='Mean Pulse Height [mV]', file_name='MeanPH'))
 
     def draw_sigmas(self, y_range=None, show=True):
         y = array([mean_sigma(ph_list)[1] for ph_list in self.get_pulse_heights()])
@@ -670,7 +678,7 @@ class SelectionInfo:
         return self.__str__()
 
     def __call__(self):
-        return [self.TCString, self.RunPlan, self.DUTName, self.DUTNr, '{:03d}-{:03d}'.format(self.Runs[0], self.Runs[-1]), '{:+4.0f}V'.format(self.Bias), self.Type, self.Irradiation]
+        return [self.TCString, self.RunPlan, self.DUTName, self.DUTNr, f'{self.Runs[0]:03d}-{self.Runs[-1]:03d}', f'{self.Bias:+4.0f}V', self.Type, f'{self.Irradiation.n:.1e}']
 
     @property
     def is_volt_scan(self):

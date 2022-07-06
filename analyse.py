@@ -72,7 +72,7 @@ if __name__ == '__main__':
     run_plans = list(load_json(e.Dir.joinpath(run.MainConfig.get('SELECTION', f'run plan file')))[run.TCString].keys())
     run_plans += list(load_json(e.Dir.joinpath(run.MainConfig.get('SELECTION', f'run selection file'))))
 
-    if pargs.runplan in runs:
+    if pargs.runplan in runs and not pargs.collection:
         if pargs.reconvert:
             analysis_selector(pargs.runplan, pargs.dut, this_tc, False, False, False).Run.Converter.reconvert()
         if pargs.remove:
