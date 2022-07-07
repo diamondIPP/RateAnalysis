@@ -751,5 +751,17 @@
     "thickness": "500",
     "size": "[2.0, 2.0]",
     "manufacturer": "II-VI"
+  },
+  "8722": {
+    "irradiation": {"201909": "0"},
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "II-VI"
+  },
+  "9273": {
+    "irradiation": {"201909": "0"},
+    "thickness": "None",
+    "size": "None",
+    "manufacturer": "elementsix"
   }
 }
