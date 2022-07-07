@@ -165,8 +165,9 @@ class PadCollection(AnalysisCollection):
         k, n = self.get_values('n tp', PadAnalysis.n_tp, picklepath=self.get_pickle_path('NTP', '', 'Bucket'), _redo=redo, flux_sort=True), self.get_n_events(flux_sort=True)
         y = array([calc_eff(sum(i), sum(j)) for i, j in zip(split(k, self.get_flux_splits()), split(n, self.get_flux_splits()))])
         g = self.Draw.graph(x, y, 'TPRatio', y_tit='Fraction of Bucket Events [%]')
-        f = FitRes(g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 2e-7]), 'qs', '', 10, 4e7)) if fit else None
-        return self.Draw(g, **prep_kw(dkw, y_range=[0, max(y[:, 0]) * 1.5], **self.get_x_args(), file_name='TPRatioAvr', leg=Draw.stats(f)))
+        # f = FitRes(g.Fit(self.Draw.make_f(None, 'pol1', 5, 2e4, pars=[0, 2e-7]), 'qs', '', 1, 4e7)) if fit else None
+        f = FitRes(g.Fit(self.Draw.make_f(None, 'pol2', 5, 2e4, pars=[0, 0, 1e-9]), 'qs', '', 5, 2e4)) if fit else None
+        return self.Draw(g, **prep_kw(dkw, y_range=[0, max(y[:, 0]) * 1.5], **self.get_x_args(), file_name='TPRatioAvr', leg=Draw.stats(f, prec='.1e')))
 
     def draw_sc_bucket_ratio(self, e=.2, npx=100, c=None, **dkw):
         x = log_bins(npx, *ax_range(*uarr2n(self.get_fluxes()[[0, -1]]), 0, 1))[-1]
