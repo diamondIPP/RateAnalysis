@@ -473,7 +473,7 @@ class DUTAnalysis(Analysis):
         return self.Draw.prof2d(x, y, zz, bins, tit, **self.Tracks.ax_tits(), z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
 
     def draw_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, scale=False, redo=False, **kwargs):
-        h = self.get_signal_map(res, cut, fid, square, m, n, local, _redo=redo)
+        h = self.get_signal_map(res, cut, fid, square, m, n, local=local, _redo=redo)
         h.Scale(1 / self.get_pulse_height().n) if scale else do_nothing()
         rz = array([h.GetMinimum(), h.GetMaximum()]) * 1 / self.get_pulse_height().n if scale else None
         h = self.Draw.prof2d(h, **prep_kw(kwargs, centre=4, ncont=50, ndivy=510, ndivx=510, pal=53, z_tit='Relative Pulse Height' if scale else None, z_range=rz))

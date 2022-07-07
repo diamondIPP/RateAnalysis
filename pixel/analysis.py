@@ -116,7 +116,7 @@ class PixAnalysis(DUTAnalysis):
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         """ draw hitmap or cluster map """
-        return self.Draw(self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, show=False, **dkw), **dkw)
+        return self.Draw(self.Tel.draw_occupancy(choose(roc, self.N), choose(name, self.DUT.Name, roc), cluster, tel_coods, cut, **prep_kw(dkw, show=False)), **dkw)
 
     def draw_occupancy_trend(self, cut=None, fid=False, bin_size=None, **kwargs):
         cut = self.Cut.generate_custom(exclude='fiducial' if not fid else []) if cut is None else self.Cut(cut)
@@ -235,7 +235,7 @@ class PixAnalysis(DUTAnalysis):
         return super(PixAnalysis, self).get_signal_map(*args, **prep_kw(kwargs, local=False))
 
     def draw_signal_map(self, *args, **kwargs):
-        return super(PixAnalysis, self).draw_signal_map(*args, **prep_kw(kwargs, local=False, z_tit='Pulse Height [vcal]'))
+        return super(PixAnalysis, self).draw_signal_map(*args, local=False, **prep_kw(kwargs, z_tit='Pulse Height [vcal]'))
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
         return super(PixAnalysis, self).draw_sig_map_disto(res, cut, fid, x_range, redo, normalise, ret_value, ph_bins=self.Bins.get_ph(), show=show, save=save)
