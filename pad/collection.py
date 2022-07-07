@@ -156,12 +156,17 @@ class PadCollection(AnalysisCollection):
         g = [self.draw_bucket_ratio(b2, all_cuts, fit, avrg, redo, show=False, **dkw) for b2 in [False, True]]
         return self.Draw.multigraph(g, 'Bucket Ratios', ['flat waveform', 'bucket 2 pedestal'], **prep_kw(dkw, file_name='BucketRatios', wleg=.35, **self.get_x_args(draw=True)))
 
-    def draw_tp_ratio(self, e=.8, avrg=False, redo=False, **dkw):
-        x, y = self.get_fluxes(), self.get_values('tpr ratios', PadAnalysis.get_tp_ratio, picklepath=self.get_pickle_path('Ratio', '0_tp_0', 'Bucket'), redo=redo, avrg=avrg)
-        g = self.Draw.graph(x, 100 * y, 'Bucket Ratio', y_tit='Fraction of Bucket Events [%]', **prep_kw(dkw, y_range=[0, max(y).n * 150], markersize=1, **self.get_x_args(draw=True)))
-        self.draw_sc_bucket_ratio(e, c=get_last_canvas())
-        self.Draw.save_plots('TPRatio')
-        return g
+    def draw_tp_ratio(self, redo=False, **dkw):
+        x, y = self.get_fluxes(), self.get_values('tpr ratios', PadAnalysis.get_tp_ratio, picklepath=self.get_pickle_path('TPR', '', 'Bucket'), _redo=redo)
+        return self.Draw.graph(x, y, 'TPRatio', y_tit='Fraction of Bucket Events [%]', **prep_kw(dkw, y_range=[0, max(y[:, 0])], **self.get_x_args(), file_name='TPRatio'))
+
+    def draw_avrg_tp_ratio(self, fit=True, redo=False, **dkw):
+        x = self.get_fluxes(avrg=True)
+        k, n = self.get_values('n tp', PadAnalysis.n_tp, picklepath=self.get_pickle_path('NTP', '', 'Bucket'), _redo=redo, flux_sort=True), self.get_n_events(flux_sort=True)
+        y = array([calc_eff(sum(i), sum(j)) for i, j in zip(split(k, self.get_flux_splits()), split(n, self.get_flux_splits()))]) * 1000
+        g = self.Draw.graph(x, y, 'TPRatio', y_tit='Fraction of Bucket Events [%]')
+        f = g.Fit(self.Draw.make_f(None, 'pol1', 0, 4e7, pars=[0, 2e-5], fix=0), 'qs', '', 10, 4e7) if fit else do_nothing()
+        return self.Draw(g, **prep_kw(dkw, y_range=[0, max(y[:, 0]) * 1.5], **self.get_x_args(), file_name='TPRatioAvr', leg=Draw.stats(f)))
 
     def draw_sc_bucket_ratio(self, e=.2, npx=100, c=None, **dkw):
         x = log_bins(npx, *ax_range(*uarr2n(self.get_fluxes()[[0, -1]]), 0, 1))[-1]
@@ -184,7 +189,7 @@ class PadCollection(AnalysisCollection):
 
     @save_pickle('TPRatio')
     def get_bucket_tpr(self, _redo=False):
-        x = concatenate([ana.get_tree_vec('trigger_phase', ana.Cut.get_bucket(all_cuts=True)) for ana in self.Analyses])
+        x = concatenate([ana.get_tree_vec('trigger_phase', ana.Cut.inv_bucket(all_cuts=True)) for ana in self.Analyses])
         return calc_eff(values=in1d(x, self.FirstAnalysis.Cut.get_trigger_phases()))
 
     def create_bucket_estimate(self):

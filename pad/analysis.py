@@ -446,17 +446,26 @@ class PadAnalysis(DUTAnalysis):
     def get_bucket_ratio(self, b2=False, cut=None, all_cuts=False, _redo=False):
         """ return fraction of bucket events with no signal in the signal region. """
         default = self.Cut.generate_custom(include=['pulser', 'event range', 'beam stops', 'saturated'], prnt=False)
-        c = choose(cut, self.Cut.no_bucket() if all_cuts else default)
-        n = self.get_n_entries(c + (self.Cut['bucket'] if b2 else ''), _redo=_redo)
-        nb = n - self.get_n_entries(self.Cut['bucket2' if b2 else 'bucket'] + c, _redo=_redo)
+        c = self.Cut.no_bucket(cut) if all_cuts or cut is not None else default
+        n = self.get_n_entries(c + (self.Cut['bucket'] if b2 else ''), _redo=_redo)  # w/o bucket cut
+        nb = n - self.get_n_entries(self.Cut['bucket2' if b2 else 'bucket'] + c, _redo=_redo)  # w/ bucket cut
         return ufloat(nb, sqrt(nb)) / n if nb else ufloat(0, 0)
+
+    def draw_bucket_tp(self, all_cuts=True, **dkw):
+        return self.Tel.draw_trigger_phase(cut=self.Cut.inv_bucket(all_cuts), **prep_kw(dkw, file_name='BucketTP'))
 
     def draw_b2_dist(self, cut=None, n=5, **dkw):
         x = self.get_bucket_ph(cut=choose(cut, self.Cut.exclude('bucket2') + self.Cut.generate_b2(n).invert()))
         return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='B2PhDisto'))
 
+    def draw_b1_dist(self, **dkw):
+        """ distribution of bucket cut events (in signal region)"""
+        x = self.get_ph_values(cut=self.Cut.exclude('bucket', 'bucket2') + self.Cut.generate_bucket().invert())
+        return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='B1PhDisto'))
+
     def draw_bucket_dist(self, **dkw):
-        x = self.get_ph_values(cut=self.Cut.exclude('bucket', 'bucket2') + Cut.invert(self.Cut['bucket2'] + self.Cut['bucket']))
+        """ distribution of both bucket cut events (in signal region)"""
+        x = self.get_ph_values(cut=self.Cut.inv_bucket(all_cuts=True))
         return self.Draw.distribution(x, **prep_kw(dkw, x_tit=self.PhTit, file_name='BucketDisto'))
 
     def get_b2_ph(self):
@@ -464,13 +473,20 @@ class PadAnalysis(DUTAnalysis):
 
     @save_pickle('TPRatio', suf_args=0, sub_dir='Bucket')
     def get_bucket_tp_ratio(self, all_cuts=False, _redo=False):
-        """ :returns the ratio of correctly identified bucket events with the trigger phase cut """
-        x = self.get_tree_vec('trigger_phase', cut=self.Cut.get_bucket(all_cuts))
+        """ :returns the fraction of correctly identified bucket events with the trigger phase cut """
+        x = self.get_tree_vec(self.Tel.tp_var(tree=self.Tree), cut=self.Cut.inv_bucket(all_cuts))
         return calc_eff(values=in1d(x, self.Cut.get_trigger_phases())) if x.size else [50] * 3
 
-    def get_tp_ratio(self, redo=False):
-        """ :returns the ratio of bucket events after the trigger phase cut. """
-        return self.get_bucket_ratio(cut=self.Cut.get_tp(), _redo=redo)
+    @save_pickle('TPR', sub_dir='Bucket')
+    def get_tp_ratio(self, _redo=False):
+        """ :returns the ratio of bucket events not identified by the trigger phase cut to the number events after all cuts. """
+        cut = self.Cut.make('buc-tp', self.Cut.inv_bucket(all_cuts=True) + self.Cut.generate_trigger_phase().Value)
+        ntp = self.get_n_entries(cut, _redo=_redo)  # number of events not accounted by tp cut
+        return calc_eff(ntp, self.get_n_entries())
+
+    @save_pickle('NTP', sub_dir='Bucket')
+    def n_tp(self, _redo=False):
+        return self.get_n_entries(cut=self.Cut.make('buc-tp', self.Cut.inv_bucket(all_cuts=True) + self.Cut.generate_trigger_phase().Value), _redo=_redo)
 
     def calc_bucket_ratio(self):
         br = self.get_bucket_ratio(all_cuts=True)  # ratio of bucket events

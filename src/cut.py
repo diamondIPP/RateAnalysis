@@ -366,7 +366,7 @@ class Cut(SubAnalysis):
     @save_pickle('Contribution')
     def _get_contributions(self, _redo=False):
         cuts = self.get_consecutive(raw=False)
-        self.PBar.start(len(self.get_consecutive()) - 1, counter=True)
+        PBAR.start(len(self.get_consecutive()) - 1, counter=True)
         n = [self.get_contribution(cut) for cut in self.get_consecutive().values()]
         return {name: i for name, i in zip(cuts, diff(n))}
 

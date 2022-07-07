@@ -55,6 +55,10 @@ class Telescope(SubAnalysis):
     def get_row_var(plane, cluster=True, tel_coods=False):
         return f'cluster_ypos_local[{plane}] * 10' if tel_coods else f'{Telescope.YVar}[{plane}]' if cluster else 'row'
 
+    @staticmethod
+    def tp_var(dut=False, tree=None):
+        return f'trigger_phase[{1 if dut else 0}]' if tree is None or '[2]' in tree.GetBranch('trigger_phase').GetTitle() else 'trigger_phase'
+
     def get_hit_vars(self, plane, cluster=True, tel_coods=False):
         return [self.get_col_var(plane, cluster, tel_coods), self.get_row_var(plane, cluster, tel_coods)]
 
@@ -138,14 +142,14 @@ class Telescope(SubAnalysis):
         x = self.get_tree_vec(self.get_rate_var(plane), cut=self.Cut['event range'] + self.Cut.get('beam stops', warn=False) + 'beam_current < 1e4') / 1000
         return self.Draw.distribution(x[x < 1e9], **prep_kw(dkw, draw_opt='', x_tit='Plane Rate [kHz]', file_name=f'Plane{plane}Rate')) if x.size > 3 else None
 
-    def draw_flux(self, bin_width=5, cut='', rel_time=True, show=True, prnt=True, save=True):
+    def draw_flux(self, bw=5, cut='', rel_time=True, show=True, prnt=True, save=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)
         if self.has_branch('rate'):
             flux1, flux2, t = self.get_tree_vec(var=[self.get_flux_var(p) for p in [1, 2]] + [self.get_t_var()], cut=cut)
             flux = mean([flux1, flux2], axis=0)[1:] / 1000
         else:
             t, flux = self.Run.Time / 1000, full(self.Run.NEvents - 1, self.get_flux().n)
-        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bin_width), 'Flux Profile', draw_opt='hist', **Draw.mode(2), show=show)
+        p = self.Draw.profile(t[1:], flux, self.Bins.get_raw_time(bin_width=bw), 'Flux Profile', draw_opt='hist', **Draw.mode(2), show=show)
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Flux [kHz/cm^{2}]', markersize=1, t_ax_off=self.StartTime if rel_time else 0, stats=0, y_range=[0, p.GetMaximum() * 1.2])
         self.Draw.save_plots('FluxProfile', prnt=prnt, show=show, save=save)
         return p
@@ -238,13 +242,13 @@ class Telescope(SubAnalysis):
     # ----------------------------------------
     # region TIME
     def draw_trigger_phase(self, dut=False, cut=None, **kwargs):
-        x = self.get_tree_vec(f'trigger_phase[{1 if dut else 0}]', self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
+        x = self.get_tree_vec(self.tp_var(dut), self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
         h = self.Draw.distribution(x, Bins.make(-.5, 10), 'Trigger Phase', x_tit='Trigger Phase', show=False)
         return self.Draw.distribution(h, **prep_kw(kwargs, y_off=1.7, lm=.16, file_name=f'TriggerPhase{dut:d}', gridx=True, y_range=ax_range(0, h.GetMaximum(), 0, .15), stats=set_entries()))
 
-    def draw_trigger_phase_trend(self, dut=False, bin_width=None, cut=None, show=True):
-        values, t = self.get_tree_vec(var=['trigger_phase[{}]'.format(1 if dut else 0), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
-        p = self.Draw.profile(t, values, self.Bins.get_time(bin_width, cut), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
+    def draw_trigger_phase_trend(self, dut=False, bw=None, cut=None, show=True):
+        values, t = self.get_tree_vec(var=[self.tp_var(dut), self.get_t_var()], cut=self.Cut.generate_custom(exclude=['trigger_phase']) if cut is None else TCut(cut))
+        p = self.Draw.profile(t, values, self.Bins.get_time(bw, cut), '{} Trigger Phase vs Time'.format('DUT' if dut else 'TEL'), show=show, lm=.16, stats=set_entries())
         format_histo(p, x_tit='Time [hh:mm]', y_tit='Trigger Phase', y_off=1.8, fill_color=Draw.FillColor, t_ax_off=self.StartTime)
 
     def draw_time(self, show=True, corr=False):
@@ -259,12 +263,12 @@ class Telescope(SubAnalysis):
 
     # ----------------------------------------
     # region RATE
-    def draw_beam_current(self, bin_width=30, cut='', rel_t=True, prof=True, show=True, save=True):
+    def draw_beam_current(self, bw=30, cut='', rel_t=True, prof=True, show=True, save=True):
         if not self.has_branch('beam_current'):
             return warning('Branch "beam_current" does not exist!')
         values, t = self.get_tree_vec(var=['beam_current', self.get_t_var()], cut=TCut('beam_current < 2500') + TCut(cut))
         if prof:
-            h = self.Draw.profile(t, values, self.Bins.get_raw_time(bin_width), 'Beam Current [mA]', w=1.5, h=.75, lm=.08, draw_opt='hist', fill_color=Draw.FillColor)
+            h = self.Draw.profile(t, values, self.Bins.get_raw_time(bw), 'Beam Current [mA]', w=1.5, h=.75, lm=.08, draw_opt='hist', fill_color=Draw.FillColor)
         else:
             h = self.Draw.graph(concatenate([t, [t[-1]]]), concatenate([values, [0]]), w=1.5, h=.75, title='Beam Current [mA]', lm=.08, draw_opt='afp', fill_color=Draw.FillColor)
         format_histo(h, x_tit='Time [hh:mm]', y_tit='Beam Current [mA]', markersize=.4, t_ax_off=self.StartTime if rel_t else 0, x_range=None if prof else [h.GetX()[0], h.GetX()[t.size]])

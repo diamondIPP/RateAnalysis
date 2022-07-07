@@ -267,8 +267,8 @@ class AnalysisCollection(Analysis):
     def get_events(self, redo=False):
         return self.get_values('events', DUTAnalysis.get_events, picklepath=self.make_simple_hdf5_path('', 'AllCuts', 'Events', '{}'), redo=redo)
 
-    def get_n_events(self, redo=False):
-        return array([e.size for e in self.get_events(redo)])
+    def get_n_events(self, flux_sort=False, redo=False):
+        return self.get_values('n_events', DUTAnalysis.get_n_entries, picklepath=self.get_pickle_path(sub_dir='Entries'), _redo=redo, flux_sort=flux_sort)
 
     def get_x_var(self, vs_time=False, vs_irrad=False, avrg=False):
         return self.get_times() if vs_time else self.get_irradiations() if vs_irrad else self.get_fluxes(avrg=avrg)

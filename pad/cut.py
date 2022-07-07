@@ -4,6 +4,7 @@
 # --------------------------------------------------------
 from ROOT import TCut, TF1
 from src.cut import Cut, CutString, Bins, low_rate, high_rate
+from src.telescope import Telescope
 from plotting.draw import *
 from helpers.utils import *
 from numpy import quantile, histogram2d, argmax
@@ -36,7 +37,11 @@ class PadCut(Cut):
     def get_full_bucket(self):
         return self.generate_custom(exclude='trigger phase', add=self.generate_bucket() + self.generate_b2(5), name='bful', prnt=False)
 
-    def get_bucket(self, all_cuts=False):
+    @property
+    def bucket(self):
+        return self.generate_custom(include=['bucket', 'bucket2'])
+
+    def inv_bucket(self, all_cuts=False):
         cut = self.generate_custom(exclude=['bucket', 'bucket2'], prnt=False) if all_cuts else self.generate_custom(include=['pulser', 'ped sigma', 'event range'], prnt=False)
         return Cut.make('!bucket', cut + self.generate_bucket().invert())
 
@@ -126,7 +131,7 @@ class PadCut(Cut):
 
     def generate_trigger_phase(self):
         tps = self.get_trigger_phases()
-        return CutString('trigger phase', ' && '.join(f'trigger_phase != {i}' for i in tps), f'trigger phase != {tps}')
+        return CutString('trigger phase', ' && '.join(f'{Telescope.tp_var(tree=self.Tree)} != {i}' for i in tps), f'trigger phase != {tps}')
 
     def generate_cft(self, n_sigma=3):
         fit = self.calc_cft()
@@ -202,8 +207,8 @@ class PadCut(Cut):
     @save_pickle('TP', print_dur=True, high_rate=True)
     @high_rate
     def get_trigger_phase(self, show=False, _redo=False):
-        h = self.Draw.distribution(self.get_tree_vec('trigger_phase', cut=self.get_bucket() + self.generate_fiducial()()), make_bins(11), show=show)
-        return argmax(get_hist_vec(h))
+        h = self.Draw.distribution(self.get_tree_vec(Telescope.tp_var(tree=self.Tree), cut=self.inv_bucket(all_cuts=True)), w=1, x0=0, show=show)
+        return argmax(h) - 1  # subtract zero bin
 
     def get_trigger_phases(self, n=1):
         return (arange(2 * n + 1) - 1 + self.get_trigger_phase()) % 10  # select also the [n] trigger phases around the MPV
