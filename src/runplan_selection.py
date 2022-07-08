@@ -526,6 +526,21 @@ class DiaScans(Analysis):
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
+
+    # ----------------------------------------
+    # region PAD
+    def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', avrg, fit), redo=redo, avrg=avrg, show=False, stats=False, fit=fit, all_cuts=False)
+        self.Draw.multigraph(g, 'Bucket Ratios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True), wleg=.3))
+        self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
+        self.Draw.save_plots('BucketRatios')
+
+    def draw_tp_ratios(self, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_avrg_tp_ratio, PickleInfo('TPRatio'), redo=redo, show=False, fit=False)
+        self.Draw.multigraph(g, 'TPRatios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True)))
+        self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
+        self.Draw.save_plots('TPRatios')
+    # endregion PAD
     # ----------------------------------------
 
     # ----------------------------------------
@@ -645,12 +660,6 @@ class DiaScans(Analysis):
         return self.Draw(g, **prep_kw(dkw, **self.get_x_args(), stats=set_statbox(fit=True), file_name='ShiftedPHFit'))
     # endregion ERROR
     # ----------------------------------------
-
-    def draw_bucket_ratios(self, fit=False, avrg=False, redo=False, **dkw):
-        g = self.get_values(PadCollection.draw_bucket_ratio, PickleInfo('BucketRatio', avrg, fit), redo=redo, avrg=avrg, show=False, stats=False, fit=fit, all_cuts=False)
-        self.Draw.multigraph(g, 'Bucket Ratios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True), wleg=.3))
-        self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
-        self.Draw.save_plots('BucketRatios')
 
 
 class SelectionInfo:
