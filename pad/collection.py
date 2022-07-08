@@ -160,10 +160,12 @@ class PadCollection(AnalysisCollection):
         x, y = self.get_fluxes(), self.get_values('tpr ratios', PadAnalysis.get_tp_ratio, picklepath=self.get_pickle_path('TPR', '', 'Bucket'), _redo=redo)
         return self.Draw.graph(x, y, 'TPRatio', y_tit='Fraction of Bucket Events [%]', **prep_kw(dkw, y_range=[0, max(y[:, 0])], **self.get_x_args(), file_name='TPRatio'))
 
-    def draw_avrg_tp_ratio(self, fit=True, redo=False, **dkw):
-        x = self.get_fluxes(avrg=True)
+    def avrg_tp_ratios(self, redo=False):
         k, n = self.get_values('n tp', PadAnalysis.n_tp, picklepath=self.get_pickle_path('NTP', '', 'Bucket'), _redo=redo, flux_sort=True), self.get_n_events(flux_sort=True)
-        y = array([calc_eff(sum(i), sum(j)) for i, j in zip(split(k, self.get_flux_splits()), split(n, self.get_flux_splits()))])
+        return array([calc_eff(sum(i), sum(j)) for i, j in zip(split(k, self.get_flux_splits()), split(n, self.get_flux_splits()))])
+
+    def draw_avrg_tp_ratio(self, fit=True, redo=False, **dkw):
+        x, y = self.get_fluxes(avrg=True), self.avrg_tp_ratios(redo)
         g = self.Draw.graph(x, y, 'TPRatio', y_tit='Fraction of Bucket Events [%]')
         # f = FitRes(g.Fit(self.Draw.make_f(None, 'pol1', 5, 2e4, pars=[0, 2e-7]), 'qs', '', 1, 4e7)) if fit else None
         f = FitRes(g.Fit(self.Draw.make_f(None, 'pol2', 5, 2e4, pars=[0, 0, 1e-9]), 'qs', '', 5, 2e4)) if fit else None
