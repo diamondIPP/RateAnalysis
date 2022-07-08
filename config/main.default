@@ -1,6 +1,7 @@
 [MAIN]
 default test campaign = 201908
 systematic error = .0042
+tp ratio = .02
 systematic ped error = .1
 gain ratio = 1.085+/-.005
 ;hv config file = ''

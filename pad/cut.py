@@ -61,6 +61,10 @@ class PadCut(Cut):
 
     def no_bucket(self, cut=None):
         return self.exclude('bucket', 'bucket2', name='nobuc') if cut is None else self(cut)
+
+    @property
+    def has_tp(self):
+        return self.has('trigger phase')
     # endregion GET
     # ----------------------------------------
 

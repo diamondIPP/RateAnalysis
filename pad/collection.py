@@ -70,8 +70,20 @@ class PadCollection(AnalysisCollection):
         x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, False, picklepath, bw=bw, redo=redo, corr=corr, peaks=peaks, flux_sort=flux_sort)
         x *= ufloat_fromstr(self.MainConfig.get_value('MAIN', 'gain ratio', default='1')) if gain_corr and self.DUT.Bias < 0 else 1
         # https://physics.stackexchange.com/questions/23441/how-to-combine-measurement-error-with-statistic-error
-        x = add_perr(x, choose(e_sys, self.get_sys_error) if err else 0)  # add sys error to all runs
-        return self.get_flux_average(x) if avrg else x
+        x = self.add_sys_error(x, e_sys) if err else x  # add sys error to all runs
+        x = self.get_flux_average(x) if avrg else x
+        return self.add_tp_error(x) if self.FirstAnalysis.Cut.has_tp else x  # add tp error only to final values as it is one-directional and does not average out
+
+    def add_sys_error(self, x, e_sys=None):
+        return add_perr(x, choose(e_sys, self.get_sys_error))
+
+    def add_tp_error(self, x):
+        return [add_asym_error(ix, 0, ix.n * r / (1 - r)) for ix, r in zip(x, self.tp_ratios())]
+
+    def tp_ratios(self):
+        """ :returns estimated tp_ratio from fit of RP 8 201608 """
+        p0, p1, p2 = self.MainConfig.get_list('MAIN', 'tp ratio')
+        return array([(p0 + p1 * f.n + p2 * f.n ** 2) / 100 for f in self.get_fluxes()])
 
     def get_pedestals(self, runs=None, flux_sort=False, avrg=False, redo=False):
         return self.Pedestal.mean(avrg, flux_sort, runs, redo=redo)
