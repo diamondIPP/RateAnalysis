@@ -121,4 +121,4 @@ if __name__ == '__main__':
     else:
         from src.runplan_selection import DiaScans
         z = DiaScans(pargs.runplan, pargs.verbose)
-    sl = z.Draw.save_last
+    d = z.Draw
