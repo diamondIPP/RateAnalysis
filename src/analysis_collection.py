@@ -409,11 +409,12 @@ class AnalysisCollection(Analysis):
     def draw_legend(graphs, x=.17):
         return Draw.legend(graphs, [g.GetTitle() for g in graphs], ['l' if i < 2 else 'p' for i in range(len(graphs))], x1=x, y1=.21, w=.2)
 
-    def scale_ph(self, x, avrg):
+    def scale_ph(self, x, avrg=False):
         """ scale the ph to the mean of the pulse heights in the 'min flux range' """
         f, (fmin, fmax) = self.get_fluxes(avrg=avrg), self.MainConfig.get_list('MAIN', 'min flux range')
-        x0 = x[where((f >= fmin) & (f <= fmax))]
-        return x / mean(x0).n  # no error to keep correct errors of single measurements
+        x0 = array(x)[where((f >= fmin) & (f <= fmax))]
+        scale = mean(x0).n if is_ufloat(x0[0]) else mean(x0[:, 0])  # no error to keep the correct errors of single measurements
+        return x / scale
 
     def make_pulse_height_graph(self, bw=None, t=False, irr=False, first_last=True, redo=False, legend=True, corr=True, err=True, avrg=False, peaks=False, scale=False, ls=.04, e_sys=None):
         x, (ph0, ph) = self.get_x_var(t, irr, avrg), [self.get_pulse_heights(bw, redo and not i, corr=corr, err=e, avrg=avrg, peaks=peaks, e_sys=e_sys) for i, e in enumerate([False, err])]
