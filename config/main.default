@@ -30,8 +30,8 @@ date = True
 server mount directory = ~/mounts/psi
 show = True
 
-[MISC]
-selection dir = Runinfos
+[SELECTION]
+dir = Runinfos
 run plan file = run_plans.json
 run selection file = run_selections.json
 runplan selection file = selection.json
