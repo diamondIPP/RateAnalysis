@@ -127,20 +127,27 @@ class Tracks(SubAnalysis):
         a0, a1 = sorted([choose(amin, -amax), amax])
         f = Draw.make_tf1('a', lambda x: ph0 / cos(deg2rad(x)), a0, a1)
         self.Draw(f, **prep_kw(dkw, file_name='SigAngle', x_tit='Track Angle [deg]', y_tit='Relative Signal', lm=.144, y_off=1.5, y_range=[1, 1.01]))
+    # endregion DRAW
+    # ----------------------------------------
 
+    # ----------------------------------------
+    # region BEAM
     def draw_beam_profile(self, mode='x', fit=True, res=.7, **dkw):
         p = getattr(self.Ana.draw_hitmap(res, show=False, prnt=False), f'Projection{mode.title()}')()
-        self.fit_beam_profile(p, show=fit)
+        self.fit_beam_profile(p) if fit else do_nothing()
         format_histo(p, title=f'Profile {mode.title()}', name=self.Draw.get_name('p'), y_tit='Number of Tracks')
         return self.Draw(p, **prep_kw(dkw, file_name=f'BeamProfile{mode.title()}', stats=set_statbox(all_stat=True, fit=fit), draw_opt=''))
 
     @staticmethod
-    def fit_beam_profile(p, show=True):
+    def fit_beam_profile(p):
         """fit the beam profile only at the center, because the edges are cut of by the pixel mask"""
-        thresh = .05 * p.GetMaximum()
-        xmin, xmax = [p.GetBinCenter(i) for i in [p.FindFirstBinAbove(thresh), p.FindLastBinAbove(thresh)]]
-        return FitRes(p.Fit('gaus', f'qs{"" if show else 0}', '', *ax_range(xmin, xmax, -.2, -.2))).get_pars()[1:]  # fit only inner 60%
-    # endregion DRAW
+        return Gauss(p, thresh=.05, fl=0, fh=0).fit(fl=-.2, fh=-.2)[1:]
+
+    @save_pickle('BeamPars', suf_args='all')
+    def beam_pars(self, res=None, _redo=False):
+        h = self.Ana.draw_hitmap(res, show=False, prnt=False)
+        return array([self.fit_beam_profile(p) for p in [h.ProjectionX(), h.ProjectionY()]])
+    # endregion BEAM
     # ----------------------------------------
 
     # ----------------------------------------

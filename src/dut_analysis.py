@@ -357,6 +357,9 @@ class DUTAnalysis(Analysis):
     def draw_beam_profile(self, *args, **kwargs):
         return self.Tracks.draw_beam_profile(*args, **kwargs)
 
+    def beam_pars(self, *args, **kwargs):
+        return self.Tracks.beam_pars(*args, **kwargs)
+
     def purity(self, redo=False):
         return self.Cut.purity(_redo=redo)
     # endregion ALIASES

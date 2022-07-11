@@ -748,26 +748,20 @@ class AnalysisCollection(Analysis):
 
     # ----------------------------------------
     # region BEAM PROFILE
-    def draw_beam_info(self, mode='x', fit_margin=.5, vs_time=True, rel_time=True, show=True):
-        tits = ['Mean', 'Sigma']
-        values = self.get_values('beam profile {}'.format(mode), self.Analysis.draw_beam_profile, show=False, fit=True, fit_range=fit_margin, mode=mode, prnt=False)
-        values = [[fit2u(value, par=par) for value in values] for par in [1, 2]]
-        graphs = [Draw.make_tgraph(self.get_x_var(vs_time, rel_time), vals, title='{} of the Beam Profile in {}'.format(tit, mode.title())) for tit, vals in zip(tits, values)]
-        c = Draw.canvas('Beam Infos {}'.format(mode.title()), x=1.5, y=.75, divide=2, show=show)
-        for i, g in enumerate(graphs, 1):
-            format_histo(g, x_tit=self.get_x_tit(vs_time), y_tit='{tit} [cm]'.format(tit=tits[i - 1]), y_off=1.8, t_ax_off=self.get_tax_off(vs_time, rel_time))
-            self.Draw(g, 'BeamProfile{}{}{:1.0f}'.format(tits[i - 1], mode.title(), fit_margin * 100), lm=.125, show=False, logx=not vs_time)
-            self.Draw(g, canvas=c.cd(i), lm=.125, show=False, logx=not vs_time)
-        self.Draw.save_plots('BeamProfile{}{:1.0f}'.format(mode.title(), fit_margin * 100), show=show, canvas=c)
-        return graphs
+    def beam_pars(self, avrg=False, redo=False):
+        x = self.get_values('beam pars', self.Analysis.beam_pars, picklepath=self.get_pickle_path('BeamPars', sub_dir='Tracks', dut=''), _redo=redo)
+        d = concatenate(x.T)  # = [mx, my, sx, sy]
+        return array([self.get_flux_average(i) for i in d] if avrg else d)
 
-    def draw_xy_beam_info(self, vs_time=True, show=True, fitx=.5, fity=.5):
-        graphs = concatenate([self.draw_beam_info(vs_time=vs_time, show=False, mode=m, fit_margin=f) for m, f in zip(['x', 'y'], [fitx, fity])])
-        c = Draw.canvas('Beam Profiles', x=1.5, y=1.5, divide=(2, 2), show=show)
-        for i, g in enumerate(graphs, 1):
-            format_histo(g, y_off=1.3)
-            self.Draw(g, logx=not vs_time, canvas=c.cd(i))
-        self.Draw.save_plots('BeamProfileOverview', show=show, canvas=c)
+    def draw_beam_centres(self, avrg=False, redo=False, **dkw):
+        x, y = self.get_x_var(avrg=avrg), self.beam_pars(avrg, redo)[:2]
+        g = [self.Draw.graph(x, iy, show=False, y_tit='Beam Centre [mm]') for iy in y]
+        return self.Draw.multigraph(g, 'BeamCentre', ['y direction', 'x direction'], **prep_kw(dkw, **self.get_x_args(), gridy=True, file_name='BeamCentre'))
+
+    def draw_beam_width(self, avrg=False, redo=False, **dkw):
+        x, y = self.get_x_var(avrg=avrg), self.beam_pars(avrg, redo)[2:]
+        g = [self.Draw.graph(x, iy, show=False, y_tit='Beam Width [mm]') for iy in y]
+        return self.Draw.multigraph(g, 'BeamWidth', ['x direction', 'y direction'], **prep_kw(dkw, **self.get_x_args(), gridy=True, file_name='BeamWidth'))
 
     def draw_beam_profiles(self, mode='x', show=True):
         histos = self.get_values('beam profiles in {}'.format(mode), self.Analysis.draw_beam_profile, show=False, prnt=False, fit=False, mode=mode)
