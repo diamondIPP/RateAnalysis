@@ -60,6 +60,35 @@ class DiaScans(Analysis):
         return all([i.is_volt_scan for i in self.Info])
 
     # ----------------------------------------
+    # region RATE DEPENDENCE PARS
+    def pol0_chi2s(self, redo=False):
+        return array(self.get_values(self.Ana.pol0_chi2, PickleInfo('Pol0Chi2'), _redo=redo))
+
+    def rel_spreads(self, redo=False):
+        return array(self.get_values(self.Ana.rel_spread, PickleInfo('RelSpread'), _redo=redo)) * 100
+
+    def print_mean_rd(self, tex=False, prec=1):
+        chi, s = [mean_sigma(lst)[0] for lst in [self.pol0_chi2s(), self.rel_spreads()]]
+        if tex:
+            print(latex.table(False, [[self.DUTName] + latex.si(self.get_bias_voltages()[0], fmt='.0f', unt='V') + latex.si(chi) + latex.si(s, unt='percent')]))
+        else:
+            info(f'Mean chi²:       {chi:.{prec}f}')
+            info(f'Mean rel spread: {s:.{prec}f} %')
+
+    def print_rate_dependencies(self):
+        for i, s1, s2 in zip(self.Info, self.pol0_chi2s(), self.rel_spreads()):
+            print(i)
+            print(f'  Chi²:       {s1:.1f} %')
+            print(f'  Rel spread: {s2:.1f} %')
+
+    def print_rd_table(self):
+        data = array([self.pol0_chi2s(), self.rel_spreads()]).T.reshape((self.NPlans // 2, 4))
+        rows = [latex.num(self.Info[2 * i].Irradiation.n) + latex.num(s1, s2) + latex.si(r1, r2) for i, (s1, r1, s2, r2) in enumerate(data)]
+        print(latex.table(None, rows))
+    # endregion RATE DEPENDENCE PARS
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region INIT
     def load_selection(self, name):
         if name is None:
@@ -166,28 +195,6 @@ class DiaScans(Analysis):
             y0 = y[where((x >= xmin) & (x <= xmax))]
             return y / mean(y0).n
         return [scale_ph(x, y) for x, y in zip(self.get_fluxes(avrg), self.get_pulse_heights(avrg, redo))]
-
-    def get_rate_dependencies(self, avrg=True, redo=False):
-        return array(self.get_values(self.Ana.get_rate_dependence, PickleInfo('PHRD', avrg), avrg=avrg, redo=redo))
-
-    def print_mean_rd(self, avrg=True, tex=False):
-        s, r = [mean_sigma(i)[0] * 100 for i in self.get_rate_dependencies(avrg).T]
-        if tex:
-            print(latex.table(False, [[self.DUTName] + latex.si(self.get_bias_voltages()[0], fmt='.0f', unt='V') + latex.si(s, r, unt='percent')]))
-        else:
-            info(f'Mean rel STD:    {si(s, unit="percent") if latex else f"{s:.1f} %"}')
-            info(f'Mean rel Spread: {si(r, unit="percent") if latex else f"{r:.1f} %"}')
-
-    def print_rate_dependencies(self, avrg=True):
-        for i, (s1, s2) in zip(self.Info, self.get_rate_dependencies(avrg) * 100):
-            print(i)
-            print(f'  Rel STD:    {s1.n:.1f} %')
-            print(f'  Rel Spread: {s2:.1f} %')
-
-    def print_rd_table(self, avrg=True):
-        data = 100 * self.get_rate_dependencies(avrg).reshape((self.NPlans // 2, 4))
-        rows = [[f'\\SI{{{self.Info[2 * i].Irradiation}}}{{}}'] + [f'{s.n:.1f}' for s in [s1, s2]] + [si(r, '.1f') for r in [r1, r2]] for i, (s1, r1, s2, r2) in enumerate(data)]
-        print(make_latex_table([], rows))
 
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, self.Ana.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)

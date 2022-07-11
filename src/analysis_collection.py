@@ -68,6 +68,23 @@ class AnalysisCollection(Analysis):
         from plotting.save import SaveDraw
         SaveDraw.File = None
 
+    # ----------------------------------------
+    # region RATE DEPENDENCE PARAMETERS
+    @save_pickle('p0Chi2')
+    def pol0_chi2(self, _redo=False):
+        return FitRes(self.draw_avrg_ph(redo=_redo, show=False, prnt=False).Fit('pol0', 'qs0')).get_chi2()
+
+    @save_pickle('RelSpread')
+    def rel_spread(self, _redo=False):
+        x = self.get_pulse_heights(avrg=True)
+        return (max(x) - min(x)) / mean(x)
+
+    def print_rate_pars(self, prec=1):
+        print(f'Chi²:       {self.pol0_chi2():3.{prec}f}')
+        print(f'Rel Spread: {self.rel_spread() * 100:3.{prec}f}%')
+    # endregion RATE DEPENDENCE PARAMETERS
+    # ----------------------------------------
+
     def draw_all(self, redo=False):
         pass
 
@@ -310,15 +327,6 @@ class AnalysisCollection(Analysis):
 
     def get_efficiencies(self, suf='3', avrg=False, redo=False):
         return self.get_values('efficiencies', self.Analysis.get_efficiency, picklepath=self.get_pickle_path(suf=suf, sub_dir='Efficiency'), avrg=avrg, redo=redo)
-
-    def get_rate_dependence(self, redo=False, values=None, avrg=False):
-        values = choose(values, self.get_pulse_heights(redo=redo, pbar=False, avrg=avrg))
-        return mean_sigma(values)[1] / mean(values), (max(values) - min(values)) / mean(values)
-
-    def print_rate_dependence(self, values=None, avrg=False, tex=False):
-        s1, s2 = array(self.get_rate_dependence(values=values, avrg=avrg)) * 100
-        print(f'Rel STD:    {s1.n:3.1f}')
-        print(f'Rel Spread: {latex.si(s2)[0] if tex else f"{s2:3.1f}"}')
 
     def get_runs_below_flux(self, flux):
         return self.Runs[self.get_fluxes() <= flux]
