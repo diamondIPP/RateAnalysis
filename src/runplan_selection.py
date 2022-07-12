@@ -11,7 +11,7 @@ import plotting.latex as latex
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
-from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
+from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox, make_ufloat
 from src.analysis import *
 from src.binning import Bins
 from src.dut import PixelDUT
