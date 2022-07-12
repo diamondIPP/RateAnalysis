@@ -76,7 +76,8 @@ class AnalysisCollection(Analysis):
     @save_pickle('RelSpread')
     def rel_spread(self, _redo=False):
         x = self.get_pulse_heights(avrg=True)
-        return (max(x) - min(x)) / mean(uarr2n(x))
+        s = (max(x) - min(x)) / mean(uarr2n(x))
+        return AsymVar(s.n, s.s1, min(s.n, s.s0) - s.s1) if type(s) is AsymVar else s
 
     def print_rate_pars(self, prec=1):
         print(f'Chi²:       {self.pol0_chi2():3.{prec}f}')

@@ -65,7 +65,7 @@ class DiaScans(Analysis):
         return array(self.get_values(self.Ana.pol0_chi2, PickleInfo('Pol0Chi2'), _redo=redo))
 
     def rel_spreads(self, redo=False):
-        return array(self.get_values(self.Ana.rel_spread, PickleInfo('RelSpread'), _redo=redo)) * 100
+        return array(self.get_values(self.Ana.rel_spread, PickleInfo('RelSpread'), _redo=redo), dtype=object) * 100
 
     def print_mean_rd(self, tex=False, prec=1):
         chi, s = [mean_sigma(lst)[0] for lst in [self.pol0_chi2s(), self.rel_spreads()]]
@@ -83,7 +83,7 @@ class DiaScans(Analysis):
 
     def print_rd_table(self):
         data = array([self.pol0_chi2s(), self.rel_spreads()]).T.reshape((self.NPlans // 2, 4))
-        rows = [latex.num(self.Info[2 * i].Irradiation.n) + latex.num(s1, s2) + latex.si(r1, r2) for i, (s1, r1, s2, r2) in enumerate(data)]
+        rows = [latex.num(self.Info[2 * i].Irradiation.n, fmt='.1e', rm='+') + latex.num(s1, s2) + latex.si(r1, r2) for i, (s1, r1, s2, r2) in enumerate(data)]
         print(latex.table(None, rows))
     # endregion RATE DEPENDENCE PARS
     # ----------------------------------------
