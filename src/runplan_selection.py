@@ -5,17 +5,18 @@
 # --------------------------------------------------------
 
 from json import dump
+from numpy import insert
 
+import plotting.latex as latex
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
 from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
-import plotting.latex as latex
 from src.analysis import *
 from src.binning import Bins
+from src.dut import PixelDUT
 from src.run_selection import RunSelector
 from src.voltage_scan import VoltageScan
-from src.dut import PixelDUT
 
 
 class DiaScans(Analysis):
@@ -58,6 +59,10 @@ class DiaScans(Analysis):
     @property
     def is_volt_scan(self):
         return all([i.is_volt_scan for i in self.Info])
+
+    def insert_dummy(self, i):
+        self.Info = insert(self.Info, i, array(self.Info)[i]).tolist()
+        self.NPlans = len(self.Info)
 
     # ----------------------------------------
     # region RATE DEPENDENCE PARS
