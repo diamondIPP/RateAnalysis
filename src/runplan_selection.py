@@ -555,6 +555,10 @@ class DiaScans(Analysis):
         self.Draw.multigraph(g, 'TPRatios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True)))
         self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
         self.Draw.save_plots('TPRatios')
+
+    def draw_snr(self, redo=False, **dkw):
+        x, y = self.get_x(irr=True), array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))
+        self.Draw.graph(x, y[:, 0], **prep_kw(dkw, **self.get_x_args(vs_irrad=True), y_tit='SNR', file_name='SNR'))
     # endregion PAD
     # ----------------------------------------
 
