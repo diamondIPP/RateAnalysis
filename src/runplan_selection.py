@@ -72,6 +72,10 @@ class DiaScans(Analysis):
     def rel_spreads(self, redo=False):
         return array(self.get_values(self.Ana.rel_spread, PickleInfo('RelSpread'), _redo=redo), dtype=object) * 100
 
+    def mean_rel_spread(self, **dkw):
+        y = [v.flip_errors if hasattr(v, 'flip_errors') else v for v in self.rel_spreads()]  # asym errors are flipped for latex
+        return FitRes(self.Draw.graph(arange(self.NPlans), y, **prep_kw(dkw, show=False, y_tit='Rel Spread [%]')).Fit('pol0', 'qs'))[0]
+
     def print_mean_rd(self, tex=False, prec=1):
         chi, s = [mean_sigma(lst)[0] for lst in [self.pol0_chi2s(), self.rel_spreads()]]
         if tex:
@@ -558,7 +562,7 @@ class DiaScans(Analysis):
 
     def draw_snr(self, redo=False, **dkw):
         x, y = self.get_x(irr=True), array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))
-        self.Draw.graph(x, y[:, 0], **prep_kw(dkw, **self.get_x_args(vs_irrad=True), y_tit='SNR', file_name='SNR'))
+        return self.Draw.graph(x, y[:, 0], **prep_kw(dkw, **self.get_x_args(vs_irrad=True), y_tit='SNR', file_name='SNR'))
     # endregion PAD
     # ----------------------------------------
 
