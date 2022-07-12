@@ -4,10 +4,10 @@
 # created on Jan 30th 2018 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.utils import make_tc_str, timedelta, flux2str, irr2str, mean, plural, uarr2n
+from helpers.utils import make_tc_str, timedelta, flux2str, irr2str, mean, plural
 from numpy import sort
 from plotting.info import Info
-from plotting.draw import get_window_ratio
+from plotting.draw import get_window_ratio, uarr2n
 
 
 class AnaInfo(Info):

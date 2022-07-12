@@ -36,7 +36,7 @@ def v_scan(cls):
             return 0
 
         def draw_legend(self, graphs, **kwargs):  # noqa
-            return super(VScan, self).draw_legend(graphs, x=.75)
+            return super(VScan, self).make_legend(graphs, x=.75)
 
     return VScan
 

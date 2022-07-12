@@ -47,7 +47,7 @@ def a_scan(cls):
             return 0
 
         def draw_legend(self, graphs, **kwargs):  # noqa
-            return super(AScan, self).draw_legend(graphs, x=.75)
+            return super(AScan, self).make_legend(graphs, x=.75)
 
         def fit_ph(self, g, amin=-10, amax=35):
             a0, a1 = sorted([choose(amin, -amax), amax])

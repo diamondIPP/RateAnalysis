@@ -262,19 +262,6 @@ class DiaScans(Analysis):
     def get_x_args(self, vs_time=False, rel_time=False, vs_irrad=False, draw=True, e_field=False, **kwargs):
         return (VoltageScan if self.is_volt_scan else self.Ana).get_x_args(vs_time, rel_time, vs_irrad, draw, e_field=e_field, **kwargs)
 
-    def make_legend(self, g, dut=None, tc=None, irrad=False, custom=False, **kw):
-        bias = lambda x: '' if self.is_volt_scan else '' if len(set(self.get_bias_voltages())) == 1 else f' @ {bias2str(x.Bias)}'
-        irr = lambda x: irr2str(x.Irradiation) if irrad else ''
-        dut = choose(dut, len(set(self.get_dut_names())) > 1)
-        duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
-        tcs = lambda x: tc2str(x.TCString, short=False) if tc or not dut else ''
-        tits = [w for i in self.Info for w in [duts(i), bias(i), tcs(i), irr(i)] if w]
-        cols = len(tits) // len(g)
-        styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
-        if custom:
-            return self.Draw.legend(g, custom, show=False, **prep_kw(kw, styles='p'))
-        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
-
     def flux_splits(self, redo=False):
         return self.get_values(self.Ana.get_flux_splits, PickleInfo('FluxSplit'), redo=redo)
 
@@ -282,6 +269,42 @@ class DiaScans(Analysis):
         x = [ix[f.argsort()] for ix, f in zip(x, self.get_fluxes())]  # sort by ascending fluxes
         return [array([mean_sigma(lst)[0] for lst in split(ix, s)]) for ix, s in zip(x, self.flux_splits())]
     # endregion GET
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region LEGEND
+    def leg_titles(self, irr=None, dut=None, tc=None, bias=True):
+        biases = lambda x: '' if self.is_volt_scan or not bias or len(set(self.get_bias_voltages())) == 1 else bias2rootstr(x.Bias)
+        irrads = lambda x: irr2str(x.Irradiation) if irr else ''
+        dut = choose(dut, len(set(self.get_dut_names())) > 1)
+        duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
+        tcs = lambda x: tc2str(x.TCString, short=False) if tc and not dut else ''
+        return array([w for i in self.Info for w in [duts(i), biases(i), tcs(i), irrads(i)] if w])
+
+    def make_legend(self, g, dut=None, tc=None, irr=False, bias=True, custom=False, **kw):
+        tits = self.leg_titles(irr, dut, tc, bias)
+        cols = len(tits) // len(g)
+        styles = alternate(['p'] * len(g), zeros((cols - 1, len(g)), 'S'))
+        if custom:
+            return self.Draw.legend(g, custom, show=False, **prep_kw(kw, styles='p'))
+        return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
+
+    def make_info_legend(self, i, g, irr, c=None, bias=True):
+        tits = self.leg_titles(irr, bias=bias)
+        n = tits.size // self.NPlans - 1
+        w = len(max(tits, key=len)) * .011 * (n + 1)
+        Draw.legend([g] + n * [''], tits.reshape((-1, n + 1))[i], ['pe'] + n * [''], w=w, ts=.2, scale=5, c=c, cols=n + 1)
+
+    def make_full_legend(self, graphs, irr=True):
+        same_bias = len(set(self.get_bias_voltages())) == 1
+        cols = 1 + (not same_bias) + irr
+        legend = Draw.make_legend(y2=.4, w=.12 * cols, nentries=4, cols=cols)
+        for i, (g, sel) in enumerate(zip(graphs, self.Info)):
+            legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString, long_=False)), 'lp')
+            legend.AddEntry(0, irr2str(sel.Irradiation), '') if irr else do_nothing()
+            legend.AddEntry(0, bias2rootstr(sel.Bias), '') if not same_bias else do_nothing()
+        return legend
+    # endregion LEGEND
     # ----------------------------------------
 
     # ----------------------------------------
@@ -419,16 +442,6 @@ class DiaScans(Analysis):
         format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, max(y).n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
         self.Draw(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True)
 
-    def make_full_legend(self, graphs, irr=True):
-        same_bias = len(set(self.get_bias_voltages())) == 1
-        cols = 1 + (not same_bias) + irr
-        legend = Draw.make_legend(y2=.4, w=.12 * cols, nentries=4, cols=cols)
-        for i, (g, sel) in enumerate(zip(graphs, self.Info)):
-            legend.AddEntry(g, '{} - {}'.format(sel.RunPlan, make_tc_str(sel.TCString, long_=False)), 'lp')
-            legend.AddEntry(0, irr2str(sel.Irradiation), '') if irr else do_nothing()
-            legend.AddEntry(0, bias2rootstr(sel.Bias), '') if not same_bias else do_nothing()
-        return legend
-
     def draw_title_pad(self, h, x0, lm, c_height):
         if Draw.Title:
             biases = list(set(self.get_bias_voltages()))
@@ -437,23 +450,27 @@ class DiaScans(Analysis):
             Draw.tpavetext('{dia} Rate Scans{b}'.format(dia=self.DUTName, b=bias_str), lm, 1, 0, 1, font=62, align=13, size=.5, margin=0)
             get_last_canvas().cd()
 
-    def draw_scaled_rate_scans(self, irr=False, y_range=.07, pad_height=.18, avrg=False, **dkw):
-        title_height = pad_height / 2 if Draw.Title else .03        # half of a pad for title
-        c_height = (self.NPlans + .5) * pad_height + title_height   # half of a pad for the x-axis
-        c_width = 1.3 * pad_height / .2                             # keep aspect ratio for standard pad_height
+    def draw_scaled_rate_scans(self, irr=False, yr=.07, pad_height=.18, avrg=False, **dkw):
+        both_pol = len(set(self.get_bias_voltages())) == 2
+        title_height = pad_height / 2 if Draw.Title else .03                                # half of a pad for title
+        c_height = (self.NPlans / (2 if both_pol else 1) + .5) * pad_height + title_height  # half of a pad for the x-axis
+        c_width = 1.3 * pad_height / .2                                                     # keep aspect ratio for standard pad_height
         c = Draw.canvas(w=c_width, h=c_height, transp=True, logx=True, gridy=True)
         lm, rm, x0, size = .07, .02, .08, .22
         self.draw_title_pad(title_height, x0, lm, c_height)
         Draw.tpad('p1', pos=[0, 0, x0, 1], margins=[0, 0, 0, 0], transparent=True)           # info pad
         Draw.tpavetext('Scaled Pulse Height', 0, 1, 0, 1, align=22, size=.5, angle=90, margin=0)   # y-axis title
 
-        for i, g in enumerate(self.get_values(self.Ana.draw_scaled_pulse_heights, PickleInfo('PHScaledGraph', avrg), avrg=avrg, show=False)):
+        g = self.get_values(self.Ana.draw_scaled_pulse_heights, PickleInfo('PHScaledGraph', avrg), avrg=avrg, irr=False, show=False)
+        g = array(g).reshape((-1, 2)) if both_pol else g
+        for i, ig in enumerate(g):
             c.cd()
             y0, y1 = [(c_height - title_height - pad_height * (i + j)) / c_height for j in [1, 0]]
             p = Draw.tpad(pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True, fix=True)
-            self.Draw(g, title=' ', **prep_kw(dkw, draw_opt='ap', canvas=p, logx=True, gridy=True, color=self.Draw.get_color(self.NPlans), marker=markers(i), markersize=1.5,
-                      y_range=[1 - y_range, 1 + y_range], lab_size=size, ndivy=504, x_ticks=.15, x_range=Bins.FluxRange))
-            self.draw_legend(i, g, irr, p)
+            i, ig = i * (2 if both_pol else 1), make_list(ig)
+            [format_histo(jg, color=self.Draw.get_color(self.NPlans), marker=markers(i + j, both_pol), markersize=1.5) for j, jg in enumerate(ig)]
+            self.Draw.multigraph(ig, canvas=p, **prep_kw(dkw, **self.get_x_args(), show=False, color=None, gridy=True, lab_size=size, ndivy=504, x_ticks=.15, y_range=[1 - yr, 1 + yr]))
+            self.make_info_legend(i, ig[0], irr, p.cd(), bias=False)
             c.cd()
 
         Draw.tpad('p2', pos=[x0, 0, 1, pad_height / 2 / c_height], margins=[lm, rm, 0, 0], transparent=True)  # x-axis pad
@@ -480,20 +497,6 @@ class DiaScans(Analysis):
             mg.Add(g)
         format_histo(mg, draw_first=True, y_tit='Current [nA]', x_tit='Flux [kHz/cm^{2}]', y_range=[.1, max(concatenate(currents)).n * 2], x_range=Bins.FluxRange)
         self.Draw(mg, 'CurrentFlux{}'.format(self.Name), draw_opt='ap', logx=True, logy=True, leg=legend, bm=.17, show=show)
-
-    def get_titles(self, irr=False):
-        if len(set(self.get_dut_names())) > 1:
-            return [f'{dut}{" - " if irr else ""}{irr}' for dut, irr in zip(self.get_dut_names(), self.get_irradiations() if irr else [''] * self.NPlans)]
-        tits = self.get_irradiations() if irr else [make_tc_str(tc) for tc in self.TestCampaigns]
-        if any(['rand' in word for word in self.run_types]):
-            for i, sel in enumerate(self.Info):
-                tits[i] += ' (random)' if 'rand' in sel.Type.lower() else '         '
-        return [[t] + ([] if len(set(self.get_bias_voltages())) == 1 else [f'@ {bias2str(bias)}']) for t, bias in zip(tits, self.get_bias_voltages())]
-
-    def draw_legend(self, i, gr, irr, c):
-        tits = self.get_titles(irr)
-        w = max([sum(len(t) for t in tit) for tit in tits]) * (.011 if irr else .022)
-        Draw.legend([gr] + ([] if len(tits[i]) == 1 else ['']), tits[i], ['pe', ''], w=w, ts=.21, d=0, nentries=1.2, scale=5, c=c, cols=len(tits[i]))
 
     def set_bin_labels(self, h, rp=True):
         for i, sel in enumerate(self.Info):
