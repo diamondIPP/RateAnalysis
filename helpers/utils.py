@@ -24,7 +24,6 @@ from os.path import dirname, realpath, join
 from pytz import timezone, utc
 from termcolor import colored
 from uncertainties import ufloat, ufloat_fromstr
-from uncertainties.core import Variable, AffineScalarFunc
 from argparse import ArgumentParser
 from progressbar import Bar, ETA, FileTransferSpeed, Percentage, ProgressBar, SimpleProgress, Widget
 from configparser import ConfigParser, NoSectionError, NoOptionError
@@ -465,14 +464,6 @@ def eff2u(eff):
 
 def eff2str(eff, u='\\percent', f='.2f'):
     return f'\\SIerr{{{eff[0]:{f}}}}{{{eff[2]:{f}}}}{{{eff[1]:{f}}}}{{{u}}}'
-
-
-def make_ufloat(n, s=0):
-    return array([ufloat(*v) for v in array([n, s]).T]) if is_iter(n) else n if is_ufloat(n) else ufloat(n, s)
-
-
-def is_ufloat(value):
-    return type(value) in [Variable, AffineScalarFunc]
 
 
 def add_err(u, e):
