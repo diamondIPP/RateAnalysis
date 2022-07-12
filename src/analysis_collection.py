@@ -8,7 +8,6 @@ from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
 from plotting.draw import *
-import plotting.latex as latex
 from helpers.utils import *
 
 
@@ -77,7 +76,7 @@ class AnalysisCollection(Analysis):
     @save_pickle('RelSpread')
     def rel_spread(self, _redo=False):
         x = self.get_pulse_heights(avrg=True)
-        return (max(x) - min(x)) / mean(x)
+        return (max(x) - min(x)) / mean(uarr2n(x))
 
     def print_rate_pars(self, prec=1):
         print(f'Chi²:       {self.pol0_chi2():3.{prec}f}')
@@ -443,19 +442,16 @@ class AnalysisCollection(Analysis):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= y[argmin(x)].n
         self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
-        self.print_rate_dependence(y)
 
     def draw_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y).n
         self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
-        self.print_rate_dependence(y)
 
     def draw_mid_mean_scale(self, avrg=True, yoff=.07):
         x, y = self.get_fluxes(avrg=avrg, corr=False), self.get_pulse_heights(err=False, avrg=avrg)
         y /= mean(y[1:-1]).n
         self.Draw.graph(x, y, y_tit=f'Scaled {self.PhTit}', y_range=[1 - yoff, 1 + yoff], **self.get_x_args(draw=True), lm=.12)
-        self.print_rate_dependence(y)
 
     def draw_scaled_pulse_heights(self, bw=None, t=False, redo=False, avrg=False, yr=.05, irr=True, **dkw):
         """ Shows the scaled pulse heights of the single runs. """
