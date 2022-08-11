@@ -91,8 +91,9 @@ class DiaScans(Analysis):
             print(f'  Rel spread: {s2:.1f} %')
 
     def print_rd_table(self):
-        data = array([self.pol0_chi2s(), self.rel_spreads()]).T.reshape((self.NPlans // 2, 4))
-        rows = [latex.num(self.Info[2 * i].Irradiation.n, fmt='.1e', rm='+') + latex.num(s1, s2) + latex.si(r1, r2) for i, (s1, r1, s2, r2) in enumerate(data)]
+        data = array([self.pol0_chi2s(), self.rel_spreads(), self.max_fluxes(avrg=True) / 1e3]).T.reshape((self.NPlans // 2, -1))
+        rows = [latex.num(self.Info[2 * i].Irradiation.n, fmt='.1e', rm='+') + latex.num(s1, s2) + latex.si(r1, r2) + latex.num(f1.n, f2.n) for i, (s1, r1, f1, s2, r2, f2) in enumerate(data)]
+        rows = [array(row)[[0, 1, 3, 5, 2, 4, 6]] for row in rows]
         print(latex.table(None, rows))
     # endregion RATE DEPENDENCE PARS
     # ----------------------------------------
@@ -225,6 +226,9 @@ class DiaScans(Analysis):
 
     def get_fluxes(self, avrg=False, redo=False):
         return self.get_values(self.Ana.get_fluxes, PickleInfo('FluxVals', avrg), avrg=avrg, redo=redo)
+
+    def max_fluxes(self, avrg=False, redo=False):
+        return array([arr.max() for arr in self.get_fluxes(avrg, redo)])
 
     def times(self):
         return self.get_values(self.Ana.get_times, PickleInfo('Times'))
