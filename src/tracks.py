@@ -4,7 +4,7 @@
 # created on Oct 30th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TCut, TF1, TMultiGraph, THStack, TMath
+from ROOT import TCut, TF1, TMultiGraph, TMath
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
 from scipy.stats import norm
 
@@ -170,15 +170,9 @@ class Tracks(SubAnalysis):
         b = [Draw.box(m + f * s * n, -10, f * 100, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2) for f in [-1, 1]][1:]
         self.Draw.legend(b, [f'cut ({n} #sigma)'], 'lf', y2=.773, margin=.45, w=.3)
 
-    def draw_angles(self, show=True, prnt=True):
-        histos = [self.draw_angle(mode, show=False, prnt=False) for mode in range(2)]
-        leg = Draw.make_legend(nentries=2, w=.25)
-        stack = THStack('has', 'Track Angles')
-        for h in histos:
-            format_histo(h, stats=False, color=self.Draw.get_color(2))
-            leg.AddEntry(h, 'Angle in {}'.format(h.GetTitle()[-1]), 'l')
-            stack.Add(h)
-        self.Draw(stack, 'TrackAngles', lm=.14, leg=leg, draw_opt='nostack', show=show, prnt=prnt)
+    def draw_angles(self, **dkw):
+        h = [self.draw_angle(mode, show=False, prnt=False, normalise=True) for mode in range(2)]
+        self.Draw.stack(h, 'TrackAngles', [f'Angle in {m.title()}' for m in self.M], **prep_kw(dkw))
     # endregion ANGLE
     # ----------------------------------------
 
