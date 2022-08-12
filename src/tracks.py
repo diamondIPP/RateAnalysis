@@ -147,6 +147,11 @@ class Tracks(SubAnalysis):
     def beam_pars(self, res=None, _redo=False):
         h = self.Ana.draw_hitmap(res, show=False, prnt=False)
         return array([self.fit_beam_profile(p) for p in [h.ProjectionX(), h.ProjectionY()]])
+
+    def draw_pixel_pdf(self, m=0, **dkw):
+        s, p = self.beam_pars()[m][1].n * 1000, self.Run.Plane.P[m] * 1000  # mm -> um
+        f = self.Draw.make_f('ppdf', 'gaus', 0, p, pars=[1 / (2 * s ** 2), s - p / 2, s])
+        self.Draw(f, **prep_kw(dkw, x_tit='Pixel Size [#mum]', y_tit='Probability', tm=.05, y_range=[0, f(s - p)]))
     # endregion BEAM
     # ----------------------------------------
 
