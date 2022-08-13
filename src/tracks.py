@@ -8,11 +8,12 @@ from ROOT import TCut, TF1, TMultiGraph, TMath
 from numpy import log, genfromtxt, rad2deg, polyfit, polyval, tan, delete, deg2rad, cumsum
 from scipy.stats import norm
 
-from helpers.utils import arctan, save_pickle, update_pbar, quiet
+from helpers.utils import arctan, save_pickle, update_pbar, quiet, PBAR
 from plotting.draw import *
 from plotting.fit import Gauss
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
+from functools import partial
 
 
 class Tracks(SubAnalysis):
@@ -46,6 +47,7 @@ class Tracks(SubAnalysis):
     def get_residuals(self, mode='x', cut='', unbias=False, redo=False):
         return array([(self.get_unbiased_residual(roc, mode, cut, _redo=redo) if unbias else self.get_residual(roc, mode, cut, _redo=redo)) for roc in range(self.Run.NTelPlanes)])
 
+    @update_pbar
     def get_resolution(self, mode='x', cut='', unbias=False, redo=False):
         return self.draw_resolution(mode, cut=cut, unbias=unbias, show=False, redo=redo)
 
@@ -383,11 +385,12 @@ class Tracks(SubAnalysis):
         return min(e.s for e in ex)
 
     @quiet
-    def draw_resolution_vs_chi2(self, np=10, **dkw):
-        x = linspace(max(6, 100 // np), 100, np, dtype='i')
-        self.PBar.start(x.size, counter=True)
-        y = [self.get_mean_resolution(self.Cut.make(f'chi{q}', self.Cut.generate_chi2s(q))) for q in x]
-        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Mean Resolution [#mum]', y_range=[0, max(y) * 1.2]))
+    def draw_resolution_vs_chi2(self, m=0, s=10, **dkw):
+        x = arange(max(s, 6), 100.1, s, dtype='i')
+        PBAR.start(x.size, counter=True)
+        r = self.get_mean_resolution if m is None else partial(self.get_resolution, mode=self.M[m])
+        y = [r(cut=self.Cut.make(f'chi{q}', self.Cut.generate_chi2s(q)), unbias=True) for q in x]
+        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Resolution [#mum]', y_range=[0, max(y) * 1.2]))
     # endregion RESOLUTION
     # ----------------------------------------
 
