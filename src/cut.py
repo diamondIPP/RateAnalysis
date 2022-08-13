@@ -239,6 +239,8 @@ class Cut(SubAnalysis):
 
     def generate_chi2(self, m=0, q=None):
         v, q, m = self.calc_chi2(m, q), self.get_chi2(m, q), Cut.M[m]
+        if v is None:
+            return CutString('chi2', '')
         return CutString(f'chi2 {m}', Cut.sum(f'chi2_{m} >= 0', f'chi2_{m} < {v}'), description=f'chi2 in {m} < {v:1.1f} ({q:d}% quantile)')
 
     def generate_track_angle(self, mode=0, sigma=None):
