@@ -390,7 +390,11 @@ class Tracks(SubAnalysis):
         PBAR.start(x.size, counter=True)
         r = self.get_mean_resolution if m is None else partial(self.get_resolution, mode=self.M[m])
         y = [r(cut=self.Cut.make(f'chi{q}', self.Cut.generate_chi2s(q)), unbias=True) for q in x]
-        self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Resolution [#mum]', y_range=[0, max(y) * 1.2]))
+        return self.Draw.graph(x, y, **prep_kw(dkw, x_tit='Quantile [%]', y_tit='Resolution [#mum]', y_range=[0, max(y) * 1.2]))
+
+    def draw_xy_res_vs_chi2(self, s=10, **dkw):
+        g = [self.draw_resolution_vs_chi2(m, s=s, show=False) for m in range(2)]
+        self.Draw.multigraph(g, 'TelRes', self.M, **prep_kw(dkw))
     # endregion RESOLUTION
     # ----------------------------------------
 
