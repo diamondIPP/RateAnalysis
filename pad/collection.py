@@ -253,12 +253,12 @@ class PadCollection(AnalysisCollection):
         mg = self.Draw.multigraph(g, 'Plane/Peak Flux Ratios', ['Plane 1', 'Plane 2', 'Mean 1 & 2'], y_tit='Plane/Peak Flux Ratio', show=show, **self.get_x_draw())
         format_histo(mg, **self.get_x_args(x_tit='Mean Plane Flux [kHz/cm^{2}]'))
 
-    def compare_fluxes(self, plane=None, logy=True, corr=True, avrg=False, y_range=None, show=True):
+    def compare_fluxes(self, plane=None, corr=True, avrg=False, **dkw):
         x, y = self.get_peak_fluxes(corr, avrg, rel=True), self.get_fluxes(plane, corr, full_size=True, avrg=avrg, rel=True)
         tit, xtit, ytit = 'FAST-OR Flux vs Peak Flux', 'Peak Flux [kHz/cm^{2}]', f'{"Mean Plane" if plane is None else f"Plane {plane}"} Flux [kHz/cm^{{2}}]'
-        g = self.Draw.graph(x, y, tit, **self.get_x_args(x_tit=xtit, draw=True), y_range=choose(y_range, Bins.FluxRange), y_tit=ytit, logy=logy, show=show)
-        g.Fit('pol1', 'qs')
-        format_statbox(g, fit=True, center_x=True, form='.2f')
+        g = self.Draw.graph(x, y, tit, y_range=Bins.FluxRange, y_tit=ytit, show=False)
+        g.Fit('pol1', 'qs', '', min(x).n / 2, max(x).n * 2)
+        return self.Draw(g, **prep_kw(dkw, **self.get_x_args(x_tit=xtit, draw=True), logy=True, stats=set_statbox(fit=True, center_x=True, form='.2f'), file_name='FluxComp'))
 
     def compare_tu_fluxes(self, logy=True, show=True):
         x, y = self.get_fluxes(), [ana.Run.Flux for ana in self.get_analyses()]
