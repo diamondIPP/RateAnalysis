@@ -227,15 +227,6 @@ class PeakAnalysis(PadSubAnalysis):
         values = (self.find_all_toa if toa else self.find_all_tot)(thresh, fit, _redo=redo)[self.get_full_bunch_cut(n, cut=cut)]
         return values[int(excl * values.size):]
 
-    def get_spacings(self, n, cut=None, ecut=True):
-        cut = choose(cut, self.get_spacing_cut(n, ecut))
-        t = self.get_times(True, fit=True, cut=cut)
-        return (t[1::2] - t[::2]) / (n - 1)
-
-    @save_pickle('BS')
-    def get_bunch_spacing(self, _redo=False):
-        return self.draw_all_spacings(redo=_redo, show=False)[0]
-
     @save_pickle('Range', suf_args='all')
     def get_peak_range(self, n, nsigma=3, fit=True, _redo=False):
         m, s = fit_fwhm(self.draw_bunch_times(n, show=False, fit=fit))[1:]
@@ -292,8 +283,9 @@ class PeakAnalysis(PadSubAnalysis):
             return any([self.get_isolated_cut(i, thresh, fit) for i in self.get_bunch_nrs()], axis=0)
         return do_pickle(self.make_simple_pickle_path('AllIso', f'{thresh}{int(fit)}'), f)
 
-    def get_spacing_cut(self, n, ecut=True):
-        return ecut & (self.get_n() == 2) & self.p2ecut(self.get_isolated_cut(1, fit=True)) & self.p2ecut(self.get_isolated_cut(n, fit=True))
+    def get_spacing_cut(self, n, n0=1, ecut=True):
+        n_cut = self.get_n() == (2 if n0 == 1 else 3)
+        return ecut & n_cut & self.p2ecut(self.get_isolated_cut(n0, fit=True)) & self.p2ecut(self.get_isolated_cut(n, fit=True))
 
     def get_1_per_bucket(self, n=1, thresh=None, fit=False):
         """:returns cut excluding all times with more than one peak per bucket """
@@ -319,40 +311,6 @@ class PeakAnalysis(PadSubAnalysis):
         PoissonI(h, p1=1).fit(draw=fit)
         format_statbox(h, fit=fit, m=True, entries=True, w=.4 if fit else .2, form='.2f')
         self.Draw(h, f'PeakNumbers{"Fit" if fit else ""}', show, logy=True, lm=.11, draw_opt='')
-
-    @update_pbar
-    @save_pickle('Spacing', suf_args='all')
-    def get_spacing(self, n=3, ecut=True, _redo=False):
-        return self.draw_spacing(n, ecut, fit=True, show=False)[1]
-
-    def draw_spacing(self, n=3, ecut=True, fit=True, **dkw):
-        x = self.get_spacings(n, ecut=ecut)
-        if x.size < 10:
-            return [ufloat(0, 0)] * 2
-        h = self.Draw.distribution(x, **prep_kw(dkw, title=f'Bunch {n} Spacing', x_tit='Time Delta [ns]', draw_opt='', stats=set_statbox(fit=fit, all_stat=True)))
-        return fit_fwhm(h, show=True) if fit else h
-
-    def draw_spacing_vs_peaktime(self, n=3, bin_size=.2, ecut=True, **kwargs):
-        cut = self.get_spacing_cut(n, ecut)
-        y, t = self.get_spacings(n, cut), self.get_times(flat=True, cut=cut)[::2]
-        self.Draw.profile(t, y, self.get_binning(bin_size, n1=1), x_tit='Signal Peak Time [ns]', y_tit='Bunch Spacing [ns]', **kwargs)
-
-    def draw_all_spacings(self, ecut=True, n_last=8, redo=False, **dkw):
-        self.PBar.start(self.NBunches) if redo or not file_exists(self.make_simple_pickle_path(f'Spacing{self.NBunches + 2}')) else do_nothing()
-        x, y = self.get_bunch_nrs(), [self.get_spacing(i, ecut=ecut, _redo=redo) for i in self.get_bunch_nrs()]
-        self.Draw.graph(x, y, 'Bunch Spacings', **prep_kw(dkw, x_tit='Bunch Number', y_tit='Spacing [ns]', **Draw.mode(2, lm=.11, y_off=.95), y_range=ax_range(y, 0, .5, .2)))
-        a, b, xa, c = [mean_sigma(y[-n_last:])[0]] * 2, [1e9 / ufloat(self.BeamFrequency, 1e4)] * 2, self.MaxBunch + array([-n_last, 0]), get_last_canvas()
-        g = [self.Draw.graph(x0, v, '', canvas=c, fill_color=col, color=col, draw_opt='le3', lw=2, opacity=.2) for v, col, x0 in [(a, 2, xa), (b, 4, [0, self.MaxBunch + 2])]]
-        self.Draw.legend(g, ['fit', 'PSI bunch spacing'], w=.3, scale=1.2)
-        self.Draw.save_plots('BunchSpacings')
-        return mean_sigma(y[-n_last:])
-
-    def draw_spacings(self, bin_size=.5, show=True):
-        t = self.get_times(flat=True)
-        c1, c2 = self.get_bunch_cut(1, fit=True), self.get_bunch_cut(fit=True)
-        ecut = (self.get_n() > 1) & (self.get_n_additional(1, fit=True) == 1) & self.p2ecut(c1) & self.p2ecut(c2)
-        t = t[c2 & self.e2pcut(ecut)] - t[c1 & self.e2pcut(ecut)].repeat(self.get_n_additional(fit=True)[ecut])
-        self.Draw.distribution(t, self.get_binning(bin_size), 'Peak Spacing', x_tit='Peak Spacing [ns]', **Draw.mode(2), show=show, stats=set_statbox(entries=True))
 
     def draw_overlayed_times(self, bw=None, off=0, cut=True, thresh=None, fit=True, **dkw):
         t = self.get_corrected_times(cut, thresh, fit)
@@ -469,6 +427,62 @@ class PeakAnalysis(PadSubAnalysis):
         bins = find_bins(x, .5, .5) + find_bins(y, 1, 1, .001)
         self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='ToA [ns]', y_tit='ToT [ns]', file_name=f'ToT{t0}-ToA{t1}{"All" if cut is None else ""}'))
     # endregion DRAW
+    # ----------------------------------------
+
+    # ----------------------------------------
+    # region SPACING
+    @update_pbar
+    def get_spacings(self, n, n0=1, cut=None, ecut=True):
+        cut = choose(cut, self.get_spacing_cut(n, n0, ecut))
+        t = self.get_times(True, fit=True, cut=cut)
+        t0, t1 = (t[::2], t[1::2]) if n0 == 1 else (t[1::3], t[2::3])
+        return (t1 - t0) / (n - n0)
+
+    def additional_spacings(self):
+        b0 = 3  # starting bunch
+        i = [[n, j] for j in range(b0, self.MaxBunch + 1) for n in range(j + 2, self.MaxBunch + 1)]  # all combinations of additional peaks
+        PBAR.start(len(i))
+        return concatenate([self.get_spacings(n, j) for n, j in i])
+
+    @save_pickle('BS')
+    def get_bunch_spacing(self, _redo=False):
+        return self.draw_all_spacings(redo=_redo, show=False)[0]
+
+    @save_pickle('Spacing', suf_args='all')
+    def get_spacing(self, n=3, ecut=True, _redo=False):
+        return self.draw_spacing(n, ecut, fit=True, show=False)[1]
+
+    def draw_spacing(self, n=3, n0=1, ecut=True, fit=True, **dkw):
+        x = self.get_spacings(n, n0, ecut=ecut)
+        if x.size < 10:
+            return [ufloat(0, 0)] * 2
+        h = self.Draw.distribution(x, **prep_kw(dkw, title=f'Bunch {n} Spacing', x_tit='Time Delta [ns]', draw_opt='', stats=set_statbox(fit=fit, all_stat=True)))
+        return fit_fwhm(h, show=True) if fit else h
+
+    def draw_spacing_vs_peaktime(self, n=3, bin_size=.2, ecut=True, **kwargs):
+        cut = self.get_spacing_cut(n, ecut=ecut)
+        y, t = self.get_spacings(n, cut=cut), self.get_times(flat=True, cut=cut)[::2]
+        self.Draw.profile(t, y, self.get_binning(bin_size, n1=1), x_tit='Signal Peak Time [ns]', y_tit='Bunch Spacing [ns]', **kwargs)
+
+    def draw_all_spacings(self, ecut=True, n_last=8, redo=False, **dkw):
+        self.PBar.start(self.NBunches) if redo or not file_exists(self.make_simple_pickle_path(f'Spacing{self.NBunches + 2}')) else do_nothing()
+        x, y = self.get_bunch_nrs(), [self.get_spacing(i, ecut=ecut, _redo=redo) for i in self.get_bunch_nrs()]
+        self.Draw.graph(x, y, 'Bunch Spacings', **prep_kw(dkw, x_tit='Bunch Number', y_tit='Spacing [ns]', **Draw.mode(2, lm=.11, y_off=.95), y_range=ax_range(y, 0, .5, .2)))
+        a, b, xa, c = [mean_sigma(y[-n_last:])[0]] * 2, [1e9 / ufloat(self.BeamFrequency, 1e4)] * 2, self.MaxBunch + array([-n_last, 0]), get_last_canvas()
+        g = [self.Draw.graph(x0, v, '', canvas=c, fill_color=col, color=col, draw_opt='le3', lw=2, opacity=.2) for v, col, x0 in [(a, 2, xa), (b, 4, [0, self.MaxBunch + 2])]]
+        self.Draw.legend(g, ['fit', 'PSI bunch spacing'], w=.3, scale=1.2)
+        self.Draw.save_plots('BunchSpacings')
+        return mean_sigma(y[-n_last:])
+
+    @save_pickle('AddSpacings', suf_args='all')
+    def get_add_spacing_dist(self, binning=None, _redo=False):
+        return self.Draw.distribution(self.additional_spacings(), binning, 'AddBS', lf=.5, rf=.5, x_tit='Bunch Spacing [ns]', show=False)
+
+    def draw_add_spacings(self, fit=True, redo=False, **dkw):
+        h = self.get_add_spacing_dist(_redo=redo)
+        fit_fwhm(h, show=True) if fit else None
+        self.Draw(h, 'AddBS', **prep_kw(dkw, leg=Gauss.from_hist(h).Fit, stats=set_statbox(fit=fit, all_stat=True, form='.3f'), file_name='AddSpacings'))
+    # endregion GET
     # ----------------------------------------
 
     # ----------------------------------------
