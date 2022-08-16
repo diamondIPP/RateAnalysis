@@ -291,6 +291,11 @@ class PeakAnalysis(PadSubAnalysis):
         """:returns cut excluding all times with more than one peak per bucket """
         e = self.get_e(self.get_bunch_cut(n=n, thresh=thresh, fit=fit), thresh)
         return self.e2pcut(invert(self.Ana.make_event_cut(e[:-1][diff(e) == 0])), thresh)  # max number of peaks per bucket is 2
+
+    def height_cut(self, xmax, xmin=None):
+        xmin, xmax = (self.Threshold, xmax) if xmin is None else sorted([xmin, xmax])
+        x = self.get_heights(cut=..., flat=True)
+        return (xmin < x) & (x < xmax)
     # endregion CUT
     # ----------------------------------------
 
