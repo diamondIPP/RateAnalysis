@@ -367,9 +367,15 @@ class PeakAnalysis(PadSubAnalysis):
         cut = n > max(n) / 1000
         return self.Draw.graph(x[cut], y[cut], y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', **kwargs)
 
-    def compare_bunch_heights(self, n, bw=5, fit=True, thresh=None, fill=None, peak_cut=False, show=True):
-        h = [self.draw_bunch_height(i, bw, thresh=thresh, fit=fit, show=False, all_=i < 0, peak_cut=peak_cut) for i in make_list(n)]
-        self.Draw.stack(h, 'Peak Height Comparison', [f'bucket {i if i > 0 else f"3~{self.MaxBunch}"}' for i in make_list(n)], scale=True, show=show, fill=fill, opacity=.3)
+    def compare_bunch_heights(self, n, bw=5, fit=True, thresh=None, peak_cut=False, **dkw):
+        h = [self.draw_bunch_height(i, bw, thresh=thresh, fit=fit, show=False, save=False, all_=i < 0, peak_cut=peak_cut) for i in make_list(n)]
+        self.Draw.stack(h, 'Peak Height Comparison', [f'bucket {i if i > 0 else f"3~{self.MaxBunch}"}' for i in make_list(n)], **prep_kw(dkw, scale=True, fill=True, opacity=.3, file_name='BunchComp'))
+
+    def draw_dist_diff(self, n, bw=5, fit=True, thresh=None, peak_cut=False, **dkw):
+        h0, h1 = [self.draw_bunch_height(i, bw, thresh=thresh, fit=fit, show=False, save=False, all_=i < 0, peak_cut=peak_cut) for i in make_list(n)]
+        [h.Scale(1 / h.GetMaximum()) for h in [h0, h1]]
+        h0.Add(h1, -1)
+        self.Draw(h0, **prep_kw(dkw, file_name='BunchDiff', stats=False, gridx=True))
 
     def compare_times(self, t1, t2, n=1, fill=None, show=True):
         """draw two distributions with different time cuts."""
