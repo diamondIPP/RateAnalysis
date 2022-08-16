@@ -298,7 +298,7 @@ class Waveform(PadSubAnalysis):
         x, y = self.get_max(h)
         return Draw.vertical_line(x, color=4, w=2)
 
-    def draw_buckets(self, start=0, n=8, tl=.04, ts=.05):
+    def draw_buckets(self, start=0, n=8, tl=.03, ts=.05):
         c = get_last_canvas()
         x0 = self.Ana.Peaks.get_bunch_range(start)[0]
         for i in range(n + 1):
@@ -306,7 +306,7 @@ class Waveform(PadSubAnalysis):
             Draw.vertical_line(x, style=3)
             Draw.vertical_line(x, c.GetUymax() * (1 - tl) + tl * c.GetUymin())
             Draw.tlatex(x + self.BunchSpacing / 2, c.GetUymax() * (1 + tl) + tl * c.GetUymin(), str(i + start), align=21, font=42, size=ts)
-        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 5 * tl) + 5 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=ts)
+        Draw.tlatex(c.GetUxmax(), c.GetUymax() * (1 + 4 * tl) + 4 * tl * c.GetUymin(), 'Bucket Number', font=42, align=31, size=ts)
 
     def draw_region(self, region=None, lw=2, show_leg=True, fill=False, opacity=None):
         regions = [self.Ana.load_region_name(region=region) for region in make_list(region)]
