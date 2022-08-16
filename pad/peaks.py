@@ -32,7 +32,6 @@ class PeakAnalysis(PadSubAnalysis):
         if self.WF.Exists:
             self.IsDigital = 'digital' in self.DUT.Name
             self.NoiseThreshold = self.calc_noise_threshold()
-            self.NoiseThreshold = 60
             self.Threshold = max(self.NoiseThreshold, self.Ana.get_min_signal(self.Ana.get_signal_name(peak_int=1)))
             self.BinWidth = self.DigitiserBinWidth
             self.BunchSpacing = self.Ana.BunchSpacing
@@ -354,10 +353,12 @@ class PeakAnalysis(PadSubAnalysis):
             g.Draw('apy+')
             return update_canvas(c)
 
-    def draw_bucket_pedestal(self, n1=0, n2=5, npeaks=1, i=None, **kwargs):
-        cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial'], name='buc')) & (self.get_n() == npeaks)
+    def draw_bucket_pedestal(self, n1=0, n2=5, npeaks=1, i=None, **dkw):
+        cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial', 'ped sigma'], name='bucped')) & (self.get_n() == npeaks)
         x, y = self.get_times(flat=True, cut=cut, fit=True)[::npeaks], choose(i, self.Ana.get_ph_values, cut='')[cut]
-        self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]', gridy=True, logz=True, **kwargs)
+        self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), pal=53, gridy=True, logz=True, tm=.13, x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]')
+        self.WF.draw_buckets(n=4, ts=.05)
+        self.Draw.save_plots('BucketPedestal')
 
     def draw_bunch_height_vs_time(self, n=1, bw=.2, cut=None, fit=False, cft=False, **kwargs):
         x, y = self.get_bunch_times(n, cut=cut, fit=fit, cft=cft), self.get_bunch_heights(n, cut=cut, fit=True if cft else fit)
