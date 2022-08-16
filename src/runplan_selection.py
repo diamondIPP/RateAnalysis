@@ -595,6 +595,9 @@ class DiaScans(Analysis):
     def get_pulser_pulse_heights(self, avrg=False, redo=False):
         return self.get_values(PadCollection.get_pulser_pulse_heights, PickleInfo('PulserPH', f'{avrg:d}'), redo=redo, avrg=avrg)
 
+    def pulser_rates(self, avrg=False, redo=False):
+        return self.get_values(PadCollection.get_pulser_rates, PickleInfo('PulserRate', f'{avrg:d}'), redo=redo, avrg=avrg)
+
     def get_pulser_stability(self):
         """ returns: relative standard deviation of the pulser """
         d = [s / m * 100 for m, s in [mean_sigma(v) for v in self.get_pulser_pulse_heights()]]
@@ -607,6 +610,10 @@ class DiaScans(Analysis):
         g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
         mg = self.Draw.multigraph(g, 'Pulser Pulse Heights', [f'{i.PulserType}al @ {bias2str(i.Bias)}' for i in self.Info], **self.Ana.get_x_args(draw=True), wleg=.3)
         format_histo(mg, **self.Ana.get_x_args(), y_range=1 + array([-ym, ym]))
+
+    def draw_pulser_rates(self, **dkw):
+        x, y = concatenate(self.get_fluxes()), concatenate(self.pulser_rates())
+        self.Draw.graph(x, y, 'Pulser Rates', **prep_kw(dkw, y_tit='Pulser Fraction [%]', **self.get_x_args(), **Draw.mode(2), file_name='PulserRates', y_range=[0, max(y[:, 0]) * 1.2]))
     # endregion PULSER
     # ----------------------------------------
 

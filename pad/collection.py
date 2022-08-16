@@ -102,6 +102,9 @@ class PadCollection(AnalysisCollection):
     def get_pulser_pulse_heights(self, avrg=False, redo=False):
         return self.Pulser.get_pulse_heights(avrg=avrg, redo=redo)
 
+    def get_pulser_rates(self, avrg=False, redo=False):
+        return self.Pulser.get_rates(avrg=avrg, redo=redo)
+
     def get_snrs(self, avrg=False):
         return self.get_values('SNRs', self.Analysis.calc_snr, picklepath=self.get_pickle_path('SNR', sub_dir='PH'), avrg=avrg)
 
