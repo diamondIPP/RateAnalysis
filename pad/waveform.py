@@ -4,7 +4,7 @@
 # created on May 13th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut, TMultiGraph
-from numpy import fft, argmax, array_split, sum
+from numpy import fft, argmax, sum
 from src.sub_analysis import PadSubAnalysis
 from plotting.draw import *
 from helpers.utils import do_pickle, save_hdf5, cpu_count, Pool, PBar, get_tree_vec, do_hdf5, interpolate_y, update_pbar
