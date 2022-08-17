@@ -170,7 +170,7 @@ class PulserAnalysis(PadSubAnalysis):
         if mean(x) > m + 3 * s:
             x = x[x > m + 2 * s]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
-        return self.Draw.distribution(x, make_bins(m - 5 * s, m + 7 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
+        return self.Draw.distribution(x, make_bins(m - 7 * s, m + 10 * s, choose(bin_width, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 
     def draw_distribution(self, name=None, corr=True, beam_on=True, bin_width=None, redo=False, **kwargs):
         """ Shows the distribution of the pulser integrals. """
@@ -178,7 +178,7 @@ class PulserAnalysis(PadSubAnalysis):
         rx = ax_range(h=h, thresh=h.GetMaximum() * .02, fl=.3, fh=.6)
         return self.Draw.distribution(h, file_name='PulserDistribution', **prep_kw(kwargs, x_range=rx))
 
-    def get_fit_range(self, h, lsig=3, rsig=.5):
+    def get_fit_range(self, h, lsig=2.5, rsig=1):
         f0, same_polarity = fit_fwhm(h), self.Polarity == self.Ana.Polarity
         if f0.get_chi2() > 50:
             return get_fwhm(h, ret_edges=True, err=False)

@@ -69,10 +69,10 @@ class Run(Analysis):
         self.TInit = time() - self.InitTime
 
     def __str__(self):
-        return f'{self.__class__.__name__} {self.Number}{self.evt_str} ({self.TCString})'
+        return str(self.Number)
 
     def __repr__(self):
-        return self.__str__()
+        return f'{self.__class__.__name__} {self.Number}{self.evt_str} ({self.TCString})'
 
     def __call__(self, number, load_tree=False):
         self.set_run(number, load_tree)
