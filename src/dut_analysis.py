@@ -14,6 +14,7 @@ from src.run import Run
 from src.tracks import Tracks
 from src.telescope import Telescope
 from plotting.save import *
+import plotting.latex as tex
 from helpers.utils import *
 from src.analysis import Analysis
 from plotting.fit import Langau, Expo
@@ -66,6 +67,9 @@ class DUTAnalysis(Analysis):
 
     def __repr__(self):
         return f'{self.__class__.__name__} of {self.DUT}, {self.Run}'
+
+    def i(self):
+        print(f'{self.DUT} @ {tex.si(self.DUT.Bias, fmt="+.0f", unt="V")[0]}, {self.flux2tex(0)}, Run {self.Run}, {tc2str(self.TCString, short=False)}.')
 
     # ----------------------------------------
     # region INIT
@@ -245,6 +249,9 @@ class DUTAnalysis(Analysis):
     @property
     def flux(self):
         return self.get_flux()
+
+    def flux2tex(self, prec=1):
+        return (tex.si(self.flux.n, fmt=f'.{prec}f', unt='khzcm') if self.flux < 900 else tex.si(self.flux.n / 1000, fmt=f'+.0f', unt='mhzcm'))[0]
 
     def get_flux(self, plane=None, corr=True, full_size=False, redo=False):
         return self.Tel.get_flux(plane, corr, True, full_size, _redo=redo)
