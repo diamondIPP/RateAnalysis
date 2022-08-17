@@ -42,6 +42,9 @@ class Analysis(object):
         self.Draw = SaveDraw(self, results_dir, sub_dir)
         self.PBar = PBar()
 
+    def __repr__(self):
+        return f'{self.__class__.__name__.strip("Analysis")} Analysis'
+
     def load_config(self):
         file_name = Dir.joinpath('config', self.TCString, 'AnalysisConfig.ini')
         if not file_exists(file_name):

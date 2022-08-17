@@ -26,6 +26,9 @@ class PulserAnalysis(PadSubAnalysis):
         self.PeakName = self.Ana.get_peak_name(type_='pulser')
         self.Peaks = self.Ana.Peaks
 
+    def __repr__(self):
+        return f'{super().__repr__()} ({self.Type})'
+
     # ----------------------------------------
     # region INIT
     def load_pedestal_name(self, peak_int=None):
