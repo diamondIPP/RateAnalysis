@@ -22,6 +22,9 @@ class PedestalAnalysis(PadSubAnalysis):
         m, s = self.get_mean(redo=redo), self.get_noise()
         return (m, s) if err else (m.n, s.n)
 
+    def __getitem__(self, item):
+        return self.get_fit()[item + 1]
+
     def __repr__(self):
         m, s = self(err=True)
         return f'{self.__class__.__name__}, Mean: {m:.2f} mV, Sigma: {s:.2f} mV'
