@@ -605,9 +605,9 @@ class DiaScans(Analysis):
             print(f'Pulser stability for {self.Info[i]}: {v:.3f}')
         return d
 
-    def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01, **dkw):
-        data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg))
-        g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', show=False) for x, y in data]
+    def draw_pulser_pulse_heights(self, avrg=False, scaled=True, ym=.01, redo=False, **dkw):
+        data = zip(self.get_fluxes(avrg), self.get_pulser_pulse_heights(avrg, redo))
+        g = [self.Draw.graph(x, y / (mean_sigma(y)[0].n if scaled else 1), y_tit='Pulser Pulse Height [mV]', markersize=1.2, show=False) for x, y in data]
         leg_tit = [f'{i.PulserType}al @ {bias2str(i.Bias)}' for i in self.Info]
         return self.Draw.multigraph(g, 'Pulser PH', leg_tit, **prep_kw(dkw, **self.Ana.get_x_args(draw=True), wleg=.3, y_range=[1 - ym, 1 + ym]), file_name='PulserPH')
 
