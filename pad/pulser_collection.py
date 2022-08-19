@@ -34,6 +34,10 @@ class PulserCollection(SubCollection):
 
     def get_noise(self):
         return self.get_pedestals(sigma=True)
+
+    @staticmethod
+    def y_tit(scale=False):
+        return {'y_tit': f'{"Relative " if scale else ""}Pulser Pulse Height{"" if scale else " [mV]"}'}
     # endregion GET
     # ----------------------------------------
 
@@ -66,6 +70,11 @@ class PulserCollection(SubCollection):
 
     def draw_scaled_pulse_heights(self, sigma=False, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, **kwargs):
         return self.draw_pulse_heights(sigma, vs_time, True, corr, beam_on, show_flux, legend, fit, redo, **kwargs)
+
+    def draw_avrg_pulse_heights(self, corr=True, beam=True, redo=False, scale=False, **dkw):
+        x, y = self.get_x(avrg=True), self.get_pulse_heights(corr, beam, avrg=True, redo=redo)
+        y /= mean(y) if scale else 1
+        self.Draw.graph(x, y, 'Pulser PH', **prep_kw(dkw, **self.get_x_args(), **self.y_tit(scale), file_name='AvrPulserPH'))
 
     def draw_sigmas(self, vs_time=False, corr=True, beam_on=True, show_flux=True, legend=True, fit=False, redo=False, **kwargs):
         return self.draw_pulse_heights(True, vs_time, False, corr, beam_on, show_flux, legend, fit, redo, **kwargs)
