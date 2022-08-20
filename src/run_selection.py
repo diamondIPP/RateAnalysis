@@ -785,8 +785,9 @@ class RunSelector(object):
 
     def copy_raw_files(self, sel=False):
         runs = self.get_selected_runs() if sel else self.get_runplan_runs()
-        self.PBar.start(len(runs), counter=True, t='min')
-        [self.copy_raw_file(run) for run in runs]
+        PBAR.start(len(runs), counter=True, t='min')
+        for run in runs:
+            self.copy_raw_file(run)
 
     def copy_final_files(self, server, server_data_dir):
         runs = self.get_selected_runs()
