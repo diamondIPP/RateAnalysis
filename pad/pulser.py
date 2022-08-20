@@ -57,7 +57,7 @@ class PulserAnalysis(PadSubAnalysis):
         return self.Ana.make_event_cut(concatenate([self.get_events()[:n], self.Ana.get_events()[:n]]))
 
     def get_signal_indices(self):  # for Waveform
-        """ :returns: indices that are smaller then the smallest signals """
+        """ :returns: indices that are smaller than the smallest signals """
         return where(array(self.get_values()) > self.Ana.get_min_signal() - 5)[0]
 
     def get_min_signal(self, name=None):
@@ -143,11 +143,18 @@ class PulserAnalysis(PadSubAnalysis):
 
     # ----------------------------------------
     # region DRAW
-    def draw_rate(self, bw=10, cut='', rel_t=True, **dkw):
+    def draw_rate(self, bw=10, cut='', rel_t=True, hist=False, **dkw):
         """ Shows the fraction of pulser events as a function of time. Peaks appearing in this graph are most likely beam interruptions. """
         x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(choose(cut, self.Ana.Cut.get('beam stops'))))
         bins = self.Bins.get_raw_time(bw)
-        return self.Draw.efficiency(x, y, bins, 'Pulser Rate', **prep_kw(dkw, y_tit='Pulser Fraction [%]', gridy=True, y_range=[0, 105], **self.get_t_args(rel_t), file_name='PulserRate'))
+        f = partial(self.Draw.profile, draw_opt='hist', **Draw.mode(3)) if hist else self.Draw.efficiency
+        return f(x, y * 100 if hist else 1, bins, 'Pulser Rate', **prep_kw(dkw, y_tit='Pulser Fraction [%]', gridy=True, y_range=[0, 105], **self.get_t_args(rel_t), file_name='PulRate', stats=False))
+
+    def draw_beam_stop_cut(self):
+        t, s0 = self.Ana.Cut.interruption_times(), self.Run.ev2t(self.Ana.Cut.get_event_range()[0])
+        t = concatenate([[[t[0][0], s0]], t[all(t > s0, axis=1)]])  # remove interruptions that are covered by event range
+        b = [Draw.box(t0, -5, t1, 200, line_color=2, width=2, fillcolor=2, style=7, opacity=.1) for t0, t1 in t]
+        return b + [Draw.legend(b[:1], ['excluded events'], 'lf', margin=.45, w=.3, scale=2)]
 
     @save_pickle('PulserPulseHeight', suf_args='all')
     def get_pulse_height_trend(self, bin_size=None, cut=None, _redo=False):
