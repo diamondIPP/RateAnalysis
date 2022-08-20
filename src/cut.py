@@ -3,7 +3,7 @@
 # created in 2015 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 from ROOT import TCut
-from numpy import delete, insert
+from numpy import delete, insert, vectorize
 
 from plotting.draw import *
 from helpers.utils import *
@@ -347,6 +347,9 @@ class Cut(SubAnalysis):
         i = where(diff(x) < 10)[0]  # find all indices where the start of the next beam interruption is earlier than the end of the previous
         x = array([self.Run.get_event_at_time(t) for t in delete(x, concatenate([i, i + 1]))])  # remove the last stop and the next start if overlap
         return x.reshape((x.size // 2, 2))
+
+    def interruption_times(self):
+        return vectorize(self.Run.ev2t)(self.create_interruption_ranges())
 
     @save_pickle('Align')
     def find_n_misaligned(self, _redo=False):
