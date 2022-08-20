@@ -549,6 +549,7 @@ class DiaScans(Analysis):
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
     # endregion DRAWING
+    # ----------------------------------------
 
     # ----------------------------------------
     # region PAD
@@ -567,6 +568,11 @@ class DiaScans(Analysis):
     def draw_snr(self, redo=False, **dkw):
         x, y = self.get_x(irr=True), array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))
         return self.Draw.graph(x, y[:, 0], **prep_kw(dkw, **self.get_x_args(vs_irrad=True), y_tit='SNR', file_name='SNR'))
+
+    def draw_sat_diff(self, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_sat_ph_diff, PickleInfo('SatDiff'), redo=redo, show=False)
+        mg = self.Draw.multigraph(g, 'Sat PH Diff')
+        self.Draw(mg, **prep_kw(dkw, leg=self.make_legend(g, **dkw), **self.get_x_args(), file_name='SatDiff'))
     # endregion PAD
     # ----------------------------------------
 

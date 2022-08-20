@@ -601,6 +601,14 @@ class PadAnalysis(DUTAnalysis):
     # endregion SNR
     # ----------------------------------------
 
+    # ----------------------------------------
+    # region CUT
+    @save_pickle('SatDiff', sub_dir='PH')
+    def sat_ph_diff(self, _redo=False):
+        return 1 - self.get_pulse_height(cut=self.Cut.exclude('saturated'), redo=_redo) / self.get_pulse_height(redo=_redo)
+    # endregion CUT
+    # ----------------------------------------
+
     @staticmethod
     def sim_landau(n=1e6, m=80, s=5, cut_off=None):
         gRandom.Landau(m, s)

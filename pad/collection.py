@@ -217,6 +217,10 @@ class PadCollection(AnalysisCollection):
     def draw_p_saturated(self, **dkw):
         x, y = self.get_fluxes(), self.get_values('p saturated', PadAnalysis.get_p_sat, picklepath=self.get_pickle_path('Sat', '', 'WF'))
         self.Draw.graph(x, y, **prep_kw(dkw, y_tit='Fraction of Saturated Events [%]', file_name='Saturated', **self.get_x_args(draw=True)))
+
+    def draw_sat_ph_diff(self, redo=False, **dkw):
+        x, y = self.get_fluxes(), self.get_values('p saturated', PadAnalysis.sat_ph_diff, picklepath=self.get_pickle_path('SatDiff', '', 'PH'), _redo=redo)
+        return self.Draw.graph(x, y * 100, **prep_kw(dkw, y_tit='Relative Pulse Height Change [%]', file_name='SatDiff', **self.get_x_args(draw=True)))
     # endregion CUTS
     # ----------------------------------------
 
