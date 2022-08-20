@@ -87,9 +87,10 @@ class AutoConvert:
 
     def multi(self):
         """parallel conversion"""
-        info(f'Creating pool with {cpu_count()} processes')
         if not all([file_exists(run.Converter.RawFilePath) for run in self.Runs]):
+            info('copy missing raw files ...')
             self.Selection.copy_raw_files(sel=True)
+        info(f'Creating pool with {cpu_count()} processes')
         with Pool() as pool:
             result = pool.starmap_async(make_run, [(run.Number, self.Selection.TCString) for run in self.Runs])
             print()
