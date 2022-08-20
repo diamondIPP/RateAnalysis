@@ -251,7 +251,7 @@ class DUTAnalysis(Analysis):
         return self.get_flux()
 
     def flux2tex(self, prec=1):
-        return (tex.si(self.flux.n, fmt=f'.{prec}f', unt='khzcm') if self.flux < 900 else tex.si(self.flux.n / 1000, fmt=f'+.0f', unt='mhzcm'))[0]
+        return (tex.si(self.flux.n, fmt=f'.{prec}f', unt='khzcm') if self.flux < 900 else tex.si(self.flux.n / 1000, fmt=f'.0f', unt='mhzcm'))[0]
 
     def get_flux(self, plane=None, corr=True, full_size=False, redo=False):
         return self.Tel.get_flux(plane, corr, True, full_size, _redo=redo)

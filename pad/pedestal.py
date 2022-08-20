@@ -51,7 +51,7 @@ class PedestalAnalysis(PadSubAnalysis):
 
     @save_pickle(suf_args='all')
     def get_fit(self, name=None, bin_scale=None, cut=None, _redo=False):
-        return self.draw_disto_fit(name, bin_scale, cut, _redo, show=False, prnt=False)
+        return self.draw_dist_fit(name, bin_scale, cut, _redo, show=False, prnt=False)
 
     def get(self, par=1, name=None, bin_scale=None, cut=None, redo=False):
         return self.get_fit(name, bin_scale, cut, _redo=redo)[par]
@@ -133,21 +133,22 @@ class PedestalAnalysis(PadSubAnalysis):
         h = self.get_dist(sig, bin_scale, cut, _redo=redo, **kwargs)
         return self.Draw.distribution(h, **prep_kw(kwargs, file_name=f'{prefix}PedestalDistribution'))
 
-    def draw_disto_fit(self, name=None, bin_scale=None, cut=None, redo=False, draw_cut=False, prefix='', **kwargs):
-        cut = self.Cut.generate_custom(exclude='ped sigma') if draw_cut and cut is None else self.Cut(cut)
-        h = self.draw_distribution(name, bin_scale, cut, redo, prefix, **kwargs)
+    def draw_dist_fit(self, name=None, bin_scale=None, cut=None, redo=False, draw_cut=False, prefix='', **dkw):
+        cut = self.Cut.exclude('ped sigma', name='!ped') if draw_cut and cut is None else self.Cut(cut)
+        h = self.draw_distribution(name, bin_scale, cut, redo, prefix, **dkw)
         fit = fit_fwhm(h, show=True)
         Draw.make_f('f', 'gaus', -100, 100, pars=fit.Pars, npx=1000, line_style=2).Draw('same')
         h.GetFunction('gaus').Draw('same')
         self.__draw_cut(fit, draw_cut)
         format_statbox(h, fit=True, all_stat=True, form='.2f')
-        self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), **kwargs)
+        self.Draw.save_plots('PedestalDistributionFit{}'.format(cut.GetName()), **dkw)
         return fit
 
     def __draw_cut(self, fit, show=True):
         if show:
             xmin, xmax = fit[1] + fit[2] * self.Cut.get_ped_sigma() * array([-1, 1])
-            b = Draw.box(xmin.n, -10, xmax.n, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            b = Draw.box(-1e3, -10, xmin.n, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.1)
+            Draw.box(xmax.n, -10, 1e3, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.1)
             self.Draw.legend([b], [f'cut ({self.Cut.get_ped_sigma()} sigma)'], 'lf', y2=.54, margin=.45, w=.3)
 
     def draw_pulse_height(self, name=None, rel_t=False, show=True):

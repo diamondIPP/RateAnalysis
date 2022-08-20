@@ -51,7 +51,7 @@ class PadAnalysis(DUTAnalysis):
 
     @quiet
     def save_plots(self, print_link=True):
-        self.Pedestal.draw_disto_fit(show=False)
+        self.Pedestal.draw_dist_fit(show=False)
         self.Pulser.draw_pulse_height(show=False)
         self.Pulser.draw_distribution_fit(show=False)
         self.Pulser.draw_pedestal_fit(show=False)

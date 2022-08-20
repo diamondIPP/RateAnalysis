@@ -213,7 +213,7 @@ class PulserAnalysis(PadSubAnalysis):
 
     def draw_pedestal_fit(self, beam_on=True, redo=False, **kwargs):
         kwargs = prep_kw(kwargs, prefix='Pulser')
-        return self.Ana.Pedestal.draw_disto_fit(name=self.PedestalName, cut=self.Ana.Cut.get_pulser(beam_on=beam_on)(), redo=redo, **kwargs)
+        return self.Ana.Pedestal.draw_dist_fit(name=self.PedestalName, cut=self.Ana.Cut.get_pulser(beam_on=beam_on)(), redo=redo, **kwargs)
 
     def compare_pedestal(self, show=True):
         histos = [self.Ana.Pedestal.draw_distribution(show=False), self.draw_pedestal(show=False)]
