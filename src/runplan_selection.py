@@ -291,7 +291,7 @@ class DiaScans(Analysis):
         irrads = lambda x: irr2str(x.Irradiation) if irr else ''
         dut = choose(dut, len(set(self.get_dut_names())) > 1)
         duts = lambda x: x.DUT.full_name(x.TCString) if dut else ''
-        tcs = lambda x: tc2str(x.TCString, short=False) if tc and not dut else ''
+        tcs = lambda x: tc2str(x.TCString, short=False) if tc else ''
         return array([w for i in self.Info for w in [duts(i), biases(i), tcs(i), irrads(i)] if w])
 
     def make_legend(self, g, dut=None, tc=None, irr=False, bias=True, custom=False, **kw):
