@@ -509,18 +509,19 @@ class PadAnalysis(DUTAnalysis):
         x, y = self.get_bucket_ph(cut=cut), self.get_ph_values(cut=cut)
         self.Draw.histo_2d(x, y, **prep_kw(dkw, y_tit='Signal Pulse Height [mV]', x_tit='Bucket 2 Pulse Height [mV]', file_name='PHvB2', logz=True))
 
-    def draw_b2_vs_ph(self, cut=None, draw_cut=True, draw_fit=False, use_wf_int=False, redo=False, **dkw):
+    def draw_b2_vs_ph(self, cut=None, draw_cut=True, draw_fit=False, use_wf_int=False, xmin=20, redo=False, **dkw):
         cut = self.Cut.no_bucket(cut)
         x, y = self.get_wf_phs(cut, redo) if use_wf_int else (self.get_ph_values(cut=cut), self.get_bucket_ph(cut=cut))
         h = self.Draw.histo_2d(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', logz=True))
         self.draw_b2_cut(h, color=1) if draw_cut and not draw_fit else do_nothing()
-        self.draw_b2_fit(c=get_last_canvas()) if draw_fit else do_nothing()
+        self.draw_b2_fit(c=get_last_canvas(), xmin=xmin) if draw_fit else do_nothing()
         self.Draw.save_plots('BucketPH')
 
-    def draw_b2_fit(self, c=None, n=100):
+    def draw_b2_fit(self, c=None, n=100, xmin=20):
         fit, (m, s) = self.Cut.get_fb2(), self.Pedestal()
-        x = linspace(0, 500, n)
-        self.Draw.graph(x, [ufloat(fit(i), 5 * s + abs(m)) for i in x], canvas=c, fill_color=2, color=2, draw_opt='le3', lw=2, opacity=.4)  # add also mean because ped is subtracted from signal
+        x = linspace(xmin, 500, n)
+        choose(c, get_last_canvas).cd()
+        Draw.make_tgraph(x, [ufloat(fit(i), 5 * s + abs(m)) for i in x], fill_color=2, color=2, lw=2, opacity=.4).Draw('le3')  # add also mean because ped is subtracted from signal
 
     def draw_b2_cut(self, h, draw_opt='same', **dkw):
         fit, (m, s) = self.Cut.get_b2_fit(), self.Pedestal()
@@ -532,12 +533,16 @@ class PadAnalysis(DUTAnalysis):
         Draw.legend([b, lv, f], ['excluded', 'sig ped + 4#sigma', 'b2 ped + 4#sigma'], ['f', 'l', 'l'], y2=.822)
         format_statbox(h, entries=True, w=.25)  # draw above cut
 
-    def draw_b2_profile(self, cut=None, draw_fit=False, **dkw):
-        cut = self.get_event_cut(Cut.to_string(self.Cut() if cut is None else cut))
+    def draw_b2_profile(self, cut=None, draw_fit=False, xmin=20, **dkw):
+        cut = self.get_event_cut(self.Cut.no_bucket(cut))
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
-        p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]', show=False))
-        self.draw_b2_fit(get_last_canvas()) if draw_fit else do_nothing()
-        return self.Draw(p, draw_opt='same', file_name='B2Profile')
+        p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]'))
+        if draw_fit:
+            self.draw_b2_fit(get_last_canvas(), xmin=xmin)
+            p.Fit('pol2', 'qs0', '', 50, 250)
+            format_statbox(p, fit=True, entries=True, left=True)
+            self.Draw.save_plots('B2Profile')
+        return p
 
     def draw_bucket_fraction(self, redo=False, **dkw):
         cuts = {key: value for key, value in list(self.Cut.ConsecutiveCuts.items()) if 'bucket' not in key}
