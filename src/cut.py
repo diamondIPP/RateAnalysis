@@ -431,7 +431,7 @@ class Cut(SubAnalysis):
     @quiet
     def draw_means(self, short=False, cuts=None, names=None, normalise=True, redo=False, **dkw):
         cuts, labels = choose(cuts, list(self.get_consecutive(short).values())), choose(names, self.get_consecutive(short).keys())
-        self.Ana.PBar.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
+        PBAR.start(len(cuts), counter=True) if redo or not file_exists(self.make_simple_pickle_path('Fit', f'{cuts[-1].GetName()}_1', 'PH')) else do_nothing()
         x, y = arange(len(cuts)), array([self.Ana.get_pulse_height(cut=cut, redo=redo) for cut in cuts])
         y /= y[-1] if normalise else 1
         ytit = {'y_tit': 'Relative Pulse Height' if normalise else self.Ana.PhTit}
