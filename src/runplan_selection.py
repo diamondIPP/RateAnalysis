@@ -548,6 +548,11 @@ class DiaScans(Analysis):
         x_range, y_range = [.5 * min(x).n, 1.2 * max(x).n], [.5 * min(y).n, 1.2 * max(y).n]
         format_histo(mg, draw_first=True, y_tit='Peak Flux [kHz/cm^{2}] ', x_tit='FAST-OR Flux [kHz/cm^{2}]', x_range=x_range, y_off=1.8, y_range=y_range)
         self.Draw(mg, 'PeakFluxes{}'.format(self.Name), draw_opt='a', leg=leg, show=show, lm=.13)
+
+    def draw_purity(self, avrg=False, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_purity, PickleInfo('Purity'), redo=redo, avrg=avrg, show=False)
+        mg = self.Draw.multigraph(g, 'Purity', show=False)
+        self.Draw(mg, **prep_kw(dkw, leg=self.make_legend(g, **dkw), **self.get_x_args(), y_range=[0, 105], file_name='Purity'))
     # endregion DRAWING
     # ----------------------------------------
 
