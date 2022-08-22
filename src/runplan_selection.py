@@ -570,8 +570,11 @@ class DiaScans(Analysis):
         self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
         self.Draw.save_plots('TPRatios')
 
+    def snr(self, redo=False):
+        return array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))[:, 0]
+
     def draw_snr(self, redo=False, **dkw):
-        x, y = self.get_x(irr=True), array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))
+        x, y = self.get_x(irr=True), self.snr(redo)
         return self.Draw.graph(x, y[:, 0], **prep_kw(dkw, **self.get_x_args(vs_irrad=True), y_tit='SNR', file_name='SNR'))
 
     def draw_sat_diff(self, redo=False, **dkw):
