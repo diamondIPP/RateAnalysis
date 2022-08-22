@@ -534,7 +534,7 @@ class PadAnalysis(DUTAnalysis):
         format_statbox(h, entries=True, w=.25)  # draw above cut
 
     def draw_b2_profile(self, cut=None, draw_fit=False, xmin=20, **dkw):
-        cut = self.get_event_cut(self.Cut.no_bucket(cut))
+        cut = self.get_event_cut(self.Cut.no_bucket() if cut is None else Cut.to_string(cut))
         x, y = self.get_tree_vec(self.get_raw_signal_var())[cut], self.get_tree_vec(self.get_b2_var())[cut]
         p = self.Draw.profile(x, y, **prep_kw(dkw, x_tit='Signal Pulse Height [mV]', y_tit='Bucket 2 Pulse Height [mV]'))
         if draw_fit:
