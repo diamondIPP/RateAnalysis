@@ -258,6 +258,9 @@ class AnalysisCollection(Analysis):
     def flux_strings(self, prec=0, runs=None):
         return flux2str(uarr2n(self.get_fluxes(runs)), prec)
 
+    def bias_strings(self, root=True):
+        return bias2str([ana.DUT.Bias for ana in self.Analyses], root)
+
     @save_pickle('Splits', sub_dir='Flux')
     def get_flux_splits(self, corr=True, w=.1, n=50, _redo=False):
         return self.draw_flux_splits(corr, w, n, show=False)

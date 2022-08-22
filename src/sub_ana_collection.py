@@ -34,6 +34,9 @@ class SubCollection(Analysis):
     def flux_strings(self, prec=0, runs=None):
         return self.Ana.flux_strings(prec, runs)
 
+    def bias_strings(self, root=True):
+        return self.Ana.bias_strings(root)
+
     def get_x(self, vs_time=False, vs_irrad=False, avrg=False):
         return self.Ana.get_x_var(vs_time, vs_irrad, avrg)
 
