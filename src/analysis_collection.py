@@ -549,9 +549,11 @@ class AnalysisCollection(Analysis):
         var, unit, tit = [ph_var, 'FWHM', f'FWHM/{ph_var}'][arg], f' {self.PhUnit}' if arg < 2 else '', [ph_var, 'Full Width Half Maximum', 'Uniformity'][arg]
         g = self.Draw.graph(x[y != 0], y[y != 0], **prep_kw(dkw, title=tit, y_tit=f'{var}{unit}', **self.get_x_args(t, vs_irrad=vs_irrad, draw=True)))
         if vs_irrad and arg == 2:
-            g_scvd = self.Draw.make_tgraph([0, 10], [ufloat(0.27, .01)] * 2, color=634, fill_color=634, opacity=.2)
+            u_scvd = self.MainConfig.get_ufloat('Parameters', 'uniformity scCVD')
+            Draw.make_tgraph([0], [u_scvd], color=634, marker=21).Draw('p')
+            g_scvd = self.Draw.make_tgraph([0, 10], [u_scvd] * 2, color=634, fill_color=634, opacity=.2, marker=21)
             g_scvd.Draw('le3')
-            self.Draw.legend([g, g_scvd], ['pCVD', 'scCVD'], ['p', 'lf'])
+            self.Draw.legend([g, g_scvd], ['pCVD', 'scCVD'], ['p', 'plf'])
         self.Draw.save_plots(fname('Uni' if arg == 2 else var, avrg, t))
         return g
 
