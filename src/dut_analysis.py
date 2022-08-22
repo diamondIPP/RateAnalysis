@@ -322,8 +322,8 @@ class DUTAnalysis(Analysis):
     def draw_angle(self, *args, **kwargs):
         return self.Tracks.draw_angle(*args, **kwargs)
 
-    def draw_angles(self, *args, **kwargs):
-        return self.Tracks.draw_angles(*args, **kwargs)
+    def draw_angles(self, **dkw):
+        return self.Tracks.draw_angles(**dkw)
 
     def draw_occupancies(self, *args, **kwargs):
         return self.Tel.draw_occupancies(*args, **kwargs)
@@ -656,6 +656,13 @@ class DUTAnalysis(Analysis):
         self.info(f'Uniformity: {value:.2f}')
         self.Draw.save_plots('Uniformity', **kwargs)
         return m, fwhm, value
+
+    @staticmethod
+    def calc_uniformity(h: TH1F, noise):
+        fwhm, fwc = get_fwhm(h), get_fw_center(h)
+        fwhm = usqrt(fwhm ** 2 - noise ** 2) if fwhm > noise else usqrt((noise + ufloat(1, 1)) ** 2 - noise ** 2)   # correct fwhm for noise
+        fwhm = add_err(fwhm, 2 * h.GetBinWidth(1))  # add error for false estimate
+        return fwc, fwhm, fwhm / fwc
 
     def model_trap_number(self, f=1000, t=1, max_traps=10000, steps=20, show=True):
         filled_traps = zeros(steps, dtype=int)
