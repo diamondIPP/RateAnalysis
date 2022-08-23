@@ -64,10 +64,10 @@ class PadCollection(AnalysisCollection):
 
     # ----------------------------------------
     # region GET
-    def get_pulse_heights(self, bw=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False, peaks=False, flux_sort=False, gain_corr=False, e_sys=None):
-        picklepath = None if peaks else self.get_pickle_path('Fit', make_suffix(bw, 20, corr), 'PH')
+    def get_pulse_heights(self, bw=None, redo=False, runs=None, corr=True, err=True, pbar=True, avrg=False, peaks=False, flux_sort=False, gain_corr=False, e_sys=None, buc=True):
+        picklepath = None if peaks else self.get_pickle_path('Fit', make_suffix(bw, 20, corr, buc), 'PH')
         pbar = False if peaks else pbar
-        x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, False, picklepath, bw=bw, redo=redo, corr=corr, peaks=peaks, flux_sort=flux_sort)
+        x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, pbar, False, picklepath, bw=bw, redo=redo, corr=corr, buc=buc, peaks=peaks, flux_sort=flux_sort)
         x *= ufloat_fromstr(self.MainConfig.get_value('MAIN', 'gain ratio', default='1')) if gain_corr and self.DUT.Bias < 0 else 1
         # https://physics.stackexchange.com/questions/23441/how-to-combine-measurement-error-with-statistic-error
         x = self.add_sys_error(x, e_sys) if err else x  # add sys error to all runs
