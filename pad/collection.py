@@ -75,7 +75,7 @@ class PadCollection(AnalysisCollection):
         return self.add_tp_error(x, avrg) if self.FirstAnalysis.Cut.has_tp else x  # add tp error only to final values as it is one-directional and does not average out
 
     def add_sys_error(self, x, e_sys=None):
-        return add_perr(x, choose(e_sys, self.get_sys_error))
+        return add_perr(x, choose(e_sys, self.sys_error))
 
     def add_tp_error(self, x, avrg=False):
         return [add_asym_error(ix, 0, ix.n * r / (1 - r)) for ix, r in zip(x, self.tp_ratios(avrg))]

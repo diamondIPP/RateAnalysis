@@ -3,12 +3,13 @@ from ROOT import THStack, TF1, TMath
 from numpy import sort, log, argmin, argmax
 from uncertainties.umath import sqrt as usqrt  # noqa
 
+import plotting.latex as tex
+from helpers.utils import *
+from plotting.draw import *
 from src.analysis import Analysis
 from src.currents import Currents
 from src.dut_analysis import DUTAnalysis, Bins, reload_tree
 from src.run_selection import RunPlan, RunSelection
-from plotting.draw import *
-from helpers.utils import *
 
 
 class AnalysisCollection(Analysis):
@@ -66,6 +67,9 @@ class AnalysisCollection(Analysis):
     def __exit__(self, exc_type, exc_val, exc_tb):
         from plotting.save import SaveDraw
         SaveDraw.File = None
+
+    def i(self):
+        print(f'{self.DUT} @ {tex.si(self.DUT.Bias, fmt="+.0f", unt="V")[0]}, Runplan {self.Ensemble.Name}, {tc2str(self.TCString, short=False)}.')
 
     # ----------------------------------------
     # region RATE DEPENDENCE PARAMETERS
@@ -346,8 +350,8 @@ class AnalysisCollection(Analysis):
         values = self.get_signal_spread(peaks, redo)
         return self.get_low_flux_std(flux) if values is None else mean_sigma(values, err=False)[1]
 
-    def get_sys_error(self):
-        return self.MainConfig.get_value('MAIN', 'systematic error', dtype=float)
+    def sys_error(self):
+        return self.MainConfig.get_value('Parameters', 'systematic error', dtype=float)
 
     def calc_max_spread(self, redo=False):
         s = array([(max(g) - min(g)) / mean_sigma(g)[0].n for g in split(self.get_pulse_heights(redo=redo, err=False, flux_sort=True), self.get_flux_splits()) if g.size > 1])

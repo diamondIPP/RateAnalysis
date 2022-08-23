@@ -33,7 +33,7 @@ class PixCollection(AnalysisCollection):
     def get_pulse_heights(self, bin_width=None, redo=False, runs=None, avrg=False, flux_sort=False, err=False, **kw):
         picklepath = self.get_pickle_path('Fit', sub_dir='PH')
         x = self.get_values('pulse heights', self.Analysis.get_pulse_height, runs, avrg=avrg, picklepath=picklepath, bin_size=bin_width, redo=redo, flux_sort=flux_sort)
-        return array([ufloat(ph.n, sqrt(ph.s ** 2 + ((self.get_sys_error() if err else 0) * ph.n) ** 2)) for ph in x])
+        return array([ufloat(ph.n, sqrt(ph.s ** 2 + ((self.sys_error() if err else 0) * ph.n) ** 2)) for ph in x])
 
     def get_efficiencies(self, suf=None, avrg=False, redo=False):
         return super(PixCollection, self).get_efficiencies('0', avrg, redo)
