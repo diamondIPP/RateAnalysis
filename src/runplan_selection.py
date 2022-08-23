@@ -565,9 +565,7 @@ class DiaScans(Analysis):
 
     def draw_tp_ratios(self, redo=False, **dkw):
         g = self.get_values(PadCollection.draw_avrg_tp_ratio, PickleInfo('TPRatio'), redo=redo, show=False, fit=False)
-        self.Draw.multigraph(g, 'TPRatios', **prep_kw(dkw, **self.Ana.get_x_args(draw=True)))
-        self.make_legend(g, dut=True, tc=True, **dkw).Draw('same')
-        self.Draw.save_plots('TPRatios')
+        self.Draw.multigraph(g, 'TPRatios', **prep_kw(dkw, leg=self.p_leg(g, dut=True, tc=True, left=True, scale=1.2), file_name='TPRatios', **self.Ana.get_x_args(draw=True)))
 
     def snr(self, redo=False):
         return array(self.get_values(PadCollection.get_snr, PickleInfo('SNR'), redo=redo))[:, 0]
