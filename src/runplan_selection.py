@@ -11,7 +11,7 @@ import plotting.latex as latex
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
-from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox, make_ufloat
+from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
 from src.analysis import *
 from src.binning import Bins
 from src.dut import PixelDUT
@@ -209,10 +209,6 @@ class DiaScans(Analysis):
     def get_rp_pulse_heights(self, sel, corr=True, redo=False):
         return self.get_rp_values(sel, self.Ana.get_pulse_heights, PickleInfo('PHVals', corr), redo=redo, corr=corr)
 
-    def get_noise_spread(self, redo=False):
-        noise = array(self.get_pedestals(redo), object)[:, 1]
-        return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
-
     def get_mean_uniformities(self, use_fcw=True, redo=False, low=False, high=False):
         pickle_info = PickleInfo('Uni', low, high, use_fcw)
         return self.get_values(self.Ana.get_mean_uniformity, pickle_info, redo=redo, high_flux=high, low_flux=low)
@@ -301,6 +297,9 @@ class DiaScans(Analysis):
         if custom:
             return self.Draw.legend(g, custom, show=False, **prep_kw(kw, styles='p'))
         return self.Draw.legend(alternate(g, zeros((cols - 1, len(g)), 'i')), tits, show=False, **prep_kw(kw, scale=1, cols=cols, w=(.2 if dut else .25) + .15 * (cols - 1), styles=styles))
+
+    def p_leg(self, g, dut=None, tc=None, irr=False, bias=True, custom=False, **kw):
+        return partial(self.make_legend, g=g, dut=dut, tc=tc, irr=irr, bias=bias, custom=custom, **kw)
 
     def make_info_legend(self, i, g, irr, c=None, bias=True):
         tits = self.leg_titles(irr, bias=bias)
@@ -633,18 +632,22 @@ class DiaScans(Analysis):
 
     # ----------------------------------------
     # region PEDESTAL
-    def get_pedestals(self, avrg=True, redo=False):
-        return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals'), redo=redo, avrg=avrg)
+    def pedestals(self, avrg=True, redo=False):
+        return self.get_values(PadCollection.get_pedestals, PickleInfo('PedVals', avrg), redo=redo, avrg=avrg)
 
-    def get_noise(self, avrg=True, redo=False):
-        return self.get_values(PadCollection.get_noise, PickleInfo('NoiseVals'), redo=redo, avrg=avrg)
+    def noise(self, avrg=True, redo=False):
+        return self.get_values(PadCollection.get_noise, PickleInfo('NoiseVals', avrg), redo=redo, avrg=avrg)
 
     def get_ped_spreads(self, avrg=True, redo=False):
-        x = self.get_pedestals(avrg, redo)
+        x = self.pedestals(avrg, redo)
         return array([max(i) - min(i) for i in x])
 
+    def get_noise_spread(self, redo=False):
+        noise = array(self.pedestals(redo), object)[:, 1]
+        return mean_sigma([v - mean_sigma(lst)[0] for lst in noise for v in lst])[1]
+
     def get_noise_spreads(self, avrg=True, redo=False):
-        x = self.get_noise(avrg, redo)
+        x = self.noise(avrg, redo)
         return array([max(i) - min(i) for i in x])
 
     def draw_ped_spreads(self, avrg=True, redo=False, **dkw):
@@ -659,20 +662,16 @@ class DiaScans(Analysis):
         x, y = self.get_x(avrg, irr=True), self.get_noise_spreads(avrg, redo)
         return self.Draw.graph(x, y, 'Noise Spreads', **prep_kw(dkw, **self.get_x_args(vs_irrad=True, draw=True), y_tit='Noise Spread [mV]', file_name='NoiseSpread'))
 
-    def draw_pedestals(self, rel=False, redo=False, show=True, irr=True):
-        mg = TMultiGraph('mg_ph', '{dia} Pedestals{b};Flux [kHz/cm^{{2}}]; Pulse Height [mV]'.format(dia=self.DUTName, b=self.get_bias_str()))
-        for i, (values, sel, fluxes) in enumerate(zip(self.get_pedestals(redo), self.Info, self.get_fluxes())):
-            pedestals = array([make_ufloat(*tup) for tup in array(values).T])
-            if rel:
-                pedestals /= array([dic['ph'] for dic in self.get_rp_pulse_heights(sel, redo).values()]) * .01
-            g = Draw.make_tgraph(fluxes, pedestals, color=self.Draw.get_color(self.NPlans))
-            mg.Add(g)
-        legend = self.make_full_legend(mg.GetListOfGraphs(), irr)
-        format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
-        self.Draw(mg, '{}Pedestals'.format(self.Name), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True, show=show)
+    def draw_ped(self, avrg=True, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_pedestals, PickleInfo('GPed', avrg), show=False, avrg=avrg, redo=redo)
+        return self.Draw.multigraph(g, 'Pedestals', **prep_kw(dkw, leg=self.p_leg(g), file_name='Pedestals', **self.get_x_args()))
+
+    def draw_noise(self, avrg=True, redo=False, **dkw):
+        g = self.get_values(PadCollection.draw_noise, PickleInfo('GNoise', avrg), show=False, avrg=avrg, redo=redo)
+        return self.Draw.multigraph(g, 'Noise', **prep_kw(dkw, leg=self.p_leg(g), file_name='Noise', **self.get_x_args()))
 
     def draw_mean_pedestals(self, sigma=False, irr=False, redo=False, show=True):
-        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.get_pedestals(redo)])
+        y = array([mean_sigma(tc_values[1 if sigma else 0])[0] for tc_values in self.pedestals(redo)])
         x = self.get_irradiations(string=False) if irr else arange(y.size)
         g = Draw.make_tgraph(x, y, title='Mean {}'.format('Noise' if sigma else 'Pedestals'), x_tit='Irradation [10^{14} n/cm^{2}]' if irr else 'Run Plan', y_tit='Pulse Height [mV]')
         format_histo(g, y_off=1.2, x_range=ax_range(x, fl=.1, fh=.1) if irr else ax_range(0, y.size - 1, .3, .3), x_off=2.5)

@@ -88,8 +88,14 @@ class PadCollection(AnalysisCollection):
     def get_pedestals(self, runs=None, flux_sort=False, avrg=False, redo=False):
         return self.Pedestal.mean(avrg, flux_sort, runs, redo=redo)
 
+    def draw_pedestals(self, t=False, irr=False, avrg=False, redo=False, **dkw):
+        return self.Pedestal.draw(t, irr, avrg, redo, **dkw)
+
     def get_noise(self, runs=None, flux_sort=False, avrg=False, redo=False):
         return self.Pedestal.noise(avrg, flux_sort, runs, redo=redo)
+
+    def draw_noise(self, t=False, irr=False, avrg=False, redo=False, **dkw):
+        return self.Pedestal.draw_noise(t, irr, avrg, redo, **dkw)
 
     def get_peak_fluxes(self, corr=True, avrg=False, rel=False):
         values = self.get_values('peak Flux', f=self.Analysis.get_peak_flux, pbar=False, prnt=False, avrg=avrg, corr=corr)

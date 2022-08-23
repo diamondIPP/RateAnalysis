@@ -43,11 +43,11 @@ class PedCollection(SubCollection):
 
     def draw(self, t=False, irr=False, avrg=False, redo=False, **dkw):
         x, y = self.get_x(t, irr, avrg), self.mean(avrg, redo=redo)
-        self.Draw.graph(x, y, **prep_kw(dkw, title='Ped', y_tit=self.PhTit, **self.get_x_args(t, vs_irrad=irr), color=810, file_name=fname('Ped', avrg, t, irr)))
+        return self.Draw.graph(x, y, **prep_kw(dkw, title='Ped', y_tit=self.PhTit, **self.get_x_args(t, vs_irrad=irr), color=810, file_name=fname('Ped', avrg, t, irr)))
 
     def draw_noise(self, t=False, irr=False, avrg=False, redo=False, **dkw):
         x, y = self.get_x(t, irr, avrg), self.noise(avrg, redo=redo)
-        self.Draw.graph(x, y, **prep_kw(dkw, title='Noise', y_tit=self.NoiseTit, **self.get_x_args(t, vs_irrad=irr), color=810, file_name=fname('Noise', avrg, t, irr)))
+        return self.Draw.graph(x, y, **prep_kw(dkw, title='Noise', y_tit=self.NoiseTit, **self.get_x_args(t, vs_irrad=irr), color=810, file_name=fname('Noise', avrg, t, irr)))
 
     def draw_dists(self, **dkw):
         h = self.get_plots('pedestal distributions', PedestalAnalysis.get_dist, picklepath=self.get_pickle_path('Dist'), prnt=False)
