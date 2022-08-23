@@ -182,8 +182,8 @@ class PadAnalysis(DUTAnalysis):
         return self.draw_pulse_height(bw, n, sig, cut, corr, show=False, save=False, redo=_redo)[1][0]
 
     @update_pbar
-    def get_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, peaks=False, corr_ph=True, buc=True, redo=False):
-        cut = self.Cut.no_bucket(cut) + self.Cut.generate_trigger_phase()() if not buc else cut
+    def get_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, peaks=False, corr_ph=True, buc=True, tp=False, redo=False):
+        cut = (self.Cut.generate_trigger_phase()() if tp else self.Cut.make('!buc', '')) + self.Cut.no_bucket(cut) if not buc else cut
         return self.Peaks.get_bunch_height() if peaks else self._get_pulse_height(bw, n, sig, cut, corr, _redo=redo)
 
     def correct_ph(self, ph=None, cut=None, corr=True):

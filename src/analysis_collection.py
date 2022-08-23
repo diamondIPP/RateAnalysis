@@ -469,7 +469,7 @@ class AnalysisCollection(Analysis):
         return self.Draw.graph(g, **prep_kw(dkw, **Draw.mode(2 if t else 1), **self.get_x_args(t), gridy=True, leg=leg, file_name=fname('RelPH', avrg, t)))
 
     def draw_avrg_ph(self, bw=None, t=False, i=False, corr=True, err=True, fit=False, redo=False, **dkw):
-        x, y = self.get_x_var(t, i, avrg=True), self.get_pulse_heights(bw, corr=corr, err=err, redo=redo, avrg=True)
+        x, y = self.get_x_var(t, i, avrg=True), self.get_pulse_heights(bw, corr=corr, err=err, redo=redo, avrg=True, **dkw)
         g = self.Draw.graph(x, y, 'AvrPH', y_tit=self.PhTit)
         g.Fit('pol0', 'qs') if fit else do_nothing()
         return self.Draw.graph(g, **prep_kw(dkw, **self.get_x_args(t, vs_irrad=i, draw=True), stats=set_statbox(fit=fit, form='2.1f', stats=fit), file_name=fname('PH', True, t, i)))
