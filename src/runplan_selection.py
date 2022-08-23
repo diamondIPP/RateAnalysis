@@ -690,6 +690,15 @@ class DiaScans(Analysis):
         x, y = self.get_fluxes(avrg=True), self.flux_avrg([add_err(y, ey) for y in self.get_pulse_heights(err=err)])  # rate scans must have the same flux points
         return concatenate(array(x).T), array([iy - mean_sigma(g)[0].n for g in array(y).T for iy in g])
 
+    def mean_max_spread(self):
+        x = self.get_mean_ph()
+        return (max(x) - min(x)) / mean(x)
+
+    def max_spread(self):
+        """ returns: maximum spread of averaged points of similar flux for two rate scans. Both rate scans must have the same flux points."""
+        x = self.get_pulse_heights(err=False, avrg=True)
+        return max(abs(diff(x, axis=0)[0] / mean(x, axis=0)))
+
     @save_pickle('RelSErr', field='Name')
     def calc_rel_sys_error(self, _redo=False):
         """ vary the error of the indiviual ph points such that the avrg measurements of two rate scans agree. """

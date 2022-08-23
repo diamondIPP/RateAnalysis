@@ -349,6 +349,10 @@ class AnalysisCollection(Analysis):
     def get_sys_error(self):
         return self.MainConfig.get_value('MAIN', 'systematic error', dtype=float)
 
+    def calc_max_spread(self, redo=False):
+        s = array([(max(g) - min(g)) / mean_sigma(g)[0].n for g in split(self.get_pulse_heights(redo=redo, err=False, flux_sort=True), self.get_flux_splits()) if g.size > 1])
+        return max(s)
+
     def calc_rel_sys_error_old(self):
         x = self.get_pulse_heights(err=False)
         e_stat, (m, e_full) = mean_sigma([v.s for v in x])[0], mean_sigma(x)
@@ -578,7 +582,7 @@ class AnalysisCollection(Analysis):
     def draw_tconst(self, bw=None, avrg=False, **dkw):
         x, y = self.get_x_var(avrg=avrg), self.get_values('expo fits', self.Analysis.expo_fit, bw=bw, picklepath=self.get_pickle_path('ExpoFit', 3, 'PH'))
         y = self.get_flux_average(y[:, -1]) if avrg else y[:, -1]
-        self.Draw.graph(x, y / 60, **prep_kw(dkw, **self.get_x_args(), y_tit='Time Constant [min]', file_name='TConst'))
+        return self.Draw.graph(x, y / 60, **prep_kw(dkw, **self.get_x_args(), y_tit='Time Constant [min]', file_name='TConst'))
 
     def draw_0fit(self, err=True, ey=0, **dkw):
         x, y = self.subtract_grp_mean(err)
@@ -884,7 +888,7 @@ class AnalysisCollection(Analysis):
         g = self.Draw.graph(x[::2], y, y_tit='Gain Ratio')
         g.Fit('pol0', 'qs') if fit else do_nothing()
         x_args = self.get_x_args(not irr, draw=True, vs_irrad=irr, **{} if irr else {'x_tit': 'Time [YY/MM]', 'tform': '%y/%m'})
-        return self.Draw(g, **prep_kw(dkw, file_name=fname('GainRatio', i=irr), **x_args, stats=set_statbox(fit=fit, form='.3f', center_y=True)))
+        return self.Draw(g, **prep_kw(dkw, file_name=fname('GainRatio', i=irr), **x_args, stats=set_statbox(fit=fit, form='.3f')))
 
 
 def fname(n, avrg=False, t=False, i=False):
