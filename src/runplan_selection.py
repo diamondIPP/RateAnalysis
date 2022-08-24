@@ -49,6 +49,8 @@ class DiaScans(Analysis):
         if self.Info:
             self.show_selection()
         self.print_finished(prnt=verbose)
+        if self.Name == '97':
+            self.insert_dummy(0)
 
     def __str__(self):
         return self.Name
@@ -481,7 +483,7 @@ class DiaScans(Analysis):
             p = Draw.tpad(pos=[x0, y0, 1, y1], margins=[lm, rm, 0, 0], logx=True, gridy=True, gridx=True, fix=True)
             i, ig = i * (2 if both_pol else 1), make_list(ig)
             [format_histo(jg, color=self.Draw.get_color(self.NPlans), marker=markers(i + j, both_pol), markersize=1.5) for j, jg in enumerate(ig)]
-            self.Draw.multigraph(ig, canvas=p, **prep_kw(dkw, **self.get_x_args(), show=False, color=None, gridy=True, lab_size=size, ndivy=504, x_ticks=.15, y_range=[1 - yr, 1 + yr]))
+            self.Draw.multigraph(ig, canvas=p, **prep_kw(dkw, **self.get_x_args(), marker=None, show=False, color=None, gridy=True, lab_size=size, ndivy=504, x_ticks=.15, y_range=[1 - yr, 1 + yr]))
             self.make_info_legend(i, ig[0], irr, p.cd(), bias=False)
             c.cd()
 
