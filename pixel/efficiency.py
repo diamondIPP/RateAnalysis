@@ -18,7 +18,7 @@ class Efficiency(PixAnalysis):
         self.PickleSubDir = 'Efficiency'
 
         self.UseRhit = False
-        self.Cut = deepcopy(self.Cut).remove('rhit' if self.UseRhit else None, ret=True)
+        self.Cut = deepcopy(self.Cut).remove('rhit' if self.UseRhit else None, 'cluster size', ret=True)
 
     def get_values(self, cut=None):
         return self.get_tree_vec(self.get_var(), self.Cut(cut), dtype='?')

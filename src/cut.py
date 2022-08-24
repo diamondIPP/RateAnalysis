@@ -186,8 +186,9 @@ class Cut(SubAnalysis):
     def update(self, name, value=None):
         self.CutStrings.set(name, value)
 
-    def remove(self, name, ret=False):
-        self.CutStrings.remove(name)
+    def remove(self, *name, ret=False):
+        for cut in name:
+            self.CutStrings.remove(cut)
         return self if ret else self.Ana.Bins.remove_pickle()
 
     def set_chi2(self, value):

@@ -1,6 +1,6 @@
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
-from plotting.save import SaveDraw, join, basename, Draw, format_histo, update_canvas, get_last_canvas
+from plotting.save import SaveDraw, join, basename, Draw, format_histo, get_last_canvas
 from helpers.info_legend import AnaInfo
 from os.path import getsize
 from os import getcwd, chdir
@@ -226,8 +226,8 @@ class Analysis(object):
 if __name__ == '__main__':
     aparser = ArgumentParser()
     aparser.add_argument('tc')
-    # aparser.add_argument('-pix', action='store_false')  # default pixel
-    aparser.add_argument('-pix', action='store_true')  # default pad
+    aparser.add_argument('-pix', action='store_false')  # default pixel
+    # aparser.add_argument('-pix', action='store_true')  # default pad
     pargs = aparser.parse_args()
 
     Analysis.go2data(pargs.tc, not pargs.pix)

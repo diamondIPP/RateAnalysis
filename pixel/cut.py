@@ -1,7 +1,7 @@
 from helpers.utils import *
 from src.cut import Cut, CutString, TCut
 from src.binning import Bins
-from plotting.draw import fit_fwhm
+from plotting.draw import fit_fwhm, uarr2n
 
 
 class PixCut(Cut):
@@ -21,7 +21,8 @@ class PixCut(Cut):
         self.CutStrings.register(self.generate_trigger_phase(), level=30)
         # self.CutStrings.register(self.generate_masks(), 61)
         self.CutStrings.register(self.generate_ncluster(), 80)
-        self.CutStrings.register(self.generate_rhit(), 81)
+        self.CutStrings.register(self.generate_cluster_size(), 81)
+        self.CutStrings.register(self.generate_rhit(), 82)
 
     def generate_fiducial(self, center=True, x=None, y=None, name=None, fid_name='fiducial', xvar=None, yvar=None):
         return super(PixCut, self).generate_fiducial(center, x, y, name, fid_name, xvar, yvar)
@@ -42,8 +43,11 @@ class PixCut(Cut):
         cut = f'((sres_x[{self.N}] - {mx}) / {sx})  ** 2 + ((sres_y[{self.N}] - {my}) / {sy}) ** 2 <= {n ** 2}'
         return CutString('rhit', f'({cut} || sres[{self.N}] == -999)', f'(rx/{sx * 1e4:.0f})² + (ry/{sy * 1e4:.0f})² < {n}² [um] ({n} sigma)')
 
-    def generate_ncluster(self, max_n=1):
-        return CutString('ncluster', f'n_clusters[{self.N}] <= {max_n}', f'number of clusters <= {max_n}')
+    def generate_ncluster(self, nmax=1):
+        return CutString('ncluster', f'n_clusters[{self.N}] <= {nmax}', f'number of clusters <= {nmax}')
+
+    def generate_cluster_size(self, nmax=2):
+        return CutString('cluster size', f'cluster_size[{self.N}] <= {nmax}', f'cluster size <= {nmax}')
     # endregion GENERATE
     # ----------------------------------------
 
