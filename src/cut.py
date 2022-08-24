@@ -245,7 +245,7 @@ class Cut(SubAnalysis):
         return CutString(f'chi2 {m}', Cut.sum(f'chi2_{m} >= 0', f'chi2_{m} < {v}'), description=f'chi2 in {m} < {v:1.1f} ({q:d}% quantile)')
 
     def generate_track_angle(self, mode=0, sigma=None):
-        n = self.get_config('track angle sigma', dtype=float, default=sigma, required=True)
+        n = choose(sigma, self.get_config('track angle sigma', dtype=float, required=True))
         m, s = self.calc_angle(mode)
         amin, amax = m - n * s, m + n * s
         string = f'angle_{Cut.M[mode]} > {amin} && angle_{Cut.M[mode]} < {amax}'

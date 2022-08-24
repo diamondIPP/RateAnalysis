@@ -113,6 +113,13 @@ class PixAnalysis(DUTAnalysis):
     # ----------------------------------------
 
     # ----------------------------------------
+    # region ALIASES
+    def draw_efficiency_map(self, *args, **kwargs):
+        return self.Efficiency.draw_map(*args, **kwargs)
+    # endregion ALIASES
+    # ----------------------------------------
+
+    # ----------------------------------------
     # region OCCUPANCY
     def draw_occupancy(self, roc=None, name=None, cluster=True, tel_coods=False, cut='', **dkw):
         """ draw hitmap or cluster map """
@@ -258,7 +265,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_in(self, mx, my, ox=0, oy=0, nbins=None, cut=None, max_angle=None, zvar=None, **dkw):
         cut = self.Cut(cut) if max_angle is None else self.Cut.generate_custom(['track angle x', 'track angle y'], add=self.Cut.get_track_angle(max_angle), prnt=False)
-        x, y, z_ = self.get_mod_vars(mx / Plane.PX * 1e-3, my / Plane.PY * 1e-3, ox, oy, zvar, cut)
+        x, y, z_ = self.get_mod_vars(mx / Plane.PX * 1e-3, my / Plane.PY * 1e-3, ox, oy, zvar=zvar, cut=cut)
         n = choose(nbins, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
         bins = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
@@ -302,8 +309,14 @@ class PixAnalysis(DUTAnalysis):
 
     # ----------------------------------------
     # region TRIGGER PHASE
-    def draw_trigger_phase(self, cut=None, **kwargs):
-        self.Tel.draw_trigger_phase(dut=True, cut=cut, **kwargs)
+    def draw_trigger_phase(self, cut=None, draw_cut=False, **dkw):
+        self.Tel.draw_trigger_phase(dut=True, cut=cut, save=False, wleg=.25, **dkw)
+        if draw_cut:
+            tmin, tmax = self.Cut.load_dut_config('trigger phase')
+            b = Draw.box(-1, 0, tmin - .5, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            Draw.box(tmax + .5, 0, 11, 1e7, line_color=2, width=2, fillcolor=2, style=7, opacity=.2)
+            Draw.legend([b], [f'excluded events'], 'lf', y2=.83, margin=.25)
+        self.Draw.save_plots('TriggerPhase')
 
     def draw_trigger_phase_offset(self, cut=None, **dkw):
         x, y = self.get_tree_vec(self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
@@ -352,10 +365,14 @@ class PixAnalysis(DUTAnalysis):
         x, y, cs = self.get_tree_vec(['angle_x', 'angle_y', f'cluster_size[{self.N}]'], self.Cut.exclude('track angle x', 'track angle y'))
         self.Draw.prof2d(x, y, cs, **prep_kw(dkw, x_tit='Angle X', y_tit='Angle Y', z_tit='Cluster Size', z_range=[1, find_range(cs, q=.1)[-1]], file_name='CSAngle'))
 
-    def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
+    @save_pickle('CSMap', suf_args='all')
+    def get_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False):
         x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=pixel and res is None) + [f'cluster_size[{self.N}]'], self.Cut.no_fid(fid, cut) + self.Cut.get_ncluster(1))
-        h = self.Draw.prof2d(x, y, z_, **prep_kw({}, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False))
-        return self.Draw.prof2d(h, **prep_kw(dkw, **self.Tracks.ax_tits(pixel), z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53))
+        return self.Draw.prof2d(x, y, z_, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False, **self.Tracks.ax_tits(pixel))
+
+    def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
+        h = self.get_cluster_size_map(res, cut, pixel, fid)
+        return self.Draw.prof2d(h, **prep_kw(dkw, z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53, file_name='ClusterSize'))
     # endregion CLUSTER SIZE
     # ----------------------------------------
 
