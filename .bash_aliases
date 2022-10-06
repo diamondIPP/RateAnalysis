@@ -14,3 +14,5 @@ alias Align='ipython -i ~/software/RateAnalysis/pixel/alignment.py -- $@'
 
 source $RATEDIR/../root6/rootinstall/bin/thisroot.sh
 source $RATEDIR/venv/bin/activate
+
+export PYTHONPATH=$PYTHONPATH:$RATEDIR
