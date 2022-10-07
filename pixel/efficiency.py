@@ -3,7 +3,7 @@
 # created on December 17th 2021 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array
+from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array, count_nonzero
 from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x, set_statbox
 from plotting.fit import Erf, Draw
 from src.binning import Bins, make_bins, Plane
@@ -31,6 +31,11 @@ class Efficiency(PixAnalysis):
     @save_pickle(suf_args='all', field='UseRhit')
     def get(self, cut=None, _redo=False):
         return calc_eff(values=self.get_values(cut))
+
+    @save_pickle('NK', field='UseRhit')
+    def n_k(self, _redo=False):
+        x = self.get_values()
+        return count_nonzero(x), x.size
 
     def draw(self, cut=None, bin_size=None, rel_time=False, **dkw):
         x, e = self.get_tree_vec([self.get_t_var(), self.get_var()], choose(cut, self.Cut()))

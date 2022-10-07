@@ -434,6 +434,12 @@ class DiaScans(Analysis):
         self.draw_ef_axis(mg, ef_ax)
         self.Draw.save_plots(fname('PH', avrg))
 
+    def draw_rel_ph(self, avrg=False, redo=False, **dkw):
+        x, y = self.get_x(avrg, redo=redo), self.get_pulse_heights(avrg, redo)
+        y = [iy / max(iy).n for iy in y]
+        g = [self.Draw.graph(ix, iy, title='PH', y_tit=self.Ana.PhTit) for ix, iy in zip(x, y)]
+        return self.Draw.multigraph(g, 'Pulse Heights', leg=self.p_leg(g, **dkw), **prep_kw(dkw, **self.get_x_args(y_tit='Relative Pulse Height'), draw_opt='pl', file_name='RelPH'))
+
     def draw_scaled_pulse_heights(self, avrg=False, redo=False, yr=None, **dkw):
         x, y = self.get_x(avrg, redo=redo), self.get_scaled_pulse_heights(avrg, redo)
         g = [self.Draw.graph(ix, iy, title='PH', y_tit='Relative Pulse Height', marker=markers(i), show=False) for i, (ix, iy) in enumerate(zip(x, y))]
@@ -595,6 +601,10 @@ class DiaScans(Analysis):
         mg = self.Draw.multigraph(g, 'Eff', leg=self.make_legend(g, **dkw), **prep_kw(dkw, **self.get_x_args(draw=True, e_field=e_field), draw_opt='pl', y_range=[0, 105], tm=.116 if ef_ax else None))
         self.draw_ef_axis(mg, ef_ax)
         self.Draw.save_plots(fname('Efficiency', avrg))
+
+    def draw_avrg_efficiency(self, redo=False, **dkw):
+        g = self.get_values(PixCollection.draw_avrg_efficiencies, PickleInfo('AvrEff'), show=False, redo=redo)
+        return self.Draw.multigraph(g, 'Pedestals', **prep_kw(dkw, leg=self.p_leg(g, **dkw), file_name='AvrEff', **self.get_x_args(), gridy=True))
 
     def draw_cluster_size(self, avrg=False, e_field=False, dut=False, redo=False, **dkw):
         g = [self.Draw.graph(x, y[:, 0], title='Cluster Sizes', y_tit='Cluster Size') for x, y in zip(self.get_x(avrg, e_field), self.get_cluster_size(avrg, redo))]

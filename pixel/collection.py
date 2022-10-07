@@ -5,7 +5,8 @@
 # --------------------------------------------------------
 
 from src.analysis_collection import AnalysisCollection, fname
-from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw, ufloat, sqrt, quiet
+from pixel.analysis import PixAnalysis, init_argparser, array, prep_kw, ufloat, sqrt, quiet, split
+from plotting.utils import calc_eff
 
 
 class PixCollection(AnalysisCollection):
@@ -38,6 +39,10 @@ class PixCollection(AnalysisCollection):
     def get_efficiencies(self, suf=None, avrg=False, redo=False):
         return super(PixCollection, self).get_efficiencies('0', avrg, redo)
 
+    def avrg_efficiecies(self, redo=False):
+        k, n = self.get_values('n k', PixAnalysis.eff_n_k, picklepath=self.get_pickle_path('NK', '0', 'Efficiency'), redo=redo, flux_sort=True).T
+        return array([calc_eff(sum(i), sum(j)) for i, j in zip(split(k, self.get_flux_splits()), split(n, self.get_flux_splits()))])
+
     def get_cluster_sizes(self, avrg=False, redo=False):
         return self.get_values('cluster sizes', self.Analysis.get_cluster_size, None, 1, avrg, self.get_pickle_path('CS', '', 'Telescope', self.N), redo=redo)
     # endregion GET
@@ -46,6 +51,10 @@ class PixCollection(AnalysisCollection):
     def draw_efficiencies(self, avrg=False, t=False, redo=False, **dkw):
         x, y = self.get_x_var(t, avrg=avrg), self.get_efficiencies(avrg=avrg, redo=redo)
         return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(t, draw=True), draw_opt='alp', file_name=fname('Efficiencies', avrg, t)))
+
+    def draw_avrg_efficiencies(self, redo=False, **dkw):
+        x, y = self.get_x_var(avrg=True), self.avrg_efficiecies(redo=redo)
+        return self.Draw.graph(x, y, 'Hit Efficiencies', **prep_kw(dkw, y_tit='Hit Efficiency [%]', **self.get_x_args(), draw_opt='alp', file_name='EfficienciesAvr'))
 
     def draw_cluster_sizes(self, avrg=False, t=False, redo=False, **dkw):
         x, y = self.get_x_var(t, avrg=avrg), self.get_cluster_sizes(avrg, redo)

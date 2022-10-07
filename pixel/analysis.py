@@ -109,6 +109,9 @@ class PixAnalysis(DUTAnalysis):
 
     def get_efficiency(self, redo=False):
         return self.Efficiency.get(_redo=redo)
+
+    def eff_n_k(self, redo=False):
+        return self.Efficiency.n_k(_redo=redo)
     # endregion GET
     # ----------------------------------------
 
