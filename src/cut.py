@@ -142,8 +142,8 @@ class Cut(SubAnalysis):
     def get_fiducial_area(self):
         return poly_area(*self.load_fiducial())
 
-    def get_fid(self, scale=10):
-        cut = get_object('fid{}'.format(self.Run.Number))
+    def get_fid(self, scale=10, name=None):
+        cut = get_object(choose(name, f'fid{self.Run.Number}'))
         if cut:
             cut = deepcopy(cut)
             cut.SetName('fid{}{}'.format(self.Run.Number, scale))
