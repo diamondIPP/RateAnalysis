@@ -13,3 +13,4 @@ config/soft.ini
 config/main.ini
 venv
 *.egg-info
+*.root
