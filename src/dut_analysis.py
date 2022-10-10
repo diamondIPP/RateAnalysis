@@ -92,6 +92,10 @@ class DUTAnalysis(Analysis):
         if ret_row:
             return rows[0]
         print_table(rows, self.info_header if header else None, prnt=prnt)
+
+    @property
+    def server_save_dir(self):
+        return Path('diamonds', str(self.DUT), self.TCString, str(self.Run))
     # endregion INIT
     # ----------------------------------------
 

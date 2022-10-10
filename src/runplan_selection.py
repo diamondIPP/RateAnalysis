@@ -66,6 +66,10 @@ class DiaScans(Analysis):
         self.Info = insert(self.Info, i, array(self.Info)[i]).tolist()
         self.NPlans = len(self.Info)
 
+    @property
+    def server_save_dir(self):
+        return Path('selections', str(self))
+
     # ----------------------------------------
     # region RATE DEPENDENCE PARS
     def pol0_chi2s(self, redo=False):

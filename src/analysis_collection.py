@@ -71,6 +71,10 @@ class AnalysisCollection(Analysis):
     def i(self):
         print(f'{self.DUT} @ {tex.si(self.DUT.Bias, fmt="+.0f", unt="V")[0]}, Runplan {self.Ensemble.Name}, {tc2str(self.TCString, short=False)}.')
 
+    @property
+    def server_save_dir(self):
+        return '' if 'RS' in self.Ensemble else Path('diamonds', str(self.DUT), self.TCString, str(self.Ensemble))
+
     # ----------------------------------------
     # region RATE DEPENDENCE PARAMETERS
     @save_pickle('p0Chi2')

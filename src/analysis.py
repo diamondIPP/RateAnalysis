@@ -39,11 +39,15 @@ class Analysis(object):
         # Modules
         self.Config = self.load_config()
         self.InfoLegend = AnaInfo
-        self.Draw = SaveDraw(self, results_dir, sub_dir)
+        self.Draw = SaveDraw(self, choose(results_dir, self.TCString), sub_dir)
         self.PBar = PBar()
 
     def __repr__(self):
         return f'{self.__class__.__name__.strip("Analysis")} Analysis'
+
+    @property
+    def server_save_dir(self):
+        return
 
     def load_config(self):
         file_name = Dir.joinpath('config', self.TCString, 'AnalysisConfig.ini')
