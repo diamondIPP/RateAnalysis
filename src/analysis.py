@@ -1,6 +1,6 @@
 from numpy import deg2rad, rad2deg, sort
 from helpers.utils import *
-from plotting.save import SaveDraw, join, basename, Draw, format_histo, get_last_canvas
+from plotting.save import SaveDraw, join, Draw, format_histo, get_last_canvas
 from helpers.info_legend import AnaInfo
 from os.path import getsize
 from os import getcwd, chdir
@@ -81,7 +81,7 @@ class Analysis(object):
 
     @staticmethod
     def get_test_campaigns():
-        return [basename(path).replace('_', '').strip('psi') for path in glob(join(Analysis.DataDir, 'psi*'))]
+        return [path.name.replace('_', '').strip('psi') for path in Analysis.DataDir.glob('psi*')]
 
     @staticmethod
     def find_testcampaign(default=None):
