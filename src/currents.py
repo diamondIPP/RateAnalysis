@@ -20,7 +20,7 @@ class Currents(Analysis):
         # Settings
         self.Averaging = averaging
         self.TimeZone = timezone('Europe/Zurich')
-        self.DataDir = join(self.TCDir, 'hv')
+        self.DataDir = Path(self.TCDir).joinpath('hv')
 
         # Config
         self.Ana = analysis
@@ -34,7 +34,6 @@ class Currents(Analysis):
         self.RunPlan = self.load_run_plan()  # required for plotting
         self.HVConfig = self.load_parser()
         self.Bias = self.Ana.Bias if hasattr(self.Ana, 'Bias') else None
-        self.Draw.ServerDir = analysis.Draw.ServerDir if analysis is not None else None
 
         # Times
         self.Begin, self.End = self.load_times(begin, end, dut)
@@ -53,6 +52,10 @@ class Currents(Analysis):
         # data
         self.IgnoreJumps = True
         self.Data = self.load_data()
+
+    @property
+    def server_save_dir(self):
+        return self.Ana.server_save_dir
 
     # ----------------------------------------
     # region INIT
@@ -150,8 +153,8 @@ class Currents(Analysis):
 
     # ----------------------------------------
     # region DATA ACQUISITION
-    def get_log_date(self, name):
-        log_date = ''.join(basename(name).split('_')[-6:])
+    def log_date(self, path):
+        log_date = ''.join(path.name.split('_')[-6:])
         return self.TimeZone.localize(datetime.strptime(log_date, '%Y%m%d%H%M%S.log'))
 
     def convert_data(self):
@@ -165,7 +168,7 @@ class Currents(Analysis):
                     remove_file(file_name)
                     self.PBar.update()
                     continue
-                log_date = self.get_log_date(file_name)
+                log_date = self.log_date(file_name)
                 data = genfromtxt(file_name, usecols=arange(3), dtype=[('timestamps', 'U10'), ('voltages', 'f2'), ('currents', 'f4')], invalid_raise=False)
                 data = data[invert(isnan(data['voltages']))]  # remove text entries
                 data['timestamps'] = array(log_date.strftime('%Y-%m-%d ') + char.array(data['timestamps'])).astype(datetime64) - datetime64('1970-01-01T00:00:00') - log_date.utcoffset().seconds
@@ -173,7 +176,7 @@ class Currents(Analysis):
                 arrays.append(data)
                 self.PBar.update()
             if len(arrays):
-                f.create_dataset(basename(d), data=concatenate(arrays))
+                f.create_dataset(Path(d).name, data=concatenate(arrays))
     # endregion DATA ACQUISITION
     # ----------------------------------------
 
@@ -193,7 +196,7 @@ class Currents(Analysis):
             m, s = mean_sigma(*get_hist_vecs(h, err=False), err=False)
             fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
-            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if its not deviating too much from the the mean
+            if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean
                 current = ufloat(fm, fit.ParError(1) + self.Precision / 2)
             else:
                 current = ufloat(h.GetMean(), h.GetMeanError() + self.Precision / 2)
@@ -204,11 +207,11 @@ class Currents(Analysis):
         run_str = '{n}'.format(n=self.Run.Number) if not self.IsCollection else 'Plan {rp}'.format(rp=self.Ana.RunPlan)
         return 'Currents of {dia} {b} - Run {r} - {n}'.format(dia=self.DUT.Name, b=bias_str, r=run_str, n=self.Name)
 
-    def get_first_log(self):
-        names = sorted(glob(join(self.DataDir, '{}_CH{}'.format(self.Name, self.Channel), '*.log')))
-        for i, name in enumerate(names):
-            if self.get_log_date(name) > self.Begin:
-                return names[i - 1]
+    def first_log(self):
+        paths = sorted(self.DataDir.joinpath(f'{self.Name}_CH{self.Channel}').glob('*log'))
+        for i, name in enumerate(paths):
+            if self.log_date(name) > self.Begin:
+                return paths[i - 1]
 
     def get_run_number(self):
         return None if self.Ana is None else 'RP{}'.format(self.Ana.RunPlan) if self.IsCollection else self.Ana.Run.Number
