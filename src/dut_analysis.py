@@ -106,7 +106,7 @@ class DUTAnalysis(Analysis):
         self.save_plots(print_link)
 
     def save_data(self, data=None):
-        if self.Draw.MountExists:
+        if self.Draw.mount_exists:
             data = choose(data, self.get_data())
             with h5py.File(join(self.Draw.ServerMountDir, 'data', 'data.hdf5'), 'a') as f:
                 if self.TCString not in f:
