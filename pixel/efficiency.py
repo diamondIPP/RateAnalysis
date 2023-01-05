@@ -15,7 +15,7 @@ class Efficiency(PixAnalysis):
 
     def __init__(self, parent):  # noqa
         self.__dict__.update(parent.__dict__)
-        self.PickleSubDir = 'Efficiency'
+        self.PickleSubDir = self.PickleDir.joinpath('Efficiency')
 
         self.UseRhit = False
         self.Cut = deepcopy(self.Cut).remove('rhit' if self.UseRhit else None, 'cluster size', ret=True)
@@ -44,7 +44,7 @@ class Efficiency(PixAnalysis):
         self.Draw(g, **prep_kw(dkw, title=tit, **self.get_t_args(rel_time), y_range=[-5, 115], gridy=True, draw_opt='apz', stats=set_statbox(fit=True, form='.2f', center_y=True), file_name='HitEff'))
         return fit if fit.Parameter(0) is not None else 0
 
-    @save_pickle('Map', suf_args='all')
+    @save_pickle('Map', suf_args='all', verbose=True)
     def get_map(self, res=None, fid=False, cut=None, local=False, _redo=False):
         x, y, zz = self.get_tree_vec(self.get_track_vars(local=local) + [self.get_var()], self.Cut(cut) if cut or fid else self.Cut.exclude('fiducial'))
         tit, (xtit, ytit), ztit = 'Efficiency Map', [f'Track Position {i} [mm]' for i in ['X', 'Y']], 'Efficiency [%]'
