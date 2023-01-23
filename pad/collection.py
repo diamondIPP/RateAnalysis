@@ -136,13 +136,13 @@ class PadCollection(AnalysisCollection):
 
     def draw_snrs(self, vs_time=False, avrg=False, **dkw):
         x, y = self.get_x_var(vs_time, avrg=avrg), self.get_snrs(avrg=avrg)
-        self.Draw.graph(x, y, **prep_kw(dkw, title='Signal to Noise Ratios', y_tit='SNR', **self.get_x_args(vs_time), y_range=ax_range(y, rnd=True), logx=not vs_time, file_name='SNRs'))
+        self.Draw.graph(x, y, **prep_kw(dkw, title='Signal to Noise Ratios', y_tit='SNR', **self.get_x_args(vs_time), y_range=ax_range(y, to_int=True), logx=not vs_time, file_name='SNRs'))
 
     def compare_signal_vs_peak_height(self, i0=0, i1=-1, ym=.055, cft=False, show=True, redo=False):
         """draws the pulse height ratio of two runs vs the peak time. """
         def f():
             func = self.Analysis.draw_signal_vs_cft if cft else self.Analysis.draw_ph_peaktime
-            (x0, y0), y1 = get_hist_vecs(func(self.Analyses[i0], show=False)), get_hist_vec(func(self.Analyses[i1], show=False))
+            (x0, y0), y1 = hist_xy(func(self.Analyses[i0], show=False)), hist_values(func(self.Analyses[i1], show=False))
             return x0, y1 / where(y0 == 0, 1e10, y0)  # make ratio of zero entries 0
         x, y = do_pickle(self.make_simple_pickle_path('SigPeakRatio', int(cft), sub_dir='Peaks', dut='{}{}'.format(i0, i1)), f, redo=redo)
         flux0, flux1 = [flux2str(self.Analyses[i].get_flux().n) for i in [i0, i1]]

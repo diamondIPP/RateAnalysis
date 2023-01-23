@@ -7,7 +7,7 @@ from numpy import insert, cos, deg2rad, mean
 
 from pad.collection import PadCollection, AnalysisCollection
 from pixel.collection import PixCollection
-from plotting.draw import array, ufloat, prep_kw, choose, get_graph_y, format_statbox
+from plotting.draw import array, ufloat, prep_kw, choose, graph_y, format_statbox
 from plotting.fit import make_fit
 
 
@@ -51,7 +51,7 @@ def a_scan(cls):
 
         def fit_ph(self, g, amin=-10, amax=35):
             a0, a1 = sorted([choose(amin, -amax), amax])
-            make_fit(g, lambda x, ph, off: ph / cos(deg2rad(x - off)), a0, a1, start_values=[mean(get_graph_y(g, err=False)), 0], par_names=['ph_{0}', 'a_{0}']).fit()
+            make_fit(g, lambda x, ph, off: ph / cos(deg2rad(x - off)), a0, a1, start_values=[mean(graph_y(g, err=False)), 0], par_names=['ph_{0}', 'a_{0}']).fit()
             format_statbox(g, fit=True, form='.0f')
             self.Draw.save_plots('PHAngleFit')
 

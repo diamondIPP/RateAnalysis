@@ -50,9 +50,9 @@ class PeakAnalysis(PadSubAnalysis):
     def get_bunch_centre(self, b=None):
         return self.Ana.Timing.get_raw().n + (choose(b, 1) - 1) * self.BunchSpacing
 
-    def get_bunch_range(self, b0=None, b_end=None, bins=False) -> List:
+    def get_bunch_range(self, b0=None, b_end=None, use_bins=False) -> List:
         rng = array([self.get_bunch_centre(b0), self.get_bunch_centre(choose(b_end, self.MaxBunch + 1))]) - self.BunchSpacing / 2
-        return (rng / self.BinWidth).round().astype('i').tolist() if bins else rng
+        return (rng / self.BinWidth).round().astype('i').tolist() if use_bins else rng
 
     def calc_n_bunches(self):
         return int((self.Run.NSamples * self.BinWidth - self.StartAdditional) / self.BunchSpacing)
@@ -106,7 +106,7 @@ class PeakAnalysis(PadSubAnalysis):
     # ----------------------------------------
     # region GET
     def get_binning(self, bin_size=None, n1=None, n2=None):
-        return self.WF.get_binning(bin_size) if n1 is None else make_bins(*self.get_bunch_range(n1, choose(n2, n1 + 1)), choose(bin_size, self.BinWidth), last=True)
+        return self.WF.get_binning(bin_size) if n1 is None else bins.make(*self.get_bunch_range(n1, choose(n2, n1 + 1)), choose(bin_size, self.BinWidth), last=True)
 
     def get_n_events(self):
         return count_nonzero(self.Ana.get_pulser_cut())
@@ -165,7 +165,7 @@ class PeakAnalysis(PadSubAnalysis):
         def f():
             h = self.draw(show=False)
             self.PBar.start(self.MaxBunch - 2)
-            facs = [self.get_n_bunch(i) / h.Integral(*self.get_bunch_range(i, i + 1, bins=True)) for i in self.get_bunch_nrs()]
+            facs = [self.get_n_bunch(i) / h.Integral(*self.get_bunch_range(i, i + 1, use_bins=True)) for i in self.get_bunch_nrs()]
             return mean_sigma(facs)[0]
         return do_pickle(self.make_simple_pickle_path('PeakFac'), f, redo=redo)
 
@@ -311,7 +311,7 @@ class PeakAnalysis(PadSubAnalysis):
 
     def draw_n(self, n=None, fit=False, show=True):
         """draw disto of additional number of peaks."""
-        h = self.Draw.distribution(self.get_n_additional(n), make_bins(self.NBunches), 'Number of Peaks', x_tit='Number of Peaks', show=False, lw=2)
+        h = self.Draw.distribution(self.get_n_additional(n), bins.make(self.NBunches), 'Number of Peaks', x_tit='Number of Peaks', show=False, lw=2)
         PoissonI(h, p1=1).fit(draw=fit)
         format_statbox(h, fit=fit, m=True, entries=True, w=.4 if fit else .2, form='.2f')
         self.Draw(h, f'PeakNumbers{"Fit" if fit else ""}', show, logy=True, lm=.11, draw_opt='')
@@ -324,7 +324,7 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_additional(self, h=None, show=True):
         """draw heights of the additinoal peaks in the peak time distribution"""
         h = choose(h, self.draw(show=False, bin_size=.2, fit=True, cut=self.get_pulser_cut()))
-        y = get_hist_vec(h, err=False)[h.FindBin(self.StartAdditional):]
+        y = hist_values(h, err=False)[h.FindBin(self.StartAdditional):]
         peaks = find_peaks(y, height=max(y) / 2, distance=self.BunchSpacing * 2.5)[0] + h.FindBin(self.StartAdditional)
         fits = array([FitRes(h.Fit('gaus', 'qs0', '', h.GetBinCenter(i - 10), h.GetBinCenter(i + 10))) for i in peaks.tolist()])
         g = self.Draw.graph(fits[:, 1], fits[:, 0], title='Additional Peak Heights', show=show, gridy=True, **Draw.mode(2))
@@ -341,8 +341,8 @@ class PeakAnalysis(PadSubAnalysis):
         return self.Draw.distribution(x, self.Bins.get_pad_ph(bw), f'Peak Height B{n}', **prep_kw(dkw, x_tit='Peak Height [mV]', lm=.12, y_off=1.8, file_name=f'PeakHeight{"All" if all_ else n}'))
 
     def draw_bunch_times(self, n=1, bw=.2, cut=None, fit=False, **kwargs):
-        x, bins = self.get_bunch_times(n, cut=cut, fit=fit), self.get_binning(bw, n)
-        return self.Draw.distribution(x, bins, f'Peak Times B{n}', x_tit='Peak Time [ns]', **kwargs, lm=.12, y_off=1.7, stats=set_statbox(.43, all_stat=True))
+        x, b = self.get_bunch_times(n, cut=cut, fit=fit), self.get_binning(bw, n)
+        return self.Draw.distribution(x, b, f'Peak Times B{n}', x_tit='Peak Time [ns]', **kwargs, lm=.12, y_off=1.7, stats=set_statbox(.43, all_stat=True))
 
     def _add_ph(self, n=1, c=None, bin_size=.2, fit=False, y_range=None, cft=False, show=True):
         if show:
@@ -356,14 +356,14 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_bucket_pedestal(self, n1=0, n2=5, npeaks=1, i=None, **dkw):
         cut = self.Ana.get_event_cut(self.Cut.generate_custom(include=['pulser', 'fiducial', 'ped sigma'], name='bucped')) & (self.get_n() == npeaks)
         x, y = self.get_times(flat=True, cut=cut, fit=True)[::npeaks], choose(i, self.Ana.get_ph_values, cut='')[cut]
-        self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), pal=53, gridy=True, logz=True, tm=.13, x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]')
+        self.Draw.histo_2d(x, y, self.get_binning(n1=n1, n2=n2) + self.Bins.get_pad_ph(5), **prep_kw(dkw, pal=53, gridy=True, logz=True, tm=.13, x_tit='Peak Time [ns]', y_tit='Pulse Height [mV]'))
         self.WF.draw_buckets(n=4, ts=.05)
         self.Draw.save_plots('BucketPedestal')
 
     def draw_bunch_height_vs_time(self, n=1, bw=.2, cut=None, fit=False, cft=False, **kwargs):
         x, y = self.get_bunch_times(n, cut=cut, fit=fit, cft=cft), self.get_bunch_heights(n, cut=cut, fit=True if cft else fit)
         p = self.Draw.profile(x, y, self.get_binning(bw, n), y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', show=False)
-        (x, y), n = get_hist_vecs(p), get_h_entries(p)
+        (x, y), n = hist_xy(p), bins.entries(p)
         cut = n > max(n) / 1000
         return self.Draw.graph(x[cut], y[cut], y_tit='Peak Height [mV]', x_tit='Peak Time [ns]', **kwargs)
 
@@ -419,9 +419,9 @@ class PeakAnalysis(PadSubAnalysis):
         x, y = x[int(excl * x.size):], self.get_bunch_heights(n, excl=excl).astype('d')
         x = append(x, zeros(y.size - x.size))
         cut = (y > thresh) & (y < 500)
-        bins = x[cut][::bin_size].astype('d')
-        p = self.Draw.profile(x[cut], y[cut], [bins.size - 1, bins], x_tit='Time [hh:mm]', y_tit='Pulse Height [mV]', t_ax_off=0)
-        format_histo(p, y_range=ax_range(get_hist_vec(p), fl=.2, fh=.5))
+        b = x[cut][::bin_size].astype('d')
+        p = self.Draw.profile(x[cut], y[cut], [b.size - 1, b], x_tit='Time [hh:mm]', y_tit='Pulse Height [mV]', t_ax_off=0)
+        format_histo(p, y_range=ax_range(hist_values(p), fl=.2, fh=.5))
 
     def draw_tot(self, n=1, fit=True, thresh=.75, redo=False, cut=None, **dkw):
         x = self.get_bunch_tot(n, fit=fit, thresh=thresh, redo=redo, cut=cut)
@@ -436,8 +436,8 @@ class PeakAnalysis(PadSubAnalysis):
     def draw_tot_vs_toa(self, n=1, fit=True, t0=.75, t1=.5, cut=None, redo=False, **dkw):
         x, y = [self.get_bunch_tot(n, fit=fit, thresh=t, redo=redo, cut=cut, toa=not i) for i, t in enumerate([t0, t1])]
         tit = 'Time over Threshold vs Time of Arrival'
-        bins = find_bins(x, .5, .5) + find_bins(y, 1, 1, .001)
-        self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='ToA [ns]', y_tit='ToT [ns]', file_name=f'ToT{t0}-ToA{t1}{"All" if cut is None else ""}'))
+        b = bins.find(x, .5, .5) + bins.find(y, 1, 1, .001)
+        self.Draw.histo_2d(x, y, b, **prep_kw(dkw, title=tit, x_tit='ToA [ns]', y_tit='ToT [ns]', file_name=f'ToT{t0}-ToA{t1}{"All" if cut is None else ""}'))
     # endregion DRAW
     # ----------------------------------------
 
@@ -501,7 +501,7 @@ class PeakAnalysis(PadSubAnalysis):
     # region FIND
     def find_bunches(self, center=False, bin_size=.5, show=False):
         h = self.draw(corr=False, show=show, bin_size=bin_size, cut=self.get_pulser_cut())
-        values = get_hist_vec(h)[h.FindBin(self.StartAdditional):]
+        values = hist_values(h)[h.FindBin(self.StartAdditional):]
         peaks, d = find_peaks([v.n for v in values], height=max(values).n / 2., distance=self.BunchSpacing)
         peaks += h.FindBin(self.StartAdditional)
         fit_peaks = []
@@ -687,16 +687,16 @@ class PeakAnalysis(PadSubAnalysis):
     # ----------------------------------------
     # region cft
     def draw_cft(self, n=1, bin_size=.2, smear=None, **kwargs):
-        x, bins = self.smear_times(self.get_bunch_cfts(n), smear), self.get_binning(bin_size, n)
-        return self.Draw.distribution(x, bins, f'{30}% Constant Fraction Times', lm=.12, x_tit='Constant Fraction Time [ns]', y_off=1.8, **kwargs)
+        x, b = self.smear_times(self.get_bunch_cfts(n), smear), self.get_binning(bin_size, n)
+        return self.Draw.distribution(x, b, f'{30}% Constant Fraction Times', lm=.12, x_tit='Constant Fraction Time [ns]', y_off=1.8, **kwargs)
 
     def draw_height_vs_cft(self, n=1, bw=.2, show=True):
         return self.draw_bunch_height_vs_time(n, bw, cft=True, show=show)
 
     def draw_cft_vs_time(self, n=1, bin_size=.2, show=True):
-        x, y, bins = self.get_bunch_times(n, fit=True), self.get_bunch_cfts(n), self.get_binning(bin_size, n) * 2
+        x, y, b = self.get_bunch_times(n, fit=True), self.get_bunch_cfts(n), self.get_binning(bin_size, n) * 2
         tit, xtit, ytit = 'Constant Fraction vs. Peak Time', 'Peak Time [ns]', 'Constrant Fraction Time [ns]'
-        self.Draw.histo_2d(x, y, bins, tit, x_tit=xtit, y_tit=ytit, stats=set_statbox(entries=True, w=.2), show=show)
+        self.Draw.histo_2d(x, y, b, tit, x_tit=xtit, y_tit=ytit, stats=set_statbox(entries=True, w=.2), show=show)
     # endregion cft
     # ----------------------------------------
 

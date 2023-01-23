@@ -14,7 +14,6 @@ from pixel.run import PixelRun
 from src.dut_analysis import *
 from src.dut import Plane
 from plotting.fit import Landau
-import plotting.latex as latex
 
 
 class PixAnalysis(DUTAnalysis):
@@ -167,7 +166,7 @@ class PixAnalysis(DUTAnalysis):
     def get_signal_disto(self, roc=None, cut=None, vcal=True, cutoff=None, _redo=False):
         x = self.get_tree_vec(self.get_ph_var(roc, vcal), self.Cut(cut))
         x = x if cutoff is None else x[x < cutoff]
-        return self.Draw.distribution(x, find_bins(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "ke"}]', show=False)
+        return self.Draw.distribution(x, bins.find(x, x0=0), title='Pulse Height Distribution', x_tit=f'Pulse Height [{"vcal" if vcal else "ke"}]', show=False)
 
     def draw_signal_distribution(self, roc=None, cut=None, vcal=True, redo=False, draw_thresh=False, fit=False, cutoff=None, **kwargs):
         h = self.get_signal_disto(roc, cut, vcal, cutoff, _redo=redo)
@@ -178,12 +177,12 @@ class PixAnalysis(DUTAnalysis):
     @staticmethod
     def find_fit_range(h, fl=.5, fr=.2):
         xmax, ymax = find_mpv(h)
-        x, y = get_hist_vecs(h, err=False)
+        x, y = hist_xy(h, err=False)
         xr, yr = x[x > xmax], y[x > xmax]
         return [h.GetBinCenter(h.FindFirstBinAbove(fl * ymax.n)), xr[yr < fr * ymax.n][0]]
 
     def draw_map_disto(self, h, thresh=2, norm_x=False, **dkw):
-        x = get_2d_hist_vec(h, err=False, zero_supp=False)[get_2d_bin_entries(h, flat=True) > thresh]
+        x = hist_values_2d(h, err=False, z_sup=False)[bins.entries_2d(h, flat=True) > thresh]
         x /= mean(x) if norm_x else 1
         return self.Draw.distribution(x, **prep_kw(dkw, normalise=True, stats=set_statbox(all_stat=True, form='.2f')))
 
@@ -210,8 +209,8 @@ class PixAnalysis(DUTAnalysis):
     def draw_pulse_height(self, bin_size=None, cut=None, **kwargs):
         """ Pulse height analysis vs event for a given cut. If no cut is provided it will take all. """
         x, y = self.get_tree_vec([self.get_t_var(), self.get_ph_var()], self.Cut(cut))
-        bins = self.Bins.get_time(choose(bin_size, 1000 if y.size // 20 < 1000 or y.size / 1000 < 20 else y.size // 20))  # min bin size of 1000 max 20 points
-        h = self.Draw.profile(x, y, bins, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [vcal]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
+        b = self.Bins.get_time(choose(bin_size, 1000 if y.size // 20 < 1000 or y.size / 1000 < 20 else y.size // 20))  # min bin size of 1000 max 20 points
+        h = self.Draw.profile(x, y, b, **prep_kw(kwargs, x_tit='Time [hh:mm]', y_tit='Pulse Height [vcal]', y_off=1.8, lm=.17, graph=True, stats=set_statbox(fit=True), t_ax_off=0))
         fit = FitRes(h.Fit('pol0', 'qs'))
         self.Draw.save_plots(f'PulseHeight{bin_size}')
         return h, fit
@@ -226,15 +225,16 @@ class PixAnalysis(DUTAnalysis):
     def draw_adc_map(self, cut=None, **dkw):
         x, y, zz = self.get_tree_vec(['col', 'row', 'adc'], self.Cut(cut) + self.Cut.get_plane())
         h = self.Draw.prof2d(x, y, zz, Bins.get_pixel(), show=False)
-        e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
-        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Pulse Height [adc]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01)))
+        e, v = bins.entries_2d(h, flat=True), hist_values_2d(h, err=False, flat=True, z_sup=False)
+        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Column', y_tit='Row', z_tit='Pulse Height [adc]', z_range=bins.find_range(v[e > .1 * max(e)], .5, .5, .01)))
 
     def draw_vcal_map(self, cut=None, cutoff=None, **dkw):
         x, y, zz = self.get_tree_vec(self.Tel.get_hit_vars(self.N) + [self.get_ph_var()], self.Cut(cut))
         ecut = ... if cutoff is None else zz < cutoff
         h = self.Draw.prof2d(x[ecut], y[ecut], zz[ecut], Bins.get_pixel(), show=False)
-        e, v = get_2d_bin_entries(h, flat=True), get_2d_hist_vec(h, err=False, flat=True, zero_supp=False)
-        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Cluster Column', y_tit='Cluster Row', z_tit='Pulse Height [vcal]', z_range=find_range(v[e > .1 * max(e)], .5, .5, .01), file_name='VcalOcc'))
+        e, v = bins.entries_2d(h, flat=True), hist_values_2d(h, err=False, flat=True, z_sup=False)
+        zr = bins.find_range(v[e > .1 * max(e)], .5, .5, .01)
+        return self.Draw.prof2d(h, **prep_kw(dkw, x_tit='Cluster Column', y_tit='Cluster Row', z_tit='Pulse Height [vcal]', z_range=zr, file_name='VcalOcc'))
 
     def draw_adc_fixed_vcal_map(self, vcal=200, **kwargs):
         cols, rows = self.Cut.get_fid_lines()
@@ -271,9 +271,9 @@ class PixAnalysis(DUTAnalysis):
         x, y, z_ = self.get_mod_vars(mx / Plane.PX * 1e-3, my / Plane.PY * 1e-3, ox, oy, zvar=zvar, cut=cut)
         n = choose(nbins, freedman_diaconis, x=x) // 2 * 2  # should be symmetric...
         d = lambda w: round((n + .5) * (max(mx, my) / n - w) / w) * w  # extra spacing to account for different mx and my
-        bins = sum([make_bins(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
+        b = sum([bins.make(-(i + w) / 2 - d(w), (3 * i + w) / 2 + d(w), w, last=True) for i, w in [(mx, mx / n), (my, my / n)]], start=[])
         cell = self.Draw.box(0, 0, mx, my, width=2, show=False, fillstyle=1)
-        h = self.Draw.prof2d(x, y, z_, bins, title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]', show=False)
+        h = self.Draw.prof2d(x, y, z_, b, title='Signal In Cell', x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Pulse Height [vcal]', show=False)
         return self.Draw(h, **prep_kw(dkw, leg=self.draw_columns(show=dkw['show'] if 'show' in dkw else True) + [cell]))
 
     def draw_ph_in_cell(self, nbins=None, ox=0, oy=0, cut=None, max_angle=None, **dkw):
@@ -323,7 +323,7 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_trigger_phase_offset(self, cut=None, **dkw):
         x, y = self.get_tree_vec(self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
-        return self.Draw.distribution(x - y, make_bins(-9.5, 10), **prep_kw(dkw, ndivx=20, x_tit='#Delta Trigger Phase', stats=set_entries()))
+        return self.Draw.distribution(x - y, bins.make(-9.5, 10), **prep_kw(dkw, ndivx=20, x_tit='#Delta Trigger Phase', stats=set_entries()))
 
     def draw_tphase_offset_trend(self, bw=None, cut=None, **dkw):
         t, y0, y1 = self.get_tree_vec([self.get_t_var()] + self.get_tp_vars(), choose(cut, self.Cut.generate_custom('trigger_phase', prnt=False)))
@@ -366,16 +366,16 @@ class PixAnalysis(DUTAnalysis):
 
     def draw_cluster_size_vs_angle(self, **dkw):
         x, y, cs = self.get_tree_vec(['angle_x', 'angle_y', f'cluster_size[{self.N}]'], self.Cut.exclude('track angle x', 'track angle y'))
-        self.Draw.prof2d(x, y, cs, **prep_kw(dkw, x_tit='Angle X', y_tit='Angle Y', z_tit='Cluster Size', z_range=[1, find_range(cs, q=.1)[-1]], file_name='CSAngle'))
+        self.Draw.prof2d(x, y, cs, **prep_kw(dkw, x_tit='Angle X', y_tit='Angle Y', z_tit='Cluster Size', z_range=[1, bins.find_range(cs, q=.1)[-1]], file_name='CSAngle'))
 
     @save_pickle('CSMap', suf_args='all')
     def get_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False):
         x, y, z_ = self.get_tree_vec(self.get_track_vars(pixel=pixel and res is None) + [f'cluster_size[{self.N}]'], self.Cut.no_fid(fid, cut) + self.Cut.get_ncluster(1))
-        return self.Draw.prof2d(x, y, z_, binning=find_2d_bins(x, y) if pixel and res is None else Bins.get_global(res), show=False, **self.Tracks.ax_tits(pixel))
+        return self.Draw.prof2d(x, y, z_, binning=bins.find_2d(x, y) if pixel and res is None else Bins.get_global(res), show=False, **self.Tracks.ax_tits(pixel))
 
     def draw_cluster_size_map(self, res=None, cut=None, pixel=True, fid=False, **dkw):
         h = self.get_cluster_size_map(res, cut, pixel, fid)
-        return self.Draw.prof2d(h, **prep_kw(dkw, z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=find_range(get_2d_hist_vec(h, err=False), 0, 0, .1), pal=53, file_name='ClusterSize'))
+        return self.Draw.prof2d(h, **prep_kw(dkw, z_tit='Cluster Size', leg=self.Cut.get_fid(), z_range=bins.find_range(hist_values_2d(h, err=False), 0, 0, .1), pal=53, file_name='ClusterSize'))
     # endregion CLUSTER SIZE
     # ----------------------------------------
 
@@ -388,7 +388,7 @@ class PixAnalysis(DUTAnalysis):
         duts = [self.get_next_dut(dut2), self.DUT]
         x, y = self.get_tree_vec([f'n_hits[{dut.Number + self.Run.NTelPlanes - 1}]' for dut in duts], self.Cut(cut))
         x_tit, y_tit = [f'Number of Hits in {dut.Name}' for dut in duts]
-        return self.Draw.histo_2d(x, y, [w for i in [x, y] for w in make_bins(*find_range(i, 0, 1.5))], **prep_kw(dkw, x_tit=x_tit, y_tit=y_tit, logz=True))
+        return self.Draw.histo_2d(x, y, [w for i in [x, y] for w in bins.make(*bins.find_range(i, 0, 1.5))], **prep_kw(dkw, x_tit=x_tit, y_tit=y_tit, logz=True))
 
     def draw_hit_pie(self, dut2=None):
         duts = [self.get_next_dut(dut2), self.DUT]
@@ -403,10 +403,10 @@ class PixAnalysis(DUTAnalysis):
     def get_residual(self, m='x', cut=None):
         return self.Tracks.get_residual_fit(self.N, m, cut)
 
-    def print_residuals(self, tex=False):
+    def print_residuals(self, latex=False):
         x, y = [self.get_residual(m) for m in ['x', 'y']]
-        print(f'X Residual: {latex.si(x[0], fmt=".0f", unt="um")[0] if tex else f"{x[0]:.1f}"}, STD: {latex.si(x[1], fmt=".0f", unt="um")[0] if tex else f"{x[1]:.1f}"}')
-        print(f'Y Residual: {latex.si(y[0], fmt=".0f", unt="um")[0] if tex else f"{y[0]:.1f}"}, STD: {latex.si(y[1], fmt=".0f", unt="um")[0] if tex else f"{y[1]:.1f}"}')
+        print(f'X Residual: {tex.si(x[0], fmt=".0f", unt="um")[0] if tex else f"{x[0]:.1f}"}, STD: {tex.si(x[1], fmt=".0f", unt="um")[0] if latex else f"{x[1]:.1f}"}')
+        print(f'Y Residual: {tex.si(y[0], fmt=".0f", unt="um")[0] if tex else f"{y[0]:.1f}"}, STD: {tex.si(y[1], fmt=".0f", unt="um")[0] if latex else f"{y[1]:.1f}"}')
 
     def draw_xy_residual(self, f=.5, cut=None, show_cut=False, **dkw):
         return self.Draw.histo_2d(self.Tracks.draw_xy_residual(self.N, cut=self.Cut.exclude('rhit') if cut is None else self.Cut(cut), show=False, show_cut=show_cut, f=f), **dkw)

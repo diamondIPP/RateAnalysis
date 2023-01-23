@@ -276,10 +276,10 @@ class PadAnalysis(DUTAnalysis):
     def draw_efficiency_vs_threshold(self, thresh=None, bw=.5, show=True):
         thresh = self.Pedestal.get_noise().n * 4 if thresh is None else thresh
         h = self.draw_signal_distribution(show=False, bw=bw)
-        bins = range(h.FindBin(0), h.FindBin(thresh) + 2)
+        b = range(h.FindBin(0), h.FindBin(thresh) + 2)
         err = zeros(1)
-        efficiencies = [ufloat(h.IntegralAndError(ibin, h.GetNbinsX(), err), err[0]) / h.Integral(0, h.GetNbinsX()) * 100 for ibin in bins]
-        g = Draw.make_tgraph([h.GetBinCenter(ibin) for ibin in bins], efficiencies, title='Detector Efficiency')
+        efficiencies = [ufloat(h.IntegralAndError(ibin, h.GetNbinsX(), err), err[0]) / h.Integral(0, h.GetNbinsX()) * 100 for ibin in b]
+        g = Draw.make_tgraph([h.GetBinCenter(ibin) for ibin in b], efficiencies, title='Detector Efficiency')
         format_histo(g, x_tit='Threshold [mV]', y_tit='Efficiency [%]', y_off=1.3)
         self.Draw(g, draw_opt='ap', lm=.12, show=show)
         Draw.vertical_line(x=self.Pedestal.get_noise().n * 3, ymin=0, ymax=110, w=2)
@@ -292,8 +292,8 @@ class PadAnalysis(DUTAnalysis):
     # region PULSE HEIGHT
     def draw_disto_vs_time(self, bw=.2, signal=None, evnt_corr=False, off_corr=False, rel_t=False, show=True):
         t, ph = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal, evnt_corr, off_corr)], cut=self.Cut())
-        bins = self.Bins.get_time() + self.Bins.get_pad_ph(bw)
-        h = self.Draw.histo_2d(t, ph, bins, 'Signal vs. Time', pal=53, x_tit='Time [min]', y_tit='Pulse Height [au]', t_ax_off=self.get_t_off(rel_t), show=False)
+        b = self.Bins.get_time() + self.Bins.get_pad_ph(bw)
+        h = self.Draw.histo_2d(t, ph, b, 'Signal vs. Time', pal=53, x_tit='Time [min]', y_tit='Pulse Height [au]', t_ax_off=self.get_t_off(rel_t), show=False)
         self.Draw(h, 'SignalTime', show, draw_opt='colz', rm=.15)
         return h
 
@@ -319,13 +319,13 @@ class PadAnalysis(DUTAnalysis):
     def draw_pulse_height(self, bw=None, n=20, sig=None, cut=None, corr=True, redo=False, rel_t=True, fit=True, **dkw):
         g = self.get_pulse_height_trend(bw, n, sig, cut, corr, _redo=redo)
         f = FitRes(g.Fit('pol0', f'qs', '', 0, self.__get_max_fit_pos(g))) if fit else None
-        dkw = prep_kw(dkw, y_range=ax_range(get_graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
+        dkw = prep_kw(dkw, y_range=ax_range(graph_y(g, err=False), 0, .6, .8), ndivx=505, stats=set_statbox(fit=fit, form='.2f'))
         g = self.Draw(g, file_name=f'PulseHeight{Bins.w(bw)}', **self.get_t_args(rel_t), **dkw)
         return g, f
 
     def __get_max_fit_pos(self, g, thresh=.8):
         """ look for huge fluctiations in ph graph and return last stable point"""
-        x, y = get_graph_vecs(g, err=False)
+        x, y = graph_xy(g, err=False)
         if mean(y) > 10:  # if the pulse height is very low there will be always big fluctuations!
             averages = cumsum(y) / (arange(y.size) + 1)
             j = next((i for i, is_bad in enumerate(y[2:] < thresh * averages[1:-1], 2) if is_bad), None)  # find next entry that is below the average of the previous
@@ -359,7 +359,7 @@ class PadAnalysis(DUTAnalysis):
         h = self.Draw.distribution(x[cut], self.Bins.get_pad_ph(bw), 'Bunch {} Distribution'.format(n), x_tit='Pulse Height [mV]', show=show)
         if h.GetBinCenter(h.GetMaximumBin()) < 10:
             m, s = self.Pedestal()
-            x, y = get_hist_vecs(h, err=False)
+            x, y = hist_xy(h, err=False)
             format_histo(h, y_range=ax_range(0, max(y[x > m + 6 * s]), 0, .05))
 
     def draw_bunch_comparison(self, n, regions, bw=5, show=True):
@@ -369,8 +369,8 @@ class PadAnalysis(DUTAnalysis):
     def draw_ph_peaktime(self, bin_size=None, fine_corr=False, cut=None, region=None, x=None, y=None, y_range=None, xbins=None, prof=True, normalise=False, logz=False, show=True):
         xvar, yvar = self.Timing.get_peak_var(corr=True, fine_corr=fine_corr, region=region), self.get_signal_var()
         x, y = self.get_tree_vec(var=[xvar, yvar], cut=self.Cut(cut)) if x is None and y is None else [choose(i, self.get_tree_vec(var=var, cut=self.Cut(cut))) for i, var in [(x, xvar), (y, yvar)]]
-        bins = choose(xbins, self.get_t_bins(bin_size)) + ([] if prof else self.Bins.get_pad_ph(1))
-        h = (self.Draw.profile if prof else self.Draw.histo_2d)(x, y, bins, 'Signal vs Peak Position', show=show, logz=logz)
+        b = choose(xbins, self.get_t_bins(bin_size)) + ([] if prof else self.Bins.get_pad_ph(1))
+        h = (self.Draw.profile if prof else self.Draw.histo_2d)(x, y, b, 'Signal vs Peak Position', show=show, logz=logz)
         format_histo(h, x_tit='Signal Peak Position [ns]', y_tit='Pulse Height [mV]', stats=0, y_range=y_range)
         if normalise:
             normalise_bins(h)
@@ -559,7 +559,7 @@ class PadAnalysis(DUTAnalysis):
     def draw_bucket_ratio_map(self, res=None, **dkw):
         b, h = self.draw_bucket_map(res=res, show=False), self.draw_hitmap(res, cut=self.Cut.exclude('bucket', 'bucket2', 'fiducial'), show=False)
         b.Divide(h)
-        self.Draw(b, **prep_kw(dkw, z_tit='Bucket Ratio', file_name='BRMap', stats=False, z_range=[0, find_range(get_2d_hist_vec(b, err=False))[1]]))
+        self.Draw(b, **prep_kw(dkw, z_tit='Bucket Ratio', file_name='BRMap', stats=False, z_range=[0, bins.find_range(hist_values_2d(b, err=False))[1]]))
     # endregion PULSE HEIGHT
     # ----------------------------------------
 

@@ -11,7 +11,7 @@ import plotting.latex as latex
 from analyse import collection_selector
 from pad.collection import AnalysisCollection, PadCollection, fname
 from pixel.collection import PixCollection
-from plotting.draw import get_graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
+from plotting.draw import graph_y, ax_range, markers, TMultiGraph, mean_sigma, FitRes, set_statbox
 from src.analysis import *
 from src.binning import Bins
 from src.dut import PixelDUT
@@ -462,7 +462,7 @@ class DiaScans(Analysis):
                     format_histo(g, color=1, marker=23, markersize=2)
             mg.Add(mgi)
         legend = self.make_full_legend([mgi.GetListOfGraphs()[0] for mgi in mgs], irr)
-        y = concatenate([get_graph_y(g) for g in mg.GetListOfGraphs()])
+        y = concatenate([graph_y(g) for g in mg.GetListOfGraphs()])
         format_histo(mg, draw_first=True, y_tit='Pulse Height [au]', y_range=[0, max(y).n * 1.1], tit_size=.05, lab_size=.05, y_off=.91, x_off=1.2, x_range=Bins.FluxRange)
         self.Draw(mg, 'DiaScans{dia}'.format(dia=make_dia_str(self.DUTName)), draw_opt='ap', logx=True, leg=legend, w=1.6, lm=.092, bm=.12, gridy=True)
 

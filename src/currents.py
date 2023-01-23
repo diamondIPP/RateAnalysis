@@ -1,6 +1,6 @@
 from os.path import getsize
 from ROOT import TH2F
-from numpy import genfromtxt, isnan, datetime64, invert, uint32, char
+from numpy import genfromtxt, datetime64, invert, uint32, char
 from plotting.save import *
 from helpers.utils import *
 from src.analysis import Analysis
@@ -193,7 +193,7 @@ class Currents(Analysis):
             h = self.draw_distribution(show=False)
             if h.GetEntries() < 3:
                 return None
-            m, s = mean_sigma(*get_hist_vecs(h, err=False), err=False)
+            m, s = mean_sigma(*hist_xy(h, err=False), err=False)
             fit = h.Fit('gaus', 'sq0', '', m - s, m + s)
             fm, fs = fit.Parameter(1), fit.Parameter(2)
             if .8 * m < fit.Parameter(1) < 1.2 * m and s > 0 and fs < fm and fit.ParError(1) < m:  # only use gauss fit if it's not deviating too much from the mean
@@ -247,13 +247,13 @@ class Currents(Analysis):
 
     def draw_profile(self, bw=5, show=True):
         x, y = self.Data['timestamps'], self.Data['currents']
-        return self.Draw.profile(x, y, make_bins(x[0], x[-1], bw), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, w=1.5,
+        return self.Draw.profile(x, y, bins.make(x[0], x[-1], bw), 'Leakage Current', x_tit='Time [hh:mm]', y_tit='Current [nA]', t_ax_off=0, markersize=.7, w=1.5,
                                  h=.75, lm=.08, y_off=.8, show=show, stats=set_entries())
 
     def draw_distribution(self, show=True):
         m, s = mean_sigma(self.Data['currents'], err=False)
         xmin, xmax = m - 4 * max(s, .1), m + 4 * max(s, .1)
-        return self.Draw.distribution(self.Data['currents'], make_bins(xmin, xmax, self.Precision * 2), 'Current Distribution', show=show, x_tit='Current [nA]')
+        return self.Draw.distribution(self.Data['currents'], bins.make(xmin, xmax, self.Precision * 2), 'Current Distribution', show=show, x_tit='Current [nA]')
 
     def draw_flux_correlation(self, bin_fac=1, show=True):
         p1 = self.draw_profile(show=False)
@@ -273,7 +273,7 @@ class Currents(Analysis):
 
     @staticmethod
     def curr_args(y):
-        return {'y_tit': 'Current [nA]', 'yax_col': Currents.CCol, 'color': Currents.CCol, 'y_range': ax_range(y, rnd=True), 'l_off_x': 1}
+        return {'y_tit': 'Current [nA]', 'yax_col': Currents.CCol, 'color': Currents.CCol, 'y_range': ax_range(y, to_int=True), 'l_off_x': 1}
 
     def draw_ph(self, ph_range=None, **kwargs):
         x, y = self.Data['timestamps'], self.Data['currents']

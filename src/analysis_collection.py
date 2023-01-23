@@ -205,18 +205,18 @@ class AnalysisCollection(Analysis):
     # ----------------------------------------
     # region BINNING
     def get_binning(self, bw=None, rel_time=False):
-        bins = concatenate([ana.Bins.get_raw_time(bw, t_from_event=True)[1] for ana in self.Analyses])
-        return [bins.size - 1, bins - (self.FirstAnalysis.Run.StartTime if rel_time else 0)]
+        b = concatenate([ana.Bins.get_raw_time(bw, t_from_event=True)[1] for ana in self.Analyses])
+        return [b.size - 1, b - (self.FirstAnalysis.Run.StartTime if rel_time else 0)]
 
     def get_time_bins(self, bw=None, only_edges=False):
-        bins = self.fix_t_arrays([ana.Bins.get_time(bw)[1] for ana in self.Analyses])
-        bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
-        return [bins.size - 1, bins]
+        b = self.fix_t_arrays([ana.Bins.get_time(bw)[1] for ana in self.Analyses])
+        b = array([[b[0], b[-1]] for b in b]).flatten() if only_edges else concatenate(b)
+        return [b.size - 1, b]
 
     def get_raw_time_bins(self, bw=None, only_edges=False, t_from_event=False):
-        bins = self.fix_t_arrays([ana.Bins.get_raw_time(bw, t_from_event=t_from_event)[1] for ana in self.Analyses])
-        bins = array([[b[0], b[-1]] for b in bins]).flatten() if only_edges else concatenate(bins)
-        return [bins.size - 1, bins]
+        b = self.fix_t_arrays([ana.Bins.get_raw_time(bw, t_from_event=t_from_event)[1] for ana in self.Analyses])
+        b = array([[b[0], b[-1]] for b in b]).flatten() if only_edges else concatenate(b)
+        return [b.size - 1, bins]
 
     def fix_t_arrays(self, t_arrays):
         """ Add the logged time between two runs if the start time of a run is less than the stop time of the previous. """
@@ -282,8 +282,8 @@ class AnalysisCollection(Analysis):
 
     def find_flux_binning(self, h, width=.1):
         maxima = find_maxima(h, 20, sigma=1, sort_x=True)[:, 0]
-        bins = [0.] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
-        return bins if all(diff(bins) > 0) else self.find_flux_binning(h, width - .01)
+        b = [0.] + [v for i in maxima for v in [i / 10 ** width, i * 10 ** width]] + [1e5]
+        return b if all(diff(b) > 0) else self.find_flux_binning(h, width - .01)
 
     def get_flux_average(self, values):
         values = values[self.get_fluxes().argsort()]  # sort by ascending fluxes
@@ -493,7 +493,7 @@ class AnalysisCollection(Analysis):
     @save_pickle('Full', sub_dir='PH', suf_args='all')
     def get_full_ph(self, bin_size=None, _redo=False):
         g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, bin_size=bin_size, _redo=_redo, picklepath=self.get_pickle_path('Trend', make_suffix(self, bin_size, 1), 'PH'))
-        ph = concatenate([append(get_graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
+        ph = concatenate([append(graph_y(i), ufloat(0, 0)) for i in g])  # add a zero after each run for the bin in between
         return self.Draw.distribution(ph, self.get_time_bins(bin_size), 'Full Pulse Height', **self.get_x_args(True), y_tit=f'Mean {self.PhTit}', show=False)
 
     def draw_full_pulse_height(self, bin_size=None, rel_t=True, with_flux=True, redo=False, show=True, **dkw):
@@ -523,7 +523,7 @@ class AnalysisCollection(Analysis):
     def draw_ph_trends(self, bw=None, redo=False, **dkw):
         bw = choose(bw, Bins.Size)
         g = self.get_plots('ph trends', self.Analysis.get_pulse_height_trend, picklepath=self.get_pickle_path('Trend', f'1_20_{bw}', 'PH'), bw=bw, _redo=redo)
-        g = [shift_graph(ig, ox=-get_graph_x(ig)[0].n) for ig in g]
+        g = [shift_graph(ig, ox=-graph_x(ig)[0].n) for ig in g]
         return self.Draw.multigraph(g, 'PHTrends', self.flux_strings(), **prep_kw(dkw, gridy=True, **self.get_x_args(vs_time=True, off=-1, draw=True), file_name='PHTrends'))
 
     def draw_pulls_below_flux(self, bw=.5, flux=150, show=True):
@@ -550,8 +550,8 @@ class AnalysisCollection(Analysis):
             return
         t = 'Relative ' if rel else ''
         values *= 100 if rel else 1
-        bins = make_bins(*ax_range(values, fl=.5, fh=.5), n=3 * sqrt(values.size)) if rel else [40, -2, 2]
-        h = self.Draw.distribution(values, bins, '{}Signal Spread'.format(t), x_tit='{}Diff [{}]'.format(t, '%' if rel else 'mV'), y_tit='Number of Entries', show=False)
+        b = bins.make(*ax_range(values, fl=.5, fh=.5), nb=3 * sqrt(values.size)) if rel else [40, -2, 2]
+        h = self.Draw.distribution(values, b, '{}Signal Spread'.format(t), x_tit='{}Diff [{}]'.format(t, '%' if rel else 'mV'), y_tit='Number of Entries', show=False)
         self.Draw(h, 'SignalSpread', lm=.11, show=show, save=save)
         return values
 
@@ -688,7 +688,7 @@ class AnalysisCollection(Analysis):
     # region TELESCOPE
     def draw_beam_current(self, bw=60, rel_t=True, show=True):
         h = TH1F('hr1', 'Beam Current of Run Plan {r}'.format(r=self.RunPlan), *self.get_raw_time_bins(bw))
-        values = [get_hist_vec(ana.Tel.draw_beam_current(bw, show=False, save=False)) for ana in self.Analyses]
+        values = [hist_values(ana.Tel.draw_beam_current(bw, show=False, save=False)) for ana in self.Analyses]
         values = concatenate([append(run_values, run_values[-1]) for run_values in values])  # add last flux value for time bin between runs
         for i, value in enumerate(values, 1):
             h.SetBinContent(i, value.n)
@@ -698,7 +698,7 @@ class AnalysisCollection(Analysis):
 
     @save_pickle('Prof', sub_dir='Flux', suf_args='[0]')
     def get_flux_prof(self, bw=5, _redo=False):
-        x = [get_hist_vec(ana.Tel.draw_flux(bw, show=False, prnt=False)) for ana in self.Analyses]
+        x = [hist_values(ana.Tel.draw_flux(bw, show=False, prnt=False)) for ana in self.Analyses]
         x = concatenate([append(run_values, ufloat(0, 0)) for run_values in x])  # add extra zero for time bin between runs
         return self.Draw.distribution(x, self.get_raw_time_bins(bw), 'Flux Profile', **self.get_x_args(True), y_tit='Flux [kHz/cm^{2}]', show=False)
 
@@ -788,12 +788,12 @@ class AnalysisCollection(Analysis):
     def draw_beam_profiles(self, mode='x', show=True):
         histos = self.get_values('beam profiles in {}'.format(mode), self.Analysis.draw_beam_profile, show=False, prnt=False, fit=False, mode=mode)
         leg = Draw.make_legend(nentries=self.NRuns)
-        stack = THStack('sbp', 'AllBeamProfiles{mod}'.format(mod=mode.title()))
+        s = THStack('sbp', 'AllBeamProfiles{mod}'.format(mod=mode.title()))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
             format_histo(h, lw=2, stats=0, normalise=True, line_color=self.Draw.get_color(self.NRuns), sumw2=False, fill_style=4000)
-            stack.Add(h)
+            s.Add(h)
             leg.AddEntry(h, '{0:6.2f} kHz/cm^{{2}}'.format(flux.n), 'l')
-        self.Draw(stack, 'AllBeamProfiles{mod}'.format(mod=mode.title()), draw_opt='nostack', show=show, leg=leg)
+        self.Draw(s, 'AllBeamProfiles{mod}'.format(mod=mode.title()), draw_opt='nostack', show=show, leg=leg)
     # endregion BEAM PROFILE
     # ----------------------------------------
 
@@ -804,20 +804,20 @@ class AnalysisCollection(Analysis):
         histos = self.get_values('chi squares {}'.format(mod_str), self.Analysis.draw_chi2, show=False, prnt=False, mode=mode)
         cut_value = self.FirstAnalysis.Cut.get_chi2(choose(mod_str, 'x'))
         cuts = array([get_quantile(h, [.99, cut_value / 100]) for h in histos])  # .99 for drawing range
-        stack = THStack('hx2', '#chi^{{2}}{}'.format(' in {}'.format(mod_str) if mod_str else ''))
+        s = THStack('hx2', '#chi^{{2}}{}'.format(' in {}'.format(mod_str) if mod_str else ''))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
             format_histo(h, stats=0, color=self.Draw.get_color(self.NRuns), lw=2, normalise=True, sumw2=False, fill_style=4000, fill_color=4000)
-            stack.Add(h)
-        format_histo(stack, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True, x_range=ax_range(0, max(cuts), fh=.4))
+            s.Add(h)
+        format_histo(s, x_tit='#chi^{2}', y_tit='Fraction of Events [%]', y_off=1.5, draw_first=True, x_range=ax_range(0, max(cuts), fh=.4))
         legend = self.make_flux_legend(histos)
-        self.Draw(stack, '', show, lm=.15, draw_opt='nostack', leg=legend)
+        self.Draw(s, '', show, lm=.15, draw_opt='nostack', leg=legend)
         if mod_str:
             line = Draw.vertical_line(min(cuts), -1e9, 1e9, color=2, style=2)
             legend.AddEntry(line, 'cut: {}% q'.format(cut_value), 'l')
             histos[0].GetListOfFunctions().Add(line)
             histos[0].GetListOfFunctions().Add(legend)
         self.Draw.save_plots('AllChi2{mod}'.format(mod=mod_str.title()))
-        return stack
+        return s
 
     def draw_all_chi2s(self, show=True):
         stacks = [self.draw_chi2(mode, show=False) for mode in [None, 'x', 'y']]
@@ -829,14 +829,14 @@ class AnalysisCollection(Analysis):
     def draw_angle(self, mode='x', show=True):
         histos = self.get_values('angle distribution {}'.format(mode), self.Analysis.draw_angle, mode=mode, show=False, prnt=False)
         legend = self.make_flux_legend(histos)
-        stack = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
+        s = THStack('has', 'Track Angles in {mode}'.format(mode=mode.title()))
         for i, (h, flux) in enumerate(zip(histos, self.get_fluxes())):
             format_histo(h, stats=0, color=self.Draw.get_color(self.NRuns), normalise=True, sumw2=False, fill_color=4000, fill_style=4000)
-            stack.Add(h)
+            s.Add(h)
         histos[0].GetListOfFunctions().Add(legend)
-        format_histo(stack, x_tit='Angle [deg]', y_tit='Fraction of Events [%]', y_off=1.9, draw_first=True, x_range=[-4, 4])
-        self.Draw(stack, 'AllTrackAngles{mod}'.format(mod=mode.title()), show, lm=.15, draw_opt='nostack', leg=legend)
-        return stack
+        format_histo(s, x_tit='Angle [deg]', y_tit='Fraction of Events [%]', y_off=1.9, draw_first=True, x_range=[-4, 4])
+        self.Draw(s, 'AllTrackAngles{mod}'.format(mod=mode.title()), show, lm=.15, draw_opt='nostack', leg=legend)
+        return s
 
     def draw_both_angles(self, show=True):
         stacks = [self.draw_angle(mode, show=False) for mode in ['x', 'y']]

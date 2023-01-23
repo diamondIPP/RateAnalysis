@@ -68,11 +68,11 @@ class PulserAnalysis(PadSubAnalysis):
     def rate(self, _redo=False):
         return calc_eff(values=self.Run.get_tree_vec('pulser', dtype=bool, cut=self.Ana.Cut.include('beam stops', 'event range')))
 
-    def get_rate_stability(self, bin_size=10, bins=None, show=False):
-        return self.Draw.pull(self.draw_rate(bin_size, show=False, cut=self.Ana.Cut['beam stops']), bins, show=show)
+    def get_rate_stability(self, bin_size=10, b=None, show=False):
+        return self.Draw.pull(self.draw_rate(bin_size, show=False, cut=self.Ana.Cut['beam stops']), b, show=show)
 
     def get_t_bins(self, bin_size=None):
-        return make_bins(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
+        return bins.make(*ax_range(self.SignalRegion, 0, .5, .5), choose(bin_size, default=self.Waveform.BinWidth))
 
     def get_pulse_height(self, corr=True, beam_on=True, bw=None, redo=False):
         return self.get_distribution_fit(corr, beam_on, bw, _redo=redo)[1]
@@ -146,9 +146,9 @@ class PulserAnalysis(PadSubAnalysis):
     def draw_rate(self, bw=10, cut='', rel_t=True, hist=False, **dkw):
         """ Shows the fraction of pulser events as a function of time. Peaks appearing in this graph are most likely beam interruptions. """
         x, y = self.get_tree_vec(var=[self.get_t_var(), 'pulser'], cut=self.Cut(choose(cut, self.Ana.Cut.get('beam stops'))))
-        bins = self.Bins.get_raw_time(bw)
+        b = self.Bins.get_raw_time(bw)
         f = partial(self.Draw.profile, draw_opt='hist', **Draw.mode(3)) if hist else self.Draw.efficiency
-        return f(x, y * 100 if hist else 1, bins, 'Pulser Rate', **prep_kw(dkw, y_tit='Pulser Fraction [%]', gridy=True, y_range=[0, 105], **self.get_t_args(rel_t), file_name='PulRate', stats=False))
+        return f(x, y * 100 if hist else 1, b, 'Pulser Rate', **prep_kw(dkw, y_tit='Pulser Fraction [%]', gridy=True, y_range=[0, 105], **self.get_t_args(rel_t), file_name='PulRate', stats=False))
 
     def draw_beam_stop_cut(self):
         t, s0 = self.Ana.Cut.interruption_times(), self.Run.ev2t(self.Ana.Cut.get_event_range()[0])
@@ -167,7 +167,7 @@ class PulserAnalysis(PadSubAnalysis):
         """ Shows the average pulse height of the pulser as a function of time """
         g = self.get_pulse_height_trend(bin_size, cut, _redo=redo)
         fit = FitRes(g.Fit('pol0', 'qs'))
-        kwargs = prep_kw(kwargs, gridy=True, lm=.14, y_off=1.7, stats=set_statbox(fit=True, entries=True), y_range=ax_range(get_graph_y(g, err=False), 0, .6, 1))
+        kwargs = prep_kw(kwargs, gridy=True, lm=.14, y_off=1.7, stats=set_statbox(fit=True, entries=True), y_range=ax_range(graph_y(g, err=False), 0, .6, 1))
         g = self.Draw(g, **self.get_t_args(), **kwargs, file_name='PulserPulseHeight')
         return g, fit
 
@@ -178,7 +178,7 @@ class PulserAnalysis(PadSubAnalysis):
         if mean(x) > m + 3 * s:
             x = x[x > m + 2 * s]  # filter out very low signals
         m, s = mean_sigma(x[x < mean(x) + 10], err=False)
-        return self.Draw.distribution(x, make_bins(m - 7 * s, m + 10 * s, choose(bw, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
+        return self.Draw.distribution(x, bins.make(m - 7 * s, m + 10 * s, choose(bw, max(.2, self.Bins.find_width(x)))), 'Pulser Pulse Height', x_tit='Pulse Height [mV]', show=False)
 
     def draw_distribution(self, name=None, corr=True, beam_on=True, bw=None, redo=False, **kwargs):
         """ Shows the distribution of the pulser integrals. """

@@ -46,7 +46,7 @@ class PulserCollection(SubCollection):
     def draw_pulse_height(self, bin_size=30000, redo=False, show=True, rel_t=True):
         """Draw time evolution of the pulse height"""
         f, picklepath = PulserAnalysis.draw_pulse_height, self.Analysis.make_simple_pickle_path('PHT', 'PulserBeamOn{}'.format(self.Analysis.Bins(bin_size)), run='{}')
-        x, y = get_hist_vecs(array(self.get_plots('pulser pulse heights', f, show=False, prnt=False, picklepath=picklepath, redo=redo, bin_size=bin_size), object)[:, 0], err=False)
+        x, y = hist_xy(array(self.get_plots('pulser pulse heights', f, show=False, prnt=False, picklepath=picklepath, redo=redo, bin_size=bin_size), object)[:, 0], err=False)
         self.Draw.profile(x, y, self.get_time_bins(bin_size), 'Pulser Pulse Height Trend', **self.get_x_args(True, rel_t), y_tit='Pulser Pulse Height [mV]', w=2, show=show, stats=0,
                           y_range=ax_range(y, 0, .3, .3))
 
@@ -108,7 +108,7 @@ class PulserCollection(SubCollection):
         return self.get_values('pulser rates', PulserAnalysis.rate, avrg=avrg, _redo=redo, picklepath=self.get_pickle_path('Rate'))
 
     def draw_rate(self, bin_size=50, cut=None, rel_t=True, show=True):
-        x, y = get_hist_vecs(self.get_plots('pulser rate', PulserAnalysis.draw_rate, show=False, prnt=False, bin_size=bin_size, cut=cut), err=False)
+        x, y = hist_xy(self.get_plots('pulser rate', PulserAnalysis.draw_rate, show=False, prnt=False, bin_size=bin_size, cut=cut), err=False)
         self.Draw.profile(x, y, self.Ana.get_raw_time_bins(bin_size), 'Pulser Rate', **self.get_x_args(True, rel_t), y_tit='Pulser Rate [%]', w=2, show=show, stats=0,  y_range=ax_range(y, 0, .3, .3))
 
     def draw_rates(self, vs_time=False, redo=False, **dkw):

@@ -4,7 +4,8 @@
 # created on Oct 28th 2019 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from plotting.draw import make_bins, choose, array, append, diff, freedman_diaconis, remove_file
+from plotting.draw import remove_file
+from plotting.binning import *
 from helpers.utils import load_main_config, save_pickle
 from src.dut import Plane
 from src.sub_analysis import SubAnalysis
@@ -164,8 +165,8 @@ class Bins(SubAnalysis):
     # ----------------------------------------
 
     @staticmethod
-    def make(min_val, max_val=None, bin_width=1, last=None, n=None, off=0):
-        return make_bins(min_val, max_val, bin_width, last, n, off)
+    def make(min_val, max_val=None, bin_width=1., last=None, nbins=None, off=0):
+        return make(min_val, max_val, bin_width, last, nbins, off)
 
     @staticmethod
     def make2d(x, y, bs=None, off=0):

@@ -294,7 +294,7 @@ def get_z_positions(e=0):
 
 def get_res_cut(res, n, cut, max_res):
     x = array([min(i) for i in split(res, cumsum(n)[:-1])])[cut]
-    h = plot.distribution(x, make_bins(-1000, 1000, n=100), show=False)
+    h = plot.distribution(x, bins.make(-1000, 1000, n=100), show=False)
     m = h.GetMean()
     return array((m - max_res < x) & (x < m + max_res))
 
@@ -381,7 +381,7 @@ def get_run_efficiencies(r1, r2, c=None):
 
 def draw_eff_evo(roc=0, n=50):
     e = get_tree_vec(t, 'n_clusters[{}]'.format(roc)) > 0
-    plot.efficiency(arange(e.size), e, make_bins(e.size, n=n))
+    plot.efficiency(arange(e.size), e, bins.make(e.size, n=n))
 
 
 def get_efficiencies():

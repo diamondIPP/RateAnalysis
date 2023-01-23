@@ -4,9 +4,9 @@
 # --------------------------------------------------------
 
 from helpers.utils import save_pickle, deepcopy, file_exists, do_nothing, update_pbar, array, count_nonzero
-from plotting.draw import FitRes, find_bins, choose, prep_kw, calc_eff, quantile, arange, get_graph_x, set_statbox
+from plotting.draw import FitRes, choose, prep_kw, calc_eff, quantile, arange, graph_x, set_statbox, bins
 from plotting.fit import Erf, Draw
-from src.binning import Bins, make_bins, Plane
+from src.binning import Bins, Plane
 from src.cut import Cut
 from pixel.analysis import PixAnalysis
 
@@ -66,7 +66,7 @@ class Efficiency(PixAnalysis):
 
     def draw_vs_chi2(self, n=2, **dkw):
         x, e = self.get_tree_vec(['chi2_tracks', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
-        self.Draw.efficiency(x, e, find_bins(x, n=n, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(dkw, x_tit='Track #chi^{2}', file_name='EffChi'))
+        self.Draw.efficiency(x, e, bins.find(x, nbins=n, lfac=0, lq=0), title='Efficiency vs Chi2', **prep_kw(dkw, x_tit='Track #chi^{2}', file_name='EffChi'))
 
     def draw_vs_chi2_cut(self, step=5, **dkw):
         cx, cy, e = self.get_tree_vec(['chi2_x', 'chi2_y', self.get_var()], self.Cut.exclude('chi2_x', 'chi2_y'))
@@ -77,7 +77,7 @@ class Efficiency(PixAnalysis):
 
     def draw_vs_trigphase(self, **kwargs):
         x, e = self.get_tree_vec(['trigger_phase[1]', self.get_var()], self.Cut.exclude('trigger_phase'))
-        return self.Draw.efficiency(x, e, make_bins(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap', file_name='EffVsTP'))
+        return self.Draw.efficiency(x, e, bins.make(-.5, 10), **prep_kw(kwargs, title='Trigger Phase Efficiency', x_tit='Trigger Phase', x_range=[-1, 10], draw_opt='bap', file_name='EffVsTP'))
 
     def draw_vs_cuts(self, cuts=None, short=False, redo=False, **dkw):
         cuts = choose(cuts, self.Cut.get_consecutive(short))
@@ -91,7 +91,7 @@ class Efficiency(PixAnalysis):
 
     def _find_alignment(self, p, w, show=False):
         g = self.Draw.make_graph_from_profile(p)
-        (x0, x1), m = get_graph_x(g, err=False)[[0, -1]], p.GetMean()
+        (x0, x1), m = graph_x(g, err=False)[[0, -1]], p.GetMean()
         self.Draw(g, x_tit='Coordinate', y_tit='Efficiency [%]') if show else do_nothing()
         f0, f1 = Erf(g, [x0, m]).fit(draw=show).Fit, Erf(g, [m, x1]).fit(draw=show).Fit
         return self.Draw.make_tf1(None, lambda x: f0(x) - f1(x + w), x0, m).GetX(0)

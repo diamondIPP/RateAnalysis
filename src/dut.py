@@ -4,7 +4,8 @@
 # --------------------------------------------------------
 from helpers.utils import load_json, Dir, critical, load_main_config, ufloat, loads, sqrt, pi, array, choose, add_err, add_perr, prep_kw, update_pbar, PBar, do_nothing
 from numpy import multiply, deg2rad, tan, rad2deg, arange, cos, sin, arctan, linspace, mean, invert, isnan, unique, diff, cumsum, append
-from plotting.draw import Draw, bins_from_vec
+from plotting.draw import Draw
+import plotting.binning as bins
 
 
 class DUT:
@@ -56,7 +57,7 @@ class DUT:
     def load_irradiation(self, e=.1):
         d = self.load_spec('irradiation')
         v = append(0, array(list(d.values()), 'd'))  # there was a zero at some point...
-        i = diff(unique(v))  # get the fluences that were added
+        i = diff(unique(v))  # get the fluence that was added
         fluences = append(ufloat(0, 0), cumsum(add_perr(i, e)))  # calculate the accumulated errors
         return {key: next(f for f in fluences if f.n == float(i)) for key, i in d.items()}
 
@@ -68,7 +69,7 @@ class DUT:
         return self.get_bcm_area() if bcm else self.ActiveArea * .01
 
     def get_bcm_area(self):
-        """ :returns: total area of the BCM' pad sizes """
+        """ :returns: total area of the BCM` pad sizes """
         i = int(self.Name.split('-')[-1]) - 1
         base_length = 0.0928125  # [cm]
         spacing = 0.0025
@@ -89,7 +90,7 @@ class DUT:
 
 
 def get_spacings(i, spacing, length):
-    """ :returns: the additional spacings for the BCM' pad sizes """
+    """ :returns: the additional spacings for the BCM` pad sizes """
     if not i:
         return 0
     j = 2 ** (i / 2)
@@ -233,8 +234,8 @@ class PixelDUT(DUT):
         x, y = [linspace(-i / 2, i / 2, n + 1) for i in [choose(rx, self.PX), choose(ry, self.PY)]]
         self.PBar.start(x.size ** 2)
         d = array([[ix, iy, self.path_length(a, ix, iy)] for ix in x for iy in y]).T
-        bins = sum([bins_from_vec(i, centre=True) for i in [x, y]], [])
-        return self.Draw.prof2d(*d, bins, f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Path Length [#mum]', stats=False, z_range=[0, max(d[2])]))
+        b = sum([bins.from_vec(i, centre=True) for i in [x, y]], [])
+        return self.Draw.prof2d(*d, b, f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Path Length [#mum]', stats=False, z_range=[0, max(d[2])]))
 
     def draw_pxa(self, y=0, amax=30, n=20, **dkw):
         x = linspace(0, amax, n)
@@ -281,8 +282,8 @@ class PixelDUT(DUT):
         x, y = [linspace(-i / 2, i / 2, n + 1) for i in [self.PX, self.PY]]
         self.PBar.start(x.size ** 2)
         d = array([[ix, iy, self.eff(thresh, a, ix, iy)] for ix in x for iy in y]).T
-        bins = [bins_from_vec(linspace(-i / 2, i / 2, n // bw + 1), centre=True) for i in [self.PX, self.PY]]
-        return self.Draw.prof2d(*d, bins[0] + bins[1], f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Efficiency', stats=False))
+        b = [bins.from_vec(linspace(-i / 2, i / 2, n // bw + 1), centre=True) for i in [self.PX, self.PY]]
+        return self.Draw.prof2d(*d, b[0] + b[1], f'Eff at {a:.1f} deg', **prep_kw(dkw, x_tit='X [#mum]', y_tit='Y [#mum]', z_tit='Efficiency', stats=False))
 
     def draw_eax(self, thresh=.2, y=0, cols=1, amax=1, n=20, **dkw):
         x = linspace(0, amax, n)

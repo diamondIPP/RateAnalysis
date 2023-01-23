@@ -162,7 +162,7 @@ class Telescope(SubAnalysis):
     # region HITS
     def draw_cluster_size(self, roc=0, name=None, cut='', **dkw):
         x, tit = self.get_tree_vec(f'cluster_size[{roc}]', self.Cut(cut)), f'Cluster Size {f"ROC {roc}" if name is None else name}'
-        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, normalise=True, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
+        return self.Draw.distribution(x, bins.find(x, w=1, x0=0, q=.001), tit, **prep_kw(dkw, normalise=True, logy=True, x_tit='Cluster Size', file_name=f'ClusterSize{roc}'))
 
     def get_all_cs(self, pl=0, cut=''):
         cut = self.Cut(cut) + f'n_clusters[{pl}] == 1'
@@ -185,11 +185,11 @@ class Telescope(SubAnalysis):
 
     def draw_n_clusters(self, roc=0, name=None, cut='', f=1, **dkw):
         x, tit = self.get_tree_vec(f'n_clusters[{roc}]', self.Cut(cut)), f'Number of Clusters {f"ROC {roc}" if name is None else name}'
-        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=f), tit, **prep_kw(dkw, logy=True, file_name=f'NClusters{roc}', x_tit='Number of Clusters', normalise=True))
+        return self.Draw.distribution(x, bins.find(x, w=1, x0=0, q=.001, rfac=f), tit, **prep_kw(dkw, logy=True, file_name=f'NClusters{roc}', x_tit='Number of Clusters', normalise=True))
 
     def draw_tot_clusters(self, cut='', **dkw):
         x = self.get_tree_vec(f'total_clusters', self.Cut(cut))
-        return self.Draw.distribution(x, find_bins(x, w=1, x0=0, q=.001, rfac=1), 'Total Number of Clusters', **prep_kw(dkw, logy=True, file_name='TotClusters'))
+        return self.Draw.distribution(x, bins.find(x, w=1, x0=0, q=.001, rfac=1), 'Total Number of Clusters', **prep_kw(dkw, logy=True, file_name='TotClusters'))
 
     def draw_event(self, event, show=True, grid=True):
         x, y, p = self.get_tree_vec(self.get_hit_vars(0, cluster=False) + ['plane'], nentries=1, firstentry=event)
@@ -207,10 +207,10 @@ class Telescope(SubAnalysis):
         cut_string = self.Cut(cut) + TCut('' if cluster else 'plane == {}'.format(plane))
         self.Tree.SetEstimate(sum(self.get_tree_vec('n_hits_tot', cut, dtype='u1')))
         x, y = self.get_tree_vec(var=self.get_hit_vars(plane, cluster, tel_coods), cut=cut_string)
-        bins = Bins.get_native_global() if tel_coods else Bins.get_pixel()
+        b = Bins.get_native_global() if tel_coods else Bins.get_pixel()
         tit = f'{"Cluster" if cluster else "Hit"} Occupancy {f"ROC {plane}" if name is None else name}'
-        return self.Draw.histo_2d(x, y, bins, **prep_kw(dkw, title=tit, x_tit='x [mm]' if tel_coods else 'Column', y_tit='y [mm]' if tel_coods else 'Row', y_off=1.2,
-                                                        file_name=f'{"Cluster" if cluster else "Hit"}Map{plane}'))
+        return self.Draw.histo_2d(x, y, b, **prep_kw(dkw, title=tit, x_tit='x [mm]' if tel_coods else 'Column', y_tit='y [mm]' if tel_coods else 'Row', y_off=1.2,
+                                                     file_name=f'{"Cluster" if cluster else "Hit"}Map{plane}'))
 
     def draw_occupancies(self, planes=None, cut='', cluster=True, show=True, prnt=True):
         histos = [self.draw_occupancy(plane, cluster=cluster, cut=cut, show=False, prnt=False) for plane in (range(self.NRocs) if planes is None else planes)]
@@ -282,7 +282,7 @@ class Telescope(SubAnalysis):
         """ Draws the single plane rates versus time. The first entry of the vector corresponds to the scintillator rate """
         t, y = self.get_tree_vec([self.get_t_var(), self.get_rate_var(plane)], cut=f'beam_current < 10000 && {self.get_rate_var(plane)} < 1e9')
         return self.Draw.profile(t, y, self.Bins.get_raw_time(bin_size), **prep_kw(dkw, title=f'Rate of Plane {plane}', **self.Draw.mode(2), y_tit='Rate [Hz]',
-                                 y_range=[0, find_range(y)[1]], **self.get_t_args(rel_t), file_name=f'Plane{plane}Rate', draw_opt='hist'))
+                                 y_range=[0, bins.find_range(y)[1]], **self.get_t_args(rel_t), file_name=f'Plane{plane}Rate', draw_opt='hist'))
 
     def draw_bc_vs_rate(self, cut='', show=True):
         cut = TCut('beam_current < 10000 && rate[{0}] < 1e9 && rate[{1}] < 1e9 && rate[{0}] && rate[{1}]'.format(*self.Run.TriggerPlanes + 1)) + TCut(cut)

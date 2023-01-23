@@ -5,8 +5,7 @@
 # --------------------------------------------------------
 from numpy import histogram2d, sum, insert, delete
 from src.event_alignment import *
-from src.binning import make_bins
-from plotting.draw import get_hist_vec, get_hist_vecs, ax_range, mean_sigma
+from plotting.draw import hist_values, hist_xy, ax_range, mean_sigma
 
 
 class PadAlignment(EventAligment):
@@ -42,12 +41,12 @@ class PadAlignment(EventAligment):
         return append(arange(0, self.NEntries, bin_size), self.NEntries if self.NEntries % bin_size else []).astype('i4')
 
     def get_time_bins(self, off=0, bin_size=1000):
-        return make_bins([self.Run.get_time_at_event(e) for e in self.get_xbins(bin_size)])
+        return bins.make([self.Run.get_time_at_event(e) for e in self.get_xbins(bin_size)])
 
     def get_aligned(self, tree=None, bin_size=1000, data=None):
         x, y = choose(data, get_tree_vec(choose(tree, self.InTree), dtype='u4', var=['Entry$', self.HitVar], cut='pulser'))
-        bins = histogram2d(x, y >= self.NMaxHits, bins=[self.get_xbins(bin_size), [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
-        bin_average = array([ib / (ig + ib) if ig + ib else 0 for ig, ib in bins])
+        b = histogram2d(x, y >= self.NMaxHits, bins=[self.get_xbins(bin_size), [0, .5, 50]])[0]  # histogram the data to not over-count the empty events
+        bin_average = array([ib / (ig + ib) if ig + ib else 0 for ig, ib in b])
         return bin_average < self.Threshold
     # endregion INIT
     # ----------------------------------------
@@ -67,12 +66,12 @@ class PadAlignment(EventAligment):
 
     def get_pulser_rate(self):
         x = self.get_pulser()
-        values = get_hist_vec(self.Run.Draw.profile(arange(x.size), x, make_bins(0, x.size, 100), show=False))
+        values = hist_values(self.Run.Draw.profile(arange(x.size), x, bins.make(0, x.size, 100), show=False))
         return mean_sigma(values[values < mean(x) + .2])[0]
 
     def get_beam_interruptions(self, bin_size=100):
         x = self.get_pulser()
-        values = array(get_hist_vec(self.Run.Draw.profile(arange(x.size), x, make_bins(0, x.size, bin_size, last=True), show=False)) < mean(x) + .1)
+        values = array(hist_values(self.Run.Draw.profile(arange(x.size), x, bins.make(0, x.size, bin_size, last=True), show=False)) < mean(x) + .1)
         high = where(values == 0)[0]
         values[high[high > 0] - 1] = False  # set bins left and right also to zero
         values[high[high < high.size - 1] + 1] = False
@@ -153,16 +152,16 @@ class PadAlignment(EventAligment):
 
     def draw_pulser(self, bin_size=1000, cut=..., show=True):
         x = arange(self.NEntries)[cut]
-        return self.Run.Draw.efficiency(x, self.get_pulser()[cut], make_bins(0, max(x), bin_size), draw_opt='alx', show=show)
+        return self.Run.Draw.efficiency(x, self.get_pulser()[cut], bins.make(0, max(x), bin_size), draw_opt='alx', show=show)
 
     def draw_hits(self, bin_size=1000, cut=..., show=True):
         x = arange(self.NEntries)[cut]
-        self.Draw(self.Draw.make_graph_from_profile(self.Draw.profile(x, self.NHits[cut], make_bins(0, max(x), bin_size), show=False)), show=show, draw_opt='alx')
+        self.Draw(self.Draw.make_graph_from_profile(self.Draw.profile(x, self.NHits[cut], bins.make(0, max(x), bin_size), show=False)), show=show, draw_opt='alx')
 
     def draw(self, off=0, bin_size=None, show=True):
         p = roll(self.get_pulser(), off) & self.get_beam_interruptions()
         x, y = arange(self.NEntries)[p], self.load_n_hits()[p]
-        x, y = get_hist_vecs(self.Run.Draw.profile(x, y, make_bins(0, max(x), int(choose(bin_size, self.BinSize / self.get_pulser_rate().n))), show=0))
+        x, y = hist_xy(self.Run.Draw.profile(x, y, bins.make(0, max(x), int(choose(bin_size, self.BinSize / self.get_pulser_rate().n))), show=0))
         return self.Draw.graph(x, y, x_tit='Event Number', y_tit='N Hits @ Pulser', w=2, show=show, draw_opt='alx', y_range=ax_range(0, max(max(y).n, 5), .1, .3))
 
 

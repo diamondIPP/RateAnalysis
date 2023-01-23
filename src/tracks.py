@@ -257,8 +257,8 @@ class Tracks(SubAnalysis):
         x, y = array(self.get_tree_vec([f'{self.get_res_var(m)}[{roc}]' for m in ['x', 'y']], self.Cut(cut))) * 1e4  # convert to [um]
         ((mx, sx), (my, sy)), n = self.Cut.calc_res_sigmas() * 1e4, self.Cut.get_config('rhit sigma', dtype=float)
         rcut = Draw.ellipse(sx * n, sy * n, mx, my, show=False) if show_cut else None
-        return self.Draw.histo_2d(x, y, find_bins(x, f, f, n=2) + find_bins(y, f, f, n=2), **prep_kw(dkw, x_tit='Residual in X [#mum]', y_tit='Residual in Y [#mum]', leg=rcut,
-                                                                                                     file_name=f'XYResidual{roc}'))
+        return self.Draw.histo_2d(x, y, bins.find(x, f, f, nbins=2) + bins.find(y, f, f, nbins=2), **prep_kw(dkw, x_tit='Residual in X [#mum]', y_tit='Residual in Y [#mum]', leg=rcut,
+                                                                                                             file_name=f'XYResidual{roc}'))
 
     def draw_unbiased_residual(self, roc=0, mode='x', cut='', fit=False, **dkw):
         """ fit the track without the plane under test and calculate residuals. """
@@ -266,7 +266,7 @@ class Tracks(SubAnalysis):
         fits = polyfit(delete(x, roc), delete(y, roc, axis=0), deg=1)
         v = (polyval(fits, x[roc]) - y[roc]) * 1e3  # to mm -> um
         tit = 'Unbiased Residuals in {} for Plane {}'.format(mode.title(), roc)
-        h = self.Draw.distribution(v, make_bins(-1000, 1000, 2), tit, **prep_kw(dkw, y_off=1.5, x_tit='Distance [#mum]', normalise=True, lm=.14, stats=set_statbox(fit=fit, all_stat=True, fit_opt=10)))
+        h = self.Draw.distribution(v, bins.make(-1000, 1000, 2), tit, **prep_kw(dkw, y_off=1.5, x_tit='Distance [#mum]', normalise=True, lm=.14, stats=set_statbox(fit=fit, all_stat=True, fit_opt=10)))
         res = mean_sigma(v, err=0)[1] if 'chi2' in self.Cut.get_name(cut) else self.fit_residual(h, show=fit)[2]
         return res if fit else h
 
@@ -313,8 +313,8 @@ class Tracks(SubAnalysis):
 
     @staticmethod
     def align(x, y, dx, dy):
-        bins = [arange(-4, 4.01, .2), arange(-1, 1.02, .03), arange(-4, 4.15, .15), arange(-1, 1.02, .02)]
-        histos = [[TH2F('h{}{}'.format(i, j), 'rotres', bins[i].size - 1, bins[i], bins[i + 1].size - 1, bins[i + 1]) for i in arange(0, 4, 2)] for j in range(x.shape[0])]
+        b = [arange(-4, 4.01, .2), arange(-1, 1.02, .03), arange(-4, 4.15, .15), arange(-1, 1.02, .02)]
+        histos = [[TH2F('h{}{}'.format(i, j), 'rotres', b[i].size - 1, b[i], b[i + 1].size - 1, b[i + 1]) for i in arange(0, 4, 2)] for j in range(x.shape[0])]
         angles = []
         for h, ix, iy, idx, idy in zip(histos, x, y, dx, dy):
             h[0].FillN(ix.size, ix.astype('d'), idy.astype('d'), full(ix.size, 1, dtype='d'))

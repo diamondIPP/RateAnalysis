@@ -126,8 +126,8 @@ class PedestalAnalysis(PadSubAnalysis):
     def get_dist(self, sig=None, bin_scale=None, cut=None, _redo=False, **dkw):
         self.Run.set_estimate()
         x = self.get_tree_vec(var=self.get_signal_var(sig), cut=self.Cut(cut))
-        bins = self.get_bins(max(.1, self.Bins.find_width(x)) * choose(bin_scale, 1))
-        return self.Draw.distribution(x, bins, 'Pedestal Distribution', **prep_kw(dkw, x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5)))
+        b = self.get_bins(max(.1, self.Bins.find_width(x)) * choose(bin_scale, 1))
+        return self.Draw.distribution(x, b, 'Pedestal Distribution', **prep_kw(dkw, x_tit='Pedestal [mV]', show=False, x_range=ax_range(x, 0, .2, .4, thresh=5)))
 
     def draw_distribution(self, sig=None, bin_scale=None, cut=None, redo=False, prefix='', **kwargs):
         h = self.get_dist(sig, bin_scale, cut, _redo=redo, **kwargs)
@@ -162,8 +162,8 @@ class PedestalAnalysis(PadSubAnalysis):
 
     @save_pickle('Trend', suf_args='all')
     def get_trend(self, signal_name=None, bin_size=None, sigma=False, cut=None, _redo=False):
-        (x, y), bins = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut(cut)), self.Bins.get_time(bin_size)[-1]
-        x, y = bins[:-1] + diff(bins) / 2, binned_stats(x, y, mean_sigma, bins)[:, 1 if sigma else 0]
+        (x, y), b = self.get_tree_vec(var=[self.get_t_var(), self.get_signal_var(signal_name)], cut=self.Cut(cut)), self.Bins.get_time(bin_size)[-1]
+        x, y = b[:-1] + diff(b) / 2, binned_stats(x, y, mean_sigma, b)[:, 1 if sigma else 0]
         name = 'Sigma' if sigma else 'Pedestal'
         return self.Draw.graph(x, y, title=f'{name} Trend', y_tit=f'{name} [mV]', show=False)
 

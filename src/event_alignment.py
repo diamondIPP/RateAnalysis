@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 from ROOT import TFile
 from helpers.utils import *
-from plotting.draw import set_root_output, Draw, find_bins
+from plotting.draw import set_root_output, Draw, bins
 from numpy import invert, ones, append
 
 MAX_SIZE = 255
@@ -197,7 +197,7 @@ class EventAligment(object):
         self.find_all_offsets() if not self.Offsets else do_nothing()
         self.set_aligned() if all(self.Aligned) else do_nothing()
         x, y = arange(self.Aligned.size), self.Aligned
-        return self.Draw.efficiency(x, y, find_bins(x, rfac=.03, lfac=.03), **prep_kw(dkw, graph=True, x_tit='Event Number', y_tit='Aligned [%]', y_range=[-5, 105], **Draw.mode(2, rm=.05)))
+        return self.Draw.efficiency(x, y, bins.find(x, rfac=.03, lfac=.03), **prep_kw(dkw, graph=True, x_tit='Event Number', y_tit='Aligned [%]', y_range=[-5, 105], **Draw.mode(2, rm=.05)))
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@
 from numpy.random import normal, randint
 from numpy import concatenate, cumsum, linspace, where, polyfit, array, append, arange, invert, mean, round
 from ROOT import gRandom
-from plotting.draw import Draw, choose, join, get_hist_vecs, calc_eff, mean_sigma, ax_range, get_2d_hist_vec, prep_kw
+from plotting.draw import Draw, choose, join, hist_xy, calc_eff, mean_sigma, ax_range, hist_values_2d, prep_kw
 from helpers.utils import get_base_dir, PBar, update_pbar
 
 
@@ -51,7 +51,7 @@ class MCSignal(object):
     def gen_sig_from_dist(h, n=None, p_steps=100000):
         """interpolate the cdf in equal prob steps and sample it"""
         n = int(choose(n, 1e6))
-        x, y = get_hist_vecs(h, err=False)
+        x, y = hist_xy(h, err=False)
         ints = cumsum(y) / h.GetEntries()
         p = linspace(0, 1, p_steps, endpoint=False)
         ip = array([where(ip >= ints)[0][-1] for ip in p])
@@ -116,7 +116,7 @@ class MCSignal(object):
         return gRandom.Landau(mpv, xi)
 
     def sim_signal(self, res=.5, n=1e6, noise=None):
-        m, p = [get_2d_hist_vec(f(res, cut=self.Ana.Cut(), show=False), err=False).astype(t) for f, t in [(self.Ana.draw_signal_map, 'd'), (self.Ana.draw_hitmap, 'i')]]
+        m, p = [hist_values_2d(f(res, cut=self.Ana.Cut(), show=False), err=False).astype(t) for f, t in [(self.Ana.draw_signal_map, 'd'), (self.Ana.draw_hitmap, 'i')]]
         m = m.repeat(array(round(p / sum(p) * n), 'i'))
         self.PBar.start(int(m.size))
         mpv = -1.49e-01 + m * 7.35e-01 + m ** 2 * 5.77e-04

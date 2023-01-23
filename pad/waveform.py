@@ -40,7 +40,7 @@ class Waveform(PadSubAnalysis):
         return array([wf for wf in range(self.NChannels) if self.Run.wf_exists(wf)])
 
     def get_binning(self, bin_size=None):
-        return make_bins(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
+        return bins.make(0, self.Run.NSamples * self.BinWidth, choose(bin_size, self.BinWidth))
 
     def get_cut(self, cut=None, n=None):
         cut = self.Ana.get_event_cut(self.Cut.to_string(cut)) if type(cut) in [TCut, str] else cut
@@ -129,7 +129,7 @@ class Waveform(PadSubAnalysis):
         return do_pickle(self.make_simple_pickle_path('RT', int(p * 100)), self.draw_average_rise_time, redo=redo, p=p, show=False)
 
     def get_max(self, h, region=None):
-        x, y = get_graph_vecs(h, err=False)
+        x, y = graph_xy(h, err=False)
         xmin, xmax = self.Ana.get_region(region=region) * self.BinWidth
         cut = (x >= xmin) & (x <= xmax)
         i_max = abs(y[cut]).argmax()
@@ -153,9 +153,9 @@ class Waveform(PadSubAnalysis):
 
     def draw_all(self, signal_corr=False, raw=False, n=None, x_range=None, y_range=None, cut=None, **dkw):
         n = choose(n, 100000)
-        y, x, bins = self.get_values(cut, n), self.get_times(signal_corr, cut, n, raw), self.get_binning() + make_bins(-512, 512.1, .5)
+        y, x, b = self.get_values(cut, n), self.get_times(signal_corr, cut, n, raw), self.get_binning() + bins.make(-512, 512.1, .5)
         rx, ry = choose(x_range, [0, 512]), choose(y_range, ax_range(min(y), max(y), .1, .2)),
-        h = self.Draw.histo_2d(x, y, bins, f'{n} Waveforms', **prep_kw(dkw, **Draw.mode(3), x_range=rx, y_range=ry, stats=False, grid=True, logz=True, draw_opt='col', file_name='WaveForms100k'))
+        h = self.Draw.histo_2d(x, y, b, f'{n} Waveforms', **prep_kw(dkw, **Draw.mode(3), x_range=rx, y_range=ry, stats=False, grid=True, logz=True, draw_opt='col', file_name='WaveForms100k'))
         return h, n
 
     def draw_single(self, cut=None, ind=None, t_corr=True, raw=False, show_noise=False, **dkw):
@@ -239,7 +239,7 @@ class Waveform(PadSubAnalysis):
         return do_hdf5(self.make_simple_hdf5_path('LFits'), f)
 
     def draw_average_rise_time(self, p=.1, ind=None, x_range=None, y_range=None, show=True):
-        x, y = get_graph_vecs(self.draw_all_average(show=show, cut=ind, x_range=x_range, y_range=y_range))
+        x, y = graph_xy(self.draw_all_average(show=show, cut=ind, x_range=x_range, y_range=y_range))
         ymax = max(y).n - self.Ana.get_pedestal().n
         i0, i1 = [next(i for i, v in enumerate(y) if v > ip * ymax) for ip in [p, 1 - p]]
         x0, x1 = [get_x(x[i - 1], x[i], y[i - 1], y[i], ip * ymax) for i, ip in [(i0, p), (i1, 1 - p)]]
@@ -254,7 +254,7 @@ class Waveform(PadSubAnalysis):
         leg = Draw.make_legend(nentries=2, w=.25)
         graphs = [self.Draw.make_graph_from_profile(self.draw_all_average(show=False, cut=ind)) for ind in [ind1, ind2]]
         for i, g in enumerate(graphs):
-            scale_graph(g, 1 / max(get_graph_y(g)).n) if normalise else do_nothing()
+            scale_graph(g, 1 / max(graph_y(g)).n) if normalise else do_nothing()
             x_range = ax_range(self.Ana.get_signal_range(), fl=0, fh=1) if x_range is None else x_range
             format_histo(g, color=self.Draw.get_color(2), x_tit='Peak Time [ns]', y_tit='Signal [mV]', x_range=x_range, y_off=1.2)
             leg.AddEntry(g, 'ind{}'.format(i + 1), 'l')
@@ -281,7 +281,7 @@ class Waveform(PadSubAnalysis):
         p = self.draw_all_average(cut=cut, n=n, show=False, redo=False)
         if s is not None:
             p.Scale(s / p.GetMaximum())
-        x, y = get_hist_vecs(p, err=0)
+        x, y = hist_xy(p, err=0)
         g = self.Draw.make_tgraph(x + t_off, y, color=2)
         c.cd()
         self.Draw.legend([g], ['average'], 'l')
@@ -329,7 +329,7 @@ class Waveform(PadSubAnalysis):
 
     @staticmethod
     def draw_integral(h, xmin, xmax, color=None):
-        x, y = get_graph_vecs(h, err=False)
+        x, y = graph_xy(h, err=False)
         cut = (x > xmin) & (x < xmax)
         i0, i1 = where(cut)[0][[0, -1]]  # find first and last index fulfilling the condition
         ymin, ymax = interpolate_y(x[i0 - 1], x[i0], y[i0 - 1], y[i0], xmin), interpolate_y(x[i1], x[i1 + 1], y[i1], y[i1 + 1], xmax)
@@ -408,11 +408,11 @@ class Waveform(PadSubAnalysis):
 
     def draw_rise_time(self, cut=None, show=True):
         values = self.get_tree_vec(var='rise_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        return self.Draw.distribution(values, make_bins(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
+        return self.Draw.distribution(values, bins.make(0, 10, .1), 'Signal Rise Time', x_tit='Rise Time [ns]', file_name='RiseTime', show=show)
 
     def draw_fall_time(self, cut=None, show=True):
         values = self.get_tree_vec(var='fall_time[{}]'.format(self.Channel), cut=self.Cut(cut))
-        return self.Draw.distribution(values, make_bins(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
+        return self.Draw.distribution(values, bins.make(0, 20, .1), 'Signal Fall Time', x_tit='Fall Time [ns]', show=show)
 
     def draw_rise_time_map(self, res=None, cut=None, show=True):
         cut = self.Ana.Cut.generate_custom(exclude='fiducial') if cut is None else TCut(cut)

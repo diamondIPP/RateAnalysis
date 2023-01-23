@@ -15,6 +15,7 @@ from src.tracks import Tracks
 from src.telescope import Telescope
 from plotting.save import *
 import plotting.latex as tex
+import plotting.binning as bins
 from helpers.utils import *
 from src.analysis import Analysis
 from plotting.fit import Langau, Expo
@@ -270,7 +271,7 @@ class DUTAnalysis(Analysis):
         """ :returns: the pulse height variable in the tree + corrections. [str] """
 
     def get_split_ph(self, m=2):
-        return get_2d_hist_vec(self.split_signal_map(m, show=0)[0])
+        return hist_values_2d(self.split_signal_map(m, show=0)[0])
 
     def get_next_dut(self, dut_nr=None):
         return next((dut for dut in self.Run.DUTs if dut.Number != self.DUT.Number), 1) if dut_nr is None else self.Run.DUTs[dut_nr - 1]
@@ -304,9 +305,9 @@ class DUTAnalysis(Analysis):
     def draw_alignment(self, bin_size=1000, **kwargs):
         """ draw the aligment of telescope and DUT events """
         self.init_alignment()
-        bins, y = self.Alignment.get_time_bins(bin_size=bin_size), self.Alignment.get_aligned(bin_size=bin_size)
-        x, y = (bins[1][:-1] + diff(bins[1]) / 2)[:y.size].repeat(y + 1), full(sum(y + 1), 1)
-        h = self.Draw.histo_2d(x, y, bins + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
+        b, y = self.Alignment.get_time_b(bin_size=bin_size), self.Alignment.get_aligned(bin_size=bin_size)
+        x, y = (b[1][:-1] + diff(b[1]) / 2)[:y.size].repeat(y + 1), full(sum(y + 1), 1)
+        h = self.Draw.histo_2d(x, y, b + [3, 0, 3], 'Event Alignment', **prep_kw(kwargs, x_tit='Time hh:mm', y_tit='Alignment', stats=False, l_off_y=99, center_y=True,
                                draw_opt='col', **Draw.mode(2, lm=.05, y_off=.3), pal=(3, array([1, 633, 418], 'i')), t_ax_off=0, rm=.03, z_range=[0, 2]))
         Draw.legend([Draw.box(0, 0, 0, 0, line_color=c, fillcolor=c) for c in [418, 633]], ['aligned', 'misaligned'], 'f')
         self.Draw.save_plots('EventAlignment')
@@ -447,7 +448,7 @@ class DUTAnalysis(Analysis):
 
     def draw_signal_vs_trigger_phase(self, dut=False, cut=None, show=True):
         x, y = self.get_tree_vec(['trigger_phase[{}]'.format([0, 1][dut]), self.get_signal_var()], self.Cut(cut))
-        self.Draw.profile(x, y, make_bins(11), 'Signal vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Pulse Height [mV]', show=show)
+        self.Draw.profile(x, y, bins.make(11), 'Signal vs. Trigger Phase', x_tit='Trigger Phase', y_tit='Pulse Height [mV]', show=show)
 
     def draw_signal_vs_chi2(self, m=0, **dkw):
         x, y = self.get_tree_vec([self.Tracks.chi2_var(m), self.get_ph_var()], cut=self.Cut.no_chi2())
@@ -467,7 +468,7 @@ class DUTAnalysis(Analysis):
 
     def fit_expo(self, bw=None, n=3, shift=False, fr=None, y2=None, **dkw):
         g = self.draw_pulse_height(bw=bw, fit=False, show=False, prnt=False)[0]
-        g = shift_graph(g, ox=-get_graph_x(g)[0].n) if shift else g
+        g = shift_graph(g, ox=-graph_x(g)[0].n) if shift else g
         f = (Expo(g) if fr is None else Expo(g, *fr)).fit(n=n)
         return self.Draw(g, **prep_kw(dkw, file_name='PHExpo', leg=Draw.stats(f, rm_entries=[1, 2], y2=y2)))
 
@@ -475,16 +476,16 @@ class DUTAnalysis(Analysis):
     # region SIGNAL MAP
     @save_pickle('SMRange', sub_dir='Maps', suf_args='all')
     def find_sm_range(self, res=None, square=False, m=None, n=None, _redo=False):
-        var, bins = self.get_track_vars() + [self.get_ph_var()],  Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
-        return ax_range(get_2d_hist_vec(self.Draw.prof2d(*self.get_tree_vec(var, self.Cut()), bins, show=False)), thresh=4)
+        var, b = self.get_track_vars() + [self.get_ph_var()],  Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
+        return ax_range(hist_values_2d(self.Draw.prof2d(*self.get_tree_vec(var, self.Cut()), b, show=False)), thresh=4)
 
     @save_pickle('SM', sub_dir='Maps', print_dur=True, suf_args='all')
     def get_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, _redo=False):
         self.Tree.SetEstimate(self.Run.NEvents)
-        var, bins = self.get_track_vars(local=local) + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
+        var, b = self.get_track_vars(local=local) + [self.get_ph_var()], Bins.get_global(res, square) if m is None else self.get_fid_bins(m, n)
         x, y, zz = self.get_tree_vec(var, self.Cut.generate_custom(exclude='fiducial', prnt=False) if not fid and cut is None else self.Cut(cut))
         tit, ztit = 'Pulse Height Map', 'Pulse Height [mV]'
-        return self.Draw.prof2d(x, y, zz, bins, tit, **self.Tracks.ax_tits(), z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
+        return self.Draw.prof2d(x, y, zz, b, tit, **self.Tracks.ax_tits(), z_tit=ztit, z_range=self.find_sm_range(res, square, m, n, _redo=_redo), show=False, pal=53)
 
     def draw_signal_map(self, res=None, cut=None, fid=False, square=False, m=None, n=None, local=True, scale=False, redo=False, **kwargs):
         h = self.get_signal_map(res, cut, fid, square, m, n, local=local, _redo=redo)
@@ -519,19 +520,19 @@ class DUTAnalysis(Analysis):
 
     def split_signal_map(self, m=2, n=None, redo=False, draw_n=False, grid=True, **kwargs):
         h = self.draw_signal_map(fid=True, m=m, n=n, redo=redo, **prep_kw(kwargs, stats=False))
-        Draw.grid(*get_2d_bins(h, arr=True), width=2) if grid else do_nothing()
+        Draw.grid(*bins.h2d(h, arr=True), width=2) if grid else do_nothing()
         self.Draw.save_plots('SplitSigMap')
         Draw.bin_numbers(h, draw_n)
         return h
 
     def draw_split_means(self, n=10):
         x = arange(1, n + 1).tolist()
-        y = [mean_sigma(get_2d_hist_vec(h))[0] for h in [self.split_signal_map(i, i, show=False)[0] for i in x]]
+        y = [mean_sigma(hist_values_2d(h))[0] for h in [self.split_signal_map(i, i, show=False)[0] for i in x]]
         self.Draw.graph(x, y, title='Split Means', x_tit='Division', y_tit='Pulse Height [mV]', draw_opt='ap')
 
     def get_ph_bins(self, n=10, pmin=90, pmax=95, show=True):
         h = self.split_signal_map(n, n, show=show, grid=False)
-        (x, y), v = get_2d_vecs(h)
+        (x, y), v = hist_xyz(h)
         wx, wy = diff(x)[0] / 2, diff(y)[0] / 2
         points = array(meshgrid(x, y)).T[where((v >= pmin) & (v < pmax))]
         for ix, iy in points:
@@ -553,14 +554,14 @@ class DUTAnalysis(Analysis):
         return self.Draw.distribution(values, self.Bins.get_pad_ph(Bins.find_width(values)), 'Signal Distribution Normalised by area mean', x_tit='Pulse Height [mV]', show=show)
 
     def draw_sig_map_disto(self, res=None, cut=None, fid=True, x_range=None, redo=False, normalise=False, ret_value=False, ph_bins=None, show=True, save=True):
-        x = get_2d_hist_vec(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)
+        x = hist_values_2d(self.draw_signal_map(res, cut, fid, redo=redo, show=False), err=False) / (self.get_pulse_height() if normalise else 1)
         x_range = choose(x_range, ax_range(x, fl=.1, fh=.1))
-        h = self.Draw.distribution(x, Bins.make(*x_range, n=sqrt(x.size)), 'Signal Map Distribution', x_tit='Pulse Height [mV]', y_off=2, lm=.15, show=show, save=save)
+        h = self.Draw.distribution(x, Bins.make(*x_range, nbins=sqrt(x.size)), 'Signal Map Distribution', x_tit='Pulse Height [mV]', y_off=2, lm=.15, show=show, save=save)
         return mean_sigma(x) if ret_value else h
 
     def draw_split_map_disto(self, m, n=None, x_range=None, fit=True, normalise=False, show=True):
-        x = get_2d_hist_vec(self.split_signal_map(m, n, show=False)[0]) / (self.get_pulse_height() if normalise else 1)
-        h = self.Draw.distribution(x, Bins.make(*choose(x_range, ax_range(x, 0, .1, .4, thresh=3)), n=sqrt(x.size)), 'Signal Map Distribution',
+        x = hist_values_2d(self.split_signal_map(m, n, show=False)[0]) / (self.get_pulse_height() if normalise else 1)
+        h = self.Draw.distribution(x, Bins.make(*choose(x_range, ax_range(x, 0, .1, .4, thresh=3)), nbins=sqrt(x.size)), 'Signal Map Distribution',
                                    x_tit='{}Pulse Height{}'.format(*['Normalised ', ''] if normalise else ['', ' [mV]']), show=show)
         h.Fit('gaus', 'qs{}'.format('' if fit else '0'))
         format_statbox(h, all_stat=True, fit=fit)
@@ -601,7 +602,7 @@ class DUTAnalysis(Analysis):
             h = self.draw_sig_map_disto(show=False)
             q = array([min_percent, max_percent]) / 100.
             y = zeros(2, 'd')
-            mean_error = mean([v.n for v in get_2d_hist_vec(self.draw_error_signal_map(show=False))])
+            mean_error = mean([v.n for v in hist_values_2d(self.draw_error_signal_map(show=False))])
             h.GetQuantiles(2, y, q)
             return ufloat(y[1], mean_error) / ufloat(y[0], mean_error) - 1
         ratio = do_pickle(pickle_path, f)
@@ -630,7 +631,7 @@ class DUTAnalysis(Analysis):
         self.Draw.graph(x, c[iy][x], **prep_kw(kwargs, x_tit=f'Shift in {"X" if col else "Y"}', y_tit='Correlation Factor'))
 
     def draw_sm_correlation(self, run, m=10, show=True):
-        x0, x1 = [get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False) for f in [self, self.__class__(run, self.DUT.Number, self.TCString, prnt=False)]]
+        x0, x1 = [hist_values_2d(f.split_signal_map(m, show=False)[0], err=False) for f in [self, self.__class__(run, self.DUT.Number, self.TCString, prnt=False)]]
         g = self.Draw.histo_2d(x0, x1, self.Bins.get_pad_ph(2) * 2, 'Signal Map Correlation', show=show, x_tit='Pulse Height {} [mV]'.format(self.Run.Number), y_tit='Pulse Height {} [mV]'.format(run),
                                x_range=ax_range(x0, 0, .1, .1), y_range=ax_range(x1, 0, .1, .1))
         Draw.info('Correlation Factor: {:.2f}'.format(g.GetCorrelationFactor()))
@@ -638,7 +639,7 @@ class DUTAnalysis(Analysis):
     def draw_corr_coeff(self, run, show=True):
         x = [5, 10, 25, 50, 100, 200]
         ana = self.__class__(run, self.DUT.Number, self.TCString, prnt=False)
-        y = [correlate(*[get_2d_hist_vec(f.split_signal_map(m, show=False)[0], err=False, zero_supp=0) for f in [self, ana]]) for m in x]
+        y = [correlate(*[hist_values_2d(f.split_signal_map(m, show=False)[0], err=False, z_sup=False) for f in [self, ana]]) for m in x]
         self.Draw.graph(x, y, 'Signal Map Correlation', x_tit='Number of Bins', y_tit='Correlation Coefficient', show=show)
     # endregion SIGNAL MAP
     # ----------------------------------------

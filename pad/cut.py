@@ -199,7 +199,7 @@ class PadCut(Cut):
     def get_b2_fit(self, _redo=False):
         """ fit the b2/b1 profile of the lowest rate run with pol2 """
         h = self.Ana.draw_b2_profile(self.generate_custom(include=['pulser', 'ped sigma', 'event range', 'fiducial'], prnt=False), show=False)
-        xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(get_h_entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
+        xmax = h.GetBinCenter(int(h.GetNbinsX() - argmax(bins.entries(h)[::-1] > 10)))  # find first bin with more than 10 entries from the back
         fit = FitRes(h.Fit('pol2', 'qs', '', 10, xmax))
         # fit.Pars[0] -= self.Ana.get_polarity() * self.calc_pedestal_[0]  # subtract baseline -> THIS IS WRONG!
         return fit
