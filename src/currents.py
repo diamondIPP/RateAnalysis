@@ -159,11 +159,11 @@ class Currents(Analysis):
 
     def convert_data(self):
         info('converting hv text files to hdf5 ...')
-        self.PBar.start(len(glob(join(self.DataDir, '*', '*.log'))))
-        f = h5py.File(join(self.DataDir, 'data.hdf5'), 'w')
-        for d in glob(join(self.DataDir, '*_*')):
+        self.PBar.start(len(list(self.DataDir.rglob('*.log'))))
+        f = h5py.File(self.DataDir.joinpath('data.hdf5'), 'w')
+        for d in self.DataDir.glob('*_*'):
             arrays = []
-            for file_name in sorted(glob(join(d, '*.log'))):
+            for file_name in d.glob('*.log'):
                 if getsize(file_name) == 0:
                     remove_file(file_name)
                     self.PBar.update()
