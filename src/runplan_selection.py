@@ -110,7 +110,7 @@ class DiaScans(Analysis):
         if name is None:
             return
         if name not in self.Selections.keys():
-            warning('"{} does not exist in:\n{} '.format(name, sorted(self.Selections.keys())))
+            warning('"{}" does not exist in:\n{} '.format(name, sorted(self.Selections.keys())))
             self.Name = None
             return
         return self.Selections[name]
