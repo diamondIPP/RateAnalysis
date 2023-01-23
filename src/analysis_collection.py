@@ -518,7 +518,7 @@ class AnalysisCollection(Analysis):
     def draw_signal_distributions(self, bw=None, redo=False, **dkw):
         """Shows a stack of the signal distributions."""
         h = self.get_plots('signal distributions', self.Analysis.get_signal_distribution, picklepath=self.get_pickle_path('Disto', '1_0', 'PH'),  _redo=redo, bw=bw)
-        return self.Draw.stack(h, 'PHDists', self.flux_strings(), **prep_kw(dkw, y_off=1, scale=True, file_name='PHDists'))
+        return self.Draw.stack(h, 'PHDists', **prep_kw(dkw, leg_titles=self.flux_strings(), y_off=1, scale=True, file_name='PHDists'))
 
     def draw_ph_trends(self, bw=None, redo=False, **dkw):
         bw = choose(bw, Bins.Size)
