@@ -216,7 +216,7 @@ class AnalysisCollection(Analysis):
     def get_raw_time_bins(self, bw=None, only_edges=False, t_from_event=False):
         b = self.fix_t_arrays([ana.Bins.get_raw_time(bw, t_from_event=t_from_event)[1] for ana in self.Analyses])
         b = array([[b[0], b[-1]] for b in b]).flatten() if only_edges else concatenate(b)
-        return [b.size - 1, bins]
+        return [b.size - 1, b]
 
     def fix_t_arrays(self, t_arrays):
         """ Add the logged time between two runs if the start time of a run is less than the stop time of the previous. """
